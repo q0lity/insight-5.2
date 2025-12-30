@@ -1,0 +1,863 @@
+/* ============================================================================
+   MINDCANVAS PLUS 4 - COMPREHENSIVE STYLING
+   MindManager-style visual indicators and theming for Obsidian Canvas
+   ============================================================================ */
+
+/* ============================================================================
+   CANVAS NODE STYLING - MINDMANAGER STYLE
+   ============================================================================ */
+
+/* Base task node styling */
+.canvas-node[data-is-task="true"] {
+  border-width: 2px !important;
+  border-style: solid !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.canvas-node[data-is-task="true"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Priority-based color coding (MindManager style) */
+.canvas-node[data-task-priority="high"] {
+  border-color: #ff4444 !important;
+  background: linear-gradient(135deg, rgba(255, 68, 68, 0.1), rgba(255, 68, 68, 0.05));
+}
+
+.canvas-node[data-task-priority="medium"] {
+  border-color: #ffbb33 !important;
+  background: linear-gradient(135deg, rgba(255, 187, 51, 0.1), rgba(255, 187, 51, 0.05));
+}
+
+.canvas-node[data-task-priority="low"] {
+  border-color: #00cc44 !important;
+  background: linear-gradient(135deg, rgba(0, 204, 68, 0.1), rgba(0, 204, 68, 0.05));
+}
+
+/* Task status indicators */
+.canvas-node[data-task-status="completed"] {
+  opacity: 0.8;
+  background: linear-gradient(135deg, rgba(0, 204, 68, 0.15), rgba(0, 204, 68, 0.08)) !important;
+}
+
+/* Status icons in top-right corner */
+.canvas-node[data-task-status="completed"]::before {
+  content: "✓";
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  color: #00cc44;
+  font-weight: bold;
+  font-size: 16px;
+  z-index: 20;
+}
+
+.canvas-node[data-task-status="in-progress"] {
+  border-style: dashed !important;
+  border-color: #3399ff !important;
+  background: linear-gradient(135deg, rgba(51, 153, 255, 0.1), rgba(51, 153, 255, 0.05));
+}
+
+.canvas-node[data-task-status="in-progress"]::before {
+  content: "⏳";
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  font-size: 14px;
+  z-index: 20;
+}
+
+.canvas-node[data-task-status="cancelled"] {
+  opacity: 0.6;
+  text-decoration: line-through;
+  border-color: #888888 !important;
+}
+
+.canvas-node[data-task-status="deferred"] {
+  opacity: 0.7;
+  border-color: #ffbb33 !important;
+  border-style: dotted !important;
+}
+
+.canvas-node[data-task-status="deferred"]::before {
+  content: "⏸";
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  color: #ffbb33;
+  font-size: 14px;
+  z-index: 20;
+}
+
+/* Progress indicators */
+.canvas-node[data-progress]::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  width: var(--progress-width, 0%);
+  background: linear-gradient(90deg, #00cc44, #3399ff);
+  border-radius: 0 0 4px 4px;
+  transition: width 0.3s ease;
+  z-index: 10;
+}
+
+/* Progress percentage text */
+.canvas-node[data-progress]::after {
+  content: attr(data-progress) "%";
+  position: absolute;
+  top: 5px;
+  left: 8px;
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--text-accent);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 1px 4px;
+  border-radius: 8px;
+  z-index: 15;
+}
+
+.canvas-node[data-progress="10"]::before { width: 10%; }
+.canvas-node[data-progress="20"]::before { width: 20%; }
+.canvas-node[data-progress="30"]::before { width: 30%; }
+.canvas-node[data-progress="40"]::before { width: 40%; }
+.canvas-node[data-progress="50"]::before { width: 50%; }
+.canvas-node[data-progress="60"]::before { width: 60%; }
+.canvas-node[data-progress="70"]::before { width: 70%; }
+.canvas-node[data-progress="80"]::before { width: 80%; }
+.canvas-node[data-progress="90"]::before { width: 90%; }
+.canvas-node[data-progress="100"]::before { width: 100%; }
+
+/* Financial indicators */
+.canvas-node[data-has-financial="true"] {
+  border-bottom-width: 3px !important;
+}
+
+.canvas-node[data-has-financial="true"]::after {
+  content: "$";
+  position: absolute;
+  bottom: 5px;
+  left: 8px;
+  color: var(--text-muted);
+  font-weight: bold;
+  font-size: 12px;
+}
+
+/* ============================================================================
+   PROPERTIES PANEL STYLING
+   ============================================================================ */
+
+.mindcanvas-properties-view {
+  padding: 16px;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.mindcanvas-property-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+.mindcanvas-property-section h3 {
+  margin: 0 0 16px 0;
+  color: var(--text-normal);
+  font-size: 16px;
+  font-weight: 600;
+  border-bottom: 2px solid var(--accent-color);
+  padding-bottom: 8px;
+}
+
+.mindcanvas-field {
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mindcanvas-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.mindcanvas-field input,
+.mindcanvas-field select,
+.mindcanvas-field textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 13px;
+}
+
+.mindcanvas-field input:focus,
+.mindcanvas-field select:focus,
+.mindcanvas-field textarea:focus {
+  border-color: var(--accent-color);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.2);
+}
+
+.mindcanvas-notes-area {
+  min-height: 80px;
+  resize: vertical;
+  font-family: var(--font-text);
+}
+
+/* Rollup display styling */
+.mindcanvas-rollup-display {
+  background: var(--background-modifier-cover);
+  padding: 12px;
+  border-radius: 6px;
+  margin-top: 12px;
+}
+
+.mindcanvas-rollup-display h4 {
+  margin: 0 0 8px 0;
+  color: var(--text-accent);
+  font-size: 14px;
+}
+
+.mindcanvas-rollup-display div {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+/* System info styling */
+.mindcanvas-system-info {
+  background: var(--background-modifier-border);
+  padding: 8px;
+  border-radius: 4px;
+  margin-top: 12px;
+}
+
+.mindcanvas-system-info small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-bottom: 2px;
+}
+
+/* Actions section */
+.mindcanvas-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.mindcanvas-actions button {
+  flex: 1;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* ============================================================================
+   GANTT VIEW STYLING
+   ============================================================================ */
+
+.mindcanvas-gantt-view {
+  padding: 16px;
+  background: var(--background-primary);
+}
+
+.mindcanvas-gantt-view h2 {
+  margin: 0 0 16px 0;
+  color: var(--text-normal);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mindcanvas-gantt-placeholder {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 2px dashed var(--background-modifier-border);
+}
+
+/* ============================================================================
+   ROLLUPS VIEW STYLING
+   ============================================================================ */
+
+.mindcanvas-rollups-view {
+  padding: 16px;
+  background: var(--background-primary);
+}
+
+.mindcanvas-rollups-placeholder {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 2px dashed var(--background-modifier-border);
+}
+
+/* ============================================================================
+   FILTERS VIEW STYLING
+   ============================================================================ */
+
+.mindcanvas-filters-view {
+  padding: 16px;
+  background: var(--background-primary);
+}
+
+.mindcanvas-filters-placeholder {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 2px dashed var(--background-modifier-border);
+}
+
+/* ============================================================================
+   EMPTY STATE STYLING
+   ============================================================================ */
+
+.mindcanvas-empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-style: italic;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 1px dashed var(--background-modifier-border);
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .mindcanvas-properties-view {
+    padding: 12px;
+  }
+  
+  .mindcanvas-property-section {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .mindcanvas-actions {
+    flex-direction: column;
+  }
+  
+  .canvas-node[data-is-task="true"] {
+    font-size: 14px;
+  }
+}
+
+/* ============================================================================
+   DARK THEME SPECIFIC ADJUSTMENTS
+   ============================================================================ */
+
+.theme-dark .mindcanvas-property-section {
+  background: var(--background-primary-alt);
+  border-color: var(--background-modifier-border-hover);
+}
+
+.theme-dark .canvas-node[data-task-priority="high"] {
+  background: linear-gradient(135deg, rgba(255, 68, 68, 0.15), rgba(255, 68, 68, 0.08));
+}
+
+.theme-dark .canvas-node[data-task-priority="medium"] {
+  background: linear-gradient(135deg, rgba(255, 187, 51, 0.15), rgba(255, 187, 51, 0.08));
+}
+
+.theme-dark .canvas-node[data-task-priority="low"] {
+  background: linear-gradient(135deg, rgba(0, 204, 68, 0.15), rgba(0, 204, 68, 0.08));
+}
+
+/* ============================================================================
+   ACCESSIBILITY IMPROVEMENTS
+   ============================================================================ */
+
+.mindcanvas-field input:focus,
+.mindcanvas-field select:focus,
+.mindcanvas-field textarea:focus {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.mindcanvas-actions button:focus {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .canvas-node[data-is-task="true"] {
+    border-width: 3px !important;
+  }
+  
+  .canvas-node[data-task-priority="high"] {
+    border-color: #ff0000 !important;
+  }
+  
+  .canvas-node[data-task-priority="medium"] {
+    border-color: #ff8800 !important;
+  }
+  
+  .canvas-node[data-task-priority="low"] {
+    border-color: #008800 !important;
+  }
+}
+
+/* ============================================================================
+   ANIMATION AND TRANSITIONS
+   ============================================================================ */
+
+.canvas-node[data-is-task="true"] {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mindcanvas-property-section {
+  transition: border-color 0.2s ease;
+}
+
+.mindcanvas-property-section:hover {
+  border-color: var(--accent-color);
+}
+
+/* Progress bar animation */
+.canvas-node[data-progress]::before {
+  animation: progressGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes progressGlow {
+  from {
+    box-shadow: 0 0 5px rgba(0, 204, 68, 0.3);
+  }
+  to {
+    box-shadow: 0 0 10px rgba(0, 204, 68, 0.6);
+  }
+}
+
+/* ============================================================================
+   PRINT STYLES
+   ============================================================================ */
+
+@media print {
+  .mindcanvas-properties-view,
+  .mindcanvas-gantt-view,
+  .mindcanvas-rollups-view,
+  .mindcanvas-filters-view {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .canvas-node[data-is-task="true"] {
+    border: 2px solid black !important;
+    background: white !important;
+    box-shadow: none !important;
+  }
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+
+.mindcanvas-hidden {
+  display: none !important;
+}
+
+.mindcanvas-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.mindcanvas-highlight {
+  background: var(--text-accent) !important;
+  color: var(--text-on-accent) !important;
+}
+
+/* ============================================================================
+   ENHANCED MINDMANAGER-STYLE VISUAL INDICATORS 
+   ============================================================================ */
+
+/* Enhanced Financial indicators */
+.canvas-node[data-has-financial="true"] {
+  border-left: 5px solid #4CAF50 !important;
+}
+
+/* Financial icon in bottom-right - override existing */
+.canvas-node[data-has-financial="true"]:after {
+  content: "💰" !important;
+  position: absolute !important;
+  bottom: 5px !important;
+  right: 8px !important;
+  font-size: 12px !important;
+  z-index: 20 !important;
+}
+
+/* Enhanced MindManager-style hover effects */
+.canvas-node[data-is-task="true"]:hover {
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Priority corner indicators - stronger selectors */
+.canvas .canvas-node[data-task-priority="high"],
+[data-node-id][data-task-priority="high"] {
+  border-color: #ff4444 !important;
+  background: linear-gradient(135deg, rgba(255, 68, 68, 0.15), rgba(255, 68, 68, 0.05)) !important;
+}
+
+.canvas .canvas-node[data-task-priority="medium"],
+[data-node-id][data-task-priority="medium"] {
+  border-color: #ffbb33 !important;
+  background: linear-gradient(135deg, rgba(255, 187, 51, 0.15), rgba(255, 187, 51, 0.05)) !important;
+}
+
+.canvas .canvas-node[data-task-priority="low"],
+[data-node-id][data-task-priority="low"] {
+  border-color: #00cc44 !important;
+  background: linear-gradient(135deg, rgba(0, 204, 68, 0.15), rgba(0, 204, 68, 0.05)) !important;
+}
+
+/* Enhanced Canvas node targeting */
+.canvas .canvas-node[data-is-task="true"],
+div[data-type="canvas"] .canvas-node[data-is-task="true"],
+.view-content .canvas-node[data-is-task="true"],
+[data-node-id][data-is-task="true"] {
+  border-width: 3px !important;
+  border-style: solid !important;
+  position: relative !important;
+}
+
+/* Progress indicators with stronger selectors */
+.canvas .canvas-node[data-progress]:before,
+[data-node-id][data-progress]:before {
+  content: "" !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  height: 4px !important;
+  width: var(--progress-width, 0%) !important;
+  background: linear-gradient(90deg, #00cc44, #3399ff) !important;
+  border-radius: 0 0 4px 4px !important;
+  transition: width 0.3s ease !important;
+  z-index: 10 !important;
+}
+
+/* Status icons with stronger selectors */
+.canvas .canvas-node[data-task-status="completed"]:before,
+[data-node-id][data-task-status="completed"]:before {
+  content: "✓" !important;
+  position: absolute !important;
+  top: 5px !important;
+  right: 8px !important;
+  color: #00cc44 !important;
+  font-weight: bold !important;
+  font-size: 16px !important;
+  z-index: 20 !important;
+}
+
+.canvas .canvas-node[data-task-status="in-progress"]:before,
+[data-node-id][data-task-status="in-progress"]:before {
+  content: "⏳" !important;
+  position: absolute !important;
+  top: 5px !important;
+  right: 8px !important;
+  font-size: 14px !important;
+  z-index: 20 !important;
+}
+
+.canvas .canvas-node[data-task-status="deferred"]:before,
+[data-node-id][data-task-status="deferred"]:before {
+  content: "⏸" !important;
+  position: absolute !important;
+  top: 5px !important;
+  right: 8px !important;
+  color: #ffbb33 !important;
+  font-size: 14px !important;
+  z-index: 20 !important;
+}
+
+/* Debug styling to verify targeting */
+.canvas-node[data-task-priority],
+[data-node-id][data-task-priority] {
+  outline: 1px solid rgba(255, 0, 0, 0.3) !important;
+}
+
+/* Force any Canvas node with attributes to be visible */
+*[data-is-task="true"] {
+  position: relative !important;
+}
+
+*[data-task-priority] {
+  position: relative !important;
+}
+
+/* ============================================================================
+   ENHANCED PROPERTIES PANEL STYLING 
+   ============================================================================ */
+
+/* Date Input Fields */
+.mindcanvas-date-field {
+  margin-bottom: 12px;
+}
+
+.mindcanvas-date-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mindcanvas-date-input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 13px;
+}
+
+.mindcanvas-date-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+}
+
+.mindcanvas-date-clear-btn {
+  padding: 4px 8px;
+  background: var(--background-modifier-hover);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.mindcanvas-date-clear-btn:hover {
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+}
+
+/* Enhanced Tags Field */
+.mindcanvas-tags-field {
+  margin-bottom: 16px;
+}
+
+.mindcanvas-tag-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  min-height: 32px;
+}
+
+.mindcanvas-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.mindcanvas-tag-remove {
+  margin-left: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  opacity: 0.7;
+}
+
+.mindcanvas-tag-remove:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+}
+
+/* Enhanced Header with Status Badges */
+.mindcanvas-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mindcanvas-status-badge,
+.mindcanvas-priority-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mindcanvas-status-completed {
+  background: #00cc44;
+  color: white;
+}
+
+.mindcanvas-status-in-progress {
+  background: #3399ff;
+  color: white;
+}
+
+.mindcanvas-status-pending {
+  background: #ffbb33;
+  color: black;
+}
+
+.mindcanvas-status-deferred {
+  background: #888;
+  color: white;
+}
+
+.mindcanvas-priority-high {
+  background: #ff4444;
+  color: white;
+}
+
+.mindcanvas-priority-medium {
+  background: #ffbb33;
+  color: black;
+}
+
+.mindcanvas-priority-low {
+  background: #00cc44;
+  color: white;
+}
+
+/* Enhanced Tab Navigation */
+.mindcanvas-tab-nav {
+  display: flex;
+  background: var(--background-primary);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.mindcanvas-tab {
+  flex: 1;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.mindcanvas-tab:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.mindcanvas-tab.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+
+/* Enhanced Field Styling */
+.mindcanvas-field {
+  margin-bottom: 12px;
+}
+
+.mindcanvas-field label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Enhanced Actions Section */
+.mindcanvas-actions {
+  padding: 16px;
+  border-top: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mindcanvas-actions button {
+  flex: 1;
+  min-width: 120px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+/* ============================================================================
+   NEW: Date & Tag Visual Indicators (User's Surgical Fix)
+   ============================================================================ */
+
+/* ===== DATE BADGES ===== */
+.canvas-node[data-start]:after,
+.canvas-node[data-due]:after {
+  position: absolute;
+  font-size: 10px;
+  padding: 1px 4px;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+.canvas-node[data-start]:after {
+  content: attr(data-start);
+  bottom: 4px; left: 6px;
+}
+.canvas-node[data-due]:after {
+  content: attr(data-due);
+  bottom: 4px; right: 6px;
+}
+
+/* ===== TAG CHIPS ===== */
+.canvas-node[data-tags]::before {
+  content: attr(data-tags);
+  position: absolute;
+  top: 4px; left: 6px;
+  font-size: 9px;
+  background: var(--background-modifier-border);
+  border-radius: 3px;
+  padding: 1px 4px;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+} 

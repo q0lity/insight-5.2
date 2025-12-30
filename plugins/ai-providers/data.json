@@ -1,0 +1,19 @@
+{
+  "_version": 1,
+  "debugLogging": false,
+  "useNativeFetch": false,
+  "providers": [
+    {
+      "id": "id-1752088683792",
+      "name": "Ollama",
+      "apiKey": "Ollama",
+      "url": "http://localhost:11434",
+      "type": "ollama",
+      "model": "llama3:8b-instruct-q4_K_M",
+      "availableModels": [
+        "llama3:latest",
+        "llama3:8b-instruct-q4_K_M"
+      ]
+    }
+  ]
+}

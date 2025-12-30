@@ -1,0 +1,11 @@
+{
+  "id": "mindcanvas-plus-3",
+  "name": "MindCanvas Plus 3",
+  "version": "3.0.1",
+  "minAppVersion": "1.4.16",
+  "description": "Comprehensive MindManager-style rapid mind-mapping for Obsidian Canvas with hotkeys, properties, Gantt view, and financial tracking.",
+  "author": "MindCanvas Team",
+  "authorUrl": "https://github.com/mindcanvas-team",
+  "dependencies": ["canvas"],
+  "isDesktopOnly": false
+} 

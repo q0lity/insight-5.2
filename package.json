@@ -1,0 +1,13 @@
+{
+  "name": "insight-5",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:mobile": "npm run --prefix \"apps/mobile\" start",
+    "dev:desktop": "npm run --prefix \"apps/desktop\" dev"
+  }
+}
+

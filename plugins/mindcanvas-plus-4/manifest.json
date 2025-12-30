@@ -1,0 +1,11 @@
+{
+  "id": "mindcanvas-plus-4",
+  "name": "MindCanvas Plus 4",
+  "version": "4.0.0",
+  "minAppVersion": "1.4.16",
+  "description": "Complete MindManager-style mind mapping for Obsidian Canvas with task tracking, financial rollups, Gantt charts, and advanced project management features.",
+  "author": "MindCanvas Team",
+  "authorUrl": "https://github.com/mindcanvas",
+  "fundingUrl": "https://ko-fi.com/mindcanvas",
+  "isDesktopOnly": false
+} 

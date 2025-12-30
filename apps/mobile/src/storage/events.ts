@@ -1,0 +1,347 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { fromIso, getSupabaseSessionUser, toIso, uniqStrings } from '@/src/supabase/helpers';
+import { ensureEntitiesFromEntry } from '@/src/supabase/entities';
+
+export type MobileEventKind = 'event' | 'task' | 'log' | 'episode';
+
+export type MobileEvent = {
+  id: string;
+  title: string;
+  kind: MobileEventKind;
+  startAt: number;
+  endAt: number | null;
+  active: boolean;
+  trackerKey?: string | null;
+  notes?: string;
+  frontmatter?: string;
+  tags?: string[];
+  contexts?: string[];
+  people?: string[];
+  location?: string | null;
+  skills?: string[];
+  character?: string[];
+  goal?: string | null;
+  project?: string | null;
+  category?: string | null;
+  subcategory?: string | null;
+  estimateMinutes?: number | null;
+  importance?: number | null;
+  difficulty?: number | null;
+  points?: number | null;
+  taskId?: string | null;
+  parentEventId?: string | null;
+};
+
+const STORAGE_KEY = 'insight5.mobile.events.v1';
+
+function makeEventId() {
+  return `evt_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+async function loadEventsLocal(): Promise<MobileEvent[]> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as MobileEvent[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((e) => e && typeof e.id === 'string' && typeof e.title === 'string');
+  } catch {
+    return [];
+  }
+}
+
+async function saveEventsLocal(events: MobileEvent[]) {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+  } catch {
+    // ignore
+  }
+}
+
+function normalizeTagForSupabase(tag: string) {
+  const trimmed = tag.trim();
+  if (!trimmed) return '';
+  return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+}
+
+function normalizeTagForMobile(tag: string) {
+  const trimmed = tag.trim();
+  if (!trimmed) return '';
+  return trimmed.startsWith('#') ? trimmed.slice(1) : trimmed;
+}
+
+function entryToMobileEvent(row: any): MobileEvent {
+  const fm = (row.frontmatter ?? {}) as Record<string, any>;
+  const tags = Array.isArray(row.tags) ? uniqStrings(row.tags.map(normalizeTagForMobile)) : [];
+  const people = Array.isArray(row.people) ? uniqStrings(row.people) : [];
+  const contexts = Array.isArray(row.contexts) ? uniqStrings(row.contexts) : [];
+  const startAt = fromIso(row.start_at) ?? fromIso(row.created_at) ?? Date.now();
+  const endAt = fromIso(row.end_at);
+  const active = typeof fm.active === 'boolean' ? fm.active : endAt == null;
+
+  return {
+    id: row.id,
+    title: row.title ?? 'Event',
+    kind: (fm.kind as MobileEventKind) ?? 'event',
+    startAt,
+    endAt,
+    active,
+    trackerKey: (fm.trackerKey as string | null) ?? null,
+    notes: row.body_markdown ?? '',
+    frontmatter: Object.keys(fm).length ? JSON.stringify(fm) : '',
+    tags,
+    contexts,
+    people,
+    location: (fm.location as string | null) ?? null,
+    skills: Array.isArray(fm.skills) ? fm.skills : [],
+    character: Array.isArray(fm.character) ? fm.character : [],
+    goal: (fm.goal as string | null) ?? null,
+    project: (fm.project as string | null) ?? null,
+    category: (fm.category as string | null) ?? null,
+    subcategory: (fm.subcategory as string | null) ?? null,
+    estimateMinutes: typeof fm.estimateMinutes === 'number' ? fm.estimateMinutes : row.duration_minutes ?? null,
+    importance: typeof row.importance === 'number' ? row.importance : fm.importance ?? null,
+    difficulty: typeof row.difficulty === 'number' ? row.difficulty : fm.difficulty ?? null,
+    points: typeof fm.points === 'number' ? fm.points : null,
+    taskId: (fm.taskId as string | null) ?? null,
+    parentEventId: (fm.parentEventId as string | null) ?? null,
+  };
+}
+
+function mobileEventToEntry(event: MobileEvent, userId: string, options?: { legacyId?: string | null }) {
+  const tags = uniqStrings((event.tags ?? []).map(normalizeTagForSupabase).filter(Boolean));
+  const people = uniqStrings(event.people ?? []);
+  const contexts = uniqStrings(event.contexts ?? []);
+  let baseFrontmatter: Record<string, unknown> = {}
+  if (event.frontmatter) {
+    try {
+      baseFrontmatter = JSON.parse(event.frontmatter)
+    } catch {
+      baseFrontmatter = {}
+    }
+  }
+  const existingLegacyId =
+    typeof baseFrontmatter.legacyId === 'string' && baseFrontmatter.legacyId.trim().length
+      ? baseFrontmatter.legacyId
+      : null;
+  const legacyId = existingLegacyId ?? options?.legacyId ?? null;
+  const legacyType =
+    typeof baseFrontmatter.legacyType === 'string' && baseFrontmatter.legacyType.trim().length
+      ? baseFrontmatter.legacyType
+      : 'event';
+
+  const frontmatter = {
+    ...baseFrontmatter,
+    ...(legacyId ? { legacyId, legacyType } : {}),
+    kind: event.kind,
+    trackerKey: event.trackerKey ?? null,
+    location: event.location ?? null,
+    skills: event.skills ?? [],
+    character: event.character ?? [],
+    goal: event.goal ?? null,
+    project: event.project ?? null,
+    category: event.category ?? null,
+    subcategory: event.subcategory ?? null,
+    estimateMinutes: event.estimateMinutes ?? null,
+    importance: event.importance ?? null,
+    difficulty: event.difficulty ?? null,
+    points: event.points ?? null,
+    active: event.active ?? false,
+    taskId: event.taskId ?? null,
+    parentEventId: event.parentEventId ?? null,
+    sourceApp: 'mobile',
+  };
+
+  return {
+    user_id: userId,
+    title: event.title,
+    facets: ['event'],
+    start_at: toIso(event.startAt),
+    end_at: toIso(event.endAt),
+    duration_minutes: event.estimateMinutes ?? null,
+    difficulty: event.difficulty ?? null,
+    importance: event.importance ?? null,
+    tags,
+    contexts,
+    people,
+    frontmatter,
+    body_markdown: event.notes ?? '',
+    source: 'app',
+  };
+}
+
+export async function listEvents() {
+  const session = await getSupabaseSessionUser();
+  if (!session) {
+    const events = await loadEventsLocal();
+    return events.sort((a, b) => b.startAt - a.startAt);
+  }
+  const { supabase, user } = session;
+  const { data } = await supabase
+    .from('entries')
+    .select('id, title, created_at, start_at, end_at, body_markdown, tags, people, contexts, importance, difficulty, duration_minutes, frontmatter')
+    .eq('user_id', user.id)
+    .contains('facets', ['event'])
+    .is('deleted_at', null)
+    .order('start_at', { ascending: false })
+    .limit(2000);
+
+  if (!data) return [];
+  return data.map(entryToMobileEvent);
+}
+
+export async function getEvent(id: string) {
+  const session = await getSupabaseSessionUser();
+  if (!session) {
+    const events = await loadEventsLocal();
+    return events.find((event) => event.id === id) ?? null;
+  }
+  const { supabase, user } = session;
+  const { data } = await supabase
+    .from('entries')
+    .select('id, title, created_at, start_at, end_at, body_markdown, tags, people, contexts, importance, difficulty, duration_minutes, frontmatter')
+    .eq('user_id', user.id)
+    .eq('id', id)
+    .maybeSingle();
+
+  return data ? entryToMobileEvent(data) : null;
+}
+
+export async function startEvent(input: {
+  id?: string;
+  title: string;
+  kind?: MobileEventKind;
+  startAt?: number;
+  trackerKey?: string | null;
+  notes?: string;
+  frontmatter?: string;
+  tags?: string[];
+  contexts?: string[];
+  people?: string[];
+  location?: string | null;
+  skills?: string[];
+  character?: string[];
+  goal?: string | null;
+  project?: string | null;
+  category?: string | null;
+  subcategory?: string | null;
+  estimateMinutes?: number | null;
+  importance?: number | null;
+  difficulty?: number | null;
+  points?: number | null;
+  taskId?: string | null;
+  parentEventId?: string | null;
+}) {
+  const now = Date.now();
+  const event: MobileEvent = {
+    id: input.id ?? makeEventId(),
+    title: input.title,
+    kind: input.kind ?? 'event',
+    startAt: input.startAt ?? now,
+    endAt: null,
+    active: true,
+    trackerKey: input.trackerKey ?? null,
+    notes: input.notes ?? '',
+    frontmatter: input.frontmatter ?? '',
+    tags: input.tags ?? [],
+    contexts: input.contexts ?? [],
+    people: input.people ?? [],
+    location: input.location ?? null,
+    skills: input.skills ?? [],
+    character: input.character ?? [],
+    goal: input.goal ?? null,
+    project: input.project ?? null,
+    category: input.category ?? null,
+    subcategory: input.subcategory ?? null,
+    estimateMinutes: input.estimateMinutes ?? null,
+    importance: input.importance ?? null,
+    difficulty: input.difficulty ?? null,
+    points: input.points ?? null,
+    taskId: input.taskId ?? null,
+    parentEventId: input.parentEventId ?? null,
+  };
+
+  const session = await getSupabaseSessionUser();
+  if (!session) {
+    const events = await loadEventsLocal();
+    events.unshift(event);
+    await saveEventsLocal(events);
+    return event;
+  }
+
+  const { supabase, user } = session;
+  const payload = mobileEventToEntry(event, user.id);
+  const { data, error } = await supabase.from('entries').insert(payload).select('id').single();
+  if (error || !data) {
+    throw new Error(error?.message ?? 'Failed to create event.');
+  }
+  void ensureEntitiesFromEntry({ tags: event.tags ?? [], people: event.people ?? [], location: event.location ?? null });
+  return { ...event, id: data.id };
+}
+
+export async function updateEvent(id: string, patch: Partial<MobileEvent>) {
+  const session = await getSupabaseSessionUser();
+  if (!session) {
+    const events = await loadEventsLocal();
+    const idx = events.findIndex((e) => e.id === id);
+    if (idx < 0) return null;
+    events[idx] = { ...events[idx], ...patch };
+    await saveEventsLocal(events);
+    return events[idx];
+  }
+
+  const existing = await getEvent(id);
+  if (!existing) return null;
+  const next = { ...existing, ...patch };
+
+  const { supabase, user } = session;
+  const payload = mobileEventToEntry(next, user.id);
+  const { error } = await supabase.from('entries').update(payload).eq('id', id);
+  if (error) {
+    throw new Error(error.message);
+  }
+  void ensureEntitiesFromEntry({ tags: next.tags ?? [], people: next.people ?? [], location: next.location ?? null });
+  return next;
+}
+
+export async function stopEvent(id: string, endAt = Date.now()) {
+  return updateEvent(id, { endAt, active: false });
+}
+
+export async function findActiveEvent() {
+  const events = await listEvents();
+  return events.find((e) => e.active) ?? null;
+}
+
+export async function findActiveEventByTrackerKey(trackerKey: string) {
+  const events = await listEvents();
+  return events.find((e) => e.active && e.trackerKey === trackerKey) ?? null;
+}
+
+export async function syncLocalEventsToSupabase() {
+  const session = await getSupabaseSessionUser();
+  if (!session) return;
+  const events = await loadEventsLocal();
+  if (!events.length) return;
+  const { supabase, user } = session;
+
+  for (const event of events) {
+    const payload = mobileEventToEntry(event, user.id, { legacyId: event.id });
+    const lookup = await supabase
+      .from('entries')
+      .select('id')
+      .eq('frontmatter->>legacyId', event.id)
+      .eq('frontmatter->>legacyType', 'event')
+      .maybeSingle();
+
+    if (lookup.data?.id) {
+      await supabase.from('entries').update(payload).eq('id', lookup.data.id);
+    } else {
+      await supabase.from('entries').insert(payload);
+    }
+    void ensureEntitiesFromEntry({ tags: event.tags ?? [], people: event.people ?? [], location: event.location ?? null });
+  }
+
+  await AsyncStorage.removeItem(STORAGE_KEY);
+}

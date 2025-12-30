@@ -1,0 +1,33 @@
+{
+  "aiProvider": {
+    "selected": "lmstudio",
+    "apiKeys": {},
+    "selectedModels": {
+      "openai": "gpt-4o-mini",
+      "lmstudio": "llama3:8b-instruct-q4_K_M"
+    },
+    "modelConfigs": {}
+  },
+  "frontMatter": {
+    "customProperties": [],
+    "autoGenerate": true
+  },
+  "tags": {
+    "customTags": []
+  },
+  "localLMStudio": {
+    "enabled": false,
+    "port": 11434,
+    "modelName": "llama3:8b-instruct-q4_K_M"
+  },
+  "ontology": {
+    "lastGenerated": ""
+  },
+  "knowledgeBloom": {
+    "selectedModel": "llama3:8b-instruct-q4_K_M",
+    "templateFolder": "Templates",
+    "outputFolder": "",
+    "overwriteExisting": false,
+    "defaultPrompt": "Generate a comprehensive note about {LINK}. Include key concepts, definitions, and relevant examples if applicable."
+  }
+}

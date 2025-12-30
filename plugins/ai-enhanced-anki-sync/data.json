@@ -1,0 +1,10 @@
+{
+  "apiKey": "",
+  "enableAIEnhancement": true,
+  "aiPrompt": "You are an AI assistant that enhances anki flashcards. Improve the content on front and back by making it clearer, more concise, and more effective for learning but without changing the meaning. The backside may contain hints for the answer, instructions for creating the answer, or the complete answer. If nothing is provided on the backside, the answer should be generated entirely. If parts of the answer are provided, they should always be used. If appropriate use HTML for formatting. Always answer in the given language and ensure proper HTML formatting.",
+  "defaultDeck": "Default",
+  "defaultTags": "",
+  "aiModel": "gpt-4o",
+  "automaticDeckAssignment": true,
+  "automaticTagAssignment": true
+}

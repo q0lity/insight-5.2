@@ -1,0 +1,9 @@
+{
+  "defaultPriority": "medium",
+  "autoSave": true,
+  "autoCalculateRollups": true,
+  "showProgressBars": true,
+  "showPriorityColors": true,
+  "defaultCurrency": "USD",
+  "defaultCostPerHour": 100
+}

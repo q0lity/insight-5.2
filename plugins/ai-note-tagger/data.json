@@ -1,0 +1,10 @@
+{
+  "serviceType": "Cloud Service",
+  "provider": "custom",
+  "apiKey": "ollama",
+  "modelName": "custom-model",
+  "maxTags": 10,
+  "promptOption": "descriptive",
+  "promptTemplate": "Analyze the following note content and generate {maxTags} descriptive tags that capture the main topics, concepts, and themes. Return only the tags as a comma-separated list, without any additional commentary. Tags should be lowercase and use hyphens for multi-word tags.\n\nContent:\n{content}",
+  "customEndpoint": "http://localhost:11434"
+}

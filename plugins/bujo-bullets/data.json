@@ -1,0 +1,16 @@
+{
+  "signifiers": [
+    {
+      "name": "Priority",
+      "value": "!"
+    },
+    {
+      "name": "Follow-up",
+      "value": "?"
+    },
+    {
+      "name": "",
+      "value": ""
+    }
+  ]
+}

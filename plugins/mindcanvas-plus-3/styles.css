@@ -1,0 +1,793 @@
+/* ============================================================================
+   MINDCANVAS PLUS 3 - COMPREHENSIVE STYLES
+   ============================================================================ */
+
+/* ============================================================================
+   ROOT VARIABLES AND THEME SUPPORT
+   ============================================================================ */
+:root {
+  /* MindManager-inspired colors */
+  --mcp-primary: #0066cc;
+  --mcp-secondary: #4a90e2;
+  --mcp-accent: #ff6b35;
+  
+  /* Priority colors */
+  --mcp-priority-high: #e74c3c;
+  --mcp-priority-medium: #f39c12;
+  --mcp-priority-low: #27ae60;
+  
+  /* Status colors */
+  --mcp-status-pending: #95a5a6;
+  --mcp-status-in-progress: #3498db;
+  --mcp-status-completed: #2ecc71;
+  --mcp-status-cancelled: #e74c3c;
+  --mcp-status-deferred: #9b59b6;
+  
+  /* Financial colors */
+  --mcp-budget-over: #e74c3c;
+  --mcp-budget-on: #27ae60;
+  --mcp-budget-under: #f39c12;
+  
+  /* UI spacing */
+  --mcp-spacing-xs: 4px;
+  --mcp-spacing-sm: 8px;
+  --mcp-spacing-md: 12px;
+  --mcp-spacing-lg: 16px;
+  --mcp-spacing-xl: 24px;
+  
+  /* Borders and shadows */
+  --mcp-border-radius: 6px;
+  --mcp-border-color: var(--background-modifier-border);
+  --mcp-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --mcp-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Dark theme adjustments */
+.theme-dark {
+  --mcp-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --mcp-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================================================
+   CANVAS NODE ENHANCEMENTS
+   ============================================================================ */
+
+/* Base node styling enhancements */
+.canvas-node {
+  transition: all 0.2s ease;
+}
+
+.canvas-node:hover {
+  box-shadow: var(--mcp-shadow-hover);
+}
+
+/* Task node indicators */
+.canvas-node[data-is-task="true"] {
+  border-left: 4px solid var(--mcp-primary);
+  position: relative;
+}
+
+.canvas-node[data-is-task="true"]::before {
+  content: "✓";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  background: var(--mcp-primary);
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+/* Priority indicators */
+.canvas-node[data-task-priority="high"] {
+  border-color: var(--mcp-priority-high);
+  box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2);
+}
+
+.canvas-node[data-task-priority="medium"] {
+  border-color: var(--mcp-priority-medium);
+  box-shadow: 0 0 0 2px rgba(243, 156, 18, 0.2);
+}
+
+.canvas-node[data-task-priority="low"] {
+  border-color: var(--mcp-priority-low);
+  box-shadow: 0 0 0 2px rgba(39, 174, 96, 0.2);
+}
+
+/* Status-based backgrounds */
+.canvas-node[data-task-status="pending"] {
+  background: linear-gradient(135deg, transparent 0%, rgba(149, 165, 166, 0.1) 100%);
+}
+
+.canvas-node[data-task-status="in-progress"] {
+  background: linear-gradient(135deg, transparent 0%, rgba(52, 152, 219, 0.1) 100%);
+  animation: pulse-progress 2s infinite;
+}
+
+.canvas-node[data-task-status="completed"] {
+  background: linear-gradient(135deg, transparent 0%, rgba(46, 204, 113, 0.1) 100%);
+}
+
+.canvas-node[data-task-status="cancelled"] {
+  background: linear-gradient(135deg, transparent 0%, rgba(231, 76, 60, 0.1) 100%);
+  opacity: 0.7;
+}
+
+.canvas-node[data-task-status="deferred"] {
+  background: linear-gradient(135deg, transparent 0%, rgba(155, 89, 182, 0.1) 100%);
+  opacity: 0.8;
+}
+
+/* Progress indicators */
+.canvas-node[data-progress]::after {
+  content: attr(data-progress) "%";
+  position: absolute;
+  bottom: -20px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--background-modifier-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.canvas-node[data-progress]::after {
+  background: linear-gradient(
+    to right,
+    var(--mcp-status-completed) 0%,
+    var(--mcp-status-completed) var(--progress, 0%),
+    var(--background-modifier-border) var(--progress, 0%),
+    var(--background-modifier-border) 100%
+  );
+}
+
+/* Financial indicators */
+.canvas-node[data-has-financial="true"]::before {
+  content: "$";
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 16px;
+  height: 16px;
+  background: var(--mcp-accent);
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+/* Animations */
+@keyframes pulse-progress {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+/* ============================================================================
+   PROPERTIES VIEW
+   ============================================================================ */
+.mindcanvas-properties-view {
+  padding: var(--mcp-spacing-lg);
+  max-width: 100%;
+  overflow-y: auto;
+}
+
+.mindcanvas-property-section {
+  margin-bottom: var(--mcp-spacing-xl);
+  padding: var(--mcp-spacing-lg);
+  border: 1px solid var(--mcp-border-color);
+  border-radius: var(--mcp-border-radius);
+  background: var(--background-secondary);
+}
+
+.mindcanvas-property-section h3 {
+  margin: 0 0 var(--mcp-spacing-lg) 0;
+  color: var(--mcp-primary);
+  font-size: 1.1em;
+  font-weight: 600;
+  border-bottom: 2px solid var(--mcp-primary);
+  padding-bottom: var(--mcp-spacing-xs);
+}
+
+.mindcanvas-field {
+  margin-bottom: var(--mcp-spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mcp-spacing-xs);
+}
+
+.mindcanvas-field label {
+  font-weight: 500;
+  color: var(--text-normal);
+  font-size: 0.9em;
+}
+
+.mindcanvas-field input,
+.mindcanvas-field select,
+.mindcanvas-field .dropdown {
+  width: 100%;
+  padding: var(--mcp-spacing-sm);
+  border: 1px solid var(--mcp-border-color);
+  border-radius: var(--mcp-border-radius);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  transition: border-color 0.2s ease;
+}
+
+.mindcanvas-field input:focus,
+.mindcanvas-field select:focus {
+  outline: none;
+  border-color: var(--mcp-primary);
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+}
+
+.mindcanvas-notes-area {
+  min-height: 80px;
+  resize: vertical;
+  font-family: var(--font-interface);
+  padding: var(--mcp-spacing-sm);
+  border: 1px solid var(--mcp-border-color);
+  border-radius: var(--mcp-border-radius);
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.mindcanvas-rollup-display {
+  background: var(--background-primary);
+  padding: var(--mcp-spacing-md);
+  border-radius: var(--mcp-border-radius);
+  border: 1px solid var(--mcp-border-color);
+  margin-top: var(--mcp-spacing-md);
+}
+
+.mindcanvas-rollup-display h4 {
+  margin: 0 0 var(--mcp-spacing-sm) 0;
+  color: var(--mcp-secondary);
+  font-size: 0.95em;
+}
+
+.mindcanvas-rollup-display div {
+  margin-bottom: var(--mcp-spacing-xs);
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+.mindcanvas-system-info {
+  margin-top: var(--mcp-spacing-lg);
+  padding: var(--mcp-spacing-sm);
+  background: var(--background-modifier-hover);
+  border-radius: var(--mcp-border-radius);
+}
+
+.mindcanvas-system-info small {
+  display: block;
+  margin-bottom: var(--mcp-spacing-xs);
+  color: var(--text-faint);
+  font-size: 0.8em;
+}
+
+.mindcanvas-actions {
+  display: flex;
+  gap: var(--mcp-spacing-sm);
+  margin-top: var(--mcp-spacing-lg);
+  padding-top: var(--mcp-spacing-lg);
+  border-top: 1px solid var(--mcp-border-color);
+}
+
+.mindcanvas-actions button {
+  flex: 1;
+  padding: var(--mcp-spacing-sm) var(--mcp-spacing-md);
+  border-radius: var(--mcp-border-radius);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--mcp-border-color);
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.mindcanvas-actions button:hover {
+  background: var(--background-modifier-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--mcp-shadow);
+}
+
+.mindcanvas-actions button.mod-cta {
+  background: var(--mcp-primary);
+  color: white;
+  border-color: var(--mcp-primary);
+}
+
+.mindcanvas-actions button.mod-cta:hover {
+  background: var(--mcp-secondary);
+  border-color: var(--mcp-secondary);
+}
+
+.mindcanvas-empty-state {
+  text-align: center;
+  padding: var(--mcp-spacing-xl);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Toggle component styling */
+.mindcanvas-field .checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: var(--mcp-spacing-sm);
+}
+
+/* Slider component styling */
+.mindcanvas-field .slider {
+  width: 100%;
+}
+
+/* Dropdown component styling */
+.mindcanvas-field .dropdown {
+  cursor: pointer;
+}
+
+/* ============================================================================
+   GANTT VIEW
+   ============================================================================ */
+.mindcanvas-gantt-view {
+  padding: var(--mcp-spacing-lg);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.mindcanvas-gantt-view h2 {
+  margin: 0 0 var(--mcp-spacing-md) 0;
+  color: var(--mcp-primary);
+  font-size: 1.3em;
+}
+
+.mindcanvas-gantt-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-secondary);
+  border: 2px dashed var(--mcp-border-color);
+  border-radius: var(--mcp-border-radius);
+  font-size: 1.1em;
+  color: var(--text-muted);
+}
+
+/* Future Gantt chart styles */
+.mindcanvas-gantt-timeline {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.mindcanvas-gantt-header {
+  display: flex;
+  background: var(--background-secondary);
+  border-bottom: 2px solid var(--mcp-border-color);
+  padding: var(--mcp-spacing-sm);
+}
+
+.mindcanvas-gantt-tasks {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.mindcanvas-gantt-task {
+  display: flex;
+  align-items: center;
+  padding: var(--mcp-spacing-sm);
+  border-bottom: 1px solid var(--mcp-border-color);
+  transition: background-color 0.2s ease;
+}
+
+.mindcanvas-gantt-task:hover {
+  background: var(--background-modifier-hover);
+}
+
+.mindcanvas-gantt-task-bar {
+  height: 20px;
+  background: var(--mcp-primary);
+  border-radius: 10px;
+  position: relative;
+  margin: 0 var(--mcp-spacing-sm);
+}
+
+.mindcanvas-gantt-task-bar.high-priority {
+  background: var(--mcp-priority-high);
+}
+
+.mindcanvas-gantt-task-bar.medium-priority {
+  background: var(--mcp-priority-medium);
+}
+
+.mindcanvas-gantt-task-bar.low-priority {
+  background: var(--mcp-priority-low);
+}
+
+/* ============================================================================
+   ROLLUPS VIEW
+   ============================================================================ */
+.mindcanvas-rollups-view {
+  padding: var(--mcp-spacing-lg);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.mindcanvas-rollups-view h2 {
+  margin: 0 0 var(--mcp-spacing-md) 0;
+  color: var(--mcp-primary);
+  font-size: 1.3em;
+}
+
+.mindcanvas-rollups-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-secondary);
+  border: 2px dashed var(--mcp-border-color);
+  border-radius: var(--mcp-border-radius);
+  font-size: 1.1em;
+  color: var(--text-muted);
+}
+
+/* Future rollups styles */
+.mindcanvas-rollups-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--mcp-spacing-lg);
+  margin-bottom: var(--mcp-spacing-xl);
+}
+
+.mindcanvas-rollup-card {
+  padding: var(--mcp-spacing-lg);
+  background: var(--background-secondary);
+  border: 1px solid var(--mcp-border-color);
+  border-radius: var(--mcp-border-radius);
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mindcanvas-rollup-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--mcp-shadow-hover);
+}
+
+.mindcanvas-rollup-card h3 {
+  margin: 0 0 var(--mcp-spacing-sm) 0;
+  color: var(--mcp-primary);
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mindcanvas-rollup-card .value {
+  font-size: 2em;
+  font-weight: bold;
+  color: var(--text-normal);
+  margin-bottom: var(--mcp-spacing-xs);
+}
+
+.mindcanvas-rollup-card .unit {
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
+
+/* ============================================================================
+   FILTERS VIEW
+   ============================================================================ */
+.mindcanvas-filters-view {
+  padding: var(--mcp-spacing-lg);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.mindcanvas-filters-view h2 {
+  margin: 0 0 var(--mcp-spacing-md) 0;
+  color: var(--mcp-primary);
+  font-size: 1.3em;
+}
+
+.mindcanvas-filters-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-secondary);
+  border: 2px dashed var(--mcp-border-color);
+  border-radius: var(--mcp-border-radius);
+  font-size: 1.1em;
+  color: var(--text-muted);
+}
+
+/* Future filters styles */
+.mindcanvas-filters-controls {
+  background: var(--background-secondary);
+  padding: var(--mcp-spacing-lg);
+  border-radius: var(--mcp-border-radius);
+  border: 1px solid var(--mcp-border-color);
+  margin-bottom: var(--mcp-spacing-lg);
+}
+
+.mindcanvas-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mcp-spacing-sm);
+  margin-bottom: var(--mcp-spacing-md);
+  align-items: center;
+}
+
+.mindcanvas-filter-group label {
+  font-weight: 500;
+  color: var(--text-normal);
+  min-width: 80px;
+}
+
+.mindcanvas-filter-tag {
+  padding: var(--mcp-spacing-xs) var(--mcp-spacing-sm);
+  background: var(--mcp-primary);
+  color: white;
+  border-radius: 12px;
+  font-size: 0.8em;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.mindcanvas-filter-tag:hover {
+  background: var(--mcp-secondary);
+}
+
+.mindcanvas-filter-tag.active {
+  background: var(--mcp-accent);
+}
+
+/* ============================================================================
+   RIBBON ICONS CUSTOMIZATION
+   ============================================================================ */
+.side-dock-ribbon-action[aria-label*="MindCanvas"] {
+  transition: all 0.2s ease;
+}
+
+.side-dock-ribbon-action[aria-label*="MindCanvas"]:hover {
+  background: var(--mcp-primary);
+  color: white;
+  transform: scale(1.1);
+}
+
+/* ============================================================================
+   MODAL AND POPUP STYLES
+   ============================================================================ */
+.mindcanvas-modal {
+  max-width: 600px;
+  padding: var(--mcp-spacing-xl);
+}
+
+.mindcanvas-modal h2 {
+  margin: 0 0 var(--mcp-spacing-lg) 0;
+  color: var(--mcp-primary);
+  text-align: center;
+}
+
+.mindcanvas-modal-content {
+  margin-bottom: var(--mcp-spacing-lg);
+}
+
+.mindcanvas-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--mcp-spacing-sm);
+  padding-top: var(--mcp-spacing-lg);
+  border-top: 1px solid var(--mcp-border-color);
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+.mindcanvas-text-primary {
+  color: var(--mcp-primary);
+}
+
+.mindcanvas-text-secondary {
+  color: var(--mcp-secondary);
+}
+
+.mindcanvas-text-accent {
+  color: var(--mcp-accent);
+}
+
+.mindcanvas-bg-primary {
+  background-color: var(--mcp-primary);
+  color: white;
+}
+
+.mindcanvas-bg-secondary {
+  background-color: var(--background-secondary);
+}
+
+.mindcanvas-border {
+  border: 1px solid var(--mcp-border-color);
+}
+
+.mindcanvas-shadow {
+  box-shadow: var(--mcp-shadow);
+}
+
+.mindcanvas-rounded {
+  border-radius: var(--mcp-border-radius);
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================ */
+@media (max-width: 768px) {
+  .mindcanvas-properties-view,
+  .mindcanvas-gantt-view,
+  .mindcanvas-rollups-view,
+  .mindcanvas-filters-view {
+    padding: var(--mcp-spacing-md);
+  }
+  
+  .mindcanvas-rollups-summary {
+    grid-template-columns: 1fr;
+  }
+  
+  .mindcanvas-actions {
+    flex-direction: column;
+  }
+  
+  .mindcanvas-filter-group {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ============================================================================
+   ACCESSIBILITY
+   ============================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.mindcanvas-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus indicators */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+.dropdown:focus-visible {
+  outline: 2px solid var(--mcp-primary);
+  outline-offset: 2px;
+}
+
+/* ============================================================================
+   CUSTOM SCROLLBARS
+   ============================================================================ */
+.mindcanvas-properties-view::-webkit-scrollbar,
+.mindcanvas-gantt-view::-webkit-scrollbar,
+.mindcanvas-rollups-view::-webkit-scrollbar,
+.mindcanvas-filters-view::-webkit-scrollbar {
+  width: 8px;
+}
+
+.mindcanvas-properties-view::-webkit-scrollbar-track,
+.mindcanvas-gantt-view::-webkit-scrollbar-track,
+.mindcanvas-rollups-view::-webkit-scrollbar-track,
+.mindcanvas-filters-view::-webkit-scrollbar-track {
+  background: var(--background-modifier-border);
+  border-radius: 4px;
+}
+
+.mindcanvas-properties-view::-webkit-scrollbar-thumb,
+.mindcanvas-gantt-view::-webkit-scrollbar-thumb,
+.mindcanvas-rollups-view::-webkit-scrollbar-thumb,
+.mindcanvas-filters-view::-webkit-scrollbar-thumb {
+  background: var(--text-faint);
+  border-radius: 4px;
+}
+
+.mindcanvas-properties-view::-webkit-scrollbar-thumb:hover,
+.mindcanvas-gantt-view::-webkit-scrollbar-thumb:hover,
+.mindcanvas-rollups-view::-webkit-scrollbar-thumb:hover,
+.mindcanvas-filters-view::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ============================================================================
+   PRINT STYLES
+   ============================================================================ */
+@media print {
+  .mindcanvas-properties-view,
+  .mindcanvas-gantt-view,
+  .mindcanvas-rollups-view {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+  
+  .mindcanvas-actions {
+    display: none !important;
+  }
+  
+  .canvas-node {
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+  }
+}
+
+/* ============================================================================
+   DARK MODE SPECIFIC ADJUSTMENTS
+   ============================================================================ */
+.theme-dark .mindcanvas-property-section {
+  background: var(--background-primary);
+  border-color: var(--background-modifier-border-hover);
+}
+
+.theme-dark .mindcanvas-rollup-card {
+  background: var(--background-primary);
+  border-color: var(--background-modifier-border-hover);
+}
+
+.theme-dark .canvas-node[data-is-task="true"] {
+  border-left-color: var(--mcp-secondary);
+}
+
+/* ============================================================================
+   ANIMATION DEFINITIONS
+   ============================================================================ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.05); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.mindcanvas-property-section {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.mindcanvas-rollup-card {
+  animation: bounceIn 0.5s ease-out;
+}
+
+/* Stagger animation for multiple cards */
+.mindcanvas-rollup-card:nth-child(1) { animation-delay: 0.1s; }
+.mindcanvas-rollup-card:nth-child(2) { animation-delay: 0.2s; }
+.mindcanvas-rollup-card:nth-child(3) { animation-delay: 0.3s; }
+.mindcanvas-rollup-card:nth-child(4) { animation-delay: 0.4s; } 

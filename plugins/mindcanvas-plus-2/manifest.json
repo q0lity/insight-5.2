@@ -1,0 +1,10 @@
+{
+  "id": "mindcanvas-plus-2",
+  "name": "MindCanvas Plus 2",
+  "version": "2.0.0",
+  "minAppVersion": "1.4.16",
+  "description": "Working MindManager-style rapid mind-mapping for Obsidian Canvas with hotkeys, properties, and Gantt view.",
+  "author": "Your Name",
+  "authorUrl": "https://github.com/yourusername",
+  "isDesktopOnly": false
+} 

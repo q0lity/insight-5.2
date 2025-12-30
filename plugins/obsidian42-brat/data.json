@@ -1,0 +1,39 @@
+{
+  "pluginList": [
+    "Real1tyy/Prisma-Calendar",
+    "hyungyunlim/obsidian-social-archiver-releases",
+    "edrickleong/obsidian-calendar-bases",
+    "Synaptic-Labs-AI/graphweaver-plugin"
+  ],
+  "pluginSubListFrozenVersion": [
+    {
+      "repo": "Real1tyy/Prisma-Calendar",
+      "version": ""
+    },
+    {
+      "repo": "hyungyunlim/obsidian-social-archiver-releases",
+      "version": ""
+    },
+    {
+      "repo": "edrickleong/obsidian-calendar-bases",
+      "version": ""
+    },
+    {
+      "repo": "Synaptic-Labs-AI/graphweaver-plugin",
+      "version": "0.1.0",
+      "token": ""
+    }
+  ],
+  "themesList": [],
+  "updateAtStartup": true,
+  "updateThemesAtStartup": true,
+  "enableAfterInstall": true,
+  "loggingEnabled": false,
+  "loggingPath": "BRAT-log",
+  "loggingVerboseEnabled": false,
+  "debuggingMode": false,
+  "notificationsEnabled": true,
+  "personalAccessToken": "",
+  "selectLatestPluginVersionByDefault": false,
+  "allowIncompatiblePlugins": false
+}

@@ -1,0 +1,19 @@
+{
+  "serviceType": "local",
+  "localEndpoint": "http://localhost:11434/v1/chat/completions",
+  "localModel": "llama3:8b-instruct-q4_K_M",
+  "cloudEndpoint": "",
+  "cloudApiKey": "",
+  "cloudModel": "default",
+  "cloudServiceType": "openrouter",
+  "taggingMode": "hybrid",
+  "excludedFolders": [],
+  "language": "default",
+  "predefinedTagsPath": "",
+  "tagSourceType": "vault",
+  "tagDir": "",
+  "tagRangeMatchMax": 5,
+  "tagRangeGenerateMax": 5,
+  "tagRangePredefinedMax": 5,
+  "replaceTags": true
+}

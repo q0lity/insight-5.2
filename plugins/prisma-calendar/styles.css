@@ -1,0 +1,3996 @@
+/* Custom Calendar Plugin Styles */
+
+/* Utility classes */
+.prisma-hidden {
+	display: none;
+}
+
+.prisma-fade-out {
+	opacity: 0;
+	transition: opacity 0.2s ease-out;
+}
+
+.prisma-calendar-view {
+	padding: 8px;
+	height: 100%;
+	overflow: auto;
+}
+
+.prisma-calendar-container {
+	height: 100%;
+	min-height: 400px;
+}
+
+/* Mountable View Loading Indicator */
+@keyframes prisma-mountable-spin {
+	0% {
+		transform: rotate(0);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+.prisma-mountable-loading-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 2rem;
+	min-height: 100px;
+}
+
+.prisma-mountable-loading-spinner {
+	width: 20px;
+	height: 20px;
+	border: 2px solid var(--background-modifier-border);
+	border-top: 2px solid var(--interactive-accent);
+	border-radius: 50%;
+	animation: prisma-mountable-spin 1s linear infinite;
+	margin: 0 auto 8px;
+}
+
+.prisma-mountable-loading-text {
+	text-align: center;
+	color: var(--text-muted);
+	font-size: 0.9em;
+}
+
+/* FullCalendar theme integration with Obsidian */
+.prisma-calendar-container .fc {
+	font-family: var(--font-interface);
+	font-size: var(--font-ui-small);
+}
+
+.prisma-calendar-container .fc-theme-standard .fc-scrollgrid {
+	border-color: var(--background-modifier-border);
+}
+
+.prisma-calendar-container .fc-theme-standard th,
+.prisma-calendar-container .fc-theme-standard td {
+	border-color: var(--background-modifier-border);
+}
+
+.prisma-calendar-container .fc-theme-standard .fc-scrollgrid-section > * {
+	border-color: var(--background-modifier-border);
+}
+
+/* Header styling */
+.prisma-calendar-container .fc-toolbar {
+	margin-bottom: 1em;
+}
+
+.prisma-calendar-container .fc-toolbar-title {
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-weight-medium);
+}
+
+.prisma-calendar-container .fc-button {
+	background-color: var(--interactive-normal);
+	border-color: var(--background-modifier-border);
+	color: var(--text-normal);
+	font-size: var(--font-ui-smaller);
+	padding: 4px 8px;
+	border-radius: var(--radius-s);
+}
+
+.prisma-calendar-container .fc-button:hover {
+	background-color: var(--interactive-hover);
+}
+
+.prisma-calendar-container .fc-button:focus {
+	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+}
+
+.prisma-calendar-container .fc-button-active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+/* Day headers */
+.prisma-calendar-container .fc-col-header-cell {
+	background-color: var(--background-secondary);
+	color: var(--text-muted);
+	font-weight: var(--font-weight-medium);
+	font-size: var(--font-ui-smaller);
+}
+
+/* Day cells */
+.prisma-calendar-container .fc-daygrid-day {
+	background-color: var(--background-primary);
+}
+
+.prisma-calendar-container .fc-daygrid-day:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.prisma-calendar-container .fc-day-today {
+	background-color: var(--background-modifier-form-field);
+}
+
+.prisma-calendar-container .fc-day-other {
+	background-color: var(--background-secondary-alt);
+	color: var(--text-faint);
+}
+
+/* Button visibility utilities - using proper selector chain for specificity without !important */
+.prisma-calendar-container .fc-header-toolbar .fc-toolbar-chunk .fc-button.prisma-fc-button-hidden {
+	display: none;
+}
+
+.prisma-calendar-container .fc-header-toolbar .fc-toolbar-chunk .fc-button.prisma-fc-button-visible {
+	display: inline-block;
+}
+
+/* --- Event card base --- */
+.prisma-calendar-event {
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+	cursor: pointer;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	/* add subtle depth without harsh borders */
+	box-shadow:
+		0 1px 0 rgba(0, 0, 0, 0.08),
+		inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+	transition:
+		transform 0.06s ease,
+		box-shadow 0.2s ease,
+		opacity 0.2s ease;
+	/* Use CSS custom property for dynamic colors */
+	background-color: var(--event-color);
+	border-color: var(--event-color);
+}
+.prisma-fc-event-hidden {
+	display: none;
+}
+.prisma-calendar-event:hover {
+	transform: translateY(-1px);
+}
+
+/* unified padding; remove inner borders */
+.prisma-fc-event-content-wrapper {
+	display: flex;
+	flex-direction: column;
+	gap: 6px; /* spacing instead of dividers */
+	padding: 6px 8px;
+	height: 100%;
+	overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-thumb-bg) transparent;
+}
+
+/* Webkit scrollbar for event content wrapper */
+.prisma-fc-event-content-wrapper::-webkit-scrollbar {
+	width: 4px;
+}
+
+.prisma-fc-event-content-wrapper::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.prisma-fc-event-content-wrapper::-webkit-scrollbar-thumb {
+	background-color: var(--scrollbar-thumb-bg);
+	border-radius: 2px;
+}
+
+/* --- Header: time + title --- */
+.prisma-fc-event-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	line-height: 1.2;
+	min-width: 0; /* enable truncation */
+}
+
+/* Time as a pill — same weight as title but visually distinct */
+.prisma-fc-event-time {
+	margin: 0; /* remove margins/divider remnants */
+	padding: 2px 6px;
+	border: 0;
+	border-radius: 6px;
+	font-weight: 600;
+	color: white;
+	background: rgba(255, 255, 255, 0.16); /* translucent pill on colored event bg */
+	white-space: nowrap;
+	flex: 0 0 auto;
+}
+
+/* Title, bold, wraps to multiple lines */
+.prisma-fc-event-title-custom {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font-weight: 600;
+	color: white;
+	flex: 1 1 auto;
+	min-width: 0;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+	line-height: 1.3;
+}
+
+/* Optional subtle dot between time and title (no divider lines) */
+.prisma-fc-event-title-custom::before {
+	content: "•";
+	opacity: 0.7;
+	margin-right: 6px;
+}
+
+/* --- Properties: inline, chip-like, subdued --- */
+.prisma-fc-event-props {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	line-height: 1.25;
+	/* slightly deemphasized compared to header */
+	opacity: 0.95;
+}
+
+.prisma-fc-event-prop {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin: 0;
+	padding: 1px 6px;
+	border-radius: 999px; /* pill feel */
+	background: rgba(255, 255, 255, 0.1); /* translucent */
+	color: white;
+	max-width: 100%;
+}
+
+.prisma-fc-event-prop-key {
+	opacity: 0.85; /* keys lighter */
+	flex: 0 0 auto;
+}
+
+.prisma-fc-event-prop-value {
+	opacity: 1;
+	flex: 0 1 auto;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+}
+
+.prisma-fc-event-prop-link {
+	color: white;
+	text-decoration: underline;
+	text-decoration-style: dotted;
+	text-decoration-thickness: 1.5px;
+	text-underline-offset: 2px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	font-weight: var(--font-weight-bold);
+	padding: 1px 3px;
+	border-radius: 2px;
+	background: rgba(255, 255, 255, 0.1);
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.prisma-fc-event-prop-link:hover {
+	color: white;
+	text-decoration-style: solid;
+	text-decoration-thickness: 2px;
+	background: rgba(255, 255, 255, 0.2);
+	text-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+	transform: translateY(-1px);
+}
+
+/* Time-grid / day-grid: ensure wrappers don't add extra padding */
+.prisma-calendar-container .fc-daygrid-event .fc-event-main,
+.prisma-calendar-container .fc-timegrid-event .fc-event-main {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
+	padding: 0;
+}
+
+.prisma-calendar-container .fc-daygrid-event {
+	min-height: auto;
+	/* Allow events to expand vertically for text wrapping */
+	height: auto;
+	display: flex;
+	flex-direction: column;
+	overflow: visible;
+}
+
+.prisma-calendar-container .fc-daygrid-event-harness {
+	min-height: 2em;
+	/* Remove max-height to allow text wrapping */
+	overflow: visible;
+}
+
+/* Month view specific styling - compact layout */
+.prisma-calendar-container .fc-daygrid-event .prisma-fc-event-content-wrapper {
+	padding: 4px 6px;
+	gap: 4px;
+	/* Allow content to expand vertically for text wrapping */
+	overflow: visible;
+	height: auto;
+	min-height: 2em;
+}
+
+.prisma-calendar-container .fc-daygrid-event .prisma-fc-event-header {
+	gap: 4px;
+	/* Allow text wrapping in header */
+	overflow: visible;
+	white-space: normal;
+	display: flex;
+	align-items: flex-start;
+	flex-wrap: wrap;
+}
+
+.prisma-calendar-container .fc-daygrid-event .prisma-fc-event-time {
+	font-size: var(--font-ui-smaller);
+	flex-shrink: 0;
+}
+
+.prisma-calendar-container .fc-daygrid-event .prisma-fc-event-title-custom {
+	font-size: var(--font-ui-smaller);
+	line-height: 1.2;
+	/* Enable text wrapping for long titles */
+	overflow: visible;
+	white-space: normal;
+	word-wrap: break-word;
+	word-break: break-word;
+	flex: 1;
+	min-width: 0;
+}
+
+/* Hide properties in month view to save space */
+.prisma-calendar-container .fc-daygrid-event .prisma-fc-event-props {
+	display: none;
+}
+
+.prisma-calendar-container .fc-timegrid-event {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+/* ========================================
+   LIST VIEW STYLING - MODERN & PROFESSIONAL
+   ======================================== */
+
+/* List view table structure */
+.prisma-calendar-container .fc-list {
+	border: none;
+	background: var(--background-primary);
+}
+
+/* Date headers in list view - compact */
+.prisma-calendar-container .fc-list-day-cushion {
+	background: var(--background-secondary);
+	padding: 6px 12px;
+	font-weight: var(--font-weight-semibold);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-normal);
+	border-top: 1px solid var(--background-modifier-border);
+	border-bottom: 1px solid var(--background-modifier-border);
+	position: sticky;
+	top: 0;
+	z-index: 3;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+/* Empty state - no events message */
+.prisma-calendar-container .fc-list-empty {
+	background: var(--background-primary);
+	color: var(--text-muted);
+	padding: 32px;
+	text-align: center;
+	font-style: italic;
+	font-size: var(--font-ui-medium);
+}
+
+.prisma-calendar-container .fc-list-empty-cushion {
+	padding: 24px;
+	background: var(--background-secondary);
+	border-radius: var(--radius-m);
+	margin: 16px;
+}
+
+/* List table structure */
+.prisma-calendar-container .fc-list-table {
+	border: none;
+}
+
+.prisma-calendar-container .fc-list-table tbody > tr:first-child > td {
+	border-top: none;
+}
+
+/* Event row container */
+.prisma-calendar-container .fc-list-event {
+	cursor: pointer;
+	transition: all 0.15s ease;
+	border-bottom: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+}
+
+/* Apply event color to list view rows with transparency */
+.prisma-calendar-container .fc-list-event.prisma-calendar-event {
+	background: linear-gradient(
+		90deg,
+		color-mix(in srgb, var(--event-color) 8%, var(--background-primary)) 0%,
+		var(--background-primary) 100%
+	);
+	border-left: 3px solid var(--event-color);
+}
+
+/* Hover state - subtle blue accent, NO WHITE */
+.prisma-calendar-container .fc-list-event.prisma-calendar-event:hover,
+.prisma-calendar-container .fc-list-event:hover,
+.prisma-calendar-container tr.fc-list-event:hover,
+.prisma-calendar-container tr.fc-list-event:hover td {
+	background: rgba(var(--interactive-accent-rgb), 0.08);
+	background-color: rgba(var(--interactive-accent-rgb), 0.08);
+	border-left-color: var(--interactive-accent);
+}
+
+/* Active/focus state - slightly more accent, still NO WHITE */
+.prisma-calendar-container .fc-list-event.prisma-calendar-event:active,
+.prisma-calendar-container .fc-list-event.prisma-calendar-event:focus,
+.prisma-calendar-container .fc-list-event:active,
+.prisma-calendar-container .fc-list-event:focus,
+.prisma-calendar-container tr.fc-list-event:active td,
+.prisma-calendar-container tr.fc-list-event:focus td {
+	background: rgba(var(--interactive-accent-rgb), 0.06);
+	background-color: rgba(var(--interactive-accent-rgb), 0.06);
+	outline: none;
+}
+
+/* Event row cells - more compact */
+.prisma-calendar-container .fc-list-event > td {
+	padding: 8px 12px;
+	border: none;
+}
+
+/* Event dot/graphic column - compact */
+.prisma-calendar-container .fc-list-event-graphic {
+	padding: 8px 10px;
+	width: 32px;
+	min-width: 32px;
+	text-align: center;
+}
+
+/* Event color dot - inherit event color */
+.prisma-calendar-container .fc-list-event-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	display: inline-block;
+	border: 2px solid var(--background-primary);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+	transition: all 0.15s ease;
+}
+
+.prisma-calendar-container .fc-list-event:hover .fc-list-event-dot {
+	transform: scale(1.15);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Event time column - compact */
+.prisma-calendar-container .fc-list-event-time {
+	width: 90px;
+	min-width: 90px;
+	padding: 8px 10px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-weight-medium);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+/* Event title/content column - compact */
+.prisma-calendar-container .fc-list-event-title {
+	padding: 8px 12px;
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+}
+
+/* Event content wrapper - compact vertical layout */
+.prisma-calendar-container .fc-list-event .prisma-fc-event-content-wrapper {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+	padding: 0;
+}
+
+/* Event title styling - prominent but compact */
+.prisma-calendar-container .fc-list-event .prisma-fc-event-title-custom {
+	font-weight: var(--font-weight-semibold);
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	line-height: 1.3;
+	width: 100%;
+	letter-spacing: 0.01em;
+}
+
+.prisma-calendar-container .fc-list-event:hover .prisma-fc-event-title-custom {
+	font-weight: var(--font-weight-bold);
+	color: var(--text-accent);
+}
+
+/* Hide default FullCalendar title */
+.prisma-calendar-container .fc-list-event .fc-list-event-title > a {
+	display: none;
+}
+
+/* Event properties in list view - compact */
+.prisma-calendar-container .fc-list-event .prisma-fc-event-props {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	align-items: center;
+	margin-top: 2px;
+	width: 100%;
+}
+
+.prisma-calendar-container .fc-list-event .prisma-fc-event-prop {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	padding: 2px 6px;
+	background: rgba(var(--mono-rgb-0), 0.05);
+	border-radius: 3px;
+	font-size: 11px;
+	color: var(--text-muted);
+	border: 1px solid rgba(var(--mono-rgb-0), 0.08);
+}
+
+.prisma-calendar-container .fc-list-event:hover .prisma-fc-event-prop {
+	background: rgba(var(--mono-rgb-0), 0.08);
+	border-color: rgba(var(--mono-rgb-0), 0.12);
+}
+
+.prisma-calendar-container .fc-list-event .prisma-fc-event-prop-key {
+	font-weight: var(--font-weight-medium);
+	color: var(--text-muted);
+	opacity: 0.8;
+}
+
+.prisma-calendar-container .fc-list-event .prisma-fc-event-prop-value {
+	color: var(--text-normal);
+	opacity: 0.9;
+}
+
+/* Property links in list view */
+.prisma-calendar-container .fc-list-event .prisma-fc-event-prop-link {
+	color: var(--text-accent);
+	text-decoration: none;
+	font-weight: var(--font-weight-medium);
+	padding: 1px 3px;
+	border-radius: 2px;
+	transition: all 0.15s ease;
+}
+
+.prisma-calendar-container .fc-list-event .prisma-fc-event-prop-link:hover {
+	background: rgba(var(--interactive-accent-rgb), 0.1);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+/* Virtual events in list view */
+.prisma-calendar-container .fc-list-event.prisma-virtual-event {
+	opacity: 0.5;
+	font-style: italic;
+}
+
+.prisma-calendar-container .fc-list-event.prisma-virtual-event .fc-list-event-dot {
+	opacity: 0.4;
+	border-style: dashed;
+}
+
+/* Responsive list view */
+@media (max-width: 768px) {
+	.prisma-calendar-container .fc-list-event-time {
+		width: 80px;
+		min-width: 80px;
+		font-size: var(--font-ui-smaller);
+	}
+
+	.prisma-calendar-container .fc-list-event .prisma-fc-event-title-custom {
+		min-width: 150px;
+		font-size: var(--font-ui-small);
+	}
+
+	.prisma-calendar-container .fc-list-day-cushion {
+		padding: 8px 12px;
+		font-size: var(--font-ui-small);
+	}
+
+	.prisma-calendar-container .fc-list-event > td {
+		padding: 8px 10px;
+	}
+
+	.prisma-calendar-container .fc-list-event .prisma-fc-event-props {
+		gap: 4px;
+	}
+
+	.prisma-calendar-container .fc-list-event .prisma-fc-event-prop {
+		padding: 2px 6px;
+		font-size: 11px;
+	}
+}
+
+/* Dark mode refinements for list view */
+.theme-dark .prisma-calendar-container .fc-list-day-cushion {
+	background: var(--background-secondary);
+}
+
+.theme-dark .prisma-calendar-container .fc-list-event:hover {
+	background: var(--background-modifier-hover);
+}
+
+.theme-dark .prisma-calendar-container .fc-list-event-dot {
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.theme-dark .prisma-calendar-container .fc-list-event .prisma-fc-event-prop {
+	background: var(--background-secondary);
+}
+
+.theme-dark .prisma-calendar-container .fc-list-event:hover .prisma-fc-event-prop {
+	background: var(--background-modifier-hover);
+}
+
+/* Time grid styling */
+.prisma-calendar-container .fc-timegrid-slot {
+	border-color: var(--background-modifier-border);
+}
+
+.prisma-calendar-container .fc-timegrid-slot-label {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.prisma-calendar-container .fc-timegrid-axis {
+	background-color: var(--background-secondary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+	.prisma-calendar-container .fc-toolbar {
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.prisma-calendar-container .fc-toolbar-chunk {
+		display: flex;
+		justify-content: center;
+	}
+}
+
+/* Loading state */
+.prisma-calendar-loading-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	height: 200px;
+	gap: 16px;
+}
+
+.prisma-calendar-loading-spinner {
+	width: 32px;
+	height: 32px;
+	border: 3px solid var(--background-modifier-border);
+	border-top: 3px solid var(--interactive-accent);
+	border-radius: 50%;
+	animation: prisma-calendar-spin 1s linear infinite;
+}
+
+.prisma-calendar-loading-text {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	text-align: center;
+}
+
+@keyframes prisma-calendar-spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+/* Dark theme adjustments */
+.theme-dark .prisma-calendar-container .fc-button {
+	background-color: var(--background-modifier-form-field);
+}
+
+.theme-dark .prisma-calendar-container .fc-button:hover {
+	background-color: var(--background-modifier-form-field-highlighted);
+}
+
+/* Batch Selection Styles - Now integrated into calendar toolbar */
+.fc-button.prisma-batch-action-btn {
+	background: var(--interactive-normal);
+	border: 1px solid var(--background-modifier-border);
+	color: var(--text-normal);
+	font-size: var(--font-ui-smaller);
+	padding: 4px 8px;
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	transition: all 0.15s ease;
+	white-space: nowrap;
+}
+
+.fc-button.prisma-batch-action-btn:hover {
+	background: var(--interactive-hover);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.fc-button.prisma-batch-action-btn.prisma-batch-counter {
+	font-weight: var(--font-weight-medium);
+	background: var(--background-secondary);
+}
+
+.fc-button.prisma-batch-action-btn.prisma-select-all-btn {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.fc-button.prisma-batch-action-btn.prisma-clear-btn {
+	background: var(--background-modifier-form-field);
+}
+
+.fc-button.prisma-batch-action-btn.prisma-exit-btn {
+	background: var(--background-secondary);
+}
+
+.fc-button.prisma-batch-action-btn.prisma-delete-btn {
+	background: var(--color-red);
+	color: white;
+	border-color: var(--color-red);
+}
+
+.fc-button.prisma-batch-action-btn.prisma-delete-btn:hover {
+	background: var(--color-red-rgb);
+	box-shadow: 0 2px 8px rgba(var(--color-red-rgb), 0.3);
+}
+
+.fc-button.prisma-batch-action-btn.prisma-clone-next-btn,
+.fc-button.prisma-batch-action-btn.prisma-clone-prev-btn,
+.fc-button.prisma-batch-action-btn.prisma-duplicate-btn {
+	background: var(--color-blue);
+	color: white;
+	border-color: var(--color-blue);
+}
+
+.fc-button.prisma-batch-action-btn.prisma-move-next-btn,
+.fc-button.prisma-batch-action-btn.prisma-move-prev-btn {
+	background: var(--color-orange);
+	color: white;
+	border-color: var(--color-orange);
+}
+
+.fc-button.prisma-batch-action-btn.prisma-open-all-btn {
+	background: var(--color-green);
+	color: white;
+	border-color: var(--color-green);
+}
+
+.fc-button.prisma-batch-action-btn.prisma-skip-btn {
+	background: var(--color-yellow);
+	color: white;
+	border-color: var(--color-yellow);
+}
+
+.fc-button.prisma-batch-action-btn.prisma-move-by-btn {
+	background: var(--interactive-normal);
+	color: var(--text-normal);
+	border-color: var(--background-modifier-border);
+}
+
+/* Fix event collapsing in month view */
+.fc-daygrid-event.prisma-batch-selectable,
+.fc-daygrid-event.prisma-batch-selectable .fc-event-main {
+	overflow: visible;
+}
+
+/* Adjust checkbox position for compact month view events */
+.fc-daygrid-event.prisma-batch-selectable .fc-event-main::before {
+	top: 1px;
+	right: 1px;
+	width: 14px;
+	height: 14px;
+}
+.fc-daygrid-event.prisma-batch-selected .fc-event-main::before {
+	font-size: 9px;
+}
+
+/* Event Selection States - Updated for FullCalendar DOM structure */
+.fc-event.prisma-batch-selectable {
+	cursor: pointer;
+	transition:
+		box-shadow 0.2s ease,
+		z-index 0.2s ease;
+}
+
+/* Apply relative positioning to an inner element to avoid breaking FC's layout */
+.fc-event.prisma-batch-selectable .fc-event-main {
+	position: relative;
+	height: 100%;
+	width: 100%;
+}
+
+.fc-event.prisma-batch-selectable .fc-event-main::before {
+	content: "";
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	width: 16px;
+	height: 16px;
+	border: 2px solid rgba(255, 255, 255, 0.8);
+	border-radius: 50%;
+	background: rgba(0, 0, 0, 0.2);
+	backdrop-filter: blur(2px);
+	z-index: 10;
+	opacity: 0.8;
+	transition: all 0.2s ease;
+}
+
+.fc-event.prisma-batch-selectable:hover .fc-event-main::before {
+	opacity: 1;
+	transform: scale(1.1);
+	border-color: var(--interactive-accent);
+}
+
+.fc-event.prisma-batch-selected {
+	box-shadow:
+		0 0 0 2px var(--interactive-accent),
+		0 4px 12px rgba(var(--interactive-accent-rgb), 0.3),
+		0 2px 4px rgba(0, 0, 0, 0.1);
+	z-index: 5;
+}
+
+.fc-event.prisma-batch-selected .fc-event-main::before {
+	background: var(--interactive-accent);
+	border-color: white;
+	content: "✓";
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 10px;
+	font-weight: bold;
+	color: white;
+	opacity: 1;
+}
+
+.fc-event.prisma-batch-selected:hover {
+	box-shadow:
+		0 0 0 2px var(--interactive-accent),
+		0 6px 20px rgba(var(--interactive-accent-rgb), 0.4),
+		0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Selection animations */
+/* Removed animations that could affect event sizing */
+
+/* Removed keyframes that could cause event sizing issues */
+
+/* List view batch selection adjustments */
+.prisma-calendar-container .fc-list-event.prisma-batch-selectable {
+	position: relative;
+}
+
+.prisma-calendar-container .fc-list-event.prisma-batch-selectable .fc-list-event-graphic {
+	position: relative;
+}
+
+.prisma-calendar-container .fc-list-event.prisma-batch-selectable .fc-list-event-graphic::before {
+	content: "";
+	position: absolute;
+	left: -24px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 16px;
+	height: 16px;
+	border: 2px solid var(--text-faint);
+	border-radius: 50%;
+	background: rgba(0, 0, 0, 0.2);
+}
+
+.prisma-calendar-container .fc-list-event.prisma-batch-selected .fc-list-event-graphic::before {
+	background: var(--interactive-accent);
+	border-color: white;
+	content: "✓";
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 10px;
+	font-weight: bold;
+	color: white;
+}
+
+/* Responsive batch selection */
+@media (max-width: 768px) {
+	.prisma-batch-selection-bar {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 4px;
+		margin-left: 4px;
+		padding: 2px 4px;
+	}
+
+	.prisma-batch-actions {
+		justify-content: center;
+		gap: 6px;
+	}
+
+	.prisma-batch-action-btn {
+		flex: 1;
+		min-width: 0;
+		font-size: var(--font-ui-smaller);
+		padding: 6px 4px;
+	}
+
+	.fc-event.prisma-batch-selectable .fc-event-main::before,
+	.fc-event.prisma-batch-selected .fc-event-main::before {
+		width: 14px;
+		height: 14px;
+		font-size: 9px;
+	}
+}
+
+/* Accessibility: reduce motion */
+@media (prefers-reduced-motion: reduce) {
+	.prisma-calendar-event {
+		transition: none;
+	}
+
+	.fc-event.prisma-batch-selectable .fc-event-main::before,
+	.fc-event.prisma-batch-selected .fc-event-main::before {
+		transition: none;
+	}
+
+	.prisma-batch-action-btn {
+		transition: none;
+	}
+}
+
+.prisma-virtual-event {
+	opacity: 0.6;
+	font-style: italic;
+	background-image: repeating-linear-gradient(
+		45deg,
+		rgba(0, 0, 0, 0.05),
+		rgba(0, 0, 0, 0.05) 10px,
+		transparent 10px,
+		transparent 20px
+	);
+	cursor: not-allowed;
+}
+
+.prisma-view-header-title-container {
+	flex-grow: unset;
+	flex-shrink: 0;
+}
+
+/* Settings Tabs */
+.prisma-settings-nav {
+	margin-bottom: 24px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	padding-bottom: 16px;
+}
+
+.prisma-nav-buttons {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.prisma-nav-buttons button {
+	padding: 8px 16px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.prisma-nav-buttons button.prisma-active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.prisma-nav-buttons button:hover:not(.prisma-active) {
+	background-color: var(--background-modifier-hover);
+}
+
+.prisma-settings-info-box {
+	margin-top: 16px;
+	padding: 12px;
+	background-color: var(--background-secondary);
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.prisma-settings-info-box h4 {
+	margin-top: 0;
+}
+
+.prisma-settings-info-box-example {
+	background-color: var(--background-primary);
+	padding: 8px;
+	border-radius: 4px;
+	margin-top: 8px;
+	font-size: 12px;
+	font-family: var(--font-monospace);
+	white-space: pre-wrap;
+}
+
+.prisma-settings-info-box ul {
+	margin-top: 4px;
+	padding-inline-start: 20px;
+}
+
+.prisma-settings-warning-box {
+	margin-top: 12px;
+	padding: 12px;
+	background-color: var(--background-modifier-error-rgb);
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-error);
+}
+
+.prisma-settings-warning-box strong {
+	color: var(--text-error);
+}
+
+.prisma-frontmatter-display-example .prisma-example-event-box {
+	border: 1px solid var(--background-modifier-border);
+	padding: 8px;
+	border-radius: 4px;
+	max-width: 300px;
+	margin-top: 8px;
+}
+
+.prisma-example-event-box .prisma-title {
+	font-weight: 500;
+}
+
+.prisma-example-event-box .prisma-properties {
+	font-size: 0.9em;
+	color: var(--text-muted);
+	margin-top: 4px;
+}
+
+/* Color example list items */
+.prisma-color-example-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 6px;
+}
+
+.prisma-color-example-item .prisma-settings-info-box-example {
+	flex: 0 0 auto;
+}
+
+.prisma-color-arrow {
+	flex-shrink: 0;
+	color: var(--text-muted);
+}
+
+/* Color example dot in examples */
+.prisma-color-example-dot {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	border-radius: 3px;
+	background-color: var(--example-color);
+	border: 1px solid var(--background-modifier-border);
+	vertical-align: middle;
+	flex-shrink: 0;
+}
+
+.prisma-color-example-description {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+/* Color rule items - Compact single row layout */
+.prisma-color-rule-item {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 8px 12px;
+	margin-bottom: 8px;
+	background-color: var(--background-secondary);
+}
+
+.prisma-color-rule-main-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.prisma-color-rule-left {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1;
+	min-width: 0;
+}
+
+.prisma-color-rule-order {
+	font-size: 11px;
+	font-weight: bold;
+	color: var(--text-muted);
+	min-width: 20px;
+	flex-shrink: 0;
+}
+
+.prisma-color-rule-left input[type="checkbox"] {
+	flex-shrink: 0;
+	cursor: pointer;
+}
+
+.prisma-color-rule-expression-input {
+	flex: 1;
+	min-width: 0;
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-small);
+}
+
+.prisma-color-rule-expression-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+}
+
+.prisma-color-rule-right {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+.prisma-color-rule-picker-wrapper {
+	display: flex;
+	align-items: center;
+}
+
+.prisma-color-rule-picker-wrapper .setting-item {
+	border: none;
+	padding: 0;
+	margin: 0;
+	background: transparent;
+}
+
+.prisma-color-rule-picker-wrapper .setting-item-control {
+	display: flex;
+	align-items: center;
+}
+
+.prisma-color-rule-controls {
+	display: flex;
+	gap: 4px;
+}
+
+.prisma-color-rule-btn {
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	cursor: pointer;
+	font-size: 14px;
+	line-height: 1;
+	transition: all 0.15s ease;
+}
+
+.prisma-color-rule-btn:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.prisma-color-rule-btn-delete {
+	color: var(--text-error);
+}
+
+.prisma-color-rule-btn-delete:hover {
+	background-color: var(--background-modifier-error);
+	border-color: var(--text-error);
+}
+
+/* Filter preset items */
+.prisma-filter-preset-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 8px 12px;
+	margin-bottom: 8px;
+	background-color: var(--background-secondary);
+}
+
+.prisma-filter-preset-name-input {
+	flex: 0 0 180px;
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-weight-medium);
+}
+
+.prisma-filter-preset-name-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+}
+
+.prisma-filter-preset-expression-input {
+	flex: 1;
+	min-width: 0;
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-small);
+}
+
+.prisma-filter-preset-expression-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+}
+
+.prisma-filter-preset-btn-delete {
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	color: var(--text-error);
+	cursor: pointer;
+	font-size: 14px;
+	line-height: 1;
+	transition: all 0.15s ease;
+	flex-shrink: 0;
+}
+
+.prisma-filter-preset-btn-delete:hover {
+	background-color: var(--background-modifier-error);
+	border-color: var(--text-error);
+}
+
+/* Virtual Event Styles */
+.prisma-virtual-event-opacity {
+	opacity: 0.6;
+}
+
+.prisma-virtual-event-cursor {
+	cursor: default;
+}
+
+.prisma-virtual-event-italic {
+	opacity: 0.7;
+	font-style: italic;
+}
+
+/* Hidden Element */
+.prisma-element-hidden {
+	display: none;
+}
+
+/* Past Event Contrast - Applied via JavaScript based on settings */
+.prisma-calendar-container .prisma-past-event-hidden {
+	display: none;
+}
+
+.prisma-calendar-container .prisma-past-event-faded {
+	opacity: var(--past-event-opacity, 0.7);
+}
+
+/* Event Highlight - Temporary highlight when navigating to an event */
+.prisma-calendar-container .fc-event.prisma-event-highlighted {
+	animation: prisma-event-highlight-pulse 0.7s ease-in-out;
+	box-shadow:
+		0 0 25px 10px color-mix(in srgb, var(--event-color) 70%, transparent),
+		0 0 45px 18px color-mix(in srgb, var(--event-color) 40%, transparent);
+	z-index: 999;
+	transition: box-shadow 0.25s ease-out;
+	filter: brightness(1.15) saturate(1.2);
+}
+
+.prisma-calendar-container .fc-event.prisma-event-highlighted .fc-event-main {
+	border: 2.5px solid color-mix(in srgb, var(--event-color) 85%, white);
+}
+
+/* Upcoming Event Highlight - Persistent highlight for active/next upcoming event */
+.prisma-calendar-container .fc-event.prisma-calendar-event.prisma-event-upcoming {
+	box-shadow:
+		0 0 20px 9px color-mix(in srgb, var(--event-color) 55%, transparent),
+		0 0 38px 16px color-mix(in srgb, var(--event-color) 35%, transparent),
+		0 2px 8px rgba(0, 0, 0, 0.15);
+	z-index: 10;
+	transition:
+		box-shadow 0.5s ease,
+		filter 0.5s ease;
+	filter: brightness(1.18) saturate(1.22) contrast(1.05);
+}
+
+.prisma-calendar-container .fc-event.prisma-calendar-event.prisma-event-upcoming .fc-event-main {
+	border: 2.5px solid color-mix(in srgb, var(--event-color) 85%, white);
+	border-radius: var(--radius-s);
+}
+
+/* Enhance upcoming highlight on hover */
+.prisma-calendar-container .fc-event.prisma-calendar-event.prisma-event-upcoming:hover {
+	box-shadow:
+		0 0 24px 11px color-mix(in srgb, var(--event-color) 60%, transparent),
+		0 0 44px 18px color-mix(in srgb, var(--event-color) 40%, transparent),
+		0 4px 12px rgba(0, 0, 0, 0.2);
+	filter: brightness(1.22) saturate(1.26) contrast(1.08);
+}
+
+/* Maintain upcoming highlight when clicked/focused */
+.prisma-calendar-container .fc-event.prisma-calendar-event.prisma-event-upcoming:active,
+.prisma-calendar-container .fc-event.prisma-calendar-event.prisma-event-upcoming:focus {
+	box-shadow:
+		0 0 22px 10px color-mix(in srgb, var(--event-color) 58%, transparent),
+		0 0 40px 17px color-mix(in srgb, var(--event-color) 38%, transparent),
+		0 3px 10px rgba(0, 0, 0, 0.18);
+	filter: brightness(1.2) saturate(1.24) contrast(1.06);
+}
+
+/* Pulse animation for initial highlight */
+@keyframes prisma-event-highlight-pulse {
+	0% {
+		box-shadow: 0 0 0 0 color-mix(in srgb, var(--event-color) 85%, transparent);
+		filter: brightness(1) saturate(1);
+	}
+	50% {
+		box-shadow:
+			0 0 35px 15px color-mix(in srgb, var(--event-color) 60%, transparent),
+			0 0 55px 25px color-mix(in srgb, var(--event-color) 35%, transparent);
+		filter: brightness(1.25) saturate(1.3);
+	}
+	100% {
+		box-shadow:
+			0 0 25px 10px color-mix(in srgb, var(--event-color) 70%, transparent),
+			0 0 45px 18px color-mix(in srgb, var(--event-color) 40%, transparent);
+		filter: brightness(1.15) saturate(1.2);
+	}
+}
+
+/* List view highlight */
+.prisma-calendar-container .fc-list-event.prisma-event-highlighted {
+	animation: prisma-event-highlight-pulse-list 0.7s ease-in-out;
+	background: color-mix(in srgb, var(--event-color) 20%, var(--background-primary));
+	border-left: 5px solid var(--event-color);
+	box-shadow: 0 0 15px 6px color-mix(in srgb, var(--event-color) 35%, transparent);
+	filter: brightness(1.1);
+}
+
+.prisma-calendar-container .fc-list-event.prisma-event-highlighted .fc-list-event-dot {
+	box-shadow: 0 0 15px 6px color-mix(in srgb, var(--event-color) 70%, transparent);
+	transform: scale(1.4);
+	filter: brightness(1.25);
+}
+
+/* List view upcoming event highlight - Persistent */
+.prisma-calendar-container .fc-list-event.prisma-calendar-event.prisma-event-upcoming {
+	background: linear-gradient(
+		90deg,
+		color-mix(in srgb, var(--event-color) 20%, var(--background-primary)) 0%,
+		color-mix(in srgb, var(--event-color) 12%, var(--background-primary)) 100%
+	);
+	border-left: 4.5px solid color-mix(in srgb, var(--event-color) 90%, white);
+	box-shadow:
+		0 0 16px 7px color-mix(in srgb, var(--event-color) 35%, transparent),
+		0 2px 6px rgba(0, 0, 0, 0.12);
+	transition:
+		background 0.5s ease,
+		box-shadow 0.5s ease,
+		border-left 0.5s ease,
+		filter 0.5s ease;
+	filter: brightness(1.12) saturate(1.08);
+}
+
+.prisma-calendar-container .fc-list-event.prisma-calendar-event.prisma-event-upcoming .fc-list-event-dot {
+	box-shadow:
+		0 0 16px 7px color-mix(in srgb, var(--event-color) 70%, transparent),
+		0 2px 6px rgba(0, 0, 0, 0.2);
+	transform: scale(1.3);
+	filter: brightness(1.28) saturate(1.15);
+	transition: all 0.5s ease;
+}
+
+/* Enhance list view upcoming highlight on hover */
+.prisma-calendar-container .fc-list-event.prisma-calendar-event.prisma-event-upcoming:hover {
+	background: linear-gradient(
+		90deg,
+		color-mix(in srgb, var(--event-color) 24%, var(--background-primary)) 0%,
+		color-mix(in srgb, var(--event-color) 14%, var(--background-primary)) 100%
+	);
+	border-left: 4.5px solid color-mix(in srgb, var(--event-color) 95%, white);
+	box-shadow:
+		0 0 20px 9px color-mix(in srgb, var(--event-color) 40%, transparent),
+		0 3px 8px rgba(0, 0, 0, 0.15);
+	filter: brightness(1.15) saturate(1.12);
+}
+
+.prisma-calendar-container .fc-list-event.prisma-calendar-event.prisma-event-upcoming:hover .fc-list-event-dot {
+	box-shadow:
+		0 0 20px 9px color-mix(in srgb, var(--event-color) 75%, transparent),
+		0 2px 8px rgba(0, 0, 0, 0.25);
+	transform: scale(1.4);
+	filter: brightness(1.32) saturate(1.2);
+}
+
+/* Maintain list view upcoming highlight when clicked/focused */
+.prisma-calendar-container .fc-list-event.prisma-calendar-event.prisma-event-upcoming:active,
+.prisma-calendar-container .fc-list-event.prisma-calendar-event.prisma-event-upcoming:focus {
+	background: linear-gradient(
+		90deg,
+		color-mix(in srgb, var(--event-color) 22%, var(--background-primary)) 0%,
+		color-mix(in srgb, var(--event-color) 13%, var(--background-primary)) 100%
+	);
+	border-left: 4.5px solid color-mix(in srgb, var(--event-color) 92%, white);
+	box-shadow:
+		0 0 18px 8px color-mix(in srgb, var(--event-color) 38%, transparent),
+		0 2px 7px rgba(0, 0, 0, 0.14);
+	filter: brightness(1.13) saturate(1.1);
+}
+
+@keyframes prisma-event-highlight-pulse-list {
+	0% {
+		background: var(--background-primary);
+		box-shadow: 0 0 0 0 transparent;
+	}
+	50% {
+		background: color-mix(in srgb, var(--event-color) 28%, var(--background-primary));
+		box-shadow: 0 0 20px 8px color-mix(in srgb, var(--event-color) 50%, transparent);
+	}
+	100% {
+		background: color-mix(in srgb, var(--event-color) 20%, var(--background-primary));
+		box-shadow: 0 0 15px 6px color-mix(in srgb, var(--event-color) 35%, transparent);
+	}
+}
+
+/* Zoom Button Styles */
+.prisma-zoom-button-visible {
+	display: "";
+}
+
+.prisma-zoom-button-hidden {
+	display: none;
+}
+
+/* Make zoom button look clickable */
+.prisma-calendar-container .fc-zoomLevel-button {
+	cursor: pointer;
+	position: relative;
+	padding-right: 24px;
+}
+
+/* Add dropdown indicator */
+.prisma-calendar-container .fc-zoomLevel-button::after {
+	content: "";
+	position: absolute;
+	right: 8px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 0;
+	height: 0;
+	border-left: 4px solid transparent;
+	border-right: 4px solid transparent;
+	border-top: 5px solid currentColor;
+	opacity: 0.7;
+}
+
+.prisma-calendar-container .fc-zoomLevel-button:hover::after {
+	opacity: 1;
+}
+
+/* Filter Input Styles (Search & Expression) */
+.prisma-fc-filter-wrapper {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	margin-left: 8px;
+}
+
+.prisma-fc-search-input,
+.prisma-fc-expression-input {
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-smaller);
+	font-family: var(--font-interface);
+	width: 150px;
+	transition:
+		border-color 0.2s ease,
+		box-shadow 0.2s ease;
+}
+
+.prisma-fc-search-input:focus,
+.prisma-fc-expression-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+}
+
+.prisma-fc-search-input::placeholder,
+.prisma-fc-expression-input::placeholder {
+	color: var(--text-faint);
+	font-style: italic;
+}
+
+/* Filter Preset Selector */
+.prisma-fc-filter-preset-wrapper {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	margin-left: 8px;
+}
+
+.prisma-fc-filter-preset-select {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	padding: 4px 24px 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--interactive-normal);
+	color: var(--text-normal);
+	font-size: var(--font-ui-smaller);
+	font-family: var(--font-interface);
+	cursor: pointer;
+	transition:
+		background-color 0.2s ease,
+		border-color 0.2s ease,
+		box-shadow 0.2s ease;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='currentColor' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 6px center;
+	background-size: 10px;
+}
+
+.prisma-fc-filter-preset-select:hover {
+	background-color: var(--interactive-hover);
+	border-color: var(--background-modifier-border-hover);
+}
+
+.prisma-fc-filter-preset-select:focus {
+	outline: none;
+	background-color: var(--interactive-hover);
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+}
+
+.prisma-fc-filter-preset-select option {
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+}
+
+/* Settings Tab Styles */
+.prisma-settings-footer {
+	margin-top: 2rem;
+	text-align: center;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+}
+
+.prisma-settings-support-link {
+	text-decoration: none;
+	color: var(--text-accent);
+}
+
+.prisma-calendar-management-header {
+	margin-bottom: 24px;
+	padding: 16px;
+	background-color: var(--background-secondary);
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.prisma-calendar-actions {
+	display: flex;
+	gap: 8px;
+	margin-top: 12px;
+	flex-wrap: wrap;
+}
+
+.prisma-calendar-action-button {
+	padding: 6px 12px;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-weight-medium);
+	transition: all 0.2s ease;
+	border: 1px solid transparent;
+	outline: none;
+}
+
+.prisma-calendar-action-button:hover:not(:disabled) {
+	transform: translateY(-1px);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.prisma-calendar-action-button:active:not(:disabled) {
+	transform: translateY(0);
+}
+
+.prisma-calendar-create-button {
+	border: 1px solid var(--interactive-accent);
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.prisma-calendar-create-button:hover:not(:disabled) {
+	background-color: var(--interactive-accent-hover);
+	border-color: var(--interactive-accent-hover);
+}
+
+.prisma-calendar-clone-button,
+.prisma-calendar-rename-button {
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+}
+
+.prisma-calendar-clone-button:hover:not(:disabled),
+.prisma-calendar-rename-button:hover:not(:disabled) {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--background-modifier-border-hover);
+}
+
+.prisma-calendar-delete-button {
+	border: 1px solid var(--text-error);
+	background-color: var(--background-primary);
+	color: var(--text-error);
+}
+
+.prisma-calendar-delete-button:hover:not(:disabled) {
+	background-color: var(--background-modifier-error);
+	border-color: var(--text-error);
+}
+
+.prisma-calendar-button-disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.prisma-calendar-button-disabled:hover {
+	transform: none;
+	box-shadow: none;
+}
+
+.prisma-calendar-count-info {
+	margin-top: 8px;
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+/* Color Picker Styles */
+.prisma-color-picker-container {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1;
+}
+
+/* Color Example Dot */
+.prisma-color-example-dot {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 3px;
+	margin-right: 8px;
+	vertical-align: middle;
+	background-color: var(--example-color);
+}
+
+/* Event Preview Modal */
+.prisma-event-preview-modal .modal {
+	max-width: 600px;
+	width: 90%;
+}
+
+.prisma-event-preview-modal .modal-content {
+	padding: 0;
+	max-height: 70vh;
+	overflow-y: auto;
+	border-radius: 12px;
+}
+
+.prisma-event-preview-header {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 32px 24px 24px 24px;
+	border-bottom: 2px solid var(--background-modifier-border);
+	background: linear-gradient(135deg, var(--background-secondary) 0%, var(--background-secondary-alt) 100%);
+	border-radius: 12px 12px 0 0;
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	gap: 16px;
+}
+
+.prisma-event-preview-header h2 {
+	margin: 0;
+	font-size: 28px;
+	font-weight: var(--font-weight-extrabold);
+	color: var(--text-normal);
+	text-align: center;
+	width: 100%;
+	cursor: pointer;
+	padding: 16px 48px;
+	border-radius: 12px;
+	background: var(--background-primary);
+	border: 2px solid var(--background-modifier-border);
+	transition: all 0.2s ease;
+	line-height: 1.4;
+	word-wrap: break-word;
+}
+
+.prisma-event-preview-header h2:hover {
+	background: var(--interactive-hover);
+	border-color: var(--interactive-accent);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.prisma-event-preview-close-btn {
+	position: absolute;
+	top: 16px;
+	right: 16px;
+	width: 32px;
+	height: 32px;
+	border: none;
+	background: var(--interactive-normal);
+	color: var(--text-normal);
+	border-radius: 6px;
+	font-size: 24px;
+	line-height: 1;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.2s ease;
+	flex-shrink: 0;
+}
+
+.prisma-event-preview-close-btn:hover {
+	background: var(--interactive-hover);
+	transform: scale(1.05);
+}
+
+.prisma-event-preview-close-btn:active {
+	transform: scale(0.95);
+}
+
+.prisma-event-preview-section {
+	padding: 20px 24px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.prisma-event-preview-section:last-child {
+	border-bottom: none;
+}
+
+.prisma-event-preview-section-title {
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-weight-semibold);
+	color: var(--text-normal);
+	margin-bottom: 16px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	opacity: 0.8;
+}
+
+.prisma-event-preview-label {
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-weight-medium);
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 4px;
+}
+
+.prisma-event-preview-value {
+	font-size: var(--font-ui-medium);
+	color: var(--text-normal);
+	font-weight: var(--font-weight-medium);
+}
+
+.prisma-event-preview-time-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	gap: 16px;
+}
+
+.prisma-event-preview-time-item {
+	background: var(--background-primary);
+	padding: 12px;
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.prisma-event-preview-file-link {
+	display: inline-block;
+	padding: 8px 12px;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	color: var(--text-accent);
+	text-decoration: none;
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-small);
+	transition: all 0.2s ease;
+	cursor: pointer;
+	word-break: break-all;
+}
+
+.prisma-event-preview-file-link:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--text-accent);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.prisma-event-preview-props-grid {
+	display: grid;
+	gap: 12px;
+}
+
+.prisma-event-preview-prop-item {
+	background: var(--background-primary);
+	padding: 12px 16px;
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 12px;
+	align-items: center;
+	transition: all 0.2s ease;
+}
+
+.prisma-event-preview-prop-item:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--background-modifier-border-hover);
+}
+
+.prisma-event-preview-prop-key {
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-weight-semibold);
+	color: var(--text-muted);
+	text-transform: capitalize;
+	white-space: nowrap;
+}
+
+.prisma-event-preview-prop-value {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	word-break: break-word;
+}
+
+.prisma-event-preview-prop-value-link {
+	color: var(--text-accent);
+	text-decoration: none;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	padding: 2px 6px;
+	border-radius: 4px;
+	font-weight: var(--font-weight-medium);
+}
+
+.prisma-event-preview-prop-value-link:hover {
+	background: var(--background-modifier-hover);
+	text-decoration: underline;
+}
+
+.prisma-event-preview-empty-message {
+	text-align: center;
+	color: var(--text-muted);
+	font-style: italic;
+	margin: 12px 0;
+}
+
+/* Responsive adjustments for event preview modal */
+@media (max-width: 768px) {
+	.prisma-event-preview-modal .modal {
+		max-width: 95%;
+	}
+
+	.prisma-event-preview-header {
+		padding: 24px 16px 16px 16px;
+	}
+
+	.prisma-event-preview-header h2 {
+		font-size: 22px;
+		padding: 12px 32px;
+	}
+
+	.prisma-event-preview-section {
+		padding: 16px;
+	}
+
+	.prisma-event-preview-time-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.prisma-event-preview-close-btn {
+		top: 12px;
+		right: 12px;
+	}
+}
+
+/* Event Modal - Header with Preset Selector */
+.prisma-event-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 16px;
+	margin-top: 1rem;
+}
+
+.prisma-event-modal-header h2 {
+	margin: 0;
+	flex: 1;
+}
+
+.prisma-event-modal-header-controls {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-shrink: 0;
+}
+
+.prisma-event-modal-minimize-button {
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	font-size: 18px;
+	font-weight: bold;
+	line-height: 1;
+	background-color: var(--background-modifier-hover);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+	cursor: pointer;
+	transition: all 0.15s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.prisma-event-modal-minimize-button:hover {
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	transform: scale(1.05);
+}
+
+.prisma-event-modal-clear-button {
+	padding: 4px 12px;
+	font-size: var(--font-ui-small);
+	background-color: var(--background-modifier-hover);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.prisma-event-modal-clear-button:hover {
+	background-color: var(--background-modifier-border);
+	color: var(--text-normal);
+}
+
+.prisma-event-preset-selector-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+.prisma-event-preset-label {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	font-weight: var(--font-weight-medium);
+}
+
+.prisma-event-preset-select {
+	padding: 4px 24px 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--interactive-normal);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+	min-width: 120px;
+	transition: all 0.15s ease;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='currentColor' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 6px center;
+	background-size: 10px;
+}
+
+.prisma-event-preset-select:hover {
+	background-color: var(--interactive-hover);
+	border-color: var(--background-modifier-border-hover);
+}
+
+.prisma-event-preset-select:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+}
+
+.prisma-event-preset-select option {
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+}
+
+/* Event Preset Settings */
+.prisma-event-preset-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 10px 14px;
+	margin-bottom: 8px;
+	background-color: var(--background-secondary);
+	transition: all 0.15s ease;
+}
+
+.prisma-event-preset-item:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--background-modifier-border-hover);
+}
+
+.prisma-event-preset-name {
+	flex: 1;
+	font-weight: var(--font-weight-medium);
+	color: var(--text-normal);
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.prisma-event-preset-details {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	flex: 2;
+	align-items: center;
+}
+
+.prisma-event-preset-tag {
+	padding: 2px 8px;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+.prisma-event-preset-controls {
+	display: flex;
+	gap: 6px;
+	flex-shrink: 0;
+}
+
+.prisma-event-preset-btn {
+	padding: 4px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	cursor: pointer;
+	font-size: var(--font-ui-smaller);
+	transition: all 0.15s ease;
+}
+
+.prisma-event-preset-btn:hover {
+	background-color: var(--interactive-hover);
+}
+
+.prisma-event-preset-btn-delete {
+	color: var(--text-error);
+}
+
+.prisma-event-preset-btn-delete:hover {
+	background-color: var(--background-modifier-error);
+	border-color: var(--text-error);
+}
+
+.prisma-event-preset-empty {
+	padding: 16px;
+	text-align: center;
+	color: var(--text-muted);
+	font-style: italic;
+	background-color: var(--background-secondary);
+	border-radius: 6px;
+	border: 1px dashed var(--background-modifier-border);
+}
+
+/* Responsive adjustments for preset selector */
+@media (max-width: 768px) {
+	.prisma-event-modal-header {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 12px;
+	}
+
+	.prisma-event-modal-header-controls {
+		width: 100%;
+		justify-content: space-between;
+	}
+
+	.prisma-event-preset-selector-wrapper {
+		width: 100%;
+	}
+
+	.prisma-event-preset-select {
+		flex: 1;
+	}
+
+	.prisma-event-preset-item {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 8px;
+	}
+
+	.prisma-event-preset-details {
+		width: 100%;
+	}
+
+	.prisma-event-preset-controls {
+		width: 100%;
+		justify-content: flex-end;
+	}
+}
+
+/* Event Modal - Recurring Event Section */
+.prisma-recurring-event-fields {
+	margin-top: 16px;
+	padding: 16px;
+	background-color: var(--background-secondary);
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.prisma-weekday-selection {
+	margin-top: 12px;
+}
+
+.prisma-weekday-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.prisma-weekday-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px;
+	background-color: var(--background-primary);
+	border-radius: 4px;
+	border: 1px solid var(--background-modifier-border);
+	transition: all 0.2s ease;
+}
+
+.prisma-weekday-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.prisma-weekday-item input[type="checkbox"] {
+	cursor: pointer;
+}
+
+.prisma-weekday-item label {
+	cursor: pointer;
+	user-select: none;
+	flex: 1;
+}
+
+/* Event Modal - Custom Properties Section */
+.prisma-custom-properties-container,
+.prisma-property-container {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.prisma-other-section-spacing {
+	margin-top: 16px;
+}
+
+/* Button positioning in setting-item for property sections - scoped to plugin modals only */
+.modal.prisma-generic-event-list-modal .setting-item button.mod-cta,
+.modal-container:has(.prisma-custom-properties-container) .setting-item button.mod-cta {
+	margin-left: auto;
+}
+
+.prisma-custom-property-row {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	padding: 8px;
+	background-color: var(--background-secondary);
+	border-radius: 6px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.prisma-custom-property-row input[type="text"] {
+	flex: 1;
+	padding: 6px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	text-align: left;
+}
+
+.prisma-custom-property-row input[type="text"]:focus {
+	border-color: var(--interactive-accent);
+	outline: none;
+}
+
+.prisma-custom-property-row button {
+	padding: 6px 12px;
+	border-radius: 4px;
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary);
+	color: var(--text-error);
+	cursor: pointer;
+	font-size: var(--font-ui-smaller);
+	transition: all 0.2s ease;
+}
+
+.prisma-custom-property-row button:hover {
+	background-color: var(--background-modifier-error);
+	border-color: var(--text-error);
+}
+
+/* Event Modal DateTime Input with Now Button */
+.prisma-datetime-input-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1;
+}
+
+.prisma-datetime-input-wrapper input[type="datetime-local"] {
+	flex: 1;
+	min-width: 0;
+}
+
+.prisma-now-button {
+	padding: 6px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--interactive-normal);
+	color: var(--text-normal);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-weight-medium);
+	cursor: pointer;
+	transition: all 0.15s ease;
+	white-space: nowrap;
+	flex-shrink: 0;
+	order: -1;
+}
+
+.prisma-now-button:hover {
+	background-color: var(--interactive-hover);
+	border-color: var(--interactive-accent);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.prisma-now-button:active {
+	transform: translateY(0);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Event Modal Category Field */
+.prisma-category-field {
+	margin-top: 8px;
+}
+
+.prisma-category-input-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1;
+}
+
+.prisma-category-input-wrapper input[type="text"] {
+	flex: 1;
+	min-width: 0;
+}
+
+/* Searchable Category Dropdown */
+.prisma-category-dropdown-container {
+	position: relative;
+	flex-shrink: 0;
+}
+
+.prisma-category-add-button {
+	padding: 6px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--interactive-normal);
+	color: var(--text-normal);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-weight-medium);
+	cursor: pointer;
+	transition: all 0.15s ease;
+	white-space: nowrap;
+}
+
+.prisma-category-add-button:hover {
+	background-color: var(--interactive-hover);
+	border-color: var(--interactive-accent);
+}
+
+.prisma-category-dropdown-panel {
+	position: absolute;
+	top: 100%;
+	right: 0;
+	margin-top: 4px;
+	min-width: 200px;
+	max-width: 280px;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	z-index: 100;
+	overflow: hidden;
+}
+
+.prisma-category-search-input {
+	width: 100%;
+	padding: 8px 12px;
+	border: none;
+	border-bottom: 1px solid var(--background-modifier-border);
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	outline: none;
+	box-sizing: border-box;
+}
+
+.prisma-category-search-input::placeholder {
+	color: var(--text-muted);
+}
+
+.prisma-category-search-input:focus {
+	background-color: var(--background-primary);
+}
+
+.prisma-category-list {
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.prisma-category-list-item {
+	padding: 8px 12px;
+	cursor: pointer;
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	transition: background-color 0.1s ease;
+}
+
+.prisma-category-list-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.prisma-category-list-item:active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.prisma-category-empty-message {
+	padding: 12px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	font-style: italic;
+	text-align: center;
+}
+
+/* ===================================
+   Stopwatch / Time Tracker
+   =================================== */
+
+.prisma-stopwatch-field {
+	margin-top: 16px;
+	margin-bottom: 8px;
+}
+
+.prisma-stopwatch-container {
+	background: linear-gradient(135deg, var(--background-secondary) 0%, var(--background-secondary-alt) 100%);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	margin-top: 12px;
+	overflow: hidden;
+}
+
+.prisma-stopwatch-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 16px;
+	cursor: pointer;
+	user-select: none;
+	transition: background-color 0.15s ease;
+}
+
+.prisma-stopwatch-header:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.prisma-stopwatch-toggle-icon {
+	font-size: 10px;
+	color: var(--text-muted);
+	transition: transform 0.2s ease;
+	width: 12px;
+	text-align: center;
+}
+
+.prisma-stopwatch-header-text {
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-weight-medium);
+	color: var(--text-normal);
+}
+
+.prisma-stopwatch-content {
+	padding: 16px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.prisma-stopwatch-display-section {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 32px;
+	margin-bottom: 16px;
+}
+
+.prisma-stopwatch-main-display {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+}
+
+.prisma-stopwatch-break-display {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+}
+
+.prisma-stopwatch-label {
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-weight-medium);
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.prisma-stopwatch-time {
+	font-size: 2rem;
+	font-weight: var(--font-weight-bold);
+	font-family: var(--font-monospace);
+	color: var(--text-normal);
+	background: var(--background-primary);
+	padding: 8px 16px;
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	letter-spacing: 2px;
+}
+
+.prisma-stopwatch-break-time {
+	font-size: 1.25rem;
+	font-weight: var(--font-weight-semibold);
+	font-family: var(--font-monospace);
+	color: var(--text-accent);
+	background: var(--background-primary);
+	padding: 6px 12px;
+	border-radius: var(--radius-s);
+	border: 1px solid var(--interactive-accent);
+	letter-spacing: 1px;
+}
+
+.prisma-stopwatch-controls {
+	display: flex;
+	justify-content: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.prisma-stopwatch-btn {
+	padding: 10px 20px;
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+	transition: all 0.2s ease;
+	border: 1px solid transparent;
+	min-width: 100px;
+}
+
+.prisma-stopwatch-btn:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.prisma-stopwatch-btn:active {
+	transform: translateY(0);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.prisma-stopwatch-start-btn {
+	background: linear-gradient(135deg, var(--color-green) 0%, color-mix(in srgb, var(--color-green) 80%, black) 100%);
+	color: white;
+	border-color: var(--color-green);
+}
+
+.prisma-stopwatch-start-btn:hover {
+	background: linear-gradient(135deg, color-mix(in srgb, var(--color-green) 90%, white) 0%, var(--color-green) 100%);
+}
+
+.prisma-stopwatch-pause-btn {
+	background: linear-gradient(135deg, var(--color-orange) 0%, color-mix(in srgb, var(--color-orange) 80%, black) 100%);
+	color: white;
+	border-color: var(--color-orange);
+}
+
+.prisma-stopwatch-pause-btn:hover {
+	background: linear-gradient(135deg, color-mix(in srgb, var(--color-orange) 90%, white) 0%, var(--color-orange) 100%);
+}
+
+.prisma-stopwatch-resume-btn {
+	background: linear-gradient(135deg, var(--color-cyan) 0%, color-mix(in srgb, var(--color-cyan) 80%, black) 100%);
+	color: white;
+	border-color: var(--color-cyan);
+}
+
+.prisma-stopwatch-resume-btn:hover {
+	background: linear-gradient(135deg, color-mix(in srgb, var(--color-cyan) 90%, white) 0%, var(--color-cyan) 100%);
+}
+
+.prisma-stopwatch-stop-btn {
+	background: linear-gradient(135deg, var(--color-red) 0%, color-mix(in srgb, var(--color-red) 80%, black) 100%);
+	color: white;
+	border-color: var(--color-red);
+}
+
+.prisma-stopwatch-stop-btn:hover {
+	background: linear-gradient(135deg, color-mix(in srgb, var(--color-red) 90%, white) 0%, var(--color-red) 100%);
+}
+
+/* Responsive stopwatch adjustments */
+@media (max-width: 768px) {
+	.prisma-stopwatch-display-section {
+		flex-direction: column;
+		gap: 16px;
+	}
+
+	.prisma-stopwatch-time {
+		font-size: 1.5rem;
+		padding: 6px 12px;
+	}
+
+	.prisma-stopwatch-break-time {
+		font-size: 1rem;
+		padding: 4px 8px;
+	}
+
+	.prisma-stopwatch-controls {
+		gap: 8px;
+	}
+
+	.prisma-stopwatch-btn {
+		padding: 8px 16px;
+		font-size: var(--font-ui-small);
+		min-width: 80px;
+	}
+}
+
+/* Event Modal Responsive */
+@media (max-width: 768px) {
+	.prisma-weekday-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.prisma-custom-property-row {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.prisma-custom-property-row button {
+		width: 100%;
+	}
+
+	.prisma-datetime-input-wrapper {
+		flex-wrap: wrap;
+	}
+
+	.prisma-now-button {
+		flex: 1;
+		min-width: 80px;
+	}
+}
+
+/* Generic Event List Modal (used by Skipped Events and Recurring Events) */
+.prisma-generic-event-list-modal h2 {
+	margin-bottom: 1rem;
+}
+
+.prisma-generic-event-list-search {
+	margin-bottom: 1rem;
+}
+
+.prisma-generic-event-search-input {
+	width: 100%;
+	padding: 0.5rem 0.75rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+}
+
+.prisma-generic-event-search-input:focus {
+	border-color: var(--interactive-accent);
+	outline: none;
+	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.1);
+}
+
+.prisma-generic-event-search-input::placeholder {
+	color: var(--text-muted);
+}
+
+.prisma-generic-event-list-modal .prisma-generic-event-list-count {
+	margin-bottom: 1.5rem;
+	color: var(--text-muted);
+}
+
+.prisma-generic-event-list {
+	max-height: 400px;
+	overflow-y: auto;
+}
+
+.prisma-generic-event-list-empty {
+	padding: 1rem;
+	text-align: center;
+	color: var(--text-muted);
+	font-style: italic;
+}
+
+.prisma-generic-event-list-item {
+	padding: 0.75rem;
+	margin-bottom: 0.5rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 1rem;
+	transition: opacity 0.2s;
+}
+
+.prisma-generic-event-list-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.prisma-generic-event-list-item .prisma-generic-event-info {
+	flex: 1;
+}
+
+.prisma-generic-event-list-item .prisma-generic-event-title {
+	font-weight: 500;
+	margin-bottom: 0.25rem;
+}
+
+.prisma-generic-event-list-item .prisma-generic-event-subtitle {
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.prisma-generic-event-list-item .prisma-generic-event-actions {
+	display: flex;
+	gap: 0.5rem;
+}
+
+/* Recurring Events Modal - Toggle Styles */
+.prisma-recurring-events-toggle {
+	margin-bottom: 1rem;
+}
+
+.prisma-recurring-events-toggle .prisma-checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	cursor: pointer;
+	color: var(--text-normal);
+}
+
+.prisma-recurring-events-toggle input[type="checkbox"] {
+	cursor: pointer;
+}
+
+/* Recurring Events List Modal (Legacy) */
+.prisma-recurring-events-list-modal {
+	padding: 1.5rem;
+}
+
+.prisma-recurring-events-list-header {
+	margin-bottom: 0.5rem;
+	text-align: center;
+}
+
+.prisma-recurring-events-source-title {
+	margin: 0 0 0.25rem 0;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	padding: 0.5rem;
+	border-radius: 6px;
+}
+
+.prisma-recurring-events-source-title:hover {
+	color: var(--text-accent);
+	background-color: var(--background-modifier-hover);
+	transform: translateY(-1px);
+}
+
+.prisma-recurring-events-filters {
+	display: flex;
+	gap: 1rem;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 1rem;
+	flex-wrap: wrap;
+}
+
+.prisma-recurring-events-filters .setting-item {
+	border: none;
+	padding: 0;
+	margin: 0;
+	background-color: transparent;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.prisma-recurring-events-filters .setting-item-info {
+	flex: 0 0 auto;
+	padding: 0;
+}
+
+.prisma-recurring-events-filters .setting-item-name {
+	font-weight: 400;
+	margin: 0;
+	font-size: 0.9em;
+}
+
+.prisma-recurring-events-filters .setting-item-description {
+	display: none;
+}
+
+.prisma-recurring-events-filters .setting-item-control {
+	flex-shrink: 0;
+}
+
+.prisma-recurring-events-list-container {
+	max-height: 500px;
+	overflow-y: auto;
+	margin-top: 0;
+	padding-top: 0;
+}
+
+.prisma-recurring-event-row {
+	display: flex;
+	gap: 1rem;
+	padding: 0.875rem 1rem;
+	margin-bottom: 0.5rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	background-color: var(--background-primary);
+}
+
+.prisma-recurring-event-row:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--text-accent);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.prisma-recurring-event-date {
+	font-weight: 500;
+	color: var(--text-accent);
+	min-width: 160px;
+	font-family: var(--font-monospace);
+}
+
+.prisma-recurring-event-title {
+	flex: 1;
+	color: var(--text-normal);
+}
+
+.prisma-recurring-events-list-empty {
+	text-align: center;
+	color: var(--text-muted);
+	padding: 2rem;
+}
+
+.prisma-recurring-events-stats {
+	background-color: var(--background-primary-alt);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 0.75rem 1rem;
+	margin-bottom: 0.75rem;
+	text-align: center;
+}
+
+.prisma-recurring-events-stats-text {
+	margin: 0;
+	font-size: 0.95em;
+	font-weight: 500;
+	color: var(--text-normal);
+	letter-spacing: 0.3px;
+	word-spacing: 2px;
+}
+
+.prisma-recurring-event-title.prisma-recurring-event-skipped {
+	opacity: 0.6;
+	text-decoration: line-through;
+	color: var(--text-muted);
+}
+
+.prisma-recurring-event-row.prisma-recurring-event-past .prisma-recurring-event-title {
+	opacity: 0.7;
+}
+
+/* Move By Modal - Compact Button-Based UI */
+.prisma-move-by-modal h3 {
+	margin: 0 0 16px 0;
+	font-size: var(--font-ui-large);
+	text-align: center;
+}
+
+.prisma-move-by-form {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.prisma-move-by-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.prisma-move-by-label {
+	min-width: 80px;
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-weight-medium);
+	color: var(--text-muted);
+}
+
+/* Direction buttons */
+.prisma-move-by-button-group {
+	display: flex;
+	gap: 8px;
+}
+
+.prisma-move-by-btn {
+	padding: 8px 24px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.prisma-move-by-btn:hover {
+	background: var(--interactive-hover);
+}
+
+.prisma-move-by-btn.prisma-is-active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+/* Amount input group */
+.prisma-move-by-amount-group {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.prisma-move-by-input {
+	width: 80px;
+	padding: 6px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	text-align: center;
+}
+
+.prisma-move-by-input:focus {
+	border-color: var(--interactive-accent);
+	outline: none;
+}
+
+.prisma-move-by-increment-btn {
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-size: 18px;
+	font-weight: bold;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.prisma-move-by-increment-btn:hover {
+	background: var(--interactive-hover);
+	border-color: var(--interactive-accent);
+}
+
+.prisma-move-by-increment-btn:active {
+	transform: scale(0.95);
+}
+
+/* Time unit buttons */
+.prisma-move-by-unit-group {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.prisma-move-by-unit-btn {
+	padding: 6px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-weight-medium);
+	cursor: pointer;
+	transition: all 0.15s ease;
+	white-space: nowrap;
+}
+
+.prisma-move-by-unit-btn:hover {
+	background: var(--interactive-hover);
+}
+
+.prisma-move-by-unit-btn.prisma-is-active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+	.prisma-move-by-row {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 8px;
+	}
+
+	.prisma-move-by-label {
+		min-width: 0;
+		width: 100%;
+	}
+
+	.prisma-move-by-button-group,
+	.prisma-move-by-amount-group,
+	.prisma-move-by-unit-group {
+		width: 100%;
+	}
+
+	.prisma-move-by-btn {
+		flex: 1;
+	}
+
+	.prisma-move-by-unit-btn {
+		flex: 1 1 calc(33.333% - 4px);
+	}
+}
+
+/* Event Notification Modal */
+.prisma-event-notification-modal .modal {
+	max-width: 600px;
+	width: 90%;
+}
+
+.prisma-event-notification-modal .modal-content {
+	padding: 0;
+	max-height: 70vh;
+	overflow-y: auto;
+	border-radius: 12px;
+}
+
+.prisma-event-notification-header {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 32px 24px 24px 24px;
+	background: var(--background-modifier-form-field);
+	border-bottom: 1px solid var(--background-modifier-border);
+	text-align: center;
+}
+
+.prisma-event-notification-timing {
+	font-size: var(--font-ui-medium);
+	font-weight: 600;
+	color: var(--text-accent);
+	margin-bottom: 12px;
+	padding: 8px 16px;
+	background: var(--background-modifier-success);
+	border-radius: var(--radius-m);
+	border: 1px solid var(--color-accent);
+}
+
+.prisma-event-notification-title {
+	font-size: 24px;
+	font-weight: 700;
+	color: var(--text-normal);
+	margin: 0;
+	cursor: pointer;
+	transition: color 0.2s ease;
+	padding: 8px 16px;
+	border-radius: var(--radius-m);
+}
+
+.prisma-event-notification-title:hover {
+	color: var(--text-accent);
+	background: var(--background-modifier-hover);
+}
+
+.prisma-event-notification-section {
+	padding: 24px;
+	border-bottom: 1px solid var(--background-modifier-border-focus);
+}
+
+.prisma-event-notification-section:last-child {
+	border-bottom: none;
+}
+
+.prisma-event-notification-section-title {
+	font-size: var(--font-ui-medium);
+	font-weight: 600;
+	color: var(--text-normal);
+	margin-bottom: 16px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.prisma-event-notification-time-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20px;
+	margin-bottom: 16px;
+}
+
+.prisma-event-notification-time-item {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.prisma-event-notification-label {
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.prisma-event-notification-value {
+	font-size: var(--font-ui-medium);
+	color: var(--text-normal);
+	font-weight: 500;
+}
+
+.prisma-event-notification-file-link {
+	cursor: pointer;
+	color: var(--text-accent);
+	text-decoration: underline;
+	transition: color 0.2s ease;
+}
+
+.prisma-event-notification-file-link:hover {
+	color: var(--text-accent-hover);
+}
+
+.prisma-event-notification-props-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 16px;
+}
+
+.prisma-event-notification-prop-item {
+	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+	padding: 12px;
+	background: var(--background-secondary);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.prisma-event-notification-prop-key {
+	font-size: var(--font-ui-small);
+	font-weight: 600;
+	color: var(--text-muted);
+	min-width: 120px;
+	flex-shrink: 0;
+}
+
+.prisma-event-notification-prop-value {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	flex: 1;
+	word-break: break-word;
+}
+
+.prisma-event-notification-prop-value-link {
+	color: var(--text-accent);
+	text-decoration: underline;
+	cursor: pointer;
+	transition: color 0.2s ease;
+}
+
+.prisma-event-notification-prop-value-link:hover {
+	color: var(--text-accent-hover);
+}
+
+.prisma-event-notification-buttons {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 12px;
+	padding: 24px;
+	background: var(--background-secondary-alt);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.prisma-event-notification-buttons button {
+	padding: 8px 16px;
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-small);
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.prisma-event-notification-snooze-container {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.prisma-event-notification-snooze-input-group {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+}
+
+.prisma-event-notification-snooze-input {
+	width: 50px;
+	padding: 4px;
+	border: none;
+	background: transparent;
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	text-align: center;
+}
+
+.prisma-event-notification-snooze-input:focus {
+	outline: none;
+}
+
+.prisma-event-notification-snooze-input-group:focus-within {
+	border-color: var(--interactive-accent);
+}
+
+.prisma-event-notification-snooze-unit {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	user-select: none;
+}
+
+/* Responsive adjustments for notification modal */
+@media (max-width: 768px) {
+	.prisma-event-notification-modal .modal {
+		max-width: 95%;
+	}
+
+	.prisma-event-notification-header {
+		padding: 24px 16px 16px 16px;
+	}
+
+	.prisma-event-notification-title {
+		font-size: 20px;
+		padding: 6px 12px;
+	}
+
+	.prisma-event-notification-timing {
+		font-size: var(--font-ui-small);
+		padding: 6px 12px;
+	}
+
+	.prisma-event-notification-time-grid {
+		grid-template-columns: 1fr;
+		gap: 16px;
+	}
+
+	.prisma-event-notification-props-grid {
+		grid-template-columns: 1fr;
+		gap: 12px;
+	}
+
+	.prisma-event-notification-prop-item {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 4px;
+	}
+
+	.prisma-event-notification-prop-key {
+		min-width: auto;
+		font-weight: 600;
+	}
+
+	.prisma-event-notification-buttons {
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.prisma-event-notification-snooze-container {
+		width: 100%;
+	}
+
+	.prisma-event-notification-snooze-input-group {
+		flex: 1;
+	}
+}
+
+/* Global Search Modal Styles */
+.prisma-global-search-modal .modal {
+	width: 85vw;
+	max-width: 1170px;
+	height: 80vh;
+	max-height: 800px;
+}
+
+.prisma-global-search-modal .modal-content {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.prisma-global-search-filters {
+	padding: 0.75rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	margin-bottom: 1rem;
+	background-color: var(--background-secondary);
+}
+
+.prisma-global-search-toggles {
+	display: flex;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+}
+
+.prisma-filter-cycle-button {
+	padding: 0.5rem 1rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+	transition: all 0.2s;
+	user-select: none;
+}
+
+.prisma-filter-cycle-button:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* State: none (normal) */
+.prisma-filter-cycle-button.prisma-filter-state-none {
+	border-color: var(--background-modifier-border);
+	background-color: var(--background-primary);
+	color: var(--text-muted);
+}
+
+/* State: skip (hiding events) */
+.prisma-filter-cycle-button.prisma-filter-state-skip {
+	border-color: var(--text-error);
+	background-color: rgba(var(--color-red-rgb), 0.1);
+	color: var(--text-error);
+}
+
+/* State: only (showing only certain events) */
+.prisma-filter-cycle-button.prisma-filter-state-only {
+	border-color: var(--interactive-accent);
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+/* Make the event list taller for global search */
+.prisma-global-search-modal .prisma-generic-event-list {
+	max-height: 50vh;
+	flex: 1;
+	overflow-y: auto;
+}
+
+.prisma-global-search-modal .prisma-generic-event-subtitle {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	margin-top: 0.25rem;
+	line-height: 1.4;
+}
+
+/* ===================================
+   Weekly Statistics Modal
+   =================================== */
+
+/* Use higher specificity to override default modal styles */
+.app-container .modal-container:has(.prisma-weekly-stats-modal) > .modal,
+body .modal-container:has(.prisma-weekly-stats-modal) > .modal {
+	max-width: 1120px;
+	width: 90vw;
+	min-width: 800px;
+}
+
+.prisma-stats-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding-bottom: 1rem;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.prisma-stats-header-stat {
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-weight-semibold);
+	color: var(--text-normal);
+	padding: 0.5rem 1rem;
+	background-color: var(--background-secondary);
+	border-radius: var(--radius-s);
+	white-space: nowrap;
+}
+
+.prisma-stats-duration-toggle {
+	cursor: pointer;
+	border: 1px solid var(--background-modifier-border);
+	transition: all 0.2s ease;
+}
+
+.prisma-stats-duration-toggle:hover {
+	background-color: var(--interactive-hover);
+	border-color: var(--interactive-accent);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.prisma-stats-duration-toggle:active {
+	transform: translateY(0);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.prisma-stats-middle-section {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.5rem;
+	flex: 1;
+}
+
+.prisma-stats-week-label {
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-weight-bold);
+	color: var(--text-normal);
+	text-align: center;
+}
+
+.prisma-stats-controls-row {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+}
+
+.prisma-stats-aggregation-toggle {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.prisma-stats-skip-checkbox-container {
+	display: flex;
+	align-items: center;
+}
+
+.prisma-stats-skip-checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	cursor: pointer;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	user-select: none;
+}
+
+.prisma-stats-skip-checkbox {
+	cursor: pointer;
+	width: 16px;
+	height: 16px;
+	accent-color: var(--interactive-accent);
+}
+
+.prisma-stats-skip-checkbox-text {
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-weight-medium);
+}
+
+.prisma-stats-nav-button {
+	background-color: var(--interactive-normal);
+	border: 1px solid var(--background-modifier-border);
+	color: var(--text-normal);
+	padding: 0.5rem 1rem;
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	font-size: var(--font-ui-small);
+	transition: background-color 0.2s;
+}
+
+.prisma-stats-nav-button:hover {
+	background-color: var(--interactive-hover);
+}
+
+.prisma-stats-today-button {
+	background-color: var(--interactive-accent);
+	border: 1px solid var(--interactive-accent);
+	color: var(--text-on-accent);
+	padding: 0.35rem 0.75rem;
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-weight-medium);
+	transition: all 0.2s;
+}
+
+.prisma-stats-today-button:hover {
+	background-color: var(--interactive-accent-hover);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.prisma-stats-empty {
+	text-align: center;
+	padding: 2rem;
+	color: var(--text-muted);
+	font-size: var(--font-ui-medium);
+}
+
+.prisma-stats-chart-section {
+	margin-bottom: 1.5rem;
+	background-color: var(--background-secondary);
+	border-radius: var(--radius-m);
+}
+
+.prisma-stats-chart-header {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	margin-bottom: 0.5rem;
+	min-height: 2rem;
+}
+
+.prisma-stats-chart-header h3 {
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%);
+	margin: 0;
+	font-size: var(--font-ui-medium);
+	color: var(--text-normal);
+	text-align: center;
+	pointer-events: none;
+}
+
+.prisma-stats-toggle-chart-btn {
+	background-color: var(--interactive-normal);
+	border: 1px solid var(--background-modifier-border);
+	color: var(--text-normal);
+	padding: 0.35rem 0.75rem;
+	margin-right: 0.5rem;
+	margin-top: 0.5rem;
+	margin-bottom: 0.5rem;
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	font-size: var(--font-ui-smaller);
+	transition: background-color 0.2s;
+}
+
+.prisma-stats-toggle-chart-btn:hover {
+	background-color: var(--interactive-hover);
+}
+
+.prisma-stats-chart-container:not(.prisma-hidden) {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 500px;
+	max-height: 600px;
+	padding-bottom: 2rem;
+	position: relative;
+}
+
+.prisma-stats-chart-container.prisma-hidden {
+	display: none;
+}
+
+.prisma-weekly-stats-modal .prisma-stats-chart-container canvas {
+	max-height: 600px;
+	width: 100%;
+	height: 100%;
+}
+
+.prisma-stats-table-container {
+	margin-top: 1.5rem;
+	text-align: center;
+}
+
+.prisma-stats-table-divider {
+	height: 1px;
+	background: linear-gradient(
+		to right,
+		transparent,
+		var(--background-modifier-border) 20%,
+		var(--background-modifier-border) 80%,
+		transparent
+	);
+}
+
+.prisma-stats-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-ui-small);
+}
+
+.prisma-weekly-stats-modal .prisma-stats-table th {
+	text-align: center;
+	padding: 0.75rem;
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+	font-weight: var(--font-weight-medium);
+	border-bottom: 2px solid var(--background-modifier-border);
+	border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.prisma-weekly-stats-modal .prisma-stats-table th:last-child {
+	border-right: none;
+}
+
+.prisma-weekly-stats-modal .prisma-stats-table td {
+	padding: 0.75rem;
+	border-bottom: 1px solid var(--background-modifier-border);
+	border-right: 1px solid rgba(255, 255, 255, 0.1);
+	color: var(--text-normal);
+}
+
+.prisma-weekly-stats-modal .prisma-stats-table td:last-child {
+	border-right: none;
+}
+
+.prisma-stats-table tr:last-child td {
+	border-bottom: none;
+}
+
+.prisma-stats-table tr:hover {
+	background-color: var(--background-secondary-alt);
+}
+
+.prisma-stats-recurring {
+	font-style: italic;
+	color: var(--text-accent);
+}
+
+/* Pagination Styles */
+.prisma-stats-pagination {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 1rem;
+	margin-top: 1rem;
+	padding: 0.75rem;
+}
+
+.prisma-stats-pagination-button {
+	padding: 0.5rem 1rem;
+	background-color: var(--interactive-normal);
+	color: var(--text-normal);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	font-size: var(--font-ui-small);
+	transition: background-color 0.2s;
+}
+
+.prisma-stats-pagination-button:hover:not(:disabled) {
+	background-color: var(--interactive-hover);
+}
+
+.prisma-stats-pagination-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.prisma-stats-pagination-info {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+.prisma-stats-pagination-input-container {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.prisma-stats-pagination-label {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	white-space: nowrap;
+}
+
+.prisma-stats-pagination-input {
+	width: 60px;
+	padding: 0.35rem 0.5rem;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	text-align: center;
+	transition: border-color 0.2s;
+}
+
+.prisma-stats-pagination-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+}
+
+.prisma-stats-pagination-input::-webkit-inner-spin-button,
+.prisma-stats-pagination-input::-webkit-outer-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+.prisma-stats-pagination-input[type="number"] {
+	appearance: textfield;
+	-moz-appearance: textfield;
+}
+
+/* Aggregation Mode Toggle Styles */
+.prisma-stats-mode-label {
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-weight-medium);
+	color: var(--text-muted);
+}
+
+.prisma-stats-mode-button-compact {
+	padding: 0.35rem 0.9rem;
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border: 1px solid var(--interactive-accent);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-weight-medium);
+	transition: all 0.2s;
+	white-space: nowrap;
+}
+
+.prisma-stats-mode-button-compact:hover {
+	background-color: var(--interactive-accent-hover);
+	transform: translateY(-1px);
+}
+
+.prisma-stats-mode-button-compact:active {
+	transform: translateY(0);
+}
+
+/* ===================================
+   Recurring Events Modal - Type Filter & Badges
+   =================================== */
+
+/* Filters container - horizontal layout with items */
+.prisma-recurring-events-modal-filters {
+	display: flex;
+	align-items: center;
+	gap: 1.5rem;
+	margin-bottom: 1rem;
+	padding: 0.75rem 1rem;
+	background-color: var(--background-secondary);
+	border-radius: var(--radius-m);
+	border: 1px solid var(--background-modifier-border);
+	flex-wrap: wrap;
+}
+
+/* Type filter section */
+.prisma-recurring-events-type-filter {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.prisma-recurring-events-filter-label {
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-weight-medium);
+	color: var(--text-muted);
+}
+
+.prisma-recurring-events-type-select {
+	padding: 0.35rem 1.75rem 0.35rem 0.75rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='currentColor' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 0.5rem center;
+	background-size: 10px;
+	transition: all 0.15s ease;
+}
+
+.prisma-recurring-events-type-select:hover {
+	border-color: var(--interactive-accent);
+}
+
+.prisma-recurring-events-type-select:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+}
+
+/* Toggle checkbox section */
+.prisma-recurring-events-toggle {
+	display: flex;
+	align-items: center;
+	margin-top: 0.75rem;
+}
+
+.prisma-recurring-events-checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	cursor: pointer;
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	user-select: none;
+}
+
+.prisma-recurring-events-checkbox-label input[type="checkbox"] {
+	cursor: pointer;
+	width: 16px;
+	height: 16px;
+	accent-color: var(--interactive-accent);
+}
+
+/* Title row with type badge */
+.prisma-recurring-event-title-row {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+}
+
+/* Type badge base styles */
+.prisma-recurring-type-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.2rem 0.6rem;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: var(--font-weight-semibold);
+	letter-spacing: 0.3px;
+	text-transform: uppercase;
+	white-space: nowrap;
+	transition: all 0.2s ease;
+}
+
+/* Type-specific colors - vibrant and distinct */
+.prisma-recurring-type-daily {
+	background-color: rgba(59, 130, 246, 0.15);
+	color: rgb(59, 130, 246);
+	border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.prisma-recurring-type-weekly {
+	background-color: rgba(34, 197, 94, 0.15);
+	color: rgb(34, 197, 94);
+	border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.prisma-recurring-type-bi-weekly {
+	background-color: rgba(168, 85, 247, 0.15);
+	color: rgb(168, 85, 247);
+	border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.prisma-recurring-type-monthly {
+	background-color: rgba(249, 115, 22, 0.15);
+	color: rgb(249, 115, 22);
+	border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.prisma-recurring-type-bi-monthly {
+	background-color: rgba(236, 72, 153, 0.15);
+	color: rgb(236, 72, 153);
+	border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.prisma-recurring-type-yearly {
+	background-color: rgba(20, 184, 166, 0.15);
+	color: rgb(20, 184, 166);
+	border: 1px solid rgba(20, 184, 166, 0.3);
+}
+
+/* Hover states for badges */
+.prisma-recurring-type-badge:hover {
+	transform: scale(1.05);
+}
+
+.prisma-recurring-type-daily:hover {
+	background-color: rgba(59, 130, 246, 0.25);
+}
+
+.prisma-recurring-type-weekly:hover {
+	background-color: rgba(34, 197, 94, 0.25);
+}
+
+.prisma-recurring-type-bi-weekly:hover {
+	background-color: rgba(168, 85, 247, 0.25);
+}
+
+.prisma-recurring-type-monthly:hover {
+	background-color: rgba(249, 115, 22, 0.25);
+}
+
+.prisma-recurring-type-bi-monthly:hover {
+	background-color: rgba(236, 72, 153, 0.25);
+}
+
+.prisma-recurring-type-yearly:hover {
+	background-color: rgba(20, 184, 166, 0.25);
+}
+
+/* Dark theme adjustments for type badges */
+.theme-dark .prisma-recurring-type-daily {
+	background-color: rgba(59, 130, 246, 0.2);
+	color: rgb(96, 165, 250);
+}
+
+.theme-dark .prisma-recurring-type-weekly {
+	background-color: rgba(34, 197, 94, 0.2);
+	color: rgb(74, 222, 128);
+}
+
+.theme-dark .prisma-recurring-type-bi-weekly {
+	background-color: rgba(168, 85, 247, 0.2);
+	color: rgb(192, 132, 252);
+}
+
+.theme-dark .prisma-recurring-type-monthly {
+	background-color: rgba(249, 115, 22, 0.2);
+	color: rgb(251, 146, 60);
+}
+
+.theme-dark .prisma-recurring-type-bi-monthly {
+	background-color: rgba(236, 72, 153, 0.2);
+	color: rgb(244, 114, 182);
+}
+
+.theme-dark .prisma-recurring-type-yearly {
+	background-color: rgba(20, 184, 166, 0.2);
+	color: rgb(45, 212, 191);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+	.prisma-recurring-events-modal-filters {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.75rem;
+	}
+
+	.prisma-recurring-event-title-row {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.5rem;
+	}
+
+	.prisma-recurring-type-badge {
+		font-size: 10px;
+		padding: 0.15rem 0.5rem;
+	}
+}

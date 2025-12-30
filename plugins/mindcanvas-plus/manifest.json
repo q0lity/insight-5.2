@@ -1,0 +1,11 @@
+{
+  "id": "mindcanvas-plus",
+  "name": "MindCanvas Plus",
+  "version": "1.0.0",
+  "minAppVersion": "1.4.16",
+  "description": "MindManager-style rapid mind-mapping, node properties, filters, roll-ups and Gantt view for Obsidian Canvas.",
+  "author": "Your Name",
+  "authorUrl": "https://github.com/yourusername",
+  "fundingUrl": "https://buymeacoffee.com/yourusername",
+  "isDesktopOnly": false
+} 

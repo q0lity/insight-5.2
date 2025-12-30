@@ -1,0 +1,42 @@
+{
+  "navigate": {
+    "useNavigate": true,
+    "modifierKey": [
+      "Alt"
+    ]
+  },
+  "hotkey": {
+    "hotkeyMode": "Enter"
+  },
+  "create": {
+    "createFloat": true,
+    "createCustomChildNode": true,
+    "childNodeWidth": 150,
+    "childNodeHeight": 100,
+    "floatGap": 100,
+    "floatWidth": 200,
+    "floatHeight": 100,
+    "parentChildGapForVertical": 160,
+    "parentChildGapForHorizontal": 150,
+    "siblingGapForVertical": 50,
+    "siblingGapForHorizontal": 40,
+    "siblingTolerance": 50
+  },
+  "layout": {
+    "direction": "LR",
+    "autoLayout": true,
+    "autoLayoutDirection": "LR",
+    "autoHeight": true,
+    "ignoreFilesRegex": ""
+  },
+  "resize": {
+    "autoResize": true,
+    "widthAutoResize": true,
+    "maxWidth": 500
+  },
+  "advanced": {
+    "transferToCommands": false,
+    "showChangelogAutomatically": true,
+    "lastUpdatedVersion": "1.0.2"
+  }
+}
