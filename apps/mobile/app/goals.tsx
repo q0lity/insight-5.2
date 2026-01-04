@@ -3,17 +3,14 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, FlatLi
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useTheme } from '@/src/state/theme';
 import { InsightIcon } from '@/src/components/InsightIcon';
 import { listGoals, addGoal, deleteGoal, type Goal } from '@/src/storage/goals';
 
 export default function GoalsScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useTheme();
   const insets = useSafeAreaInsets();
-  const isDark = colorScheme === 'dark';
 
   const [goals, setGoals] = useState<Goal[]>([]);
   const [newGoalName, setNewGoalName] = useState('');
@@ -54,13 +51,13 @@ export default function GoalsScreen() {
           style={[
             styles.input,
             {
-              backgroundColor: isDark ? '#141a2a' : '#FFFFFF',
+              backgroundColor: palette.surface,
               color: palette.text,
-              borderColor: isDark ? 'rgba(148, 163, 184, 0.16)' : 'rgba(28, 28, 30, 0.06)'
+              borderColor: palette.border
             }
           ]}
           placeholder="Enter a new goal..."
-          placeholderTextColor={palette.tabIconDefault}
+          placeholderTextColor={palette.textSecondary}
           value={newGoalName}
           onChangeText={setNewGoalName}
           onSubmitEditing={handleAddGoal}
@@ -78,22 +75,22 @@ export default function GoalsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          <View style={[styles.card, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF' }]}>
-            <Text style={[styles.emptyText, { color: palette.tabIconDefault }]}>
+          <View style={[styles.card, { backgroundColor: palette.surface }]}>
+            <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
               No active goals yet. Add one to start tracking your progress.
             </Text>
           </View>
         }
         renderItem={({ item }) => (
-          <View style={[styles.goalItem, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF' }]}>
+          <View style={[styles.goalItem, { backgroundColor: palette.surface }]}>
             <View style={styles.goalInfo}>
               <Text style={[styles.goalName, { color: palette.text }]}>{item.name}</Text>
-              <Text style={[styles.goalDate, { color: palette.tabIconDefault }]}>
+              <Text style={[styles.goalDate, { color: palette.textSecondary }]}>
                 Started {new Date(item.createdAt).toLocaleDateString()}
               </Text>
             </View>
             <TouchableOpacity onPress={() => handleDeleteGoal(item.id)} style={styles.deleteButton}>
-              <InsightIcon name="plus" size={18} color={isDark ? 'rgba(148,163,184,0.4)' : 'rgba(28,28,30,0.3)'} />
+              <InsightIcon name="plus" size={18} color={palette.border} />
               {/* Using plus as a delete icon placeholder or rotated */}
             </TouchableOpacity>
           </View>

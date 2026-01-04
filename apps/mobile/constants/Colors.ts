@@ -1,6 +1,11 @@
+// Re-export theme palettes and sizes from the theme provider
+export { ThemePalettes, DisplaySizes } from '@/src/state/theme';
+
 const tintColorLight = '#D95D39';
 const tintColorDark = '#D95D39';
 
+// Backwards-compatible default export for existing useColorScheme usage
+// Maps to 'warm' (light mode) and 'dark' palettes
 export default {
   light: {
     text: '#1C1C1E',

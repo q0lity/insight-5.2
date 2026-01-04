@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import { useRouter } from 'expo-router';
 
-import Colors from '@/constants/Colors';
 import { Text, View } from '@/components/Themed';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useTheme } from '@/src/state/theme';
 import { InsightIcon } from '@/src/components/InsightIcon';
 import { getSupabaseClient } from '@/src/supabase/client';
 
@@ -27,9 +27,8 @@ function parseAuthResult(url: string) {
 }
 
 export default function AuthScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
-  const isDark = colorScheme === 'dark';
+  const { palette } = useTheme();
+  const router = useRouter();
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
@@ -70,13 +69,21 @@ export default function AuthScreen() {
           Alert.alert('Check your email', 'Confirm your email to finish signing up.');
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        console.log('[AuthScreen] Attempting sign in with:', email.trim());
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         });
+        console.log('[AuthScreen] Sign in result - data:', !!data?.session, 'error:', error?.message);
         if (error) throw error;
+        if (data?.session) {
+          console.log('[AuthScreen] Sign in successful! Session user:', data.session.user?.email);
+          // Navigate to home after successful sign-in
+          router.replace('/(tabs)');
+        }
       }
     } catch (err: any) {
+      console.error('[AuthScreen] Auth error:', err);
       Alert.alert(isSignup ? 'Sign up failed' : 'Login failed', err?.message ? String(err.message) : 'Try again.');
     } finally {
       setBusy(false);
@@ -126,7 +133,7 @@ export default function AuthScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.container, { backgroundColor: palette.background }]}
     >
-      <View style={[styles.card, { backgroundColor: isDark ? '#111726' : '#FFFFFF' }]}>
+      <View style={[styles.card, { backgroundColor: palette.surface }]}>
         <View style={styles.logoRow}>
           <View style={[styles.logoBadge, { backgroundColor: palette.tint }]}>
             <Text style={styles.logoText}>i</Text>
@@ -134,7 +141,7 @@ export default function AuthScreen() {
           <Text style={[styles.title, { color: palette.text }]}>Insight</Text>
         </View>
 
-        <Text style={[styles.subtitle, { color: palette.tabIconDefault }]}>
+        <Text style={[styles.subtitle, { color: palette.textSecondary }]}>
           {isSignup ? 'Create an account to sync across desktop + mobile.' : 'Sign in to sync across desktop + mobile.'}
         </Text>
 
@@ -146,12 +153,12 @@ export default function AuthScreen() {
             autoCapitalize="none"
             keyboardType="email-address"
             placeholder="you@example.com"
-            placeholderTextColor={palette.tabIconDefault}
+            placeholderTextColor={palette.textSecondary}
             style={[
               styles.input,
               {
-                backgroundColor: isDark ? '#0c1220' : '#F7F4F0',
-                borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(28,28,30,0.06)',
+                backgroundColor: palette.background,
+                borderColor: palette.border,
                 color: palette.text,
               },
             ]}
@@ -165,12 +172,12 @@ export default function AuthScreen() {
             onChangeText={setPassword}
             secureTextEntry
             placeholder="••••••••"
-            placeholderTextColor={palette.tabIconDefault}
+            placeholderTextColor={palette.textSecondary}
             style={[
               styles.input,
               {
-                backgroundColor: isDark ? '#0c1220' : '#F7F4F0',
-                borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(28,28,30,0.06)',
+                backgroundColor: palette.background,
+                borderColor: palette.border,
                 color: palette.text,
               },
             ]}
@@ -185,12 +192,12 @@ export default function AuthScreen() {
               onChangeText={setConfirmPassword}
               secureTextEntry
               placeholder="••••••••"
-              placeholderTextColor={palette.tabIconDefault}
+              placeholderTextColor={palette.textSecondary}
               style={[
                 styles.input,
                 {
-                  backgroundColor: isDark ? '#0c1220' : '#F7F4F0',
-                  borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(28,28,30,0.06)',
+                  backgroundColor: palette.background,
+                  borderColor: palette.border,
                   color: palette.text,
                 },
               ]}
@@ -209,7 +216,7 @@ export default function AuthScreen() {
         </TouchableOpacity>
 
         <View style={styles.toggleRow}>
-          <Text style={[styles.toggleText, { color: palette.tabIconDefault }]}>
+          <Text style={[styles.toggleText, { color: palette.textSecondary }]}>
             {isSignup ? 'Already have an account?' : 'New here?'}
           </Text>
           <TouchableOpacity
@@ -224,9 +231,9 @@ export default function AuthScreen() {
         </View>
 
         <View style={styles.dividerRow}>
-          <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(148,163,184,0.25)' : 'rgba(28,28,30,0.1)' }]} />
-          <Text style={[styles.dividerText, { color: palette.tabIconDefault }]}>or</Text>
-          <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(148,163,184,0.25)' : 'rgba(28,28,30,0.1)' }]} />
+          <View style={[styles.divider, { backgroundColor: palette.border }]} />
+          <Text style={[styles.dividerText, { color: palette.textSecondary }]}>or</Text>
+          <View style={[styles.divider, { backgroundColor: palette.border }]} />
         </View>
 
         <TouchableOpacity

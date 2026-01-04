@@ -2,6 +2,7 @@ import type { CalendarEvent as DbEvent, CalendarEventKind } from '../db/insight-
 import { db, makeEventId } from '../db/insight-db'
 import { migrateFromLocalStorageIfEmpty } from '../db/migrate-localstorage'
 import { markEntryDeleted, syncEventToSupabase } from '../supabase/sync'
+import { recordEventPatterns } from '../learning/collector'
 
 export type CalendarEvent = DbEvent
 export type { CalendarEventKind }
@@ -151,6 +152,10 @@ export async function createEvent(input: {
   }
   await db.events.put(ev)
   void syncEventToSupabase(ev)
+  // Record patterns for adaptive learning (fire and forget)
+  void recordEventPatterns(ev).catch((err) => {
+    console.warn('[Calendar] Failed to record patterns:', err)
+  })
   return ev
 }
 
@@ -159,6 +164,10 @@ export async function upsertEvent(event: CalendarEvent): Promise<CalendarEvent> 
   const next = normalizeEvent({ ...event, updatedAt: Date.now() })
   await db.events.put(next)
   void syncEventToSupabase(next)
+  // Record patterns for adaptive learning (fire and forget)
+  void recordEventPatterns(next).catch((err) => {
+    console.warn('[Calendar] Failed to record patterns:', err)
+  })
   return next
 }
 
@@ -342,6 +351,10 @@ export async function startSubEvent(input: {
 
   await db.events.put(subEvent)
   void syncEventToSupabase(subEvent)
+  // Record patterns for adaptive learning (fire and forget)
+  void recordEventPatterns(subEvent).catch((err) => {
+    console.warn('[Calendar] Failed to record patterns for sub-event:', err)
+  })
   return subEvent
 }
 

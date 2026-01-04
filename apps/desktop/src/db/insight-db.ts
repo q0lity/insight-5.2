@@ -2,6 +2,41 @@ import Dexie, { type Table } from 'dexie'
 
 export type EntityType = 'tag' | 'person' | 'place'
 
+// Adaptive Learning System - Pattern types
+export type PatternType =
+  | 'activity_skill'      // "gym" → skills: ["Weightlifting"]
+  | 'activity_category'   // "gym" → Health/Workout
+  | 'goal_category'       // Goal "Get Shredded" → Health/Workout
+  | 'person_context'      // "@mom" → Social/Call
+  | 'location_fill'       // "!LA Fitness" → Health/Workout
+
+export type PatternSourceType = 'keyword' | 'goal' | 'person' | 'location' | 'tag'
+export type PatternTargetType = 'skill' | 'category' | 'subcategory' | 'goal' | 'project'
+
+export type Pattern = {
+  id: string
+  type: PatternType
+
+  // Source (what triggers the pattern)
+  sourceType: PatternSourceType
+  sourceKey: string  // normalized lowercase
+
+  // Target (what gets suggested)
+  targetType: PatternTargetType
+  targetKey: string
+  targetDisplayName?: string
+
+  // Confidence tracking
+  confidence: number       // 0.0 - 1.0
+  occurrenceCount: number
+  acceptCount: number
+  rejectCount: number
+  lastSeenAt: number
+
+  createdAt: number
+  updatedAt: number
+}
+
 export type Entity = {
   id: string
   type: EntityType
@@ -53,11 +88,16 @@ export type CalendarEventKind = 'event' | 'task' | 'log' | 'episode'
 // Workout types
 export type WorkoutType = 'strength' | 'cardio' | 'mobility' | 'recovery' | 'mixed'
 
+export type WeightUnit = 'lbs' | 'kg'
+export type DistanceUnit = 'mi' | 'km'
+
 export type ExerciseSet = {
   reps?: number
   weight?: number
-  duration?: number
+  weightUnit?: WeightUnit // User's preferred unit (lbs or kg)
+  duration?: number // seconds
   distance?: number
+  distanceUnit?: DistanceUnit
   rpe?: number
   restSeconds?: number
 }
@@ -94,18 +134,43 @@ export type Workout = {
 // Nutrition types
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'drink'
 
+// Extended macros with full micronutrients
+export type ExtendedMacros = {
+  protein: number       // grams
+  carbs: number         // grams
+  fat: number           // grams
+  fiber?: number        // grams
+  saturatedFat?: number // grams
+  transFat?: number     // grams
+  sugar?: number        // grams
+  sodium?: number       // milligrams
+  potassium?: number    // milligrams
+  cholesterol?: number  // milligrams
+}
+
 export type FoodItem = {
   id: string
   name: string
   quantity: number
   unit: string
   calories?: number
+  // Macronutrients (grams)
   protein?: number
   carbs?: number
   fat?: number
   fiber?: number
+  // Extended micronutrients
+  saturatedFat?: number // grams
+  transFat?: number     // grams
+  sugar?: number        // grams
+  sodium?: number       // milligrams
+  potassium?: number    // milligrams
+  cholesterol?: number  // milligrams
+  // Metadata
   brand?: string
   notes?: string
+  confidence?: number   // 0-1, how confident the AI estimate is
+  source?: 'manual' | 'ai_estimate' | 'database'
 }
 
 export type Meal = {
@@ -116,7 +181,7 @@ export type Meal = {
   title: string
   items: FoodItem[]
   totalCalories: number
-  macros: { protein: number; carbs: number; fat: number }
+  macros: ExtendedMacros
   location?: string
   photoUri?: string
   notes?: string
@@ -125,6 +190,7 @@ export type Meal = {
   eatenAt: number
   createdAt: number
   updatedAt: number
+  estimationModel?: string // e.g., "gpt-4o", "gpt-4o-mini"
 }
 
 export type CalendarEvent = {
@@ -169,6 +235,7 @@ export class InsightDb extends Dexie {
   events!: Table<CalendarEvent, string>
   workouts!: Table<Workout, string>
   meals!: Table<Meal, string>
+  patterns!: Table<Pattern, string>
 
   constructor() {
     super('insight5.db')
@@ -198,6 +265,16 @@ export class InsightDb extends Dexie {
       events: 'id, startAt, endAt, allDay, active, kind, trackerKey, parentEventId, *entityIds, *contexts, sourceNoteId',
       workouts: 'id, eventId, type, startAt, goalId, *tags, createdAt, updatedAt',
       meals: 'id, eventId, type, eatenAt, goalId, *tags, createdAt, updatedAt',
+    })
+    // Version 5: Add patterns table for adaptive learning system
+    this.version(5).stores({
+      entities: 'id, [type+key], type, key, updatedAt',
+      notes: 'id, createdAt, status, *entityIds',
+      tasks: 'id, updatedAt, status, dueAt, scheduledAt, *entityIds, *contexts, sourceNoteId',
+      events: 'id, startAt, endAt, allDay, active, kind, trackerKey, parentEventId, *entityIds, *contexts, sourceNoteId',
+      workouts: 'id, eventId, type, startAt, goalId, *tags, createdAt, updatedAt',
+      meals: 'id, eventId, type, eatenAt, goalId, *tags, createdAt, updatedAt',
+      patterns: 'id, type, [type+sourceKey], [sourceType+sourceKey], confidence, updatedAt',
     })
   }
 }
@@ -240,6 +317,14 @@ export function makeExerciseId() {
   return makeId('exr')
 }
 
+export function makePatternId() {
+  return makeId('pat')
+}
+
 export function normalizeEntityKey(raw: string) {
+  return raw.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+export function normalizePatternKey(raw: string) {
   return raw.trim().toLowerCase().replace(/\s+/g, ' ')
 }

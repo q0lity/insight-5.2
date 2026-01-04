@@ -31,3 +31,12 @@ yarn-error.log*
 
 # Misc
 *.pid
+
+# Expo
+.expo/
+
+# NPM cache
+.npm-cache/
+
+# Supabase local
+supabase/.temp/

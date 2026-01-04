@@ -159,7 +159,7 @@ export async function listTasks() {
     return tasks.sort((a, b) => b.createdAt - a.createdAt);
   }
   const { supabase, user } = session;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('entries')
     .select(
       'id, title, created_at, updated_at, status, scheduled_at, due_at, completed_at, body_markdown, tags, people, contexts, importance, difficulty, duration_minutes, frontmatter'
@@ -170,7 +170,10 @@ export async function listTasks() {
     .order('created_at', { ascending: false })
     .limit(2000);
 
-  if (!data) return [];
+  if (error || !data) {
+    const tasks = await loadTasksLocal();
+    return tasks.sort((a, b) => b.createdAt - a.createdAt);
+  }
   return data.map(entryToMobileTask);
 }
 
@@ -231,7 +234,10 @@ export async function createTask(input: {
   const payload = mobileTaskToEntry(task, user.id);
   const { data, error } = await supabase.from('entries').insert(payload).select('id').single();
   if (error || !data) {
-    throw new Error(error?.message ?? 'Failed to create task.');
+    const tasks = await loadTasksLocal();
+    tasks.unshift(task);
+    await saveTasksLocal(tasks);
+    return task;
   }
   void ensureEntitiesFromEntry({ tags: task.tags ?? [], people: task.people ?? [], location: null });
   return { ...task, id: data.id };

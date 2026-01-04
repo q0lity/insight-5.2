@@ -2,6 +2,30 @@
 
 This maps product concepts to the Supabase schema. Canonical SQL is in `Insight 5/DB/SUPABASE_SCHEMA_V1.sql`.
 
+## Canonical Glossary
+- **Entry**: The atomic record created from voice or manual input. It carries a title, facets, timestamps, tokens (tags/contexts/people/places), and optional scoring metadata.
+- **Event**: An Entry facet representing a time-bounded activity. Events use start/end or duration fields and can map to external calendar items.
+- **Segment**: A timestamped divider, note, or transcript fragment inside an Entry, stored as `entry_segments`.
+- **Block**: The user-facing markdown chunk between dividers in an Entry. Blocks are the UI representation of one or more Segments.
+- **Task**: An Entry facet for actionable work. Tasks include status/priority fields and may be scheduled or due.
+- **Tracker**: A measurement system consisting of a tracker definition and timestamped tracker logs. Logs can optionally link to an Entry for context.
+- **Habit**: A recurring behavior with a habit definition and timestamped habit instances, optionally linked to an Entry.
+- **Goal**: A top-level objective with an importance score used in XP/weighting logic.
+- **Project**: A scoped body of work under a Goal. Projects have a status (active/paused/completed/archived).
+- **Person**: A normalized entity representing an individual referenced in Entries (tokenized and stored in `entities`).
+- **Place**: A normalized entity representing a location referenced in Entries (tokenized and stored in `entities`).
+- **Tag**: A normalized label used for categorization and filtering (tokenized and stored in `entities`).
+- **Context**: A situational token applied to Entries for grouping and filtering (e.g., "car", "work").
+- **Media**: Attachments linked to Entries (audio, photo, video) stored in the `attachments` bucket.
+- **Transcript**: Voice-to-text content stored as Segments (type `transcript`) and/or as pending capture text before parsing.
+
+## Triple Title Rule
+Use the format `category/subcategory/title` for Entry titles to keep naming consistent and filterable.
+
+Examples:
+- `transport/driving/Driving to work`
+- `health/fitness/Morning run`
+
 ## `goals`
 - `importance` (1–10): used to compute `goalMultiplier = 1 + importance/10`.
 - `tags[]`: hierarchical tags allowed.
@@ -65,10 +89,10 @@ This maps product concepts to the Supabase schema. Canonical SQL is in `Insight 
 - `etag`: used for conflict detection.
 
 ## Local-first IndexedDB mirror (Phase 0 / MVP implementation detail)
-The desktop/web prototype stores core data in IndexedDB (Dexie) and treats it as the source of truth until Supabase sync is enabled.
+IndexedDB (Dexie) is a cache + outbox for offline capture and fast reads. Supabase is the canonical source of truth for **both web and mobile**; local stores must sync and never diverge as an independent system of record.
 
 **Tables**
-- `entities` (tags/people/places): canonical entity index; referenced by `entity_ids[]`.
+- `entities` (tags/people/places): local entity index; referenced by `entity_ids[]`.
 - `notes` (inbox captures): raw transcript “note card” created for every capture.
 - `tasks`: extracted tasks; always backlink to the source capture via `source_note_id`.
 - `events`: calendar items; includes `kind=event|task|log|episode`.

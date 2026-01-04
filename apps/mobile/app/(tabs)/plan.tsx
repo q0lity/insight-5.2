@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import Colors from '@/constants/Colors';
 import { Text, View } from '@/components/Themed';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useTheme } from '@/src/state/theme';
 import { useSession } from '@/src/state/session';
 import { completeTask, createTask, listTasks, type MobileTask } from '@/src/storage/tasks';
 
@@ -117,8 +117,8 @@ async function saveOutlineMap(map: Record<string, string>) {
 }
 
 export default function PlanScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette, sizes, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const { active, startSession } = useSession();
   const [outline, setOutline] = useState(DEFAULT_OUTLINE);
   const [syncedTasks, setSyncedTasks] = useState<MobileTask[]>([]);
@@ -200,12 +200,17 @@ export default function PlanScreen() {
   const rows = useMemo(() => outlineToTasks(outline), [outline]);
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background }]}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: palette.background }]}
+      contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 100 }]}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.topRow}>
         <View
           style={[
             styles.nodeBadge,
-            { borderColor: colorScheme === 'dark' ? 'rgba(148,163,184,0.24)' : 'rgba(28,28,30,0.1)' },
+            { borderColor: palette.border },
           ]}>
           <Text style={styles.nodeBadgeText}>1</Text>
         </View>
@@ -219,14 +224,14 @@ export default function PlanScreen() {
             styles.outlineInput,
             {
               color: palette.text,
-              borderColor: colorScheme === 'dark' ? 'rgba(148,163,184,0.24)' : 'rgba(28,28,30,0.1)',
+              borderColor: palette.border,
             },
           ]}
           multiline
           value={outline}
           onChangeText={setOutline}
           placeholder="Write tasks in markdown..."
-          placeholderTextColor={colorScheme === 'dark' ? 'rgba(148,163,184,0.6)' : 'rgba(28,28,30,0.35)'}
+          placeholderTextColor={palette.textSecondary}
         />
       </View>
 
@@ -239,14 +244,10 @@ export default function PlanScreen() {
               !task.isTask && styles.sectionCard,
               {
                 backgroundColor: task.isTask
-                  ? colorScheme === 'dark'
-                    ? 'rgba(15,19,32,0.92)'
-                    : 'rgba(255,255,255,0.85)'
+                  ? palette.surfaceAlt
                   : 'transparent',
                 borderColor: task.isTask
-                  ? colorScheme === 'dark'
-                    ? 'rgba(148,163,184,0.16)'
-                    : 'rgba(28,28,30,0.06)'
+                  ? palette.border
                   : 'transparent',
               },
             ]}>
@@ -281,8 +282,8 @@ export default function PlanScreen() {
               style={[
                 styles.syncedCard,
                 {
-                  backgroundColor: colorScheme === 'dark' ? 'rgba(15,19,32,0.92)' : 'rgba(255,255,255,0.85)',
-                  borderColor: colorScheme === 'dark' ? 'rgba(148,163,184,0.16)' : 'rgba(28,28,30,0.06)',
+                  backgroundColor: palette.surfaceAlt,
+                  borderColor: palette.border,
                 },
               ]}
             >
@@ -296,7 +297,7 @@ export default function PlanScreen() {
                 <View style={styles.syncedMeta}>
                   <Text style={[styles.syncedTitle, { color: palette.text }]}>{task.title}</Text>
                   {task.estimateMinutes != null ? (
-                    <Text style={[styles.syncedEstimate, { color: palette.tabIconDefault }]}>
+                    <Text style={[styles.syncedEstimate, { color: palette.textSecondary }]}>
                       {task.estimateMinutes}m
                     </Text>
                   ) : null}
@@ -315,16 +316,18 @@ export default function PlanScreen() {
             </View>
           ))
         ) : (
-          <Text style={[styles.emptyText, { color: palette.tabIconDefault }]}>No synced tasks yet.</Text>
+          <Text style={[styles.emptyText, { color: palette.textSecondary }]}>No synced tasks yet.</Text>
         )}
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  contentContainer: {
     padding: 20,
     gap: 12,
   },

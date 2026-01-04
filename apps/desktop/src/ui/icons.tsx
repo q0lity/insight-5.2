@@ -43,6 +43,9 @@ export type IconName =
   | 'folder'
   | 'chevronDown'
   | 'chevronRight'
+  | 'grip'
+  | 'palette'
+  | 'monitor'
 
 export function Icon(
   props: Props & {
@@ -520,6 +523,59 @@ export function Icon(
       return (
         <svg {...common} className={props.className}>
           <path d="M10 7l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )
+    case 'grip':
+      return (
+        <svg {...common} className={props.className}>
+          <path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        </svg>
+      )
+    case 'palette':
+      return (
+        <svg {...common} className={props.className}>
+          <circle cx="13.5" cy="6.5" r="1.5" fill="currentColor" />
+          <circle cx="17.5" cy="10.5" r="1.5" fill="currentColor" />
+          <circle cx="8.5" cy="7.5" r="1.5" fill="currentColor" />
+          <circle cx="6.5" cy="12.5" r="1.5" fill="currentColor" />
+          <path
+            d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.75 1.5-1.5 0-.38-.14-.72-.36-1-.22-.27-.36-.61-.36-1 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-4.97-4.49-9-10-9z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            fill="none"
+          />
+        </svg>
+      )
+    case 'monitor':
+      return (
+        <svg {...common} className={props.className}>
+          <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" fill="none" />
+          <path d="M8 21h8M12 17v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      )
+    case 'search':
+      return (
+        <svg {...common} className={props.className}>
+          <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.6" fill="none" />
+          <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      )
+    case 'grid':
+      return (
+        <svg {...common} className={props.className}>
+          <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.6" fill="none" />
+          <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.6" fill="none" />
+          <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.6" fill="none" />
+          <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.6" fill="none" />
+        </svg>
+      )
+    case 'list':
+      return (
+        <svg {...common} className={props.className}>
+          <path d="M8 6h13M8 12h13M8 18h13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <circle cx="4" cy="6" r="1" fill="currentColor" />
+          <circle cx="4" cy="12" r="1" fill="currentColor" />
+          <circle cx="4" cy="18" r="1" fill="currentColor" />
         </svg>
       )
   }

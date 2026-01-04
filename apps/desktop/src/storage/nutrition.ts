@@ -1,49 +1,9 @@
 import { db } from '../db/insight-db'
-
-export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'drink'
-
-export type Macros = {
-  protein: number   // grams
-  carbs: number     // grams
-  fat: number       // grams
-  fiber?: number    // grams
-}
-
-export type FoodItem = {
-  id: string
-  name: string
-  quantity: number
-  unit: string              // e.g., 'oz', 'cup', 'serving', 'g'
-  calories?: number
-  protein?: number
-  carbs?: number
-  fat?: number
-  fiber?: number
-  brand?: string
-  notes?: string
-}
-
-export type Meal = {
-  id: string
-  eventId: string           // Links to parent calendar event
-  userId?: string
-  type: MealType
-  title: string
-  items: FoodItem[]
-  totalCalories: number
-  macros: Macros
-  location?: string         // Restaurant name or home
-  photoUri?: string         // Optional photo of the meal
-  notes?: string
-  goalId?: string           // Links to nutrition goal (e.g., "cut", "bulk")
-  tags?: string[]
-  eatenAt: number
-  createdAt: number
-  updatedAt: number
-}
+import type { ExtendedMacros, FoodItem, Meal, MealType } from '../db/insight-db'
+import { deleteMealFromSupabase, syncMealToSupabase } from '../supabase/sync'
 
 // Common foods database with nutritional info (per serving)
-export const COMMON_FOODS: Array<{ name: string; unit: string; calories: number; protein: number; carbs: number; fat: number }> = [
+export const COMMON_FOODS: Array<{ name: string; unit: string; calories: number; protein: number; carbs: number; fat: number; fiber?: number }> = [
   // Proteins
   { name: 'Chicken Breast', unit: 'oz', calories: 46, protein: 8.8, carbs: 0, fat: 1 },
   { name: 'Ground Beef (90% lean)', unit: 'oz', calories: 50, protein: 7, carbs: 0, fat: 2.5 },
@@ -68,6 +28,8 @@ export const COMMON_FOODS: Array<{ name: string; unit: string; calories: number;
   { name: 'Almonds', unit: 'oz', calories: 165, protein: 6, carbs: 6, fat: 14 },
   { name: 'Cheese (cheddar)', unit: 'oz', calories: 115, protein: 7, carbs: 0.4, fat: 9.5 },
   { name: 'Parmesan', unit: 'tbsp', calories: 22, protein: 2, carbs: 0.2, fat: 1.5 },
+  { name: 'Pizza Slice', unit: 'slice', calories: 285, protein: 12, carbs: 36, fat: 10 },
+  { name: 'Hot Dog', unit: 'item', calories: 150, protein: 5, carbs: 2, fat: 13 },
   // Vegetables
   { name: 'Romaine Lettuce', unit: 'head', calories: 25, protein: 2, carbs: 4, fat: 0.5 },
   { name: 'Spinach', unit: 'cup', calories: 7, protein: 1, carbs: 1, fat: 0.1 },
@@ -109,13 +71,14 @@ export function estimateFoodNutrition(name: string, quantity = 1, unit = 'servin
         protein: Math.round(food.protein * quantity),
         carbs: Math.round(food.carbs * quantity),
         fat: Math.round(food.fat * quantity),
+        fiber: food.fiber ? Math.round(food.fiber * quantity) : undefined,
       }
     }
   }
 
   // Check restaurant foods
   for (const food of RESTAURANT_FOODS) {
-    if (lower.includes(food.name.toLowerCase())) {
+    if (lower.includes(food.name.toLowerCase()) || (food.restaurant && lower.includes(food.restaurant.toLowerCase()))) {
       return {
         name: food.name,
         quantity,
@@ -132,17 +95,31 @@ export function estimateFoodNutrition(name: string, quantity = 1, unit = 'servin
   if (/salad/i.test(name)) return { calories: 150, protein: 5, carbs: 15, fat: 8 }
   if (/sandwich/i.test(name)) return { calories: 400, protein: 20, carbs: 40, fat: 15 }
   if (/burger/i.test(name)) return { calories: 600, protein: 30, carbs: 45, fat: 35 }
-  if (/pizza.*slice/i.test(name)) return { calories: 285, protein: 12, carbs: 36, fat: 10 }
+  if (/pizza/i.test(name)) return { calories: 285, protein: 12, carbs: 36, fat: 10 }
+  if (/hot\s*dog/i.test(name)) return { calories: 150, protein: 5, carbs: 2, fat: 13 }
   if (/steak/i.test(name)) return { calories: 300, protein: 40, carbs: 0, fat: 15 }
   if (/smoothie/i.test(name)) return { calories: 300, protein: 10, carbs: 50, fat: 5 }
+  if (/chipotle/i.test(name) && /bowl|burrito/i.test(name)) return { calories: 700, protein: 40, carbs: 50, fat: 35 }
 
   return { name, quantity, unit }
 }
 
 // Parse meal from natural language
+const FOOD_CUE_RE = /\b(ate|eat|eating|meal|breakfast|lunch|dinner|snack|drink|drank|coffee|tea|smoothie|shake|pizza|hot dog|chipotle|burrito|bowl|salad|sandwich|burger|rice|pasta|chicken|beef|fish|fruit|veggie|vegetable|costco|grocery)\b/i
+const WORKOUT_CUE_RE = /\b(run|ran|jog|walk|cycle|bike|mile|miles|km|minutes?|mins?|reps?|sets?|bench|press|squat|deadlift|treadmill|cardio|rpe|gym)\b/i
+
+function isWorkoutToken(name: string) {
+  return WORKOUT_CUE_RE.test(name)
+}
+
+function singularizeUnit(raw: string) {
+  const cleaned = raw.trim().toLowerCase()
+  if (cleaned.endsWith('s')) return cleaned.slice(0, -1)
+  return cleaned
+}
+
 export function parseMealFromText(text: string): Partial<Meal> | null {
   const items: FoodItem[] = []
-  const lower = text.toLowerCase()
 
   // Detect meal type
   let mealType: MealType = 'snack'
@@ -150,6 +127,40 @@ export function parseMealFromText(text: string): Partial<Meal> | null {
   else if (/\b(lunch|midday)\b/i.test(text)) mealType = 'lunch'
   else if (/\b(dinner|supper|evening)\b/i.test(text)) mealType = 'dinner'
   else if (/\b(coffee|tea|water|drink|smoothie|shake)\b/i.test(text)) mealType = 'drink'
+
+  if (!FOOD_CUE_RE.test(text) && WORKOUT_CUE_RE.test(text)) {
+    return null
+  }
+
+  const seen = new Set<string>()
+  const explicitUnitPatterns = [
+    /(\d+(?:\.\d+)?)\s*(slice|slices|piece|pieces|serving|servings)\s+of\s+([a-zA-Z][a-zA-Z\s]+)/gi,
+  ]
+
+  for (const pattern of explicitUnitPatterns) {
+    for (const match of text.matchAll(pattern)) {
+      const quantity = parseFloat(match[1])
+      const unit = singularizeUnit(match[2] ?? 'serving')
+      const foodName = match[3].trim()
+      const key = foodName.toLowerCase()
+      if (seen.has(key) || foodName.length < 3) continue
+      if (isWorkoutToken(foodName)) continue
+      seen.add(key)
+
+      const estimated = estimateFoodNutrition(foodName, quantity, unit)
+      items.push({
+        id: `food_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        name: estimated.name ?? foodName,
+        quantity,
+        unit: estimated.unit ?? unit,
+        calories: estimated.calories,
+        protein: estimated.protein,
+        carbs: estimated.carbs,
+        fat: estimated.fat,
+        fiber: estimated.fiber,
+      })
+    }
+  }
 
   // Parse patterns like "2 heads of romaine" or "6oz chicken"
   const quantityPatterns = [
@@ -159,13 +170,16 @@ export function parseMealFromText(text: string): Partial<Meal> | null {
     /(\d+(?:\.\d+)?)\s+(?:heads?\s+(?:of\s+)?)?([a-zA-Z][a-zA-Z\s]+)/gi,
   ]
 
-  const seen = new Set<string>()
+  const carried = new Set(items.map((item) => item.name.toLowerCase()))
+  for (const name of carried) seen.add(name)
   for (const pattern of quantityPatterns) {
     for (const match of text.matchAll(pattern)) {
       const quantity = parseFloat(match[1])
       const foodName = match[2].trim()
+      if (/\b(slice|slices|piece|pieces)\b/i.test(foodName)) continue
       const key = foodName.toLowerCase()
       if (seen.has(key) || foodName.length < 3) continue
+      if (isWorkoutToken(foodName)) continue
       seen.add(key)
 
       const estimated = estimateFoodNutrition(foodName, quantity)
@@ -178,6 +192,7 @@ export function parseMealFromText(text: string): Partial<Meal> | null {
         protein: estimated.protein,
         carbs: estimated.carbs,
         fat: estimated.fat,
+        fiber: estimated.fiber,
       })
     }
   }
@@ -188,6 +203,7 @@ export function parseMealFromText(text: string): Partial<Meal> | null {
     const foodName = match[1].trim()
     const key = foodName.toLowerCase()
     if (seen.has(key)) continue
+    if (isWorkoutToken(foodName)) continue
     seen.add(key)
 
     const estimated = estimateFoodNutrition(foodName, 1)
@@ -200,6 +216,7 @@ export function parseMealFromText(text: string): Partial<Meal> | null {
       protein: estimated.protein,
       carbs: estimated.carbs,
       fat: estimated.fat,
+      fiber: estimated.fiber,
     })
   }
 
@@ -207,10 +224,11 @@ export function parseMealFromText(text: string): Partial<Meal> | null {
 
   // Calculate totals
   const totalCalories = items.reduce((sum, item) => sum + (item.calories ?? 0), 0)
-  const macros: Macros = {
+  const macros: ExtendedMacros = {
     protein: items.reduce((sum, item) => sum + (item.protein ?? 0), 0),
     carbs: items.reduce((sum, item) => sum + (item.carbs ?? 0), 0),
     fat: items.reduce((sum, item) => sum + (item.fat ?? 0), 0),
+    fiber: items.reduce((sum, item) => sum + (item.fiber ?? 0), 0) || undefined,
   }
 
   return {
@@ -231,6 +249,7 @@ export async function saveMeal(meal: Meal): Promise<string> {
     updatedAt: now,
   }
   await db.meals.put(toSave)
+  void syncMealToSupabase(toSave)
   return toSave.id
 }
 
@@ -258,7 +277,11 @@ export async function getRecentMeals(limit = 20): Promise<Meal[]> {
 }
 
 export async function deleteMeal(id: string): Promise<void> {
+  const existing = await db.meals.get(id)
   await db.meals.delete(id)
+  if (existing) {
+    void deleteMealFromSupabase(existing)
+  }
 }
 
 export async function getDailyNutritionStats(dayMs: number): Promise<{

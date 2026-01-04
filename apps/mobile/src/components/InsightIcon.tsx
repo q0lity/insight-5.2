@@ -5,9 +5,12 @@ export type InsightIconName =
   | 'home'
   | 'calendar'
   | 'check'
+  | 'checkCircle'
   | 'dots'
   | 'sparkle'
   | 'plus'
+  | 'minus'
+  | 'play'
   | 'smile'
   | 'file'
   | 'target'
@@ -17,8 +20,10 @@ export type InsightIconName =
   | 'users'
   | 'pin'
   | 'tag'
+  | 'node'
   | 'settings'
-  | 'chevronLeft';
+  | 'chevronLeft'
+  | 'lock';
 
 type Props = {
   name: InsightIconName;
@@ -118,6 +123,32 @@ export function InsightIcon({ name, size = 20, color = '#1C1C1E' }: Props) {
           <Path d="M12 5v14M5 12h14" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
         </Svg>
       );
+    case 'minus':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M5 12h14" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+        </Svg>
+      );
+    case 'play':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M5 3l14 9-14 9V3z" fill={color} stroke={color} strokeWidth={1.6} strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'checkCircle':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+          <Path d="M22 4L12 14.01l-3-3" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'node':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0" stroke={color} strokeWidth={1.6} />
+          <Path d="M12 3v6M12 15v6M21 12h-6M9 12H3" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+        </Svg>
+      );
     case 'smile':
       return (
         <Svg {...common} fill="none">
@@ -203,6 +234,13 @@ export function InsightIcon({ name, size = 20, color = '#1C1C1E' }: Props) {
         <Svg {...common} fill="none">
           <Path d="M12 15a3 3 0 1 0-3-3 3 3 0 0 0 3 3z" stroke={color} strokeWidth={1.6} />
           <Path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" stroke={color} strokeWidth={1.6} />
+        </Svg>
+      );
+    case 'lock':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z" stroke={color} strokeWidth={1.6} />
+          <Path d="M7 11V7a5 5 0 0 1 10 0v4" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
         </Svg>
       );
     default:

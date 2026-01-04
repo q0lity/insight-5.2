@@ -91,7 +91,7 @@ export function CaptureModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="w-full max-w-3xl bg-[var(--panel)] rounded-2xl shadow-2xl overflow-hidden border border-[var(--border)] relative flex flex-col max-h-[85vh]"
+            className="captureModalCard w-full max-w-3xl bg-[var(--panel)] rounded-2xl shadow-2xl overflow-hidden border border-[var(--border)] relative flex flex-col max-h-[85vh]"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--panel2)]/50 backdrop-blur-md">
@@ -164,10 +164,10 @@ export function CaptureModal({
               <div className="flex items-center gap-2">
                  <button
                     onClick={onToggleListening}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all ${
-                        isListening 
-                        ? 'bg-red-50 text-red-600 border border-red-200 shadow-inner' 
-                        : 'bg-[var(--panel2)] text-[var(--text)] border border-[var(--border)] hover:bg-[var(--border)]'
+                    className={`captureVoiceBtn flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all ${
+                        isListening
+                        ? 'captureVoiceBtnActive bg-[var(--accent)] text-white shadow-lg'
+                        : 'bg-[var(--panel2)] text-[var(--text)] border border-[var(--border)] hover:bg-[var(--border)] hover:border-[var(--accent)]/30'
                     }`}
                  >
                     <Icon name="mic" className={isListening ? 'animate-pulse' : ''} />

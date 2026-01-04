@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import type { CalendarEvent } from '../../storage/calendar'
 import { Icon } from '../../ui/icons'
 import { eventAccent, formatEventTitle, hexToRgba, type EventTitleMode } from '../../ui/event-visual'
 
 export type AgendaMode = 'day' | '3day' | 'week' | 'month'
+
+// Snap interval for drag operations (5 minutes for precision)
+const SNAP_INTERVAL = 5
 
 function startOfDayMs(d: Date) {
   const x = new Date(d)
@@ -162,11 +165,93 @@ function AgendaMonthView(props: {
     subcategory?: string | null
     estimateMinutes?: number | null
   }) => void
+  onMoveEvent?: (eventId: string, startAt: number, endAt: number) => void
+  onSelectEvent?: (eventId: string) => void
+  onUpdateEvent?: (eventId: string, updates: Partial<CalendarEvent>) => void
+  onDeleteEvent?: (eventId: string) => void
+  onDuplicateEvent?: (eventId: string) => void
   hideHeader?: boolean
   titleMode?: EventTitleMode
   mode: AgendaMode
 }) {
   const titleMode = props.titleMode ?? 'compact'
+  const gridRef = useRef<HTMLDivElement>(null)
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<null | { eventId: string; x: number; y: number }>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!contextMenu) return
+    function handleClick(e: MouseEvent) {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null)
+      }
+    }
+    function handleContextMenu() {
+      setContextMenu(null)
+    }
+    window.addEventListener('click', handleClick)
+    window.addEventListener('contextmenu', handleContextMenu)
+    return () => {
+      window.removeEventListener('click', handleClick)
+      window.removeEventListener('contextmenu', handleContextMenu)
+    }
+  }, [contextMenu])
+
+  // Context menu handlers
+  function handleStartNow(eventId: string) {
+    const now = Date.now()
+    const ev = props.events.find(e => e.id === eventId)
+    if (ev && props.onUpdateEvent) {
+      props.onUpdateEvent(eventId, { startAt: now, endAt: Math.max(ev.endAt, now + 5 * 60 * 1000) })
+    }
+    setContextMenu(null)
+  }
+
+  function handleStopNow(eventId: string) {
+    const now = Date.now()
+    const ev = props.events.find(e => e.id === eventId)
+    if (ev && props.onUpdateEvent) {
+      props.onUpdateEvent(eventId, { endAt: now, active: false })
+    }
+    setContextMenu(null)
+  }
+
+  function handleDuplicate(eventId: string) {
+    if (props.onDuplicateEvent) {
+      props.onDuplicateEvent(eventId)
+    }
+    setContextMenu(null)
+  }
+
+  function handleDelete(eventId: string) {
+    if (props.onDeleteEvent) {
+      props.onDeleteEvent(eventId)
+    }
+    setContextMenu(null)
+  }
+
+  function handleMoveTomorrow(eventId: string) {
+    const ev = props.events.find(e => e.id === eventId)
+    if (ev && props.onUpdateEvent) {
+      const dur = ev.endAt - ev.startAt
+      const newStart = ev.startAt + 24 * 60 * 60 * 1000
+      props.onUpdateEvent(eventId, { startAt: newStart, endAt: newStart + dur })
+    }
+    setContextMenu(null)
+  }
+
+  function handleMoveNextWeek(eventId: string) {
+    const ev = props.events.find(e => e.id === eventId)
+    if (ev && props.onUpdateEvent) {
+      const dur = ev.endAt - ev.startAt
+      const newStart = ev.startAt + 7 * 24 * 60 * 60 * 1000
+      props.onUpdateEvent(eventId, { startAt: newStart, endAt: newStart + dur })
+    }
+    setContextMenu(null)
+  }
   const monthStart = new Date(props.date)
   monthStart.setDate(1)
   monthStart.setHours(0, 0, 0, 0)
@@ -237,6 +322,7 @@ function AgendaMonthView(props: {
         <div className="agMonthGrid">
           {gridDays.map((d) => {
           const key = isoDay(d)
+          const dayStartMs = startOfDayMs(d)
           const items = (byDay.get(key) ?? []).slice(0, 4)
           const isOtherMonth = d.getMonth() !== props.date.getMonth()
           const isToday = isoDay(d) === isoDay(new Date())
@@ -248,6 +334,19 @@ function AgendaMonthView(props: {
                 props.onDateChange(d)
                 props.onModeChange('day')
               }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault()
+                const eventId = e.dataTransfer.getData('text/eventId')
+                const durMs = Number(e.dataTransfer.getData('text/eventDuration') || 0)
+                if (!eventId || !Number.isFinite(durMs) || durMs <= 0) return
+                // Move event to this day, keeping same time-of-day
+                const originalEvent = props.events.find(ev => ev.id === eventId)
+                if (!originalEvent || !props.onMoveEvent) return
+                const timeOfDay = originalEvent.startAt - startOfDayMs(new Date(originalEvent.startAt))
+                const newStart = dayStartMs + timeOfDay
+                props.onMoveEvent(eventId, newStart, newStart + durMs)
+              }}
             >
               <div className={isToday ? 'agMonthDay today' : 'agMonthDay'}>{d.getDate()}</div>
               <div className="agMonthPills">
@@ -257,12 +356,23 @@ function AgendaMonthView(props: {
                     <button
                       key={ev.id}
                       className="agMonthPill"
-                      onClick={() => props.onDateChange(new Date(ev.startAt))}
+                      onClick={() => props.onSelectEvent?.(ev.id)}
                       title={formatEventTitle(ev, titleMode)}
                       style={{
                         borderColor: hexToRgba(accent.color, 0.35),
                         background: hexToRgba(accent.color, 0.12),
                         color: accent.color,
+                      }}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/eventId', ev.id)
+                        e.dataTransfer.setData('text/eventDuration', String(ev.endAt - ev.startAt))
+                        e.dataTransfer.effectAllowed = 'move'
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        setContextMenu({ eventId: ev.id, x: e.clientX, y: e.clientY })
                       }}
                     >
                       <span className="agAllDayIcon" style={{ borderColor: hexToRgba(accent.color, 0.4) }}>
@@ -281,6 +391,26 @@ function AgendaMonthView(props: {
         })}
         </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="calContextMenu"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <button onClick={() => handleStartNow(contextMenu.eventId)}>Start Now</button>
+          <button onClick={() => handleStopNow(contextMenu.eventId)}>Stop Now</button>
+          <div className="calContextMenuDivider" />
+          <button onClick={() => { props.onSelectEvent?.(contextMenu.eventId); setContextMenu(null) }}>Edit</button>
+          <button onClick={() => handleDuplicate(contextMenu.eventId)}>Duplicate</button>
+          <div className="calContextMenuDivider" />
+          <button onClick={() => handleMoveTomorrow(contextMenu.eventId)}>Move to Tomorrow</button>
+          <button onClick={() => handleMoveNextWeek(contextMenu.eventId)}>Move to Next Week</button>
+          <div className="calContextMenuDivider" />
+          <button className="destructive" onClick={() => handleDelete(contextMenu.eventId)}>Delete</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -308,12 +438,92 @@ function AgendaTimelineView(props: {
   onMoveEvent: (eventId: string, startAt: number, endAt: number) => void
   onToggleComplete: (eventId: string) => void
   onSelectEvent: (eventId: string) => void
+  onUpdateEvent?: (eventId: string, updates: Partial<CalendarEvent>) => void
+  onDeleteEvent?: (eventId: string) => void
+  onDuplicateEvent?: (eventId: string) => void
   activeTagFilters: string[]
   onToggleTag: (tag: string) => void
   hideHeader?: boolean
   titleMode?: EventTitleMode
 }) {
   const titleMode = props.titleMode ?? 'compact'
+  const gridRef = useRef<HTMLDivElement>(null)
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<null | { eventId: string; x: number; y: number }>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!contextMenu) return
+    function handleClick(e: MouseEvent) {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null)
+      }
+    }
+    function handleContextMenu() {
+      setContextMenu(null)
+    }
+    window.addEventListener('click', handleClick)
+    window.addEventListener('contextmenu', handleContextMenu)
+    return () => {
+      window.removeEventListener('click', handleClick)
+      window.removeEventListener('contextmenu', handleContextMenu)
+    }
+  }, [contextMenu])
+
+  // Context menu handlers
+  function handleStartNow(eventId: string) {
+    const now = Date.now()
+    const ev = props.events.find(e => e.id === eventId)
+    if (ev && props.onUpdateEvent) {
+      props.onUpdateEvent(eventId, { startAt: now, endAt: Math.max(ev.endAt, now + 5 * 60 * 1000) })
+    }
+    setContextMenu(null)
+  }
+
+  function handleStopNow(eventId: string) {
+    const now = Date.now()
+    const ev = props.events.find(e => e.id === eventId)
+    if (ev && props.onUpdateEvent) {
+      props.onUpdateEvent(eventId, { endAt: now, active: false })
+    }
+    setContextMenu(null)
+  }
+
+  function handleDuplicate(eventId: string) {
+    if (props.onDuplicateEvent) {
+      props.onDuplicateEvent(eventId)
+    }
+    setContextMenu(null)
+  }
+
+  function handleDelete(eventId: string) {
+    if (props.onDeleteEvent) {
+      props.onDeleteEvent(eventId)
+    }
+    setContextMenu(null)
+  }
+
+  function handleMoveTomorrow(eventId: string) {
+    const ev = props.events.find(e => e.id === eventId)
+    if (ev && props.onUpdateEvent) {
+      const dur = ev.endAt - ev.startAt
+      const newStart = ev.startAt + 24 * 60 * 60 * 1000
+      props.onUpdateEvent(eventId, { startAt: newStart, endAt: newStart + dur })
+    }
+    setContextMenu(null)
+  }
+
+  function handleMoveNextWeek(eventId: string) {
+    const ev = props.events.find(e => e.id === eventId)
+    if (ev && props.onUpdateEvent) {
+      const dur = ev.endAt - ev.startAt
+      const newStart = ev.startAt + 7 * 24 * 60 * 60 * 1000
+      props.onUpdateEvent(eventId, { startAt: newStart, endAt: newStart + dur })
+    }
+    setContextMenu(null)
+  }
   const dayCount = props.mode === 'week' ? 7 : props.mode === '3day' ? 3 : 1
   const days = Array.from({ length: dayCount }).map((_, i) => addDays(props.date, i))
   const rangeStart = startOfDayMs(days[0]!)
@@ -366,10 +576,22 @@ function AgendaTimelineView(props: {
   }, [filtered, rangeEnd, rangeStart])
 
   const [draft, setDraft] = useState<null | { dayStart: number; startMin: number; endMin: number }>(null)
+  const [drag, setDrag] = useState<null | { id: string; dayStart: number; offsetMin: number; durationMin: number }>(null)
+
+  // Current time indicator - updates every minute
+  const [nowMinute, setNowMinute] = useState(() => minuteOfDay(Date.now()))
+  const todayDayStart = startOfDayMs(new Date())
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowMinute(minuteOfDay(Date.now()))
+    }, 60 * 1000) // Update every minute
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     function onMove(e: MouseEvent) {
-      if (!draft) return
+      if (!draft && !drag) return
       const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
       const dayCol = el?.closest('.agDayCol') as HTMLDivElement | null
       if (!dayCol) return
@@ -379,22 +601,41 @@ function AgendaTimelineView(props: {
       const rect = dayCol.getBoundingClientRect()
       const y = Math.max(0, Math.min(rect.height, e.clientY - rect.top))
       const minuteOffset = Math.floor((y / rect.height) * totalMinutes)
-      const minute = quantizeTo(startBaseMinutes + minuteOffset, slotMinutes)
-      setDraft((d) => {
-        if (!d) return d
-        return { dayStart, startMin: d.startMin, endMin: minute }
-      })
+      const minute = quantizeTo(startBaseMinutes + minuteOffset, SNAP_INTERVAL)
+
+      if (draft) {
+        setDraft((d) => {
+          if (!d) return d
+          return { dayStart, startMin: d.startMin, endMin: minute }
+        })
+        return
+      }
+
+      if (drag) {
+        // Move event in real-time, snapping to 5-minute intervals
+        const startMin = Math.max(0, Math.min(totalMinutes - drag.durationMin, minute - drag.offsetMin))
+        const snappedStartMin = quantizeTo(startMin, SNAP_INTERVAL)
+        const startAt = dayStart + snappedStartMin * 60 * 1000
+        const endAt = startAt + drag.durationMin * 60 * 1000
+        props.onMoveEvent(drag.id, startAt, endAt)
+        setDrag((d) => d ? { ...d, dayStart } : null)
+      }
     }
 
     function onUp() {
-      if (!draft) return
-      const startMin = Math.min(draft.startMin, draft.endMin)
-      const endMin = Math.max(draft.startMin, draft.endMin)
-      const durMin = Math.max(slotMinutes, endMin - startMin)
-      const startAt = draft.dayStart + startMin * 60 * 1000
-      const endAt = startAt + durMin * 60 * 1000
-      setDraft(null)
-      props.onRequestCreateEvent({ startAt, endAt, kind: 'event' })
+      if (draft) {
+        const startMin = Math.min(draft.startMin, draft.endMin)
+        const endMin = Math.max(draft.startMin, draft.endMin)
+        const durMin = Math.max(slotMinutes, endMin - startMin)
+        const startAt = draft.dayStart + startMin * 60 * 1000
+        const endAt = startAt + durMin * 60 * 1000
+        setDraft(null)
+        props.onRequestCreateEvent({ startAt, endAt, kind: 'event' })
+        return
+      }
+      if (drag) {
+        setDrag(null)
+      }
     }
 
     window.addEventListener('mousemove', onMove)
@@ -403,9 +644,10 @@ function AgendaTimelineView(props: {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
-  }, [draft, props, slotMinutes, startBaseMinutes, totalMinutes])
+  }, [draft, drag, props, slotMinutes, slotRows, slotHeight, startBaseMinutes, totalMinutes])
 
   const rootClass = props.mode === 'week' ? 'agRoot agWeek' : props.mode === '3day' ? 'agRoot agThreeDay' : 'agRoot'
+  const isDragging = Boolean(draft) || Boolean(drag)
   const headerCols = `${timeColWidth}px repeat(${dayCount}, 1fr)`
 
   return (
@@ -414,6 +656,7 @@ function AgendaTimelineView(props: {
       style={{
         ['--ag-slot-h' as any]: `${slotHeight}px`,
         ['--ag-slot-rows' as any]: slotRows,
+        cursor: isDragging ? 'grabbing' : undefined,
       }}>
       {props.hideHeader ? null : (
         <div className="agHeader">
@@ -535,7 +778,7 @@ function AgendaTimelineView(props: {
         })}
       </div>
 
-      <div className="agGrid">
+      <div className="agGrid" ref={gridRef}>
         <div className="agGridInner" style={{ gridTemplateColumns: headerCols }}>
           <div className="agTimeCol">
             {slots.map((minute) => {
@@ -565,29 +808,67 @@ function AgendaTimelineView(props: {
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   e.preventDefault()
-                  const eventId = e.dataTransfer.getData('text/eventId')
-                  const durMs = Number(e.dataTransfer.getData('text/eventDuration') || 0)
-                  if (!eventId || !Number.isFinite(durMs) || durMs <= 0) return
                   const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
                   const y = Math.max(0, Math.min(rect.height, e.clientY - rect.top))
                   const minuteOffset = Math.floor((y / rect.height) * totalMinutes)
-                  const minute = quantizeTo(startBaseMinutes + minuteOffset, slotMinutes)
+                  const minute = quantizeTo(startBaseMinutes + minuteOffset, SNAP_INTERVAL)
                   const startAt = dayStart + minute * 60 * 1000
-                  props.onMoveEvent(eventId, startAt, startAt + durMs)
+
+                  // Handle task drop from sidebar
+                  const taskTitle = e.dataTransfer.getData('text/taskTitle')
+                  const taskId = e.dataTransfer.getData('text/taskId') || null
+                  if (taskTitle) {
+                    props.onCreateEvent({ title: taskTitle, startAt, endAt: startAt + 60 * 60 * 1000, kind: 'task', taskId })
+                    return
+                  }
+
+                  // Handle habit drop from sidebar
+                  const habitRaw = e.dataTransfer.getData('application/insight5-habit')
+                  if (habitRaw) {
+                    try {
+                      const habit = JSON.parse(habitRaw) as { id: string; name: string; tags?: string[]; category?: string | null; subcategory?: string | null; estimateMinutes?: number | null }
+                      const minutes = Math.max(10, habit.estimateMinutes ?? 15)
+                      props.onCreateEvent({
+                        title: habit.name,
+                        startAt,
+                        endAt: startAt + minutes * 60 * 1000,
+                        kind: 'log',
+                        trackerKey: `habit:${habit.id}`,
+                        tags: [...new Set(['#habit', ...(habit.tags ?? [])])],
+                        category: habit.category ?? null,
+                        subcategory: habit.subcategory ?? null,
+                      })
+                    } catch {
+                      // ignore malformed payload
+                    }
+                    return
+                  }
                 }}
                 onMouseDown={(e) => {
                   if (e.button !== 0 || (e.target as HTMLElement).closest('.agEvent')) return
                   const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
                   const y = Math.max(0, Math.min(rect.height, e.clientY - rect.top))
                   const minuteOffset = Math.floor((y / rect.height) * totalMinutes)
-                  const minute = quantizeTo(startBaseMinutes + minuteOffset, slotMinutes)
-                  setDraft({ dayStart, startMin: minute, endMin: minute + slotMinutes })
+                  const minute = quantizeTo(startBaseMinutes + minuteOffset, SNAP_INTERVAL)
+                  setDraft({ dayStart, startMin: minute, endMin: minute + SNAP_INTERVAL })
                 }}
               >
                 {slots.map((minute) => {
                   const isHour = minute % 60 === 0
                   return <div key={minute} className={isHour ? 'agRow hour' : 'agRow'} />
                 })}
+
+                {/* Current time indicator line */}
+                {isToday && nowMinute >= startBaseMinutes && nowMinute <= totalMinutes && (
+                  <div
+                    className="agNowIndicator"
+                    style={{ top: `${((nowMinute - startBaseMinutes) / totalMinutes) * 100}%` }}
+                  >
+                    <div className="agNowDot" />
+                    <div className="agNowLine" />
+                  </div>
+                )}
+
                 {dayEvents.map((ev) => {
                   const accent = eventAccent(ev)
                   const startMin = minuteOfDay(ev.startAt)
@@ -617,26 +898,25 @@ function AgendaTimelineView(props: {
                         width: `calc(${widthPct}% - 8px)`,
                         borderColor: hexToRgba(accent.color, 0.32),
                         background: hexToRgba(accent.color, 0.16),
-                        ['--card-glow' as any]: hexToRgba(accent.color, 0.35),
+                        cursor: isDragging ? 'grabbing' : 'grab',
                       }}
-                      draggable
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData('text/eventId', ev.id)
-                        e.dataTransfer.setData('text/eventDuration', String(ev.endAt - ev.startAt))
-                        e.dataTransfer.effectAllowed = 'move'
-                      }}
-                      onPointerMove={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect()
-                        const x = e.clientX - rect.left
-                        const y = e.clientY - rect.top
-                        e.currentTarget.style.setProperty('--card-x', `${x}px`)
-                        e.currentTarget.style.setProperty('--card-y', `${y}px`)
-                      }}
-                      onPointerLeave={(e) => {
-                        e.currentTarget.style.setProperty('--card-x', '50%')
-                        e.currentTarget.style.setProperty('--card-y', '50%')
+                      onMouseDown={(e) => {
+                        if (e.button !== 0) return
+                        e.stopPropagation()
+                        // Calculate where within the event the user clicked
+                        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+                        const clickY = e.clientY - rect.top
+                        const eventHeightPx = rect.height
+                        const durationMin = Math.round((ev.endAt - ev.startAt) / (60 * 1000))
+                        const offsetMin = Math.round((clickY / eventHeightPx) * durationMin)
+                        setDrag({ id: ev.id, dayStart, offsetMin, durationMin })
                       }}
                       onClick={() => props.onSelectEvent(ev.id)}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        setContextMenu({ eventId: ev.id, x: e.clientX, y: e.clientY })
+                      }}
                     >
                       <div className="agStripe" style={{ background: hexToRgba(accent.color, 0.9) }} />
                       <div className="agEventTitleRow">
@@ -687,6 +967,26 @@ function AgendaTimelineView(props: {
           })}
         </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="calContextMenu"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <button onClick={() => handleStartNow(contextMenu.eventId)}>Start Now</button>
+          <button onClick={() => handleStopNow(contextMenu.eventId)}>Stop Now</button>
+          <div className="calContextMenuDivider" />
+          <button onClick={() => { props.onSelectEvent(contextMenu.eventId); setContextMenu(null) }}>Edit</button>
+          <button onClick={() => handleDuplicate(contextMenu.eventId)}>Duplicate</button>
+          <div className="calContextMenuDivider" />
+          <button onClick={() => handleMoveTomorrow(contextMenu.eventId)}>Move to Tomorrow</button>
+          <button onClick={() => handleMoveNextWeek(contextMenu.eventId)}>Move to Next Week</button>
+          <div className="calContextMenuDivider" />
+          <button className="destructive" onClick={() => handleDelete(contextMenu.eventId)}>Delete</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -714,6 +1014,9 @@ export function AgendaView(props: {
   onMoveEvent: (eventId: string, startAt: number, endAt: number) => void
   onToggleComplete: (eventId: string) => void
   onSelectEvent: (eventId: string) => void
+  onUpdateEvent?: (eventId: string, updates: Partial<CalendarEvent>) => void
+  onDeleteEvent?: (eventId: string) => void
+  onDuplicateEvent?: (eventId: string) => void
   activeTagFilters: string[]
   onToggleTag: (tag: string) => void
   hideHeader?: boolean
@@ -729,6 +1032,11 @@ export function AgendaView(props: {
         events={props.events}
         onRequestCreateEvent={props.onRequestCreateEvent}
         onCreateEvent={props.onCreateEvent}
+        onMoveEvent={props.onMoveEvent}
+        onSelectEvent={props.onSelectEvent}
+        onUpdateEvent={props.onUpdateEvent}
+        onDeleteEvent={props.onDeleteEvent}
+        onDuplicateEvent={props.onDuplicateEvent}
         hideHeader={props.hideHeader}
         titleMode={props.titleMode}
         mode={props.mode}
@@ -749,6 +1057,9 @@ export function AgendaView(props: {
         onMoveEvent={props.onMoveEvent}
         onToggleComplete={props.onToggleComplete}
         onSelectEvent={props.onSelectEvent}
+        onUpdateEvent={props.onUpdateEvent}
+        onDeleteEvent={props.onDeleteEvent}
+        onDuplicateEvent={props.onDuplicateEvent}
         activeTagFilters={props.activeTagFilters}
         onToggleTag={props.onToggleTag}
         hideHeader={props.hideHeader}

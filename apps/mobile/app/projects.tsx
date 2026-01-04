@@ -3,17 +3,14 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, FlatLi
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useTheme } from '@/src/state/theme';
 import { InsightIcon } from '@/src/components/InsightIcon';
 import { listProjects, addProject, deleteProject, type Project } from '@/src/storage/projects';
 
 export default function ProjectsScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useTheme();
   const insets = useSafeAreaInsets();
-  const isDark = colorScheme === 'dark';
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [newProjectName, setNewProjectName] = useState('');
@@ -54,13 +51,13 @@ export default function ProjectsScreen() {
           style={[
             styles.input,
             { 
-              backgroundColor: isDark ? '#141a2a' : '#FFFFFF',
+              backgroundColor: palette.surface,
               color: palette.text,
-              borderColor: isDark ? 'rgba(148, 163, 184, 0.16)' : 'rgba(28, 28, 30, 0.06)'
+              borderColor: palette.border
             }
           ]}
           placeholder="Enter a new project..."
-          placeholderTextColor={palette.tabIconDefault}
+          placeholderTextColor={palette.textSecondary}
           value={newProjectName}
           onChangeText={setNewProjectName}
           onSubmitEditing={handleAddProject}
@@ -78,22 +75,22 @@ export default function ProjectsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          <View style={[styles.card, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF' }]}>
-            <Text style={[styles.emptyText, { color: palette.tabIconDefault }]}>
+          <View style={[styles.card, { backgroundColor: palette.surface }]}>
+            <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
               No active projects yet. Group your tasks into projects to stay organized.
             </Text>
           </View>
         }
         renderItem={({ item }) => (
-          <View style={[styles.projectItem, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF' }]}>
+          <View style={[styles.projectItem, { backgroundColor: palette.surface }]}>
             <View style={styles.projectInfo}>
               <Text style={[styles.projectName, { color: palette.text }]}>{item.name}</Text>
-              <Text style={[styles.projectDate, { color: palette.tabIconDefault }]}>
+              <Text style={[styles.projectDate, { color: palette.textSecondary }]}>
                 Created {new Date(item.createdAt).toLocaleDateString()}
               </Text>
             </View>
             <TouchableOpacity onPress={() => handleDeleteProject(item.id)} style={styles.deleteButton}>
-              <InsightIcon name="plus" size={18} color={isDark ? 'rgba(148,163,184,0.4)' : 'rgba(28,28,30,0.3)'} />
+              <InsightIcon name="plus" size={18} color={palette.border} />
             </TouchableOpacity>
           </View>
         )}

@@ -1,14 +1,122 @@
 import { db } from '../db/insight-db'
+import type { WeightUnit, DistanceUnit } from '../db/insight-db'
+import { deleteWorkoutFromSupabase, syncWorkoutToSupabase } from '../supabase/sync'
 
 export type WorkoutType = 'strength' | 'cardio' | 'mobility' | 'recovery' | 'mixed'
 
 export type ExerciseSet = {
   reps?: number
-  weight?: number           // in lbs
+  weight?: number
+  weightUnit?: WeightUnit   // lbs or kg
   duration?: number         // in seconds
-  distance?: number         // in meters
+  distance?: number
+  distanceUnit?: DistanceUnit
   rpe?: number              // Rate of Perceived Exertion (1-10)
   restSeconds?: number
+}
+
+// Smart context tracking for set additions
+type WorkoutContext = {
+  workout: Workout | null
+  lastExercise: Exercise | null
+  lastSetDefaults: Partial<ExerciseSet>
+  timestamp: number
+}
+
+const CONTEXT_EXPIRY_MS = 30 * 60 * 1000 // 30 minutes
+
+let workoutContext: WorkoutContext = {
+  workout: null,
+  lastExercise: null,
+  lastSetDefaults: {},
+  timestamp: 0,
+}
+
+// Get the current workout context (if still valid)
+export function getWorkoutContext(): WorkoutContext | null {
+  if (Date.now() - workoutContext.timestamp > CONTEXT_EXPIRY_MS) {
+    clearWorkoutContext()
+    return null
+  }
+  return workoutContext.workout ? workoutContext : null
+}
+
+// Update workout context after logging a workout or exercise
+export function updateWorkoutContext(workout: Workout, exercise?: Exercise, set?: ExerciseSet) {
+  workoutContext = {
+    workout,
+    lastExercise: exercise ?? workout.exercises[workout.exercises.length - 1] ?? null,
+    lastSetDefaults: set ? { reps: set.reps, weight: set.weight, weightUnit: set.weightUnit } : {},
+    timestamp: Date.now(),
+  }
+}
+
+// Clear the workout context
+export function clearWorkoutContext() {
+  workoutContext = {
+    workout: null,
+    lastExercise: null,
+    lastSetDefaults: {},
+    timestamp: 0,
+  }
+}
+
+// Append a set to the most recent exercise in context
+export async function appendSetToRecentExercise(set: ExerciseSet): Promise<boolean> {
+  const ctx = getWorkoutContext()
+  if (!ctx?.workout || !ctx.lastExercise) return false
+
+  // Find the exercise in the workout
+  const workout = await getWorkout(ctx.workout.id)
+  if (!workout) return false
+
+  const exerciseIndex = workout.exercises.findIndex(ex => ex.id === ctx.lastExercise?.id)
+  if (exerciseIndex === -1) return false
+
+  // Merge set with defaults from last set
+  const mergedSet: ExerciseSet = {
+    reps: set.reps ?? ctx.lastSetDefaults.reps,
+    weight: set.weight ?? ctx.lastSetDefaults.weight,
+    weightUnit: set.weightUnit ?? ctx.lastSetDefaults.weightUnit,
+    duration: set.duration,
+    distance: set.distance,
+    rpe: set.rpe,
+    restSeconds: set.restSeconds,
+  }
+
+  // Add the set
+  workout.exercises[exerciseIndex].sets.push(mergedSet)
+  await saveWorkout(workout)
+
+  // Update context with new set
+  updateWorkoutContext(workout, workout.exercises[exerciseIndex], mergedSet)
+
+  return true
+}
+
+// Append a set to a specific exercise by name
+export async function appendSetToExerciseByName(exerciseName: string, set: ExerciseSet): Promise<boolean> {
+  const ctx = getWorkoutContext()
+  if (!ctx?.workout) return false
+
+  const workout = await getWorkout(ctx.workout.id)
+  if (!workout) return false
+
+  // Find exercise by name (case-insensitive)
+  const normalizedName = exerciseName.toLowerCase().trim()
+  const exerciseIndex = workout.exercises.findIndex(
+    ex => ex.name.toLowerCase().trim() === normalizedName
+  )
+  if (exerciseIndex === -1) return false
+
+  // Add the set
+  workout.exercises[exerciseIndex].sets.push(set)
+  await saveWorkout(workout)
+
+  // Update context
+  updateWorkoutContext(workout, workout.exercises[exerciseIndex], set)
+
+  return true
 }
 
 export type Exercise = {
@@ -123,13 +231,21 @@ export function parseWorkoutFromText(text: string): Partial<Workout> | null {
 
   // Detect workout type
   let workoutType: WorkoutType = 'mixed'
-  if (/\b(cardio|run|running|treadmill|elliptical|cycling|zone 2)\b/i.test(text)) workoutType = 'cardio'
-  else if (/\b(lift|strength|bench|squat|deadlift|weights?)\b/i.test(text)) workoutType = 'strength'
-  else if (/\b(yoga|stretch|mobility|foam roll)\b/i.test(text)) workoutType = 'mobility'
-  else if (/\b(sauna|cold plunge|recovery|massage)\b/i.test(text)) workoutType = 'recovery'
+  const hasCardio = /\b(cardio|run|running|treadmill|elliptical|cycling|zone\s*[2-5])\b/i.test(text)
+  const hasStrength = /\b(lift|strength|bench|squat|deadlift|weights?|push[-\s]?ups?|pull[-\s]?ups?|dips?|rows?|squats|lunges)\b/i.test(text)
+  const hasMobility = /\b(yoga|stretch|mobility|foam roll)\b/i.test(text)
+  const hasRecovery = /\b(sauna|cold plunge|recovery|massage)\b/i.test(text)
+
+  const flags = [hasCardio, hasStrength, hasMobility, hasRecovery].filter(Boolean).length
+  if (flags > 1) workoutType = 'mixed'
+  else if (hasCardio) workoutType = 'cardio'
+  else if (hasStrength) workoutType = 'strength'
+  else if (hasMobility) workoutType = 'mobility'
+  else if (hasRecovery) workoutType = 'recovery'
 
   // Parse "3 sets of 10 at 225" or "3x10 at 225" patterns
   const setPatterns = [
+    /(\d+)\s*(?:sets?\s+(?:of\s+)?)?(\d+)\s*(?:reps?)?\s*([a-zA-Z][a-zA-Z\s-]{2,40})\s*(?:at|@)\s*(\d+)/gi,
     /(\d+)\s*(?:sets?\s+(?:of\s+)?)?(\d+)\s*(?:reps?)?\s*(?:at|@)\s*(\d+)/gi,
     /(\d+)\s*x\s*(\d+)\s*(?:at|@)\s*(\d+)/gi,
   ]
@@ -138,11 +254,13 @@ export function parseWorkoutFromText(text: string): Partial<Workout> | null {
     for (const match of text.matchAll(pattern)) {
       const numSets = parseInt(match[1], 10)
       const reps = parseInt(match[2], 10)
-      const weight = parseInt(match[3], 10)
+      const hasInlineName = match.length > 4
+      const weight = parseInt(hasInlineName ? match[4] : match[3], 10)
 
       // Try to find exercise name before this match
       const beforeMatch = text.slice(0, match.index).trim()
-      const exerciseName = beforeMatch.split(/[,.]/).pop()?.trim() || 'Exercise'
+      const inlineName = hasInlineName ? match[3]?.trim() : ''
+      const exerciseName = inlineName || beforeMatch.split(/[,.]/).pop()?.trim() || 'Exercise'
 
       const sets: ExerciseSet[] = Array(numSets).fill(null).map(() => ({ reps, weight }))
       exercises.push({
@@ -155,22 +273,113 @@ export function parseWorkoutFromText(text: string): Partial<Workout> | null {
   }
 
   // Parse cardio: "ran 3 miles in 24 minutes" or "30 minutes treadmill"
-  const cardioMatch = text.match(/(\d+)\s*(?:minutes?|mins?|m)\s*(?:on\s+)?(treadmill|elliptical|running|cycling)/i)
-    ?? text.match(/(?:ran|run|walked)\s*(\d+(?:\.\d+)?)\s*miles?\s*(?:in\s*)?(\d+)?\s*(?:minutes?|mins?)?/i)
+  const cardioMinutesMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:minutes?|mins?|m)\s*(?:on\s+)?(treadmill|elliptical|running|cycling|bike|rower|rowing|walk|walking)/i)
+  const cardioDistanceDeviceMatch = text.match(/(\d+(?:\.\d+)?)\s*(miles?|mi|kilometers?|km)\s*(?:on|in)\s*(?:the\s+)?(treadmill|elliptical|bike|cycling|rower|rowing|walk|walking)/i)
+  const cardioDistanceOnItMatch = text.match(/(\d+(?:\.\d+)?)\s*(miles?|mi|kilometers?|km)\s*(?:on|in)\s*it\b/i)
+  const cardioDistanceMatch = text.match(/(?:ran|run|walked|jogged|cycled|biked)\s*(\d+(?:\.\d+)?)\s*(miles?|mi|kilometers?|km)\s*(?:in\s*)?(\d+(?:\.\d+)?)?\s*(?:minutes?|mins?|m)?/i)
+  const cardioBareDistanceMatch = text.match(/(\d+(?:\.\d+)?)\s*(miles?|mi|kilometers?|km)\s*(?:in\s*)?(\d+(?:\.\d+)?)\s*(?:minutes?|mins?|m)/i)
+  const cardioDeviceHintMatch = text.match(/\b(treadmill|elliptical|running|cycling|bike|rower|rowing|walk|walking)\b/i)
 
-  if (cardioMatch) {
-    const duration = parseInt(cardioMatch[1] ?? cardioMatch[2] ?? '30', 10) * 60 // convert to seconds
+  if (cardioMinutesMatch || cardioDistanceDeviceMatch || cardioDistanceOnItMatch || cardioDistanceMatch || cardioBareDistanceMatch) {
+    const resolveCardioName = (raw?: string) => {
+      const normalized = (raw ?? '').toLowerCase()
+      if (normalized.includes('elliptical')) return 'Elliptical'
+      if (normalized.includes('treadmill')) return 'Treadmill'
+      if (normalized.includes('row')) return 'Rowing'
+      if (normalized.includes('bike') || normalized.includes('cycle')) return 'Cycling'
+      if (normalized.includes('walk')) return 'Walk'
+      if (normalized.includes('run') || normalized.includes('jog')) return 'Run'
+      return 'Cardio'
+    }
+
+    let durationSeconds: number | undefined
+    let distanceMiles: number | undefined
+    let name = 'Cardio'
+
+    if (cardioMinutesMatch) {
+      const minutes = Number(cardioMinutesMatch[1])
+      durationSeconds = Number.isFinite(minutes) ? Math.max(1, minutes) * 60 : undefined
+      name = resolveCardioName(cardioMinutesMatch[2])
+    }
+
+    const distanceMatch = cardioDistanceDeviceMatch ?? cardioDistanceMatch ?? cardioBareDistanceMatch ?? cardioDistanceOnItMatch
+    if (distanceMatch) {
+      const distance = Number(distanceMatch[1])
+      const unit = distanceMatch[2] ?? 'mi'
+      if (Number.isFinite(distance)) {
+        distanceMiles = /km|kilometer/.test(unit) ? distance * 0.621371 : distance
+      }
+      if (distanceMatch === cardioDistanceMatch || distanceMatch === cardioBareDistanceMatch) {
+        if (distanceMatch[3]) {
+          const minutes = Number(distanceMatch[3])
+          durationSeconds = Number.isFinite(minutes) ? Math.max(1, minutes) * 60 : durationSeconds
+        }
+      }
+      if (name === 'Cardio') {
+        const hint = cardioDistanceDeviceMatch?.[3] ?? cardioDeviceHintMatch?.[1]
+        name = resolveCardioName(hint)
+      }
+    }
+
+    if (name === 'Cardio') {
+      if (/\bwalk/.test(lower)) name = 'Walk'
+      if (/\b(run|ran|jog)\b/.test(lower)) name = 'Run'
+      if (/\b(cycle|bike)\b/.test(lower)) name = 'Cycling'
+    }
+
     exercises.push({
       id: `ex_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      name: cardioMatch[2] ?? 'Cardio',
+      name,
       type: 'cardio',
-      sets: [{ duration }],
+      sets: [{ duration: durationSeconds, distance: distanceMiles }],
     })
   }
 
-  // Parse RPE
+  for (const match of text.matchAll(/(\d+)\s*(push[-\s]?ups?|pull[-\s]?ups?|sit[-\s]?ups?|burpees|squats|lunges|jumping jacks|dips?|rows?)\b/gi)) {
+    const reps = parseInt(match[1], 10)
+    const name = match[2].replace(/\s+/g, ' ').trim()
+    if (!Number.isFinite(reps)) continue
+    exercises.push({
+      id: `ex_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      type: 'strength',
+      sets: [{ reps }],
+    })
+  }
+
+  const recoveryMatch = text.match(/\b(sauna|cold plunge|massage|stretch(?:ing)?|yoga|mobility|equestrian|horseback)\b.*?(\d+(?:\.\d+)?)\s*(minutes?|mins?|m|hours?|hrs?|h)\b/i)
+  if (recoveryMatch) {
+    const amount = Number(recoveryMatch[2])
+    const unit = recoveryMatch[3] ?? 'm'
+    const minutes = Number.isFinite(amount)
+      ? /h|hr|hour/.test(unit)
+        ? amount * 60
+        : amount
+      : null
+    if (minutes && minutes > 0) {
+      exercises.push({
+        id: `ex_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        name: recoveryMatch[1].replace(/\b\w/g, (c) => c.toUpperCase()),
+        type: /\b(sauna|cold plunge|massage)\b/i.test(recoveryMatch[1]) ? 'recovery' : 'mobility',
+        sets: [{ duration: Math.round(minutes) * 60 }],
+      })
+    }
+  }
+
   const rpeMatch = text.match(/\b(?:rpe|difficulty|intensity)\s*(?:was|of|:)?\s*(\d{1,2})/i)
-  const overallRpe = rpeMatch ? Math.min(10, parseInt(rpeMatch[1], 10)) : undefined
+  const rpeFromWords =
+    /\b(max|all[-\s]?out)\b/.test(lower)
+      ? 10
+      : /\b(really hard|very hard|brutal)\b/.test(lower)
+        ? 9
+        : /\bhard\b/.test(lower)
+          ? 8
+          : /\bmoderate|medium\b/.test(lower)
+            ? 6
+            : /\beasy|light\b/.test(lower)
+              ? 4
+              : undefined
+  const overallRpe = rpeMatch ? Math.min(10, parseInt(rpeMatch[1], 10)) : rpeFromWords
 
   if (exercises.length === 0) return null
 
@@ -191,6 +400,7 @@ export async function saveWorkout(workout: Workout): Promise<string> {
     updatedAt: now,
   }
   await db.workouts.put(toSave)
+  void syncWorkoutToSupabase(toSave)
   return toSave.id
 }
 
@@ -218,7 +428,11 @@ export async function getRecentWorkouts(limit = 20): Promise<Workout[]> {
 }
 
 export async function deleteWorkout(id: string): Promise<void> {
+  const existing = await db.workouts.get(id)
   await db.workouts.delete(id)
+  if (existing) {
+    void deleteWorkoutFromSupabase(existing)
+  }
 }
 
 export async function getWorkoutStats(startMs: number, endMs: number): Promise<{

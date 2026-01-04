@@ -70,22 +70,22 @@ function ReportCard(props: { title: string; rows: ReportRow[]; icon: any }) {
   return (
     <div className="glassCard space-y-6">
       <div className="flex items-center gap-3">
-        <Icon name={props.icon} size={16} className="text-[#D95D39]" />
-        <h3 className="text-xs font-black uppercase tracking-widest text-[#86868B]">{props.title}</h3>
+        <Icon name={props.icon} size={16} className="text-[var(--accent)]" />
+        <h3 className="text-xs font-black uppercase tracking-widest text-[var(--muted)]">{props.title}</h3>
       </div>
       {props.rows.length === 0 ? (
         <div className="py-10 text-center opacity-30 text-[10px] font-bold uppercase tracking-widest">No data</div>
       ) : (
         <div className="space-y-3">
           {props.rows.map((row) => (
-            <div key={row.key} className="flex items-center justify-between p-4 bg-[#F2F0ED]/50 rounded-2xl transition-all hover:bg-white hover:shadow-md group">
+            <div key={row.key} className="flex items-center justify-between p-4 bg-[var(--panel)]/50 rounded-2xl transition-all hover:bg-[var(--panel)] hover:shadow-md group">
               <div className="space-y-1">
-                <div className="text-sm font-bold text-[#1C1C1E]">{row.label}</div>
-                <div className="text-[10px] font-bold text-[#86868B] uppercase tracking-tighter opacity-60">{row.count} entries</div>
+                <div className="text-sm font-bold text-[var(--text)]">{row.label}</div>
+                <div className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-tighter opacity-60">{row.count} entries</div>
               </div>
               <div className="text-right">
-                <div className="text-xs font-black text-[#1C1C1E]">{formatMinutes(row.minutes)}</div>
-                <div className="text-[10px] font-black text-[#5B5F97] uppercase tracking-widest">{formatPoints(row.points)}</div>
+                <div className="text-xs font-black text-[var(--text)]">{formatMinutes(row.minutes)}</div>
+                <div className="text-[10px] font-black text-[var(--accent)] uppercase tracking-widest">{formatPoints(row.points)}</div>
               </div>
             </div>
           ))}
@@ -173,12 +173,12 @@ export function ReportsView(props: { events: CalendarEvent[]; tasks: Task[] }) {
   }, [includeLogs, includeTasks, props.events, props.tasks, rangeStart])
 
   return (
-    <div className="flex flex-col h-full bg-[#F8F7F4] text-[#1C1C1E] font-['Figtree'] overflow-hidden">
-      <div className="px-10 pt-10 pb-6 bg-[#F8F7F4]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
+      <div className="px-10 pt-10 pb-6 bg-[var(--bg)]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-3xl font-extrabold tracking-tight text-gradient">Reports</h1>
-            <p className="text-sm text-[#86868B] font-semibold uppercase tracking-widest">Deep dive into your data.</p>
+            <p className="text-sm text-[var(--muted)] font-semibold uppercase tracking-widest">Deep dive into your data.</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex p-1 bg-white/50 backdrop-blur border border-white/20 rounded-2xl shadow-sm">
@@ -187,7 +187,7 @@ export function ReportsView(props: { events: CalendarEvent[]; tasks: Task[] }) {
                   key={k}
                   onClick={() => setRange(k)}
                   className={`px-6 py-2 text-xs font-bold rounded-xl transition-all ${
-                    range === k ? 'bg-white shadow-md text-[#1C1C1E]' : 'text-[#86868B] hover:text-[#1C1C1E]'
+                    range === k ? 'bg-white shadow-md text-[var(--text)]' : 'text-[var(--muted)] hover:text-[var(--text)]'
                   }`}
                 >
                   <span className="uppercase">{k}</span>
@@ -206,7 +206,7 @@ export function ReportsView(props: { events: CalendarEvent[]; tasks: Task[] }) {
                         checked={includeLogs} 
                         onChange={(e) => setIncludeLogs(e.target.checked)} 
                     />
-                    <span className="text-xs font-bold text-[#86868B] group-hover:text-[#1C1C1E] transition-colors uppercase tracking-widest">Logs</span>
+                    <span className="text-xs font-bold text-[var(--muted)] group-hover:text-[var(--text)] transition-colors uppercase tracking-widest">Logs</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer group">
                     <input 
@@ -215,7 +215,7 @@ export function ReportsView(props: { events: CalendarEvent[]; tasks: Task[] }) {
                         checked={includeTasks} 
                         onChange={(e) => setIncludeTasks(e.target.checked)} 
                     />
-                    <span className="text-xs font-bold text-[#86868B] group-hover:text-[#1C1C1E] transition-colors uppercase tracking-widest">Tasks</span>
+                    <span className="text-xs font-bold text-[var(--muted)] group-hover:text-[var(--text)] transition-colors uppercase tracking-widest">Tasks</span>
                 </label>
             </div>
             
@@ -223,16 +223,16 @@ export function ReportsView(props: { events: CalendarEvent[]; tasks: Task[] }) {
 
             <div className="flex items-center gap-10">
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[#86868B]">Total Time</span>
-                    <span className="text-lg font-black text-[#1C1C1E]">{formatMinutes(metrics.totalMinutes)}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Total Time</span>
+                    <span className="text-lg font-black text-[var(--text)]">{formatMinutes(metrics.totalMinutes)}</span>
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[#86868B]">Total Impact</span>
-                    <span className="text-lg font-black text-[#5B5F97]">{formatPoints(metrics.totalPoints)}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Total Impact</span>
+                    <span className="text-lg font-black text-[var(--accent)]">{formatPoints(metrics.totalPoints)}</span>
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[#86868B]">Entries</span>
-                    <span className="text-lg font-black text-[#488B86]">{metrics.entryCount}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Entries</span>
+                    <span className="text-lg font-black text-[var(--accent)]">{metrics.entryCount}</span>
                 </div>
             </div>
         </div>

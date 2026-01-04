@@ -3,8 +3,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useTheme } from '@/src/state/theme';
 import { InsightIcon, type InsightIconName } from '@/src/components/InsightIcon';
 
 type MenuItem = {
@@ -15,23 +14,24 @@ type MenuItem = {
 };
 
 const MENU_ITEMS: MenuItem[] = [
+  { label: 'Explore', icon: 'file', route: '/explore', color: '#D95D39' },
   { label: 'Goals', icon: 'target', route: '/goals', color: '#D95D39' },
   { label: 'Projects', icon: 'briefcase', route: '/projects', color: '#5B5F97' },
   { label: 'Rewards', icon: 'gift', route: '/rewards', color: '#EAB308' },
   { label: 'Reports', icon: 'barChart', route: '/reports', color: '#10B981' },
+  { label: 'Health', icon: 'target', route: '/health', color: '#22C55E' },
+  { label: 'Trackers', icon: 'sparkle', route: '/trackers', color: '#F97316' },
   { label: 'People', icon: 'users', route: '/people', color: '#3B82F6' },
   { label: 'Places', icon: 'pin', route: '/places', color: '#F43F5E' },
   { label: 'Tags', icon: 'tag', route: '/tags', color: '#8B5CF6' },
+  { label: 'Ecosystem', icon: 'node', route: '/ecosystem', color: '#06B6D4' },
   { label: 'Settings', icon: 'settings', route: '/settings', color: '#64748B' },
 ];
 
 export default function MoreScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette, sizes, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-
-  const isDark = colorScheme === 'dark';
 
   return (
     <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
@@ -46,9 +46,9 @@ export default function MoreScreen() {
             activeOpacity={0.7}
             style={[
               styles.card,
-              { 
-                backgroundColor: isDark ? '#141a2a' : '#FFFFFF',
-                borderColor: isDark ? 'rgba(148, 163, 184, 0.16)' : 'rgba(28, 28, 30, 0.06)',
+              {
+                backgroundColor: palette.surface,
+                borderColor: palette.border,
                 borderWidth: 1
               }
             ]}

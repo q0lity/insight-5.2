@@ -3,8 +3,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, FlatLi
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useTheme } from '@/src/state/theme';
 import { InsightIcon } from '@/src/components/InsightIcon';
 import { listEvents, type MobileEvent } from '@/src/storage/events';
 
@@ -15,10 +14,8 @@ type TagStat = {
 
 export default function TagsScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useTheme();
   const insets = useSafeAreaInsets();
-  const isDark = colorScheme === 'dark';
 
   const [events, setEvents] = useState<MobileEvent[]>([]);
   const [search, setSearch] = useState('');
@@ -59,12 +56,12 @@ export default function TagsScreen() {
       </View>
 
       <View style={styles.searchContainer}>
-        <View style={[styles.searchBar, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF', borderColor: isDark ? 'rgba(148, 163, 184, 0.16)' : 'rgba(28, 28, 30, 0.06)' }]}>
-          <InsightIcon name="tag" size={18} color={palette.tabIconDefault} />
+        <View style={[styles.searchBar, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <InsightIcon name="tag" size={18} color={palette.textSecondary} />
           <TextInput
             style={[styles.searchInput, { color: palette.text }]}
             placeholder="Search tags..."
-            placeholderTextColor={palette.tabIconDefault}
+            placeholderTextColor={palette.textSecondary}
             value={search}
             onChangeText={setSearch}
           />
@@ -78,15 +75,15 @@ export default function TagsScreen() {
         columnWrapperStyle={styles.listRow}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          <View style={[styles.card, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF' }]}>
-            <Text style={[styles.emptyText, { color: palette.tabIconDefault }]}>
+          <View style={[styles.card, { backgroundColor: palette.surface }]}>
+            <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
               No tags found. Add tags to your events to see them here.
             </Text>
           </View>
         }
         renderItem={({ item }) => (
           <TouchableOpacity 
-            style={[styles.tagItem, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF' }]}
+            style={[styles.tagItem, { backgroundColor: palette.surface }]}
             onPress={() => {}}
           >
             <Text style={[styles.tagName, { color: palette.text }]}>#{item.tag}</Text>

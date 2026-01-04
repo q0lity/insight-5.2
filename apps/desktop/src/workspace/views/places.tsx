@@ -45,16 +45,16 @@ export function PlacesView(props: { events: CalendarEvent[]; onSelectEvent: (id:
   }, [active, props.events])
 
   return (
-    <div className="flex flex-col h-full bg-[#F8F7F4] text-[#1C1C1E] font-['Figtree'] overflow-hidden">
-      <div className="px-10 pt-10 pb-6 bg-[#F8F7F4]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
+      <div className="px-10 pt-10 pb-6 bg-[var(--bg)]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-3xl font-extrabold tracking-tight text-gradient">Places</h1>
-            <p className="text-sm text-[#86868B] font-semibold">Analyze your environmental productivity.</p>
+            <p className="text-sm text-[var(--muted)] font-semibold">Analyze your environmental productivity.</p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="px-4 py-2 bg-white/50 backdrop-blur border border-white/20 rounded-full shadow-sm flex items-center gap-2">
-                <Icon name="pin" size={14} className="text-[#D95D39]" />
+            <div className="px-4 py-2 bg-[var(--panel)]/50 backdrop-blur border border-white/20 rounded-full shadow-sm flex items-center gap-2">
+                <Icon name="pin" size={14} className="text-[var(--accent)]" />
                 <span className="text-xs font-bold">{places.length} Locations</span>
             </div>
           </div>
@@ -63,7 +63,7 @@ export function PlacesView(props: { events: CalendarEvent[]; onSelectEvent: (id:
         <div className="flex items-center gap-6">
           <div className="flex-1 max-w-md relative">
             <input 
-              className="w-full h-11 bg-white/50 border border-black/5 rounded-2xl px-10 text-sm font-medium focus:bg-white focus:shadow-md transition-all outline-none"
+              className="w-full h-11 bg-[var(--panel)]/50 border border-black/5 rounded-2xl px-10 text-sm font-medium focus:bg-[var(--panel)] focus:shadow-md transition-all outline-none"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search places..."
@@ -85,23 +85,23 @@ export function PlacesView(props: { events: CalendarEvent[]; onSelectEvent: (id:
                   key={p.name}
                   layout
                   onClick={() => setActive(p.name)}
-                  className={`text-left p-4 rounded-[28px] border-2 transition-all flex flex-col gap-2 group ${active === p.name ? 'bg-white border-[#D95D39]/30 shadow-xl' : 'bg-white/40 border-transparent hover:bg-white/60 hover:border-black/5'}`}
+                  className={`text-left p-4 rounded-[28px] border-2 transition-all flex flex-col gap-2 group ${active === p.name ? 'bg-[var(--panel)] border-[#D95D39]/30 shadow-xl' : 'bg-[var(--panel)]/40 border-transparent hover:bg-[var(--panel)]/60 hover:border-black/5'}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                 >
                   <div className="flex justify-between items-start">
-                    <h3 className={`font-bold transition-colors ${active === p.name ? 'text-[#D95D39]' : 'text-[#1C1C1E]'}`}>{p.name}</h3>
-                    <span className="text-[10px] font-bold text-[#86868B] opacity-60">{p.lastAt ? new Date(p.lastAt).toLocaleDateString() : ''}</span>
+                    <h3 className={`font-bold transition-colors ${active === p.name ? 'text-[var(--accent)]' : 'text-[var(--text)]'}`}>{p.name}</h3>
+                    <span className="text-[10px] font-bold text-[var(--muted)] opacity-60">{p.lastAt ? new Date(p.lastAt).toLocaleDateString() : ''}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 px-2 py-1 bg-[#F2F0ED] rounded-lg">
-                        <Icon name="bolt" size={10} className="text-[#5B5F97]" />
-                        <span className="text-[10px] font-bold text-[#1C1C1E]">{p.points.toFixed(1)}</span>
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-[var(--panel)] rounded-lg">
+                        <Icon name="bolt" size={10} className="text-[var(--accent)]" />
+                        <span className="text-[10px] font-bold text-[var(--text)]">{p.points.toFixed(1)}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 px-2 py-1 bg-[#F2F0ED] rounded-lg">
-                        <Icon name="calendar" size={10} className="text-[#488B86]" />
-                        <span className="text-[10px] font-bold text-[#1C1C1E]">{Math.round(p.minutes)}m</span>
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-[var(--panel)] rounded-lg">
+                        <Icon name="calendar" size={10} className="text-[var(--accent)]" />
+                        <span className="text-[10px] font-bold text-[var(--text)]">{Math.round(p.minutes)}m</span>
                     </div>
                   </div>
                 </motion.button>
@@ -117,21 +117,21 @@ export function PlacesView(props: { events: CalendarEvent[]; onSelectEvent: (id:
               </div>
             ) : (
               <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="px-10 py-8 border-b border-black/5 flex items-center justify-between bg-white/50 backdrop-blur-sm">
+                <div className="px-10 py-8 border-b border-black/5 flex items-center justify-between bg-[var(--panel)]/50 backdrop-blur-sm">
                   <div className="space-y-1">
                     <h2 className="text-xl font-bold tracking-tight">{active}</h2>
-                    <p className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Environment Activity</p>
+                    <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Environment Activity</p>
                   </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-10 py-8 space-y-6">
                   {activeEvents.map((e) => (
-                    <button key={e.id} className="block w-full max-w-[33%] min-h-[96px] text-left p-6 bg-[#F2F0ED] rounded-2xl border border-transparent hover:border-[#D95D39]/20 hover:bg-white hover:shadow-lg transition-all group" onClick={() => props.onSelectEvent(e.id)}>
+                    <button key={e.id} className="block w-full max-w-[33%] min-h-[96px] text-left p-6 bg-[var(--panel)] rounded-2xl border border-transparent hover:border-[#D95D39]/20 hover:bg-[var(--panel)] hover:shadow-lg transition-all group" onClick={() => props.onSelectEvent(e.id)}>
                       <div className="flex justify-between items-start mb-3">
-                        <h4 className="font-bold text-[#1C1C1E] group-hover:text-[#D95D39] transition-colors">{e.title}</h4>
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-white rounded-md shadow-sm uppercase tracking-tighter">{new Date(e.startAt).toLocaleDateString()}</span>
+                        <h4 className="font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">{e.title}</h4>
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-[var(--panel)] rounded-md shadow-sm uppercase tracking-tighter">{new Date(e.startAt).toLocaleDateString()}</span>
                       </div>
-                      <div className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">
+                      <div className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">
                         {(e.category ?? 'Uncategorized')}{e.subcategory ? ` · ${e.subcategory}` : ''} · {pointsForEventSafe(e).toFixed(1)} pts
                       </div>
                     </button>

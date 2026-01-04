@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { Icon } from '../../ui/icons'
 import type { InboxCapture } from '../../storage/inbox'
 import type { CalendarEvent } from '../../storage/calendar'
@@ -76,7 +77,6 @@ export function AssistantView(props: {
   const [lastTaskHits, setLastTaskHits] = useState<LocalTaskHit[]>([])
   const [sending, setSending] = useState(false)
   const listRef = useRef<HTMLDivElement | null>(null)
-  const modeLabel = assistantMode === 'hybrid' ? 'Hybrid enabled' : assistantMode === 'local' ? 'Local only' : 'LLM enabled'
 
   useEffect(() => {
     if (!listRef.current) return
@@ -161,153 +161,121 @@ export function AssistantView(props: {
     }
   }
 
-  const embedded = Boolean(props.embedded)
-
   return (
-    <div className="flex flex-col h-full bg-[#F8F7F4] text-[#1C1C1E] font-['Figtree'] overflow-hidden">
-      {!embedded && (
-        <div className="px-10 pt-10 pb-6 bg-[#F8F7F4]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8 max-w-7xl mx-auto w-full">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h1 className="text-3xl font-extrabold tracking-tight">Insight Chat</h1>
-              <p className="text-sm text-[#86868B] font-semibold">Conversational access to your digital life.</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="px-4 py-2 text-xs font-bold rounded-2xl bg-white/50 backdrop-blur border border-white/20 text-[#86868B]">
-                {modeLabel}
+    <div className="flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
+      {/* Full-screen ChatGPT-style interface */}
+      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full overflow-hidden">
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto px-6 py-8" ref={listRef}>
+          {chat.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
+              <div className="w-24 h-24 bg-[var(--panel)] rounded-full flex items-center justify-center shadow-lg">
+                <Icon name="sparkle" size={40} className="text-[var(--accent)]" />
               </div>
-              <button 
-                onClick={() => setChat([])}
-                className="w-10 h-10 rounded-full bg-white border border-black/5 flex items-center justify-center text-[#86868B] hover:text-[#D95D39] transition-colors shadow-sm"
-              >
-                <Icon name="x" size={18} />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex-1 max-w-md relative">
-              <input 
-                type="password"
-                className="w-full h-11 bg-white/50 border border-black/5 rounded-2xl px-10 text-sm font-medium focus:bg-white focus:shadow-md transition-all outline-none"
-                value={openAiKey}
-                onChange={(e) => {
-                  const next = e.target.value
-                  setOpenAiKey(next)
-                  persist({ mode: assistantMode, openAiKey: next, chatModel })
-                }}
-                placeholder="OpenAI API Key (Optional)..."
-              />
-              <div className="absolute left-3.5 top-3.5 opacity-30">
-                  <Icon name="gear" size={16} />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className={`flex-1 flex gap-10 px-10 pb-32 max-w-7xl mx-auto w-full overflow-hidden ${embedded ? 'pt-4' : ''}`}>
-      <div className="flex-1 flex flex-col pageHero overflow-hidden relative">
-          <div className="flex-1 overflow-y-auto px-10 py-10 space-y-8" ref={listRef}>
-            {chat.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto space-y-6 opacity-40">
-                <div className="w-20 h-20 bg-[#F2F0ED] rounded-full flex items-center justify-center">
-                    <Icon name="mic" size={32} className="text-[#D95D39]" />
-                </div>
-                <p className="text-sm font-bold leading-relaxed">
-                  Ask me anything about your week, mentions of specific tags, or patterns in your productivity.
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold">How can I help you today?</h2>
+                <p className="text-[var(--muted)] text-sm max-w-md">
+                  Ask me anything about your week, patterns in your productivity, or insights from your data.
                 </p>
               </div>
-            ) : (
-              chat.map((m) => (
-                <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'} space-y-2`}>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#86868B] px-4">
-                    {m.role === 'user' ? 'You' : 'Insight'}
-                  </span>
-                  <div className={`max-w-[80%] px-6 py-4 rounded-[28px] text-lg font-medium leading-relaxed ${m.role === 'user' ? 'bg-[#D95D39] text-white shadow-lg' : 'bg-[#F2F0ED] text-[#1C1C1E]'}`}>
-                    {m.content}
+              <div className="flex flex-wrap gap-2 justify-center mt-4">
+                {['What did I work on this week?', 'Show my productivity trends', 'Summarize my tasks'].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    onClick={() => {
+                      setAssistantInput(suggestion)
+                      void send(suggestion)
+                    }}
+                    className="px-4 py-2 text-sm font-medium bg-[var(--panel)] hover:bg-[var(--accentSoft)] border border-[var(--border)] rounded-2xl transition-all"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {chat.map((m) => (
+                <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] ${m.role === 'user' ? 'order-2' : 'order-1'}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center ${m.role === 'user' ? 'bg-[var(--accent)]' : 'bg-[var(--panel)] border border-[var(--border)]'}`}>
+                        <Icon name={m.role === 'user' ? 'users' : 'sparkle'} size={14} className={m.role === 'user' ? 'text-white' : 'text-[var(--accent)]'} />
+                      </div>
+                      <span className="text-xs font-bold text-[var(--muted)]">
+                        {m.role === 'user' ? 'You' : 'Insight'}
+                      </span>
+                    </div>
+                    <div className={`px-5 py-4 rounded-2xl ${m.role === 'user' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--panel)] border border-[var(--border)]'}`}>
+                      {m.role === 'assistant' ? (
+                        <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-bold prose-headings:text-[var(--text)] prose-p:text-[var(--text)] prose-code:bg-[var(--bg)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-[var(--accent)] prose-pre:bg-[var(--bg)] prose-pre:border prose-pre:border-[var(--border)] prose-pre:rounded-xl prose-ul:text-[var(--text)] prose-ol:text-[var(--text)] prose-li:text-[var(--text)] prose-strong:text-[var(--text)] prose-a:text-[var(--accent)]">
+                          <ReactMarkdown>{m.content}</ReactMarkdown>
+                        </div>
+                      ) : (
+                        <p className="text-base leading-relaxed">{m.content}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              ))
-            )}
-            {sending && (
-                <div className="flex flex-col items-start space-y-2 animate-pulse">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#86868B] px-4">Insight</span>
-                    <div className="bg-[#F2F0ED] rounded-[28px] px-6 py-4 text-xs font-bold text-[#86868B] tracking-widest uppercase">
-                        Synthesizing...
+              ))}
+              {sending && (
+                <div className="flex justify-start">
+                  <div className="max-w-[85%]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center bg-[var(--panel)] border border-[var(--border)]">
+                        <Icon name="sparkle" size={14} className="text-[var(--accent)] animate-spin" />
+                      </div>
+                      <span className="text-xs font-bold text-[var(--muted)]">Insight</span>
                     </div>
+                    <div className="px-5 py-4 rounded-2xl bg-[var(--panel)] border border-[var(--border)]">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-[var(--muted)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-2 h-2 bg-[var(--muted)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-2 h-2 bg-[var(--muted)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-            )}
-          </div>
-
-          <div className="p-6 bg-white/80 backdrop-blur-md border-t border-black/5">
-            <div className="relative">
-              <textarea
-                className="w-full bg-[#F2F0ED] border-none rounded-[32px] pl-8 pr-20 py-5 text-lg font-medium outline-none focus:ring-4 focus:ring-[#D95D39]/5 transition-all resize-none min-h-[72px] max-h-[200px]"
-                value={assistantInput}
-                onChange={(e) => {
-                    setAssistantInput(e.target.value)
-                    e.target.style.height = 'auto'
-                    e.target.style.height = e.target.scrollHeight + 'px'
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    void send(assistantInput)
-                  }
-                }}
-                placeholder="How can I help you today?"
-                rows={1}
-              />
-              <button 
-                onClick={() => void send(assistantInput)}
-                disabled={assistantInput.trim().length === 0 || sending}
-                className="absolute right-3 top-3 w-12 h-12 bg-[#D95D39] text-white rounded-full flex items-center justify-center shadow-lg shadow-[#D95D39]/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:scale-100"
-              >
-                <Icon name="sparkle" size={20} className={sending ? 'animate-spin' : ''} />
-              </button>
+              )}
             </div>
-          </div>
+          )}
         </div>
 
-        {!embedded && (
-          <aside className="w-80 space-y-8 overflow-y-auto pr-2 custom-scrollbar">
-            <div className="space-y-6">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-[#86868B]">Related Context</h3>
-              
-              <div className="space-y-4">
-                <span className="text-[10px] font-bold text-[#D95D39] tracking-widest uppercase">Inbox</span>
-                {lastCaptureHits.length === 0 ? (
-                  <div className="text-xs font-bold opacity-30 italic">No context matched yet</div>
-                ) : (
-                  lastCaptureHits.map((h) => (
-                    <button key={h.id} className="w-full text-left p-4 bg-white rounded-2xl border border-black/5 shadow-sm hover:shadow-md transition-all group" onClick={() => props.onSelectCapture(h.id)}>
-                      <div className="text-[10px] font-bold text-[#86868B] mb-1">{new Date(h.createdAt).toLocaleDateString()}</div>
-                      <div className="text-xs font-semibold text-[#1C1C1E] line-clamp-2 leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">{h.snippet}</div>
-                    </button>
-                  ))
-                )}
-              </div>
-
-              <div className="space-y-4">
-                <span className="text-[10px] font-bold text-[#5B5F97] tracking-widest uppercase">Calendar</span>
-                {lastEventHits.length === 0 ? (
-                  <div className="text-xs font-bold opacity-30 italic">No context matched yet</div>
-                ) : (
-                  lastEventHits.map((h) => (
-                    <button key={h.id} className="w-full text-left p-4 bg-white rounded-2xl border border-black/5 shadow-sm hover:shadow-md transition-all group" onClick={() => props.onSelectEvent(h.id)}>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-bold text-[#5B5F97] uppercase tracking-tighter">{h.kind ?? 'event'}</span>
-                        <span className="text-[10px] font-bold text-[#86868B]">{new Date(h.startAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="text-xs font-semibold text-[#1C1C1E] line-clamp-2 leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">{h.snippet}</div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          </aside>
-        )}
+        {/* Input area - fixed at bottom */}
+        <div className="p-4 border-t border-[var(--border)] bg-[var(--bg)]">
+          <div className="relative max-w-3xl mx-auto">
+            <textarea
+              className="w-full bg-[var(--panel)] border border-[var(--border)] rounded-2xl pl-5 pr-14 py-4 text-base font-medium outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accentSoft)] transition-all resize-none"
+              value={assistantInput}
+              onChange={(e) => {
+                setAssistantInput(e.target.value)
+                e.target.style.height = 'auto'
+                e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px'
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  void send(assistantInput)
+                }
+              }}
+              placeholder="Message Insight..."
+              rows={1}
+              style={{ minHeight: '52px', maxHeight: '200px' }}
+            />
+            <button
+              onClick={() => void send(assistantInput)}
+              disabled={assistantInput.trim().length === 0 || sending}
+              className="absolute right-2 bottom-2 w-10 h-10 bg-[var(--accent)] text-white rounded-xl flex items-center justify-center hover:opacity-90 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <Icon name="sparkle" size={18} className={sending ? 'animate-spin' : ''} />
+            </button>
+          </div>
+          <div className="text-center mt-2">
+            <span className="text-[10px] text-[var(--muted)]">
+              Insight uses local search and optional LLM for answers
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   )

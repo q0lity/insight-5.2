@@ -9,19 +9,38 @@ export type ChatMessage = {
   createdAt: number
 }
 
+export type WeightUnit = 'lbs' | 'kg'
+export type DistanceUnit = 'mi' | 'km'
+
+// Available AI models for nutrition/workout estimation
+export const AI_MODELS = [
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast, cheaper' },
+  { id: 'gpt-4o', name: 'GPT-4o', description: 'More accurate' },
+  { id: 'gpt-4.1', name: 'GPT-4.1', description: 'Latest' },
+  { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', description: 'Fast, balanced' },
+] as const
+
 export type AssistantSettings = {
   mode: AssistantMode
   openAiKey?: string
   chatModel?: string
   parseModel?: string
+  // Nutrition/workout estimation model (can be different from parseModel)
+  nutritionModel?: string
+  // User preferences for health tracking
+  preferredWeightUnit?: WeightUnit
+  preferredDistanceUnit?: DistanceUnit
 }
 
 const CHAT_KEY = 'insight5.assistant.chat.v1'
 const SETTINGS_KEY = 'insight5.assistant.settings.v1'
 export const ASSISTANT_SETTINGS_CHANGED_EVENT = 'insight5.assistant.settings.changed'
 
-const DEFAULT_CHAT_MODEL = 'gpt-4.1-mini'
-const DEFAULT_PARSE_MODEL = 'gpt-4.1-mini'
+const DEFAULT_CHAT_MODEL = 'gpt-4o-mini'
+const DEFAULT_PARSE_MODEL = 'gpt-4o-mini'
+const DEFAULT_NUTRITION_MODEL = 'gpt-4o-mini'
+const DEFAULT_WEIGHT_UNIT: WeightUnit = 'lbs'
+const DEFAULT_DISTANCE_UNIT: DistanceUnit = 'mi'
 const DEFAULT_MODE: AssistantMode = 'hybrid'
 
 function makeId() {
@@ -55,12 +74,21 @@ export function appendChatMessage(messages: ChatMessage[], message: Omit<ChatMes
   return updated
 }
 
+const DEFAULT_SETTINGS: AssistantSettings = {
+  mode: DEFAULT_MODE,
+  chatModel: DEFAULT_CHAT_MODEL,
+  parseModel: DEFAULT_PARSE_MODEL,
+  nutritionModel: DEFAULT_NUTRITION_MODEL,
+  preferredWeightUnit: DEFAULT_WEIGHT_UNIT,
+  preferredDistanceUnit: DEFAULT_DISTANCE_UNIT,
+}
+
 export function loadSettings(): AssistantSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY)
-    if (!raw) return { mode: DEFAULT_MODE, chatModel: DEFAULT_CHAT_MODEL, parseModel: DEFAULT_PARSE_MODEL }
+    if (!raw) return { ...DEFAULT_SETTINGS }
     const parsed = JSON.parse(raw) as AssistantSettings
-    if (!parsed?.mode) return { mode: DEFAULT_MODE, chatModel: DEFAULT_CHAT_MODEL, parseModel: DEFAULT_PARSE_MODEL }
+    if (!parsed?.mode) return { ...DEFAULT_SETTINGS }
     const normalizedMode = parsed.mode === 'llm' ? 'hybrid' : parsed.mode
     const mode: AssistantMode = normalizedMode === 'local' || normalizedMode === 'hybrid' ? normalizedMode : DEFAULT_MODE
     return {
@@ -68,9 +96,12 @@ export function loadSettings(): AssistantSettings {
       openAiKey: parsed.openAiKey,
       chatModel: parsed.chatModel ?? DEFAULT_CHAT_MODEL,
       parseModel: parsed.parseModel ?? parsed.chatModel ?? DEFAULT_PARSE_MODEL,
+      nutritionModel: parsed.nutritionModel ?? DEFAULT_NUTRITION_MODEL,
+      preferredWeightUnit: parsed.preferredWeightUnit ?? DEFAULT_WEIGHT_UNIT,
+      preferredDistanceUnit: parsed.preferredDistanceUnit ?? DEFAULT_DISTANCE_UNIT,
     }
   } catch {
-    return { mode: DEFAULT_MODE, chatModel: DEFAULT_CHAT_MODEL, parseModel: DEFAULT_PARSE_MODEL }
+    return { ...DEFAULT_SETTINGS }
   }
 }
 

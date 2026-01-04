@@ -11,8 +11,7 @@ import {
   type ViewProps as RNViewProps,
 } from 'react-native';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from './useColorScheme';
+import { useTheme, type ThemePalette } from '@/src/state/theme';
 
 type ThemeProps = {
   lightColor?: string;
@@ -43,17 +42,22 @@ function resolveFontFamily(style?: RNTextProps['style']) {
   return customFamily ?? FIGTREE_FONT_MAP[weight] ?? FIGTREE_FONT_MAP['400'];
 }
 
+/**
+ * Returns the appropriate color from the theme palette.
+ * If lightColor/darkColor props are provided, those take precedence.
+ * Otherwise falls back to the theme palette color.
+ */
 export function useThemeColor(
   props: { light?: string; dark?: string },
-  colorName: keyof typeof Colors.light & keyof typeof Colors.dark
+  colorName: keyof ThemePalette
 ) {
-  const theme = useColorScheme() ?? 'light';
-  const colorFromProps = props[theme];
+  const { palette, isDark } = useTheme();
+  const colorFromProps = isDark ? props.dark : props.light;
 
   if (colorFromProps) {
     return colorFromProps;
   } else {
-    return Colors[theme][colorName];
+    return palette[colorName];
   }
 }
 

@@ -15,13 +15,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.mobile",
+      "bundleIdentifier": "com.dgu.insight5mobile",
       "infoPlist": {
         "NSCameraUsageDescription": "Allow Insight to capture images for event logs.",
         "NSMicrophoneUsageDescription": "Allow Insight to record audio notes.",
         "NSPhotoLibraryUsageDescription": "Allow Insight to attach photos to logs.",
         "NSLocationWhenInUseUsageDescription": "Allow Insight to attach your location to events.",
-        "NSSupportsLiveActivities": true
+        "NSSupportsLiveActivities": true,
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -49,6 +50,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "719e6416-787a-4894-80a0-17152f7a27da"
+      }
+    },
+    "owner": "qolity"
   }
 }

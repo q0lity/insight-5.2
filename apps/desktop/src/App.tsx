@@ -1,29 +1,36 @@
 import './App.css'
-import { useEffect, useMemo, useState, useRef, type DragEvent } from 'react'
+import { useEffect, useMemo, useState, useRef, type DragEvent, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import type { Session } from '@supabase/supabase-js'
+import { Toaster, toast } from 'sonner'
 
 import { addInboxCapture, listInboxCaptures, updateCaptureEntityIds, updateCaptureText, type InboxCapture } from './storage/inbox'
 import { createTask, deleteTask, listTasks, upsertTask, type Task, type TaskStatus } from './storage/tasks'
 import { createEvent, deleteEvent, findActiveByTrackerKey, findActiveEpisode, findBestActiveEventAt, listEvents, upsertEvent, type CalendarEvent } from './storage/calendar'
 import { ensureEntity } from './storage/entities'
+import { estimateCalories, parseWorkoutFromText, saveWorkout } from './storage/workouts'
+import { estimateFoodNutrition, parseMealFromText, saveMeal } from './storage/nutrition'
 import { parseCaptureNatural, type ParsedEvent } from './nlp/natural'
-import { parseCaptureWithLlm } from './nlp/llm-parse'
+import { parseCaptureWithBlocksLlm } from './nlp/llm-parse'
+import { estimateNutritionWithLlm } from './nlp/nutrition-estimate'
 import { loadSettings } from './assistant/storage'
+import { makeFoodItemId, type FoodItem } from './db/insight-db'
 import { getSupabaseClient } from './supabase/client'
 import { migrateLocalDataToSupabase, pullSupabaseToLocal } from './supabase/sync'
 
 import { Icon, type IconName } from './ui/icons'
 import { EVENT_COLOR_PRESETS, eventAccent } from './ui/event-visual'
 import { DISPLAY_SETTINGS_CHANGED_EVENT, loadDisplaySettings, type EventTitleDetail } from './ui/display-settings'
-import { applyTheme, loadThemePreference, resolveTheme, saveThemePreference, THEME_CHANGED_EVENT, type ThemePreference } from './ui/theme'
+import { applyTheme, loadThemePreference, resolveTheme, saveThemePreference, THEME_CHANGED_EVENT, THEME_LABELS, THEME_PREVIEWS, type ThemePreference } from './ui/theme'
 import { parseChecklistMarkdown, toggleChecklistLine } from './ui/checklist'
 import { MarkdownEditor } from './ui/markdown-editor'
 import { CaptureModal } from './ui/CaptureModal'
+import { ActiveSessionBanner } from './ui/ActiveSessionBanner'
 import { Pane, type WorkspaceTab, type WorkspaceViewKey } from './workspace/pane'
 import { TickTickTasksView } from './workspace/views/ticktick-tasks'
 import { AssistantView } from './workspace/views/assistant'
 import { DashboardView } from './workspace/views/dashboard'
-import { LifeTrackerDashboard } from './workspace/views/life-tracker'
+import { HealthDashboard } from './workspace/views/health'
 import { PlaceholderView } from './workspace/views/placeholder'
 import { TimelineView } from './workspace/views/timeline'
 import { ReflectionsView } from './workspace/views/ReflectionsView'
@@ -788,8 +795,12 @@ function extractShoppingItems(rawText: string) {
 
 function buildShoppingNotes(items: string[], moneyUsd: number | null) {
   const lines: string[] = []
-  if (items.length) lines.push(...items.map((x) => `- [ ] ${x}`))
-  if (moneyUsd != null && Number.isFinite(moneyUsd)) lines.push(`Budget: $${moneyUsd}`)
+  if (items.length) {
+    lines.push('| Item | Cost |')
+    lines.push('| --- | --- |')
+    lines.push(...items.map((x) => `| ${x} |  |`))
+  }
+  if (moneyUsd != null && Number.isFinite(moneyUsd)) lines.push(`Total budget: $${moneyUsd}`)
   return lines.join('\n')
 }
 
@@ -818,6 +829,16 @@ function App() {
   const [captures, setCaptures] = useState<InboxCapture[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [authSession, setAuthSession] = useState<Session | null>(null)
+  const [authReady, setAuthReady] = useState(false)
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
+  const [authError, setAuthError] = useState('')
+  const [authStatus, setAuthStatus] = useState('')
+  const [authWorking, setAuthWorking] = useState(false)
+  const [authDismissed, setAuthDismissed] = useState(false)
+  const supabaseConfigured = Boolean(getSupabaseClient())
   const taxonomyRulesRef = useRef<TaxonomyRule[]>([])
   const trackerDefs = useMemo(() => {
     const byKey = new Map<string, TrackerDef>()
@@ -851,12 +872,18 @@ function App() {
 
   useEffect(() => {
     const supabase = getSupabaseClient()
-    if (!supabase) return
+    if (!supabase) {
+      setAuthReady(true)
+      return
+    }
     let mounted = true
 
     async function runInitialSync() {
       const { data } = await supabase.auth.getSession()
-      if (!mounted || !data.session) return
+      if (!mounted) return
+      setAuthSession(data.session ?? null)
+      setAuthReady(true)
+      if (!data.session) return
       await migrateLocalDataToSupabase()
       await pullSupabaseToLocal()
     }
@@ -864,6 +891,8 @@ function App() {
     void runInitialSync()
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return
+      setAuthSession(session ?? null)
       if (!session) return
       void migrateLocalDataToSupabase().then(() => pullSupabaseToLocal())
     })
@@ -882,6 +911,12 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    if (authSession) {
+      setAuthDismissed(false)
+    }
+  }, [authSession])
+
   const [agendaDate, setAgendaDate] = useState<Date>(() => new Date())
   const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
 
@@ -891,11 +926,14 @@ function App() {
 
   const [leftCollapsed, setLeftCollapsed] = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
+  const [railLabelsOpen, setRailLabelsOpen] = useState(false)
   const [rightMode, setRightMode] = useState<'details' | 'ai'>('details')
+  const [propsCollapsed, setPropsCollapsed] = useState(true)
   const [docOpen, setDocOpen] = useState(false)
   const [docTab, setDocTab] = useState<'notes' | 'transcript'>('notes')
   const [docTranscriptFocus, setDocTranscriptFocus] = useState<string | null>(null)
   const [themePref, setThemePref] = useState<ThemePreference>(() => loadThemePreference())
+  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false)
   const [eventTitleDetail, setEventTitleDetail] = useState<EventTitleDetail>(() => loadDisplaySettings().eventTitleDetail)
 
   const [tagDraft, setTagDraft] = useState('')
@@ -982,6 +1020,55 @@ function App() {
     window.addEventListener(DISPLAY_SETTINGS_CHANGED_EVENT, onDisplayChanged)
     return () => window.removeEventListener(DISPLAY_SETTINGS_CHANGED_EVENT, onDisplayChanged)
   }, [])
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + K: Open capture modal
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setCaptureOpen(true)
+        toast.info('Quick capture opened', { duration: 1500 })
+      }
+
+      // Escape: Close modals
+      if (e.key === 'Escape') {
+        if (captureOpen) {
+          setCaptureOpen(false)
+        }
+        if (eventComposerOpen) {
+          setEventComposerOpen(false)
+        }
+        if (selection.kind !== 'none') {
+          setSelection({ kind: 'none' })
+        }
+      }
+
+      // Cmd/Ctrl + Shift + H: Go to habits
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'h') {
+        e.preventDefault()
+        openView('habits')
+        toast.info('Navigated to Habits', { duration: 1500 })
+      }
+
+      // Cmd/Ctrl + Shift + D: Go to dashboard
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault()
+        openView('dashboard')
+        toast.info('Navigated to Dashboard', { duration: 1500 })
+      }
+
+      // Cmd/Ctrl + Shift + R: Go to rewards
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault()
+        openView('rewards')
+        toast.info('Navigated to Rewards', { duration: 1500 })
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [captureOpen, eventComposerOpen, selection])
 
   useEffect(() => {
     function refreshHabits() {
@@ -2029,6 +2116,31 @@ function App() {
 		        category = category ?? 'Finance'
 		        subcategory = subcategory ?? (/\b(bank)\b/.test(t) ? 'Banking' : /\b(bill|bills)\b/.test(t) ? 'Bills' : 'Budget')
 		      }
+		      // Job applications
+		      if (/\b(job|application|apply|resume|interview|hiring|career)\b/.test(t)) {
+		        category = category ?? 'Work'
+		        subcategory = subcategory ?? 'Job Applications'
+		      }
+		      // Rent payment
+		      if (/\b(rent|landlord|lease|tenant)\b/.test(t)) {
+		        category = category ?? 'Finance'
+		        subcategory = subcategory ?? 'Rent'
+		      }
+		      // Skincare/self-care
+		      if (/\b(microneedle|skincare|facial|derma|beauty|skin)\b/.test(t)) {
+		        category = category ?? 'Personal'
+		        subcategory = subcategory ?? 'Skincare'
+		      }
+		      // House chores/cleaning
+		      if (/\b(clean|cleaning|chore|chores|tidy|vacuum|laundry|dishes)\b/.test(t)) {
+		        category = category ?? 'Personal'
+		        subcategory = subcategory ?? 'Chores'
+		      }
+		      // Costco/specific stores
+		      if (/\b(costco|walmart|target|trader joe|whole foods|safeway)\b/i.test(t)) {
+		        category = category ?? 'Personal'
+		        subcategory = subcategory ?? 'Errands'
+		      }
 
 		      // Fall back to the starter taxonomy (keeps categories consistent).
 		      if (category) {
@@ -2192,6 +2304,7 @@ function App() {
     // Optional: LLM-backed parsing (uses the key + parser model stored in Settings).
     let llmSucceeded = false
     let llmError: string | null = null
+    let llm: Awaited<ReturnType<typeof parseCaptureWithBlocksLlm>> | null = null
     if (!llmKey && llmMode !== 'local') {
       setCaptureError('OpenAI key is required for LLM mode. Add it in Settings and click Save.')
       setCaptureSaving(false)
@@ -2200,9 +2313,9 @@ function App() {
     if (shouldTryLlm) {
       try {
         setCaptureAiStatus(`AI parsing (${llmParseModel})…`)
-        const llm = await parseCaptureWithLlm({ apiKey: llmKey, model: llmParseModel, text: captureText, anchorMs: captureAnchorMs })
-        setCaptureProgress((p) => [...p, `AI parsed (${llm.tasks.length} task(s), ${llm.events.length} event(s))`].slice(-10))
-        llmSucceeded = llm.tasks.length + llm.events.length > 0
+        llm = await parseCaptureWithBlocksLlm({ apiKey: llmKey, model: llmParseModel, text: captureText, anchorMs: captureAnchorMs })
+        setCaptureProgress((p) => [...p, `AI parsed (${llm.tasks.length} task(s), ${llm.events.length} event(s), ${llm.workouts.length} workout(s))`].slice(-10))
+        llmSucceeded = (llm.tasks.length + llm.events.length + llm.workouts.length + llm.meals.length) > 0
         if (!llmSucceeded) {
           const emptyMsg = allowLocalFallback ? 'AI returned empty; using local parser' : 'AI returned empty; local parsing is disabled'
           setCaptureProgress((p) => [...p, emptyMsg].slice(-10))
@@ -2904,6 +3017,303 @@ function App() {
 		      setCaptureProgress((p) => [...p, 'Skipped local parsing (AI parser succeeded)'].slice(-10))
 		    }
 
+    // Use LLM-parsed workouts if available, otherwise fall back to local regex parser
+    const localWorkout = parseWorkoutFromText(captureText)
+    const llmWorkout = (llm?.workouts?.length ?? 0) > 0 ? llm!.workouts[0] : null
+    const normalizeExerciseName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+    const hasMeaningfulSets = (sets: Array<{ reps?: number; weight?: number; duration?: number; distance?: number; rpe?: number }>) =>
+      sets.some((set) => set.reps || set.weight || set.duration || set.distance || set.rpe)
+    const parsedWorkout = llmWorkout
+      ? (() => {
+          const localExercises = localWorkout?.exercises ?? []
+          const localMap = new Map(localExercises.map((ex) => [normalizeExerciseName(ex.name), ex]))
+
+          if (llmWorkout.isSetAddition) {
+            const llmExercises = llmWorkout.exercises.map((ex) => ({
+              id: `ex_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              name: ex.name,
+              type: ex.type ?? 'strength',
+              sets: ex.sets,
+              muscleGroups: ex.muscleGroups,
+              notes: ex.notes,
+            }))
+            return {
+              type: llmWorkout.type,
+              exercises: llmExercises,
+              totalDuration: llmWorkout.totalDuration,
+              overallRpe: llmWorkout.overallRpe,
+              isSetAddition: llmWorkout.isSetAddition,
+              targetExerciseName: llmWorkout.targetExerciseName,
+            }
+          }
+
+          const used = new Set<string>()
+          const mergedExercises = llmWorkout.exercises.map((ex) => {
+            const key = normalizeExerciseName(ex.name)
+            const local = localMap.get(key)
+            if (local) used.add(key)
+            const nextSets = hasMeaningfulSets(ex.sets) ? ex.sets : (local?.sets ?? ex.sets)
+            return {
+              id: `ex_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              name: ex.name,
+              type: ex.type ?? local?.type ?? 'strength',
+              sets: nextSets,
+              muscleGroups: ex.muscleGroups ?? local?.muscleGroups,
+              notes: ex.notes ?? local?.notes,
+            }
+          })
+          for (const local of localExercises) {
+            const key = normalizeExerciseName(local.name)
+            if (!used.has(key)) mergedExercises.push(local)
+          }
+
+          return {
+            type: llmWorkout.type ?? localWorkout?.type ?? 'mixed',
+            exercises: mergedExercises,
+            totalDuration: llmWorkout.totalDuration ?? localWorkout?.totalDuration,
+            overallRpe: llmWorkout.overallRpe ?? localWorkout?.overallRpe,
+            isSetAddition: llmWorkout.isSetAddition,
+            targetExerciseName: llmWorkout.targetExerciseName,
+          }
+        })()
+      : localWorkout
+
+    if (parsedWorkout && parsedWorkout.exercises?.length) {
+      const durationMinutes =
+        parsedWorkout.totalDuration ??
+        (Math.round(parsedWorkout.exercises.flatMap((ex) => ex.sets).reduce((sum, set) => sum + (set.duration ?? 0), 0) / 60) || undefined)
+      const startAt = captureAnchorMs ?? nowMs
+      const endAt = durationMinutes ? startAt + durationMinutes * 60 * 1000 : startAt
+      const typeLabel = parsedWorkout.type ?? 'mixed'
+      const defaultTitle =
+        typeLabel === 'cardio'
+          ? 'Cardio'
+          : typeLabel === 'strength'
+            ? 'Strength'
+            : typeLabel === 'mobility'
+              ? 'Mobility'
+              : typeLabel === 'recovery'
+                ? 'Recovery'
+                : 'Workout'
+      const title =
+        parsedWorkout.exercises.length === 1
+          ? parsedWorkout.exercises[0].name
+          : defaultTitle === 'Workout'
+            ? 'Workout'
+            : `${defaultTitle} Workout`
+      const workoutId = `wrk_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+      const estimatedCalories = estimateCalories({
+        id: workoutId,
+        eventId: capturePrimaryEventId ?? note.id,
+        type: parsedWorkout.type ?? 'mixed',
+        title,
+        exercises: parsedWorkout.exercises,
+        startAt,
+        endAt,
+        totalDuration: durationMinutes,
+        overallRpe: parsedWorkout.overallRpe,
+        tags: ['#workout', `#${typeLabel}`],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+
+      await saveWorkout({
+        id: workoutId,
+        eventId: capturePrimaryEventId ?? note.id,
+        type: parsedWorkout.type ?? 'mixed',
+        title,
+        exercises: parsedWorkout.exercises,
+        startAt,
+        endAt,
+        totalDuration: durationMinutes,
+        estimatedCalories,
+        overallRpe: parsedWorkout.overallRpe,
+        tags: ['#workout', `#${typeLabel}`],
+      })
+    }
+
+    // Use LLM-parsed meals if available, otherwise fall back to local regex parser
+    const localMeal = parseMealFromText(captureText)
+    const llmMeal = (llm?.meals?.length ?? 0) > 0 ? llm!.meals[0] : null
+    const parsedMeal = llmMeal
+      ? {
+          type: llmMeal.type,
+          items: llmMeal.items,
+          totalCalories: llmMeal.totalCalories,
+          macros: llmMeal.macros ?? { protein: 0, carbs: 0, fat: 0 },
+          location: llmMeal.location,
+          notes: llmMeal.notes,
+        }
+      : localMeal
+    if (parsedMeal && parsedMeal.items?.length) {
+      const eatenAt = captureAnchorMs ?? nowMs
+      const mealTitle =
+        parsedMeal.items.length === 1
+          ? parsedMeal.items[0].name
+          : parsedMeal.type === 'breakfast'
+            ? 'Breakfast'
+            : parsedMeal.type === 'lunch'
+              ? 'Lunch'
+              : parsedMeal.type === 'dinner'
+                ? 'Dinner'
+                : parsedMeal.type === 'drink'
+                  ? 'Drink'
+                  : 'Snack'
+      const normalizeItem = (item: FoodItem) => ({
+        ...item,
+        id: item.id ?? makeFoodItemId(),
+        name: item.name?.trim() || 'Food',
+        quantity: Number.isFinite(item.quantity) ? item.quantity : 1,
+        unit: item.unit?.trim() || 'serving',
+      })
+
+      const sumMealFromItems = (items: FoodItem[]) => {
+        const sumField = (key: keyof FoodItem) => {
+          let total = 0
+          let has = false
+          for (const item of items) {
+            const value = item[key]
+            if (typeof value === 'number' && Number.isFinite(value)) {
+              total += value
+              has = true
+            }
+          }
+          return { total, has }
+        }
+
+        const calories = sumField('calories')
+        const protein = sumField('protein')
+        const carbs = sumField('carbs')
+        const fat = sumField('fat')
+        const fiber = sumField('fiber')
+        const saturatedFat = sumField('saturatedFat')
+        const transFat = sumField('transFat')
+        const sugar = sumField('sugar')
+        const sodium = sumField('sodium')
+        const potassium = sumField('potassium')
+        const cholesterol = sumField('cholesterol')
+
+        return {
+          totalCalories: calories.total,
+          hasCalories: calories.has,
+          macros: {
+            protein: protein.total,
+            carbs: carbs.total,
+            fat: fat.total,
+            fiber: fiber.has ? fiber.total : undefined,
+            saturatedFat: saturatedFat.has ? saturatedFat.total : undefined,
+            transFat: transFat.has ? transFat.total : undefined,
+            sugar: sugar.has ? sugar.total : undefined,
+            sodium: sodium.has ? sodium.total : undefined,
+            potassium: potassium.has ? potassium.total : undefined,
+            cholesterol: cholesterol.has ? cholesterol.total : undefined,
+          },
+          hasMacroData: protein.has || carbs.has || fat.has || fiber.has || saturatedFat.has || transFat.has || sugar.has || sodium.has || potassium.has || cholesterol.has,
+        }
+      }
+
+      let items = parsedMeal.items.map((item) => normalizeItem(item as FoodItem))
+      let estimationModel: string | undefined
+
+      const itemsNeedNutrition = items.some((item) =>
+        item.calories == null ||
+        item.protein == null ||
+        item.carbs == null ||
+        item.fat == null ||
+        item.fiber == null ||
+        item.saturatedFat == null ||
+        item.sugar == null ||
+        item.sodium == null ||
+        item.potassium == null ||
+        item.cholesterol == null
+      )
+
+      let needsLocalEstimate = itemsNeedNutrition && !shouldTryLlm
+      if (itemsNeedNutrition && shouldTryLlm) {
+        const description = items
+          .map((item) => `${item.quantity} ${item.unit} ${item.name}`.trim())
+          .filter(Boolean)
+          .join(', ')
+        try {
+          setCaptureAiStatus('Estimating nutrition…')
+          const estimate = await estimateNutritionWithLlm({
+            apiKey: llmKey,
+            model: (llmSettings.nutritionModel ?? llmSettings.chatModel ?? 'gpt-4.1-mini').trim() || 'gpt-4.1-mini',
+            foodDescription: description || captureText,
+            mealType: parsedMeal.type,
+          })
+          items = estimate.items.map((item) => normalizeItem(item))
+          estimationModel = estimate.model
+          const totals = sumMealFromItems(items)
+          parsedMeal.totalCalories = estimate.totalCalories || totals.totalCalories
+          parsedMeal.macros = estimate.macros
+          setCaptureProgress((p) => [...p, `Nutrition estimated (${estimate.model})`].slice(-10))
+        } catch (err) {
+          console.warn('Nutrition estimation failed:', err)
+          setCaptureProgress((p) => [...p, 'Nutrition estimate failed; used local totals'].slice(-10))
+          needsLocalEstimate = true
+        }
+      }
+
+      if (needsLocalEstimate) {
+        items = items.map((item) => {
+          if (item.calories != null && item.protein != null && item.carbs != null && item.fat != null) return item
+          const estimated = estimateFoodNutrition(item.name, item.quantity, item.unit)
+          return {
+            ...item,
+            calories: item.calories ?? estimated.calories,
+            protein: item.protein ?? estimated.protein,
+            carbs: item.carbs ?? estimated.carbs,
+            fat: item.fat ?? estimated.fat,
+            fiber: item.fiber ?? estimated.fiber,
+          }
+        })
+      }
+
+      const totals = sumMealFromItems(items)
+      const totalCalories = parsedMeal.totalCalories && parsedMeal.totalCalories > 0
+        ? parsedMeal.totalCalories
+        : totals.totalCalories
+      const macros = {
+        protein: parsedMeal.macros?.protein ?? totals.macros.protein ?? 0,
+        carbs: parsedMeal.macros?.carbs ?? totals.macros.carbs ?? 0,
+        fat: parsedMeal.macros?.fat ?? totals.macros.fat ?? 0,
+        fiber: parsedMeal.macros?.fiber ?? totals.macros.fiber,
+        saturatedFat: parsedMeal.macros?.saturatedFat ?? totals.macros.saturatedFat,
+        transFat: parsedMeal.macros?.transFat ?? totals.macros.transFat,
+        sugar: parsedMeal.macros?.sugar ?? totals.macros.sugar,
+        sodium: parsedMeal.macros?.sodium ?? totals.macros.sodium,
+        potassium: parsedMeal.macros?.potassium ?? totals.macros.potassium,
+        cholesterol: parsedMeal.macros?.cholesterol ?? totals.macros.cholesterol,
+      }
+
+      const roundOptional = (value?: number) => (typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : undefined)
+
+      await saveMeal({
+        id: `meal_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        eventId: capturePrimaryEventId ?? note.id,
+        type: parsedMeal.type,
+        title: mealTitle,
+        items,
+        totalCalories: Math.round(totalCalories ?? 0),
+        macros: {
+          protein: Math.round(macros.protein ?? 0),
+          carbs: Math.round(macros.carbs ?? 0),
+          fat: Math.round(macros.fat ?? 0),
+          fiber: roundOptional(macros.fiber),
+          saturatedFat: roundOptional(macros.saturatedFat),
+          transFat: roundOptional(macros.transFat),
+          sugar: roundOptional(macros.sugar),
+          sodium: roundOptional(macros.sodium),
+          potassium: roundOptional(macros.potassium),
+          cholesterol: roundOptional(macros.cholesterol),
+        },
+        eatenAt,
+        tags: ['#food', `#${parsedMeal.type}`],
+        estimationModel,
+      })
+    }
+
     setCaptureProgress((p) => [...p, `Created: ${createdEventCount} event(s), ${createdLogCount} log(s), ${createdTaskCount} task(s)`].slice(-10))
 
     if (createdEventCount > 0 || createdLogCount > 0 || createdTaskCount > 0) {
@@ -3101,15 +3511,7 @@ function App() {
       case 'reports':
         return <ReportsView events={events} tasks={tasks} />
       case 'health':
-        return (
-          <LifeTrackerDashboard
-            captures={captures}
-	            onRefresh={refreshAll}
-	            onOpenCapture={openCapture}
-	            captureDraft={captureDraft}
-	            setCaptureDraft={setCaptureDraft}
-	          />
-	        )
+        return <HealthDashboard events={events} />
       case 'people':
         return (
           <PeopleView
@@ -3159,6 +3561,7 @@ function App() {
   const selectedTask = selection.kind === 'task' ? tasks.find((t) => t.id === selection.id) ?? null : null
   const selectedEvent = selection.kind === 'event' ? events.find((e) => e.id === selection.id) ?? null : null
   const selectedCapture = selection.kind === 'capture' ? captures.find((c) => c.id === selection.id) ?? null : null
+  const runningEvent = useMemo(() => events.find((e) => e.active) ?? null, [events])
   const selectionKey = selection.kind === 'none' ? 'none' : `${selection.kind}:${selection.id}`
   const docTranscriptText =
     selection.kind === 'capture'
@@ -3407,9 +3810,103 @@ function App() {
     startVoiceCapture({ silentIfUnavailable: true })
   }, [captureOpen, captureListening, captureDraft])
 
+  async function handleAuthSubmit() {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      setAuthError('Supabase is not configured. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
+      return
+    }
+    const email = authEmail.trim()
+    const password = authPassword.trim()
+    if (!email || !password) {
+      setAuthError('Email and password are required.')
+      return
+    }
+    setAuthWorking(true)
+    setAuthError('')
+    setAuthStatus('')
+    try {
+      if (authMode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: window.location.origin },
+        })
+        if (error) throw error
+        if (data.session) {
+          setAuthStatus('Account created and signed in.')
+        } else {
+          setAuthStatus('Check your email to confirm your account.')
+        }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) throw error
+        setAuthStatus(data.session ? 'Signed in.' : 'Signed in.')
+      }
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Sign in failed.')
+    } finally {
+      setAuthWorking(false)
+    }
+  }
+
       return (
 
         <div className="uiShell">
+          {/* Toast Notifications */}
+          <Toaster
+            position="top-right"
+            expand={false}
+            richColors
+            closeButton
+            toastOptions={{
+              style: {
+                fontFamily: 'Figtree, sans-serif',
+              },
+            }}
+          />
+
+          {/* Theme Selector - Top Right */}
+          <div className="themeSelector">
+            <button
+              className="themeSelectorBtn"
+              aria-label="Change theme"
+              title="Change theme"
+              onClick={() => setThemeDropdownOpen((v) => !v)}
+              onBlur={(e) => {
+                if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) {
+                  setThemeDropdownOpen(false)
+                }
+              }}>
+              <Icon name="palette" />
+            </button>
+            <div
+              className={`themeDropdown${themeDropdownOpen ? ' open' : ''}`}
+              onMouseDown={(e) => e.preventDefault()}>
+              {(['system', 'light', 'dark', 'warm', 'olive', 'oliveOrange', 'roseGold'] as const).map((t) => (
+                <button
+                  key={t}
+                  className={`themeOption${themePref === t ? ' active' : ''}`}
+                  onClick={() => {
+                    setThemePref(t)
+                    setThemeDropdownOpen(false)
+                  }}>
+                  <div
+                    className="themeOptionPreview"
+                    style={{
+                      backgroundColor: t === 'system' ? 'var(--bg)' : THEME_PREVIEWS[t].bg,
+                      borderColor: t === 'system' ? 'var(--border)' : THEME_PREVIEWS[t].accent,
+                    }}>
+                    {t !== 'system' && (
+                      <div className="inner" style={{ backgroundColor: THEME_PREVIEWS[t].accent }} />
+                    )}
+                    {t === 'system' && <Icon name="monitor" size={10} />}
+                  </div>
+                  <span>{THEME_LABELS[t]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
                   <main
 
@@ -3423,9 +3920,13 @@ function App() {
 
                       padding: '16px'
 
-                    }}>             <aside className="rail">
+                    }}>             <aside
+                      className={`rail${railLabelsOpen ? ' showLabels' : ''}`}
+                      onMouseLeave={() => setRailLabelsOpen(false)}>
 
-                    <div className="flex flex-col items-center py-4 mb-4">
+                    <div
+                      className="flex flex-col items-center py-4 mb-4"
+                      onMouseEnter={() => setRailLabelsOpen(true)}>
 
                       <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-black/5">
 
@@ -3444,6 +3945,7 @@ function App() {
               >
 
   	            <Icon name="home" />
+                <span className="railLabel" aria-hidden="true">Dashboard</span>
 
   	          </button>
 
@@ -3464,6 +3966,7 @@ function App() {
   	                        }}>
 
   	                        <Icon name="plus" className="group-hover:rotate-90 transition-transform duration-500" />
+                          <span className="railLabel" aria-hidden="true">Capture</span>
 
   	                      </button>
 
@@ -3476,6 +3979,7 @@ function App() {
               >
 
                 <Icon name="calendar" />
+                <span className="railLabel" aria-hidden="true">Calendar</span>
 
   	          </button>
 
@@ -3488,6 +3992,7 @@ function App() {
               >
 
                 <Icon name="check" />
+                <span className="railLabel" aria-hidden="true">Tasks</span>
 
               </button>
 
@@ -3500,6 +4005,7 @@ function App() {
             >
 
               <Icon name="file" />
+              <span className="railLabel" aria-hidden="true">Notes</span>
 
             </button>
 
@@ -3512,6 +4018,7 @@ function App() {
             >
 
               <Icon name="sparkle" />
+              <span className="railLabel" aria-hidden="true">Reflections</span>
 
             </button>
 
@@ -3524,6 +4031,7 @@ function App() {
             >
 
               <Icon name="mic" />
+              <span className="railLabel" aria-hidden="true">Chat</span>
 
             </button>
 
@@ -3538,6 +4046,7 @@ function App() {
             >
 
               <Icon name="smile" />
+              <span className="railLabel" aria-hidden="true">Habits</span>
 
             </button>
 
@@ -3550,6 +4059,7 @@ function App() {
             >
 
               <Icon name="target" />
+              <span className="railLabel" aria-hidden="true">Goals</span>
 
             </button>
 
@@ -3562,6 +4072,7 @@ function App() {
             >
 
               <Icon name="briefcase" />
+              <span className="railLabel" aria-hidden="true">Projects</span>
 
             </button>
 
@@ -3574,6 +4085,7 @@ function App() {
             >
 
               <Icon name="trophy" />
+              <span className="railLabel" aria-hidden="true">Rewards</span>
 
             </button>
 
@@ -3586,6 +4098,7 @@ function App() {
             >
 
               <Icon name="file" />
+              <span className="railLabel" aria-hidden="true">Reports</span>
 
             </button>
 
@@ -3593,11 +4106,12 @@ function App() {
 
               className={`railBtn ${getActiveTab(workspace).view === 'health' ? 'active' : ''}`} 
 
-              aria-label="Health & Fitness" title="Health & Fitness" onClick={() => openView('health')}
+              aria-label="Workout & Nutrition" title="Workout & Nutrition" onClick={() => openView('health')}
 
             >
 
-              <Icon name="heart" />
+              <Icon name="dumbbell" />
+              <span className="railLabel" aria-hidden="true">Workout + Nutrition</span>
 
             </button>
 
@@ -3610,6 +4124,7 @@ function App() {
             >
 
               <Icon name="users" />
+              <span className="railLabel" aria-hidden="true">People</span>
 
             </button>
 
@@ -3622,6 +4137,7 @@ function App() {
             >
 
               <Icon name="pin" />
+              <span className="railLabel" aria-hidden="true">Places</span>
 
             </button>
 
@@ -3634,6 +4150,7 @@ function App() {
             >
 
               <Icon name="tag" />
+              <span className="railLabel" aria-hidden="true">Tags</span>
 
             </button>
 
@@ -3646,11 +4163,13 @@ function App() {
             >
 
               <Icon name="bolt" />
+              <span className="railLabel" aria-hidden="true">Timeline</span>
 
             </button>
           <div className="railGrow" />
           <button className="railBtn" aria-label="Refresh" title="Refresh" onClick={refreshAll}>
             <Icon name="bolt" />
+            <span className="railLabel" aria-hidden="true">Refresh</span>
           </button>
           <button
             className="railBtn"
@@ -3658,12 +4177,15 @@ function App() {
             title="Toggle theme"
             onClick={() => setThemePref((p) => nextThemePref(p))}>
             <Icon name={resolveTheme(themePref) === 'dark' ? 'sun' : 'moon'} />
+            <span className="railLabel" aria-hidden="true">Theme</span>
           </button>
           <button className="railBtn" aria-label="Toggle explorer" title="Toggle explorer" onClick={() => setLeftCollapsed((v) => !v)}>
             <Icon name="panelLeft" />
+            <span className="railLabel" aria-hidden="true">Explorer</span>
           </button>
           <button className="railBtn" aria-label="Settings" title="Settings" onClick={() => openView('settings')}>
             <Icon name="gear" />
+            <span className="railLabel" aria-hidden="true">Settings</span>
           </button>
         </aside>
 
@@ -4046,6 +4568,31 @@ function App() {
 	        </aside>
 
       <div className="ws">
+        {runningEvent && (
+          <ActiveSessionBanner
+            title={runningEvent.title}
+            category={runningEvent.category}
+            subcategory={runningEvent.subcategory}
+            startedAt={runningEvent.start}
+            estimatedMinutes={runningEvent.estimatedMinutes}
+            importance={runningEvent.importance}
+            difficulty={runningEvent.difficulty}
+            onStop={() => {
+              setEvents((prev) =>
+                prev.map((e) =>
+                  e.id === runningEvent.id
+                    ? { ...e, active: false, end: Date.now() }
+                    : e
+                )
+              )
+            }}
+            onOpen={() => {
+              setSelection({ kind: 'event', id: runningEvent.id })
+              setRightCollapsed(false)
+              setRightMode('details')
+            }}
+          />
+        )}
         <Pane
           tabs={workspace.tabs}
           activeTabId={workspace.activeTabId}
@@ -4139,6 +4686,14 @@ function App() {
                 className="detailInput"
                 value={selectedTask.title}
                 onChange={(e) => commitTask({ ...selectedTask, title: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    ;(e.target as HTMLInputElement).blur()
+                    setSelection({ kind: 'none' })
+                  }
+                }}
+                placeholder="Task title..."
               />
               <div className="detailRow">
                 <label className="detailLabel">
@@ -4415,6 +4970,14 @@ function App() {
                 className="detailInput"
                 value={selectedEvent.title}
                 onChange={(e) => commitEvent({ ...selectedEvent, title: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    ;(e.target as HTMLInputElement).blur()
+                    setSelection({ kind: 'none' })
+                  }
+                }}
+                placeholder="Event title..."
               />
               <div className="detailGrid">
                 <label>
@@ -4491,6 +5054,68 @@ function App() {
                   </div>
                 </label>
               </div>
+
+              {/* Notes Section - moved up from bottom */}
+              <div className="detailRow detailNotesSection" style={{ marginTop: 12 }}>
+                <div className="detailLabelRow">
+                  <div className="detailLabel">Notes</div>
+                  <div className="detailLabelActions">
+                    <button
+                      className="detailInlineBtn"
+                      onClick={() => {
+                        setCaptureDraft('')
+                        setCaptureInterim('')
+                        openCapture({ attachEventId: selectedEvent.id })
+                      }}
+                      type="button">
+                      <Icon name="mic" size={12} />
+                      Transcribe
+                    </button>
+                  </div>
+                </div>
+                <MarkdownEditor
+                  value={selectedEvent.notes ?? ''}
+                  onChange={(next) => commitEvent({ ...selectedEvent, notes: next })}
+                  onToggleChecklist={(lineIndex) => {
+                    if (selectedEvent.kind === 'task' && selectedEvent.taskId) {
+                      onToggleTaskChecklistItem(selectedEvent.taskId, lineIndex)
+                      return
+                    }
+                    commitEvent({ ...selectedEvent, notes: toggleChecklistLine(selectedEvent.notes, lineIndex) })
+                  }}
+                  placeholder="Write notes…"
+                  ariaLabel="Event notes"
+                />
+                <button
+                  className="secondaryButton detailSegmentBtn"
+                  onClick={() => {
+                    const label = window.prompt('Segment label (e.g., Inpatient)')
+                    if (!label) return
+                    const t = new Date()
+                    const hh = String(t.getHours()).padStart(2, '0')
+                    const mm = String(t.getMinutes()).padStart(2, '0')
+                    const next = `${(selectedEvent.notes ?? '').trim()}\n**${hh}:${mm}** - ${label}\n`
+                    commitEvent({ ...selectedEvent, notes: next.trim() })
+                  }}>
+                  + Segment
+                </button>
+              </div>
+
+              {/* Collapsible Properties Section */}
+              <button
+                className="detailPropsHeader"
+                onClick={() => setPropsCollapsed(!propsCollapsed)}
+                type="button">
+                <span className="detailPropsLabel">Properties</span>
+                <span className={propsCollapsed ? 'detailPropsChevron' : 'detailPropsChevron open'}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </span>
+              </button>
+
+              {!propsCollapsed && (
+                <>
               <div className="detailRow">
                 <div className="detailLabel">Tags</div>
                 <div className="detailChips">
@@ -4906,53 +5531,9 @@ function App() {
                     </button>
                   </div>
                 </label>
-	              </div>
-              <div className="detailRow" style={{ marginTop: 12 }}>
-                <div className="detailLabelRow">
-                  <div className="detailLabel">Notes (markdown)</div>
-                  <div className="detailLabelActions">
-                    <button
-                      className="detailInlineBtn"
-                      onClick={() => {
-                        setCaptureDraft('')
-                        setCaptureInterim('')
-                        openCapture({ attachEventId: selectedEvent.id })
-                      }}
-                      type="button">
-                      <Icon name="mic" size={12} />
-                      Transcribe
-                    </button>
-                  </div>
-                </div>
-                <MarkdownEditor
-                  value={selectedEvent.notes ?? ''}
-                  onChange={(next) => commitEvent({ ...selectedEvent, notes: next })}
-                  onToggleChecklist={(lineIndex) => {
-                    if (selectedEvent.kind === 'task' && selectedEvent.taskId) {
-                      onToggleTaskChecklistItem(selectedEvent.taskId, lineIndex)
-                      return
-                    }
-                    commitEvent({ ...selectedEvent, notes: toggleChecklistLine(selectedEvent.notes, lineIndex) })
-                  }}
-                  placeholder="Write notes…"
-                  ariaLabel="Event notes (markdown)"
-                />
               </div>
-              <div className="detailActions">
-                <button
-                  className="secondaryButton"
-                  onClick={() => {
-                    const label = window.prompt('Segment label (e.g., Inpatient)')
-                    if (!label) return
-                    const t = new Date()
-                    const hh = String(t.getHours()).padStart(2, '0')
-                    const mm = String(t.getMinutes()).padStart(2, '0')
-                    const next = `${(selectedEvent.notes ?? '').trim()}\n**${hh}:${mm}** - ${label}\n`
-                    commitEvent({ ...selectedEvent, notes: next.trim() })
-                  }}>
-                  + Segment divider
-                </button>
-              </div>
+                </>
+              )}
             </div>
           </div>
         ) : selection.kind === 'capture' && selectedCapture ? (
@@ -6370,13 +6951,70 @@ function App() {
 	          <option key={c} value={c} />
 	        ))}
 	      </datalist>
-	      <datalist id="taxSubcatList">
-	        {taxonomySubcategories.map((s) => (
-	          <option key={s} value={s} />
-	        ))}
-	      </datalist>
-	    </div>
-	  )
-	}
+      <datalist id="taxSubcatList">
+        {taxonomySubcategories.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
+      {authReady && !authSession && !authDismissed ? (
+        <div className="authOverlay">
+          <div className="authCard">
+            <div className="authHeader">
+              <div>
+                <div className="authTitle">Sign in to sync</div>
+                <div className="authSubtitle">Use the same account on web and iPhone.</div>
+              </div>
+              <button className="authDismiss" type="button" onClick={() => setAuthDismissed(true)}>
+                Not now
+              </button>
+            </div>
+            {!supabaseConfigured ? (
+              <div className="authError">
+                Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.
+              </div>
+            ) : (
+              <>
+                <div className="authField">
+                  <label className="authLabel" htmlFor="authEmail">Email</label>
+                  <input
+                    id="authEmail"
+                    type="email"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </div>
+                <div className="authField">
+                  <label className="authLabel" htmlFor="authPassword">Password</label>
+                  <input
+                    id="authPassword"
+                    type="password"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="password"
+                  />
+                </div>
+                {authError ? <div className="authError">{authError}</div> : null}
+                {authStatus ? <div className="authStatus">{authStatus}</div> : null}
+                <div className="authActions">
+                  <button className="primaryButton" type="button" onClick={handleAuthSubmit} disabled={authWorking}>
+                    {authWorking ? 'Working...' : authMode === 'signup' ? 'Create account' : 'Sign in'}
+                  </button>
+                  <button
+                    className="secondaryButton"
+                    type="button"
+                    onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+                  >
+                    {authMode === 'signin' ? 'Create account' : 'Have an account? Sign in'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 export default App

@@ -7,6 +7,7 @@
 - Platforms: iOS, Android, Desktop (Electron)
 - Backend: Supabase Postgres + Storage + Edge Functions
 - Status: Draft v3 (ready for engineering breakdown)
+- Change Log: `Insight 5/PRD/MASTER_PRD_CHANGELOG.md`
 - Key references:
   - Requirements: `Reference/`
   - Voice/orchestration prototype: `flutter_app/`
@@ -25,6 +26,10 @@
 - `Insight 5/PRD/APPENDIX_E_IMPLEMENTATION_PLAN.md`
 - `Insight 5/PRD/APPENDIX_F_DATA_DICTIONARY.md`
 - `Insight 5/PRD/APPENDIX_G_UTTERANCE_LIBRARY.md`
+- `Insight 5/PRD/WEB_TO_MOBILE_PARITY_MATRIX.md`
+- `Insight 5/PRD/CAPTURE_PIPELINE_SPEC.md`
+- `Insight 5/PRD/IMPLEMENTATION_PLAN_MOBILE_CAPTURE.md`
+- `Insight 5/PRD/MOBILE_IMPLEMENTATION_CHECKLIST.md`
 
 ## Table of Contents
 0. One-Sentence Value Prop
@@ -243,6 +248,8 @@ status: "open"
 - All generated markdown should be stable and human-editable.
 - YAML keys use consistent casing (camelCase) and ISO-8601 timestamps.
 - Token text (`#mood(7) +gym @john`) is preserved in `frontmatter.tokens[]` and/or in the markdown body, but is also normalized into fields (trackers/contexts/people).
+- Live capture shows a best-effort markdown preview in real time; canonical formatting is finalized after server-side parsing.
+- Offline capture logs raw text with timestamp markers and defers divider/segment formatting until sync.
 
 ## 6) Voice + MCP-Style Command Interface
 ### 6.1 Capture Entry Points
@@ -264,6 +271,8 @@ The app exposes a lightweight “assistant” panel (chat-like) that can:
 - open saved views
 
 All assistant actions must produce a preview card before committing (unless explicitly configured otherwise).
+Mobile capture is the highest priority surface for feature parity and reliability.
+Command detection for live preview uses lightweight local heuristics; full parsing is server-side.
 
 ### 6.3 Deterministic Rulebook (MVP)
 Based on `Reference/Natural Language Processing App Rules...`:
@@ -370,6 +379,8 @@ This is primarily for **interoperability** (Obsidian-style workflows) and for ma
 - **Right bar**: context panel (active goal/project, active timer, pending review cards, quick filters).
 
 Desktop uses the same information architecture but with denser layouts and keyboard shortcuts.
+Web UI is the source of truth; desktop and mobile must match web feature coverage.
+Do not change fundamental web/desktop layouts; adapt mobile UX to reach parity.
 
 ### 7.2 Dashboard
 **Purpose**: Today at a glance + quick capture.
@@ -408,6 +419,8 @@ States:
 Acceptance criteria:
 - Transcript preview is visible (when available).
 - “End current event” is accessible during active event mode.
+- During recording, show a live markdown preview with timestamp markers and segment dividers when detected.
+- Simple commands should log a minimal event preview immediately (e.g., “Driving now”).
 
 ### 7.4 Review Cards (Tinder-like)
 Cards represent proposed creations/edits:
@@ -652,6 +665,7 @@ Intake steps:
    - Calendar (time block)
    - Fitness page (session)
    - Dashboard (Today feed)
+6. During recording, live markdown preview is updated in place with segments/dividers.
 
 Edge cases:
 - If duration not spoken: propose estimate based on template + ask one question.
@@ -692,8 +706,8 @@ Rule:
 
 ## 17) Data Sync & Conflict Rules
 ### 17.1 Source of Truth
-- Supabase is canonical when online.
-- Offline changes queue in outbox; sync resolves to Supabase on reconnect.
+- Supabase is canonical for both web and mobile (Postgres + Storage).
+- Local stores (IndexedDB/on-device) are cache + outbox only; all writes must sync to Supabase and reconcile on reconnect.
 
 ### 17.2 Conflict Policy (MVP)
 - Default: last-write-wins for simple fields.

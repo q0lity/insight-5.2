@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Icon } from '../../ui/icons'
 import { HabitHeatmap, buildHabitHeatmap, parseHabitTrackerKey } from '../../ui/habit-heatmap'
 import type { CalendarEvent } from '../../storage/calendar'
 import { createEvent } from '../../storage/calendar'
 import { basePoints, pointsForMinutes } from '../../scoring/points'
+import { syncHabitToSupabase, syncAllHabitsToSupabase, pullHabitsFromSupabase, deleteHabitFromSupabase } from '../../supabase/sync'
 
 type HabitDef = {
   id: string
@@ -83,6 +84,47 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
     return max
   }, [heatmapByHabit])
 
+  // Pull habits from Supabase on mount and merge with local
+  useEffect(() => {
+    const loadFromSupabase = async () => {
+      try {
+        const remoteHabits = await pullHabitsFromSupabase()
+        if (remoteHabits.length > 0) {
+          setDefs((prev) => {
+            const seen = new Set<string>()
+            const merged: HabitDef[] = []
+
+            // Add all remote habits first
+            for (const remote of remoteHabits) {
+              merged.push(remote)
+              seen.add(remote.id)
+            }
+
+            // Add local habits that aren't in remote
+            for (const local of prev) {
+              if (!seen.has(local.id)) {
+                merged.push(local)
+                // Sync this local-only habit to Supabase
+                void syncHabitToSupabase(local)
+              }
+            }
+
+            return merged
+          })
+        } else {
+          // No remote habits - sync all local habits to Supabase
+          const localHabits = loadHabits()
+          if (localHabits.length > 0) {
+            void syncAllHabitsToSupabase(localHabits)
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to pull habits from Supabase', err)
+      }
+    }
+    void loadFromSupabase()
+  }, [])
+
   useEffect(() => {
     saveHabits(defs)
     window.dispatchEvent(new Event('insight5.habits.updated'))
@@ -131,10 +173,18 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
     }
     setDefs((prev) => [habit, ...prev])
     setSelectedId(id)
+    // Sync new habit to Supabase
+    void syncHabitToSupabase(habit)
   }
 
   function updateHabit(id: string, patch: Partial<HabitDef>) {
-    setDefs((prev) => prev.map((h) => (h.id === id ? { ...h, ...patch } : h)))
+    setDefs((prev) => {
+      const updated = prev.map((h) => (h.id === id ? { ...h, ...patch } : h))
+      // Sync updated habit to Supabase
+      const habit = updated.find((h) => h.id === id)
+      if (habit) void syncHabitToSupabase(habit)
+      return updated
+    })
   }
 
   function numberOrNull(raw: string) {
@@ -166,12 +216,12 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#F8F7F4] text-[#1C1C1E] font-['Figtree'] overflow-hidden">
-      <div className="px-10 pt-10 pb-6 bg-[#F8F7F4]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
+      <div className="px-10 pt-10 pb-6 bg-[var(--bg)]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-3xl font-extrabold tracking-tight">Habits</h1>
-            <p className="text-sm text-[#86868B] font-semibold">Transform consistency into automated progress.</p>
+            <p className="text-sm text-[var(--muted)] font-semibold">Transform consistency into automated progress.</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex-1 max-w-md relative">
@@ -245,13 +295,13 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                               e.stopPropagation()
                               props.onOpenReports?.(h.id)
                             }}
-                            className="w-9 h-9 rounded-xl bg-[#F2F0ED] flex items-center justify-center text-[#86868B] hover:bg-[#D95D39]/10 hover:text-[#D95D39] transition-all"
+                            className="w-9 h-9 rounded-xl bg-[var(--panel)] flex items-center justify-center text-[var(--muted)] hover:bg-[#D95D39]/10 hover:text-[var(--accent)] transition-all"
                             aria-label={`Open ${h.name} analytics`}
                           >
                             <Icon name="dots" size={16} />
                           </button>
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-[#86868B] uppercase tracking-tighter">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-[var(--muted)] uppercase tracking-tighter">
                           <span>{h.category ?? 'Personal'}</span>
                           {recent.get(h.id) && (
                             <>
@@ -292,13 +342,13 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-bold">{selected.name}</h2>
-                    <p className="text-[10px] font-bold text-[#86868B] uppercase tracking-[0.2em]">
+                    <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-[0.2em]">
                       {selected.category ?? 'Uncategorized'} {selected.subcategory && `· ${selected.subcategory}`}
                     </p>
                   </div>
                   <button
                     onClick={() => setSelectedId(null)}
-                    className="w-8 h-8 rounded-full bg-[#F2F0ED] flex items-center justify-center text-[#86868B]"
+                    className="w-8 h-8 rounded-full bg-[var(--panel)] flex items-center justify-center text-[var(--muted)]"
                     aria-label="Close habit details"
                   >
                     ×
@@ -306,21 +356,21 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-[#F2F0ED] rounded-2xl space-y-1">
-                    <span className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Done</span>
+                  <div className="p-3 bg-[var(--panel)] rounded-2xl space-y-1">
+                    <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Done</span>
                     <div className="text-lg font-bold text-[#3D8856]">{selectedPositive}</div>
                   </div>
-                  <div className="p-3 bg-[#F2F0ED] rounded-2xl space-y-1">
-                    <span className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Missed</span>
+                  <div className="p-3 bg-[var(--panel)] rounded-2xl space-y-1">
+                    <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Missed</span>
                     <div className="text-lg font-bold text-[#CF423C]">{selectedNegative}</div>
                   </div>
-                  <div className="p-3 bg-[#F2F0ED] rounded-2xl space-y-1">
-                    <span className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Streak</span>
-                    <div className="text-lg font-bold text-[#D95D39]">{selectedStreak}</div>
+                  <div className="p-3 bg-[var(--panel)] rounded-2xl space-y-1">
+                    <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Streak</span>
+                    <div className="text-lg font-bold text-[var(--accent)]">{selectedStreak}</div>
                   </div>
-                  <div className="p-3 bg-[#F2F0ED] rounded-2xl space-y-1">
-                    <span className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Points</span>
-                    <div className="text-lg font-bold text-[#5B5F97]">
+                  <div className="p-3 bg-[var(--panel)] rounded-2xl space-y-1">
+                    <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Points</span>
+                    <div className="text-lg font-bold text-[var(--accent)]">
                         {pointsForMinutes(basePoints(selected.importance, selected.difficulty), selected.estimateMinutes ?? 15).toFixed(1)}
                     </div>
                   </div>
@@ -338,35 +388,35 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                     + Done
                   </button>
                   <button
-                    className="h-10 px-3 rounded-2xl bg-white/70 text-[#1C1C1E] text-xs font-bold border border-black/5 hover:bg-white transition-all"
+                    className="h-10 px-3 rounded-2xl bg-white/70 text-[var(--text)] text-xs font-bold border border-black/5 hover:bg-[var(--panel)] transition-all"
                     onClick={() => props.onOpenReports?.(selected.id)}>
                     Analytics
                   </button>
                 </div>
 
                 <div className="space-y-2">
-                  <span className="text-[10px] font-bold text-[#86868B] uppercase tracking-[0.2em]">Consistency Map</span>
+                  <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-[0.2em]">Consistency Map</span>
                   <div className="min-h-[140px]">
                     <HabitHeatmap values={selectedValues} startDate={heatmapStart} showLabels maxAbs={heatmapMax} />
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Category</label>
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Category</label>
                   <input
                     className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
                     value={selected.category ?? ''}
                     onChange={(e) => updateHabit(selected.id, { category: e.target.value.trim() || null })}
                     placeholder="Personal, Health, Work…"
                   />
-                  <label className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Subcategory</label>
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Subcategory</label>
                   <input
                     className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
                     value={selected.subcategory ?? ''}
                     onChange={(e) => updateHabit(selected.id, { subcategory: e.target.value.trim() || null })}
                     placeholder="Morning routine, Strength…"
                   />
-                  <label className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Tags</label>
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Tags</label>
                   <input
                     className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
                     value={selected.tags.join(' ')}
@@ -378,7 +428,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                     }}
                     placeholder="#health #morning"
                   />
-                  <label className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Skills</label>
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Skills</label>
                   <input
                     className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
                     value={selected.skills.join(', ')}
@@ -404,21 +454,21 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                     }}
                     placeholder="communication, lifting"
                   />
-                  <label className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Estimate (min)</label>
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Estimate (min)</label>
                   <input
                     className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
                     value={selected.estimateMinutes ?? ''}
                     onChange={(e) => updateHabit(selected.id, { estimateMinutes: numberOrNull(e.target.value) })}
                     placeholder="15"
                   />
-                  <label className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Schedule</label>
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Schedule</label>
                   <input
                     className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
                     value={selected.schedule ?? ''}
                     onChange={(e) => updateHabit(selected.id, { schedule: e.target.value })}
                     placeholder="Mon/Wed/Fri · 7:00 AM"
                   />
-                  <label className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Target per week</label>
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Target per week</label>
                   <input
                     className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
                     value={selected.targetPerWeek ?? ''}
@@ -428,7 +478,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Importance</label>
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Importance</label>
                   <input
                     type="range"
                     min={0}
@@ -436,7 +486,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                     value={selected.importance}
                     onChange={(e) => updateHabit(selected.id, { importance: clamp(Number(e.target.value), 0, 10) })}
                   />
-                  <label className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Difficulty / Energy</label>
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Difficulty / Energy</label>
                   <input
                     type="range"
                     min={0}
@@ -444,14 +494,14 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                     value={selected.difficulty}
                     onChange={(e) => updateHabit(selected.id, { difficulty: clamp(Number(e.target.value), 0, 10) })}
                   />
-                  <label className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Character</label>
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Character</label>
                   <div className="flex flex-wrap gap-2">
                     {(['STR', 'INT', 'CON', 'PER'] as const).map((c) => {
                       const active = selected.character.includes(c)
                       return (
                         <button
                           key={c}
-                          className={active ? 'px-3 py-1 rounded-full bg-[#D95D39]/10 text-[#D95D39] text-[10px] font-bold' : 'px-3 py-1 rounded-full bg-[#F2F0ED] text-[#86868B] text-[10px] font-bold'}
+                          className={active ? 'px-3 py-1 rounded-full bg-[#D95D39]/10 text-[var(--accent)] text-[10px] font-bold' : 'px-3 py-1 rounded-full bg-[var(--panel)] text-[var(--muted)] text-[10px] font-bold'}
                           onClick={() => {
                             const next = active ? selected.character.filter((x) => x !== c) : [...selected.character, c]
                             updateHabit(selected.id, { character: next })
@@ -462,12 +512,12 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                       )
                     })}
                   </div>
-                  <label className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Polarity</label>
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Polarity</label>
                   <div className="flex gap-2">
                     {(['positive', 'negative', 'both'] as const).map((p) => (
                       <button
                         key={p}
-                        className={selected.polarity === p ? 'px-3 py-1 rounded-full bg-[#1C1C1E] text-white text-[10px] font-bold uppercase' : 'px-3 py-1 rounded-full bg-[#F2F0ED] text-[#86868B] text-[10px] font-bold uppercase'}
+                        className={selected.polarity === p ? 'px-3 py-1 rounded-full bg-[#1C1C1E] text-white text-[10px] font-bold uppercase' : 'px-3 py-1 rounded-full bg-[var(--panel)] text-[var(--muted)] text-[10px] font-bold uppercase'}
                         onClick={() => updateHabit(selected.id, { polarity: p })}
                       >
                         {p}
@@ -477,7 +527,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                 </div>
               </motion.div>
             ) : (
-              <div className="pageHero p-6 flex items-center justify-center text-center text-xs font-bold uppercase tracking-widest text-[#86868B]">
+              <div className="pageHero p-6 flex items-center justify-center text-center text-xs font-bold uppercase tracking-widest text-[var(--muted)]">
                 Select a habit to edit
               </div>
             )}

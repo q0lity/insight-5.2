@@ -3,17 +3,14 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, FlatLi
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useTheme } from '@/src/state/theme';
 import { InsightIcon } from '@/src/components/InsightIcon';
 import { listPeople, addPerson, deletePerson, type Person } from '@/src/storage/people';
 
 export default function PeopleScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useTheme();
   const insets = useSafeAreaInsets();
-  const isDark = colorScheme === 'dark';
 
   const [people, setPeople] = useState<Person[]>([]);
   const [newPersonName, setNewPersonName] = useState('');
@@ -54,13 +51,13 @@ export default function PeopleScreen() {
           style={[
             styles.input,
             { 
-              backgroundColor: isDark ? '#141a2a' : '#FFFFFF',
+              backgroundColor: palette.surface,
               color: palette.text,
-              borderColor: isDark ? 'rgba(148, 163, 184, 0.16)' : 'rgba(28, 28, 30, 0.06)'
+              borderColor: palette.border
             }
           ]}
           placeholder="Add a person..."
-          placeholderTextColor={palette.tabIconDefault}
+          placeholderTextColor={palette.textSecondary}
           value={newPersonName}
           onChangeText={setNewPersonName}
           onSubmitEditing={handleAddPerson}
@@ -78,25 +75,25 @@ export default function PeopleScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          <View style={[styles.card, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF' }]}>
-            <Text style={[styles.emptyText, { color: palette.tabIconDefault }]}>
+          <View style={[styles.card, { backgroundColor: palette.surface }]}>
+            <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
               No people added yet. Track interactions by adding people you meet.
             </Text>
           </View>
         }
         renderItem={({ item }) => (
-          <View style={[styles.item, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF' }]}>
+          <View style={[styles.item, { backgroundColor: palette.surface }]}>
             <View style={[styles.avatar, { backgroundColor: palette.tint + '20' }]}>
               <Text style={[styles.avatarText, { color: palette.tint }]}>{item.name.charAt(0).toUpperCase()}</Text>
             </View>
             <View style={styles.info}>
               <Text style={[styles.name, { color: palette.text }]}>{item.name}</Text>
-              <Text style={[styles.meta, { color: palette.tabIconDefault }]}>
+              <Text style={[styles.meta, { color: palette.textSecondary }]}>
                 Added {new Date(item.createdAt).toLocaleDateString()}
               </Text>
             </View>
             <TouchableOpacity onPress={() => handleDeletePerson(item.id)} style={styles.deleteButton}>
-              <InsightIcon name="plus" size={18} color={isDark ? 'rgba(148,163,184,0.4)' : 'rgba(28,28,30,0.3)'} />
+              <InsightIcon name="plus" size={18} color={palette.border} />
             </TouchableOpacity>
           </View>
         )}

@@ -20,6 +20,7 @@ Acceptance:
 
 ## Phase 1 — Voice Capture Vertical Slice (MVP Core)
 Goal: the app “actually works” end-to-end.
+Detail: mobile capture parity tasks are tracked in `Insight 5/PRD/IMPLEMENTATION_PLAN_MOBILE_CAPTURE.md`.
 
 ### 1.1 Capture
 - In-app mic record/stop

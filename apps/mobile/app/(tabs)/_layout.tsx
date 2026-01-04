@@ -1,11 +1,10 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useRef } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useTheme } from '@/src/state/theme';
 import { InsightIcon, type InsightIconName } from '@/src/components/InsightIcon';
 
 type TabItem = {
@@ -16,41 +15,30 @@ type TabItem = {
 
 const TAB_ITEMS: TabItem[] = [
   { name: 'index', label: 'Dashboard', icon: 'node' },
+  { name: 'habits', label: 'Habits', icon: 'smile' },
   { name: 'calendar', label: 'Calendar', icon: 'calendar' },
   { name: 'plan', label: 'Tasks', icon: 'check' },
-  { name: 'habits', label: 'Habits', icon: 'smile' },
-  { name: 'explore', label: 'Explore', icon: 'file' },
   { name: 'more', label: 'More', icon: 'dots' },
 ];
 
 function InsightTabBar({ state, navigation }: BottomTabBarProps) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const router = useRouter();
+  const { palette, sizes, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const rotation = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(0)).current;
   const currentRoute = state.routes[state.index]?.name;
   const isCaptureActive = currentRoute === 'capture';
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 1600, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 1600, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse]);
-
-  const spin = rotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '90deg'] });
-  const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.24] });
-  const pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.28, 0] });
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   const [leftTabs, rightTabs] = useMemo(
-    () => [TAB_ITEMS.slice(0, 3), TAB_ITEMS.slice(3)],
+    () => [TAB_ITEMS.slice(0, 2), TAB_ITEMS.slice(2)],
     []
   );
+  const barBackground = isDark ? 'rgba(15,19,32,0.95)' : 'rgba(255,255,255,0.94)';
+  const barBorder = palette.border;
+  const rotation = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '90deg'],
+  });
 
   const renderTab = (tab: TabItem) => {
     const route = state.routes.find((r) => r.name === tab.name);
@@ -68,7 +56,7 @@ function InsightTabBar({ state, navigation }: BottomTabBarProps) {
       }
     };
 
-    const color = isFocused ? palette.tabIconSelected : palette.tabIconDefault;
+    const color = isFocused ? palette.tint : palette.textSecondary;
     return (
       <Pressable key={tab.name} onPress={onPress} style={styles.tabItem}>
         {tab.icon === 'node' ? (
@@ -76,20 +64,15 @@ function InsightTabBar({ state, navigation }: BottomTabBarProps) {
             style={[
               styles.nodeBadge,
               {
-                borderColor: isFocused
-                  ? palette.tint
-                  : colorScheme === 'dark'
-                    ? 'rgba(148,163,184,0.3)'
-                    : 'rgba(28,28,30,0.16)',
-                backgroundColor: isFocused ? 'rgba(217,93,57,0.18)' : 'rgba(217,93,57,0.08)',
+                borderColor: isFocused ? palette.tint : palette.border,
+                backgroundColor: isFocused ? palette.tintLight : palette.borderLight,
               },
             ]}>
-            <Text style={[styles.nodeBadgeText, { color } ]}>1</Text>
+            <Text style={[styles.nodeBadgeText, { color, fontSize: sizes.smallText } ]}>1</Text>
           </View>
         ) : (
-          <InsightIcon name={tab.icon} size={22} color={color} />
+          <InsightIcon name={tab.icon} size={sizes.iconSizeSmall} color={color} />
         )}
-        <Text style={[styles.tabLabel, { color }]}>{tab.label}</Text>
       </Pressable>
     );
   };
@@ -99,45 +82,47 @@ function InsightTabBar({ state, navigation }: BottomTabBarProps) {
       style={[
         styles.tabBar,
         {
-          backgroundColor: palette.background,
-          borderTopColor: colorScheme === 'dark' ? 'rgba(148,163,184,0.16)' : 'rgba(28,28,30,0.08)',
-          paddingBottom: Math.max(insets.bottom, 12),
+          backgroundColor: barBackground,
+          borderColor: barBorder,
+          bottom: insets.bottom + 8,
         },
       ]}>
-      <View style={styles.tabGroup}>{leftTabs.map(renderTab)}</View>
-      <View style={styles.captureSpacer} />
-      <View style={styles.tabGroup}>{rightTabs.map(renderTab)}</View>
-
-      <View pointerEvents="none" style={styles.capturePulseWrap}>
-        <Animated.View
-          style={[
-            styles.capturePulse,
-            { backgroundColor: palette.tint, opacity: pulseOpacity, transform: [{ scale: pulseScale }] },
-          ]}
-        />
+      <View style={styles.tabRow}>
+        <View style={styles.tabGroup}>{leftTabs.map(renderTab)}</View>
+        <Pressable
+          onPress={() => router.push('/voice')}
+          onPressIn={() =>
+            Animated.timing(rotateAnim, {
+              toValue: 1,
+              duration: 180,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }).start()
+          }
+          onPressOut={() =>
+            Animated.timing(rotateAnim, {
+              toValue: 0,
+              duration: 180,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }).start()
+          }
+          style={({ pressed }) => [styles.captureButton, pressed && styles.captureButtonPressed]}>
+          <Animated.View
+            style={[
+              styles.captureButtonInner,
+              {
+                backgroundColor: palette.tint,
+                borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.08)',
+                transform: [{ rotate: rotation }],
+              },
+              isCaptureActive && styles.captureButtonActive,
+            ]}>
+            <InsightIcon name="plus" size={sizes.iconSize} color="#FFFFFF" />
+          </Animated.View>
+        </Pressable>
+        <View style={styles.tabGroup}>{rightTabs.map(renderTab)}</View>
       </View>
-
-      <Pressable
-        onPress={() => navigation.navigate('capture' as never)}
-        onPressIn={() =>
-          Animated.spring(rotation, { toValue: 1, useNativeDriver: true, friction: 6, tension: 140 }).start()
-        }
-        onPressOut={() =>
-          Animated.spring(rotation, { toValue: 0, useNativeDriver: true, friction: 6, tension: 140 }).start()
-        }
-        style={({ pressed }) => [
-          styles.captureButton,
-          {
-            backgroundColor: palette.tint,
-            borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.12)',
-          },
-          isCaptureActive && styles.captureButtonActive,
-          pressed && styles.captureButtonPressed,
-        ]}>
-        <Animated.View style={{ transform: [{ rotate: spin }] }}>
-          <InsightIcon name="plus" size={22} color="#FFFFFF" />
-        </Animated.View>
-      </Pressable>
     </View>
   );
 }
@@ -150,12 +135,19 @@ export default function TabLayout() {
       }}
       tabBar={(props) => <InsightTabBar {...props} />}>
       <Tabs.Screen name="index" options={{ title: 'Dashboard' }} />
+      <Tabs.Screen name="habits" options={{ title: 'Habits' }} />
       <Tabs.Screen name="calendar" options={{ title: 'Calendar' }} />
       <Tabs.Screen name="plan" options={{ title: 'Tasks' }} />
-      <Tabs.Screen name="habits" options={{ title: 'Habits' }} />
-      <Tabs.Screen name="explore" options={{ title: 'Explore' }} />
       <Tabs.Screen name="more" options={{ title: 'More' }} />
-      <Tabs.Screen name="capture" options={{ href: null }} />
+      <Tabs.Screen name="explore" options={{ href: null }} />
+      <Tabs.Screen name="event/[id]" options={{ href: null }} />
+      <Tabs.Screen
+        name="capture"
+        options={{
+          title: 'Capture',
+          tabBarIcon: ({ color }) => <InsightIcon name="plus" size={22} color={color} />,
+        }}
+      />
       <Tabs.Screen name="assistant" options={{ href: null }} />
     </Tabs>
   );
@@ -164,8 +156,25 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     borderTopWidth: 1,
-    paddingHorizontal: 14,
-    paddingTop: 10,
+    paddingHorizontal: 8,
+    height: 44,
+    borderRadius: 16,
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 16,
+    elevation: 8,
+    overflow: 'visible',
+    justifyContent: 'center',
+  },
+  tabRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
   },
   tabGroup: {
     flexDirection: 'row',
@@ -173,23 +182,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-around',
   },
-  captureSpacer: {
-    width: 70,
-  },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    minWidth: 52,
-  },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: '600',
+    minWidth: 34,
+    height: 32,
   },
   nodeBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -198,34 +200,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
-  capturePulseWrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    top: -18,
-  },
-  capturePulse: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-  },
   captureButton: {
-    position: 'absolute',
-    left: '50%',
-    marginLeft: -30,
-    top: -26,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 14,
+    elevation: 7,
+  },
+  captureButtonInner: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 14,
-    elevation: 6,
   },
   captureButtonActive: {
     shadowOpacity: 0.3,

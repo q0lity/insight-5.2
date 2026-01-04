@@ -1,21 +1,160 @@
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, Switch } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
 import { InsightIcon } from '@/src/components/InsightIcon';
+import { useTheme, ThemePalettes, type ThemeMode, type DisplayMode } from '@/src/state/theme';
+import { useAuth } from '@/src/state/auth';
+import { getSupabaseClient } from '@/src/supabase/client';
+import { getSupabaseSessionUser } from '@/src/supabase/helpers';
+import { invokeCaptureParse } from '@/src/supabase/functions';
+import {
+  loadPreferences,
+  savePreferences,
+  AI_MODELS,
+  type WeightUnit,
+  type DistanceUnit,
+} from '@/src/storage/preferences';
+
+const THEME_OPTIONS: { key: ThemeMode; label: string }[] = [
+  { key: 'dark', label: 'Dark' },
+  { key: 'light', label: 'Light' },
+  { key: 'warm', label: 'Warm' },
+  { key: 'olive', label: 'Olive' },
+  { key: 'oliveOrange', label: 'Olive Orange' },
+  { key: 'roseGold', label: 'Rose Gold' },
+];
+
+const DISPLAY_OPTIONS: { key: DisplayMode; label: string; description: string }[] = [
+  { key: 'big', label: 'Big', description: 'Larger text & spacing' },
+  { key: 'compact', label: 'Compact', description: 'More info on screen' },
+];
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
   const insets = useSafeAreaInsets();
-  const isDark = colorScheme === 'dark';
+  const {
+    themeMode,
+    displayMode,
+    resolvedTheme,
+    palette,
+    isDark,
+    setThemeMode,
+    setDisplayMode
+  } = useTheme();
+  const { session, signOut, forceReauthenticate } = useAuth();
 
   const [apiKey, setApiKey] = useState('');
   const [useLlm, setUseLlm] = useState(false);
+  const [supabaseStatus, setSupabaseStatus] = useState({
+    configured: false,
+    sessionLabel: 'Unknown',
+    userId: '',
+  });
+  const [testStatus, setTestStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
+  const [testMessage, setTestMessage] = useState('');
+
+  // Health preferences
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>('lbs');
+  const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('mi');
+  const [nutritionModel, setNutritionModel] = useState('gpt-4o-mini');
+
+  // Load preferences on mount
+  useEffect(() => {
+    void loadPreferences().then((prefs) => {
+      setWeightUnit(prefs.preferredWeightUnit);
+      setDistanceUnit(prefs.preferredDistanceUnit);
+      setNutritionModel(prefs.nutritionModel);
+    });
+  }, []);
+
+  const onWeightUnitChange = useCallback(async (unit: WeightUnit) => {
+    setWeightUnit(unit);
+    await savePreferences({ preferredWeightUnit: unit });
+  }, []);
+
+  const onDistanceUnitChange = useCallback(async (unit: DistanceUnit) => {
+    setDistanceUnit(unit);
+    await savePreferences({ preferredDistanceUnit: unit });
+  }, []);
+
+  const onNutritionModelChange = useCallback(async (model: string) => {
+    setNutritionModel(model);
+    await savePreferences({ nutritionModel: model });
+  }, []);
+
+  const surface = isDark ? palette.surface : '#FFFFFF';
+  const border = palette.border;
+  const userEmail = session?.user?.email ?? '';
+
+  const refreshSupabaseStatus = useCallback(async () => {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      setSupabaseStatus({ configured: false, sessionLabel: 'Not configured', userId: '' });
+      return;
+    }
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      setSupabaseStatus({ configured: true, sessionLabel: 'Session error', userId: '' });
+      return;
+    }
+    const user = data.session?.user;
+    if (!user) {
+      setSupabaseStatus({ configured: true, sessionLabel: 'Signed out', userId: '' });
+      return;
+    }
+    const isAnonymous = (user as { is_anonymous?: boolean }).is_anonymous === true;
+    setSupabaseStatus({
+      configured: true,
+      sessionLabel: isAnonymous ? 'Anonymous session' : 'Signed in',
+      userId: user.id,
+    });
+  }, []);
+
+  useEffect(() => {
+    void refreshSupabaseStatus();
+  }, [refreshSupabaseStatus]);
+
+  const runTranscriptionTest = useCallback(async () => {
+    setTestStatus('running');
+    setTestMessage('');
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      setTestStatus('error');
+      setTestMessage('Supabase not configured. Check EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.');
+      return;
+    }
+    const session = await getSupabaseSessionUser({ allowAnonymous: true });
+    if (!session) {
+      setTestStatus('error');
+      setTestMessage('No Supabase session. Sign in or enable anonymous auth.');
+      return;
+    }
+    try {
+      const result = await invokeCaptureParse({
+        captureId: `test_${Date.now()}`,
+        transcript: 'Row. This is a test of the parsing system.',
+      });
+      const status = typeof result?.status === 'string' ? result.status : 'ok';
+      setTestStatus('success');
+      setTestMessage(`Transcription test succeeded (${status}).`);
+    } catch (err) {
+      setTestStatus('error');
+      const message = err instanceof Error ? err.message : 'Transcription test failed.';
+      if (/\\(404\\)/.test(message) || /not found/i.test(message)) {
+        setTestMessage(`${message} Deploy the Supabase function "transcribe_and_parse_capture".`);
+      } else if (/\\(401\\)|unauthorized/i.test(message)) {
+        setTestMessage(`${message} Check auth/session or enable anonymous auth.`);
+      } else if (/OPENAI_API_KEY/i.test(message)) {
+        setTestMessage(`${message} Add OPENAI_API_KEY to your Supabase function environment.`);
+      } else {
+        setTestMessage(message);
+      }
+    } finally {
+      void refreshSupabaseStatus();
+    }
+  }, [refreshSupabaseStatus]);
 
   return (
     <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
@@ -28,43 +167,169 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={[styles.section, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF', borderColor: isDark ? 'rgba(148, 163, 184, 0.16)' : 'rgba(28, 28, 30, 0.06)' }]}>
-          <Text style={[styles.sectionLabel, { color: palette.tabIconDefault }]}>Appearance</Text>
-          
+        {/* Account Section */}
+        <View style={[styles.section, { backgroundColor: surface, borderColor: border }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>Account</Text>
+            <InsightIcon name="users" size={16} color={palette.tint} />
+          </View>
+
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
-              <Text style={[styles.settingName, { color: palette.text }]}>Theme</Text>
-              <Text style={[styles.settingDesc, { color: palette.tabIconDefault }]}>Current: {colorScheme.toUpperCase()}</Text>
+              <Text style={[styles.settingName, { color: palette.text }]}>Signed in</Text>
+              <Text style={[styles.settingDesc, { color: palette.textSecondary }]}>
+                {userEmail || 'Unknown user'}
+              </Text>
             </View>
-            <View style={[styles.segmented, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
-              {['light', 'dark', 'system'].map((t) => (
-                <TouchableOpacity 
-                  key={t} 
-                  style={[styles.segBtn, colorScheme === t && styles.segBtnActive]}
+            <View style={[styles.statusBadge, { backgroundColor: palette.borderLight }]}>
+              <Text style={[styles.statusText, { color: palette.text }]}>Active</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={async () => {
+              console.log('[Settings] Sign out button pressed');
+              await signOut();
+              Alert.alert('Signed Out', 'You have been signed out.');
+            }}
+            style={[styles.secondaryButton, { borderColor: palette.border, backgroundColor: palette.borderLight }]}
+          >
+            <Text style={[styles.secondaryButtonText, { color: palette.text }]}>Sign Out</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={async () => {
+              console.log('[Settings] Clear Session button pressed');
+              Alert.alert(
+                'Clear Session',
+                'This will clear all cached auth data and sign you out. Continue?',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Clear & Sign Out',
+                    style: 'destructive',
+                    onPress: async () => {
+                      await forceReauthenticate();
+                      Alert.alert('Session Cleared', 'Please sign in again.');
+                    },
+                  },
+                ]
+              );
+            }}
+            style={[styles.secondaryButton, { borderColor: palette.error, backgroundColor: 'transparent' }]}
+          >
+            <Text style={[styles.secondaryButtonText, { color: palette.error }]}>Clear Session & Re-login</Text>
+          </TouchableOpacity>
+        </View>
+        {/* Display Mode Section */}
+        <View style={[styles.section, { backgroundColor: surface, borderColor: border }]}>
+          <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>Display</Text>
+
+          <View style={styles.displayModeContainer}>
+            {DISPLAY_OPTIONS.map((option) => {
+              const isSelected = displayMode === option.key;
+              return (
+                <TouchableOpacity
+                  key={option.key}
+                  onPress={() => setDisplayMode(option.key)}
+                  style={[
+                    styles.displayModeBtn,
+                    {
+                      backgroundColor: isSelected ? palette.tint : palette.borderLight,
+                      borderColor: isSelected ? palette.tint : 'transparent',
+                    },
+                  ]}
                 >
-                  <Text style={[styles.segText, colorScheme === t && styles.segTextActive]}>{t.charAt(0).toUpperCase()}</Text>
+                  <Text
+                    style={[
+                      styles.displayModeBtnLabel,
+                      { color: isSelected ? '#FFFFFF' : palette.text }
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.displayModeBtnDesc,
+                      { color: isSelected ? 'rgba(255,255,255,0.7)' : palette.textSecondary }
+                    ]}
+                  >
+                    {option.description}
+                  </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
+              );
+            })}
           </View>
         </View>
 
-        <View style={[styles.section, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF', borderColor: isDark ? 'rgba(148, 163, 184, 0.16)' : 'rgba(28, 28, 30, 0.06)' }]}>
+        {/* Theme Section */}
+        <View style={[styles.section, { backgroundColor: surface, borderColor: border }]}>
+          <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>Theme</Text>
+
+          <View style={styles.themeGrid}>
+            {THEME_OPTIONS.map((option) => {
+              const isSelected = themeMode === option.key;
+              const previewColors = ThemePalettes[option.key];
+              return (
+                <TouchableOpacity
+                  key={option.key}
+                  onPress={() => setThemeMode(option.key)}
+                  style={[
+                    styles.themeSwatch,
+                    isSelected && [styles.themeSwatchActive, { borderColor: palette.tint }],
+                  ]}
+                >
+                  <View style={[styles.swatchPreview, { backgroundColor: previewColors.background }]}>
+                    <View style={[styles.swatchSurface, { backgroundColor: previewColors.surface }]} />
+                    <View style={[styles.swatchAccent, { backgroundColor: previewColors.tint }]} />
+                  </View>
+                  <Text style={[styles.swatchLabel, { color: palette.textSecondary }]}>
+                    {option.label}
+                  </Text>
+                  {isSelected && (
+                    <View style={[styles.checkBadge, { backgroundColor: palette.tint }]}>
+                      <InsightIcon name="check" size={10} color="#FFFFFF" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* System toggle */}
+          <View style={[styles.settingRow, { marginTop: 8 }]}>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingName, { color: palette.text }]}>Follow System</Text>
+              <Text style={[styles.settingDesc, { color: palette.textSecondary }]}>
+                Auto-switch based on device settings
+              </Text>
+            </View>
+            <Switch
+              value={themeMode === 'system'}
+              onValueChange={(enabled) => setThemeMode(enabled ? 'system' : resolvedTheme)}
+              trackColor={{ false: border, true: palette.tint }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+        </View>
+
+        {/* AI Section */}
+        <View style={[styles.section, { backgroundColor: surface, borderColor: border }]}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionLabel, { color: palette.tabIconDefault }]}>Artificial Intelligence</Text>
+            <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>Artificial Intelligence</Text>
             <InsightIcon name="sparkle" size={16} color={palette.tint} />
           </View>
 
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
               <Text style={[styles.settingName, { color: palette.text }]}>Enable LLM Parsing</Text>
-              <Text style={[styles.settingDesc, { color: palette.tabIconDefault }]}>Use AI to parse natural language captures.</Text>
+              <Text style={[styles.settingDesc, { color: palette.textSecondary }]}>Use AI to parse natural language captures.</Text>
             </View>
-            <Switch 
-              value={useLlm} 
+            <Switch
+              value={useLlm}
               onValueChange={setUseLlm}
-              trackColor={{ false: '#767577', true: palette.tint }}
-              thumbColor={isDark ? '#f4f3f4' : '#FFFFFF'}
+              trackColor={{ false: border, true: palette.tint }}
+              thumbColor="#FFFFFF"
             />
           </View>
 
@@ -73,14 +338,14 @@ export default function SettingsScreen() {
             <TextInput
               style={[
                 styles.input,
-                { 
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                {
+                  backgroundColor: palette.borderLight,
                   color: palette.text,
-                  borderColor: isDark ? 'rgba(148, 163, 184, 0.1)' : 'rgba(28, 28, 30, 0.05)'
+                  borderColor: border,
                 }
               ]}
               placeholder="sk-..."
-              placeholderTextColor={palette.tabIconDefault}
+              placeholderTextColor={palette.textSecondary}
               secureTextEntry
               value={apiKey}
               onChangeText={setApiKey}
@@ -88,21 +353,203 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View style={[styles.section, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF', borderColor: isDark ? 'rgba(148, 163, 184, 0.16)' : 'rgba(28, 28, 30, 0.06)' }]}>
-          <Text style={[styles.sectionLabel, { color: palette.tabIconDefault }]}>Data Management</Text>
-          
-          <TouchableOpacity style={styles.actionRow}>
-            <Text style={[styles.actionName, { color: palette.text }]}>Export Data</Text>
-            <InsightIcon name="file" size={20} color={palette.tabIconDefault} />
+        {/* Transcription Diagnostics */}
+        <View style={[styles.section, { backgroundColor: surface, borderColor: border }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>Transcription</Text>
+            <InsightIcon name="mic" size={16} color={palette.tint} />
+          </View>
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingName, { color: palette.text }]}>Supabase Status</Text>
+              <Text style={[styles.settingDesc, { color: palette.textSecondary }]}>
+                {supabaseStatus.configured ? 'Configured' : 'Missing environment variables'}
+              </Text>
+            </View>
+            <View style={[styles.statusBadge, { backgroundColor: palette.borderLight }]}>
+              <Text style={[styles.statusText, { color: palette.text }]}>{supabaseStatus.sessionLabel}</Text>
+            </View>
+          </View>
+
+          {supabaseStatus.userId ? (
+            <Text style={[styles.settingDesc, { color: palette.textSecondary }]}>
+              User: {supabaseStatus.userId.slice(0, 8)}...
+            </Text>
+          ) : null}
+
+          <Text style={[styles.settingDesc, { color: palette.textSecondary }]}>
+            Runs a safe transcript test using Supabase Edge Functions (no data stored).
+          </Text>
+
+          <TouchableOpacity
+            onPress={() => void runTranscriptionTest()}
+            disabled={testStatus === 'running'}
+            style={[
+              styles.primaryButton,
+              { backgroundColor: palette.tint, opacity: testStatus === 'running' ? 0.7 : 1 },
+            ]}
+          >
+            <Text style={styles.primaryButtonText}>
+              {testStatus === 'running' ? 'Testing...' : 'Run Transcription Test'}
+            </Text>
           </TouchableOpacity>
-          
+
+          {testMessage ? (
+            <Text
+              style={[
+                styles.settingDesc,
+                { color: testStatus === 'error' ? palette.error : palette.textSecondary },
+              ]}
+            >
+              {testMessage}
+            </Text>
+          ) : null}
+        </View>
+
+        {/* Health Preferences Section */}
+        <View style={[styles.section, { backgroundColor: surface, borderColor: border }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>Health Preferences</Text>
+            <InsightIcon name="workout" size={16} color={palette.tint} />
+          </View>
+
+          {/* Weight Unit */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingName, { color: palette.text }]}>Weight Unit</Text>
+              <Text style={[styles.settingDesc, { color: palette.textSecondary }]}>
+                For workout tracking
+              </Text>
+            </View>
+          </View>
+          <View style={styles.displayModeContainer}>
+            {(['lbs', 'kg'] as const).map((unit) => {
+              const isSelected = weightUnit === unit;
+              return (
+                <TouchableOpacity
+                  key={unit}
+                  onPress={() => void onWeightUnitChange(unit)}
+                  style={[
+                    styles.unitBtn,
+                    {
+                      backgroundColor: isSelected ? palette.tint : palette.borderLight,
+                      borderColor: isSelected ? palette.tint : 'transparent',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.unitBtnLabel,
+                      { color: isSelected ? '#FFFFFF' : palette.text }
+                    ]}
+                  >
+                    {unit.toUpperCase()}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Distance Unit */}
+          <View style={[styles.settingRow, { marginTop: 12 }]}>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingName, { color: palette.text }]}>Distance Unit</Text>
+              <Text style={[styles.settingDesc, { color: palette.textSecondary }]}>
+                For cardio tracking
+              </Text>
+            </View>
+          </View>
+          <View style={styles.displayModeContainer}>
+            {(['mi', 'km'] as const).map((unit) => {
+              const isSelected = distanceUnit === unit;
+              return (
+                <TouchableOpacity
+                  key={unit}
+                  onPress={() => void onDistanceUnitChange(unit)}
+                  style={[
+                    styles.unitBtn,
+                    {
+                      backgroundColor: isSelected ? palette.tint : palette.borderLight,
+                      borderColor: isSelected ? palette.tint : 'transparent',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.unitBtnLabel,
+                      { color: isSelected ? '#FFFFFF' : palette.text }
+                    ]}
+                  >
+                    {unit === 'mi' ? 'Miles' : 'Kilometers'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Nutrition Model */}
+          <View style={[styles.settingRow, { marginTop: 12 }]}>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingName, { color: palette.text }]}>Nutrition Estimation</Text>
+              <Text style={[styles.settingDesc, { color: palette.textSecondary }]}>
+                AI model for calorie & nutrient estimates
+              </Text>
+            </View>
+          </View>
+          <View style={styles.modelGrid}>
+            {AI_MODELS.map((model) => {
+              const isSelected = nutritionModel === model.id;
+              return (
+                <TouchableOpacity
+                  key={model.id}
+                  onPress={() => void onNutritionModelChange(model.id)}
+                  style={[
+                    styles.modelBtn,
+                    {
+                      backgroundColor: isSelected ? palette.tint : palette.borderLight,
+                      borderColor: isSelected ? palette.tint : 'transparent',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.modelBtnLabel,
+                      { color: isSelected ? '#FFFFFF' : palette.text }
+                    ]}
+                  >
+                    {model.name}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.modelBtnDesc,
+                      { color: isSelected ? 'rgba(255,255,255,0.7)' : palette.textSecondary }
+                    ]}
+                  >
+                    {model.description}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Data Management Section */}
+        <View style={[styles.section, { backgroundColor: surface, borderColor: border }]}>
+          <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>Data Management</Text>
+
+          <TouchableOpacity style={[styles.actionRow, { borderBottomColor: border }]}>
+            <Text style={[styles.actionName, { color: palette.text }]}>Export Data</Text>
+            <InsightIcon name="file" size={20} color={palette.textSecondary} />
+          </TouchableOpacity>
+
           <TouchableOpacity style={[styles.actionRow, { borderBottomWidth: 0 }]}>
-            <Text style={[styles.actionName, { color: '#EF4444' }]}>Clear All Data</Text>
-            <InsightIcon name="dots" size={20} color="#EF4444" />
+            <Text style={[styles.actionName, { color: palette.error }]}>Clear All Data</Text>
+            <InsightIcon name="dots" size={20} color={palette.error} />
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.version, { color: palette.tabIconDefault }]}>Insight 5 Mobile · v1.0.0</Text>
+        <Text style={[styles.version, { color: palette.textSecondary }]}>Insight 5 Mobile · v1.0.0</Text>
       </ScrollView>
     </View>
   );
@@ -150,10 +597,102 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+  // Display Mode Styles
+  displayModeContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  displayModeBtn: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    alignItems: 'center',
+    gap: 4,
+  },
+  displayModeBtnLabel: {
+    fontSize: 16,
+    fontWeight: '800',
+    fontFamily: 'Figtree',
+  },
+  displayModeBtnDesc: {
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  // Theme Swatch Styles
+  themeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  themeSwatch: {
+    width: '30%',
+    padding: 10,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    gap: 6,
+    position: 'relative',
+  },
+  themeSwatchActive: {
+    borderWidth: 2,
+  },
+  swatchPreview: {
+    width: '100%',
+    height: 44,
+    borderRadius: 8,
+    padding: 6,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-start',
+    overflow: 'hidden',
+  },
+  swatchSurface: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 24,
+    height: 18,
+    borderRadius: 4,
+  },
+  swatchAccent: {
+    width: 36,
+    height: 8,
+    borderRadius: 4,
+  },
+  swatchLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'Figtree',
+    textAlign: 'center',
+  },
+  checkBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Setting Row Styles
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   settingInfo: {
     flex: 1,
@@ -169,26 +708,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
-  segmented: {
-    flexDirection: 'row',
-    padding: 4,
-    borderRadius: 10,
-  },
-  segBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  segBtnActive: {
-    backgroundColor: '#D95D39',
-  },
-  segText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  segTextActive: {
-    color: '#FFFFFF',
-  },
+  // Input Styles
   inputField: {
     gap: 8,
   },
@@ -205,23 +725,85 @@ const styles = StyleSheet.create({
     fontFamily: 'Figtree',
     borderWidth: 1,
   },
+  primaryButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  secondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  // Action Row Styles
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   actionName: {
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
+  // Version
   version: {
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '600',
     marginTop: 10,
+  },
+  // Unit button styles
+  unitBtn: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+  },
+  unitBtnLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+    fontFamily: 'Figtree',
+  },
+  // Model grid styles
+  modelGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  modelBtn: {
+    width: '47%',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    gap: 2,
+  },
+  modelBtnLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    fontFamily: 'Figtree',
+  },
+  modelBtnDesc: {
+    fontSize: 10,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

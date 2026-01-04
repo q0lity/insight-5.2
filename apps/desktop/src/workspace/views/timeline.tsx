@@ -69,136 +69,149 @@ type TimelineItem =
 function TimelineEventBlock(props: {
   item: TimelineItem
   onClick: () => void
-  isLast: boolean
+  showLine: boolean
   index: number
 }) {
-  const { item, onClick, isLast, index } = props
+  const { item, onClick, showLine, index } = props
   const isEvent = item.kind === 'event'
   const color = isEvent ? item.color : '#D95D39'
   const icon = isEvent ? item.icon : 'mic' as IconName
   const isActive = isEvent && item.active
 
-  // Build description text
-  const descParts: string[] = []
-  if (isEvent && item.category) {
-    descParts.push(item.category + (item.subcategory ? ` · ${item.subcategory}` : ''))
-  }
-  if (isEvent && item.location) {
-    descParts.push(item.location)
-  }
-  if (item.tags.length > 0) {
-    descParts.push(item.tags.slice(0, 3).join(' '))
-  }
-  const description = descParts.join(' · ')
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
-        duration: 0.3,
-        delay: Math.min(index * 0.03, 0.3),
+        duration: 0.35,
+        delay: Math.min(index * 0.04, 0.4),
         ease: [0.23, 1, 0.32, 1]
       }}
-      className="relative flex items-start min-h-[72px]"
+      className="relative"
+      style={{ minHeight: '200px' }}
     >
-      {/* Vertical line - continuous */}
-      <div
-        className="absolute w-px bg-[var(--border)]"
-        style={{
-          left: '72px',
-          top: 0,
-          bottom: isLast ? '50%' : 0,
-        }}
-      />
+      {/* Row container - centers icon and card vertically */}
+      <div className="flex items-center" style={{ minHeight: '200px' }}>
+        {/* Left column - Time */}
+        <div className="w-[140px] flex-shrink-0 pr-8 text-right">
+          <span className="text-[22px] font-bold text-[var(--text)] tracking-tight tabular-nums">
+            {formatTime(item.at)}
+          </span>
+        </div>
 
-      {/* Time column - fixed width */}
-      <div className="w-[72px] flex-shrink-0 pt-3 pr-4 text-right">
-        <span className="text-[13px] text-[var(--muted)] tabular-nums">
-          {formatTime(item.at)}
-        </span>
-      </div>
+        {/* Center column - Node only (line is separate) */}
+        <div className="w-[100px] flex-shrink-0 flex items-center justify-center">
+          {/* Node */}
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            className="relative flex items-center justify-center w-20 rounded-[28px] bg-[var(--panel2)] border-[3px] transition-all duration-200 z-10 py-6"
+            style={{
+              borderColor: color,
+              boxShadow: isActive
+                ? `0 0 0 6px ${hexToRgba(color, 0.15)}`
+                : `0 4px 16px rgba(0,0,0,0.06)`,
+              color: color,
+            }}
+          >
+            <Icon name={icon} size={40} />
 
-      {/* Node with icon */}
-      <div className="relative flex-shrink-0 z-10 pt-1">
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-          className="flex items-center justify-center w-10 h-10 rounded-full bg-[var(--panel2)] border-2 transition-all duration-200"
-          style={{
-            borderColor: isActive ? color : 'var(--border)',
-            boxShadow: isActive
-              ? `0 0 0 3px ${hexToRgba(color, 0.15)}`
-              : '0 1px 3px rgba(0,0,0,0.04)',
-            color: isActive ? color : 'var(--muted)',
-          }}
-        >
-          <Icon name={icon} size={16} />
+            {/* Active pulse */}
+            {isActive && (
+              <motion.div
+                animate={{
+                  scale: [1, 1.3, 1.5],
+                  opacity: [0.35, 0.1, 0],
+                }}
+                transition={{
+                  duration: 2.2,
+                  repeat: Infinity,
+                  ease: 'easeOut',
+                }}
+                className="absolute inset-0 rounded-[28px]"
+                style={{ border: `2px solid ${color}` }}
+              />
+            )}
+          </motion.div>
+        </div>
 
-          {/* Active pulse */}
-          {isActive && (
-            <motion.div
-              animate={{
-                scale: [1, 1.4, 1.6],
-                opacity: [0.3, 0.1, 0],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: 'easeOut',
-              }}
-              className="absolute inset-0 rounded-full"
-              style={{ border: `2px solid ${color}` }}
-            />
-          )}
-        </motion.div>
-      </div>
-
-      {/* Content - fills remaining space */}
-      <motion.button
-        whileHover={{ x: 2 }}
-        whileTap={{ scale: 0.995 }}
-        onClick={onClick}
-        className="flex-1 ml-4 pt-1 pb-5 text-left focus:outline-none min-w-0"
-      >
-        {/* Title pill */}
-        <div
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200"
-          style={{
-            backgroundColor: hexToRgba(color, 0.1),
-            border: `1px solid ${hexToRgba(color, 0.15)}`,
-          }}
-        >
-          <span
-            className="text-[13px] font-semibold leading-snug"
+        {/* Right column - Content Card */}
+        <div className="flex-1 flex items-center pl-6">
+          <motion.button
+            whileHover={{ scale: 1.01, y: -2 }}
+            whileTap={{ scale: 0.995 }}
+            onClick={onClick}
+            className="bg-[var(--panel2)] rounded-2xl border border-[var(--border)] p-6 text-left focus:outline-none transition-shadow duration-200 hover:shadow-lg"
+            style={{ minHeight: '180px', width: '380px' }}
+          >
+          {/* Title */}
+          <h3
+            className="text-[20px] font-bold leading-tight tracking-tight"
             style={{ color }}
           >
             {item.title}
-          </span>
-          {isActive && (
-            <motion.div
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: color }}
-            />
+            {isActive && (
+              <motion.span
+                animate={{ opacity: [0.4, 1, 0.4] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                className="inline-block w-2.5 h-2.5 rounded-full ml-3 relative -top-0.5"
+                style={{ backgroundColor: color }}
+              />
+            )}
+          </h3>
+
+          {/* Category & Subcategory */}
+          {isEvent && item.category && (
+            <p className="mt-3 text-[15px] text-[var(--muted)] font-medium">
+              {item.category}{item.subcategory ? ` · ${item.subcategory}` : ''}
+            </p>
           )}
+
+          {/* Tags */}
+          {item.tags.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {item.tags.slice(0, 6).map((tag) => (
+                <span
+                  key={tag}
+                  className="px-3 py-1 text-[13px] font-semibold rounded-lg bg-[var(--border)] text-[var(--muted)]"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Duration */}
+          {!isActive && item.endAt > item.at && (
+            <p className="mt-4 text-[14px] text-[var(--muted2)] font-bold tracking-wide uppercase">
+              {formatDuration(item.at, item.endAt)}
+            </p>
+          )}
+
+          {/* Location */}
+          {isEvent && item.location && (
+            <p className="mt-3 text-[14px] text-[var(--muted2)] flex items-center gap-2">
+              <span>📍</span> {item.location}
+            </p>
+          )}
+        </motion.button>
         </div>
+      </div>
 
-        {/* Description */}
-        {description && (
-          <p className="mt-1.5 text-[13px] text-[var(--muted)] leading-relaxed">
-            {description}
-          </p>
-        )}
-
-        {/* Duration */}
-        {!isActive && item.endAt > item.at && (
-          <p className="mt-1 text-[12px] text-[var(--muted2)]">
-            {formatDuration(item.at, item.endAt)}
-          </p>
-        )}
-      </motion.button>
+      {/* Vertical line - positioned absolutely to span full height */}
+      {showLine && (
+        <div
+          className="absolute bg-[var(--border2)]"
+          style={{
+            left: '190px',
+            top: 0,
+            bottom: 0,
+            width: '2px',
+            zIndex: 0
+          }}
+        />
+      )}
     </motion.div>
   )
 }
@@ -211,83 +224,85 @@ function DaySection(props: {
   onSelectEvent: (id: string) => void
   onSelectCapture: (id: string) => void
   isFirst: boolean
+  isLast: boolean
   sectionIndex: number
 }) {
-  const { day, items, onSelectEvent, onSelectCapture, isFirst, sectionIndex } = props
+  const { day, items, onSelectEvent, onSelectCapture, isFirst, isLast, sectionIndex } = props
   const isToday = isoDayFromMs(Date.now()) === day
-  const hasActiveItem = items.some(i => i.kind === 'event' && i.active)
 
   // Parse day for display
   const [y, m, d] = day.split('-').map(Number)
   const dt = new Date(y!, (m ?? 1) - 1, d ?? 1)
-  const dayOfWeek = dt.toLocaleDateString(undefined, { weekday: 'short' })
-  const monthDay = dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  const dayOfWeek = dt.toLocaleDateString(undefined, { weekday: 'long' })
+  const monthDay = dt.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{
-        duration: 0.3,
-        delay: sectionIndex * 0.05,
+        duration: 0.4,
+        delay: sectionIndex * 0.08,
       }}
-      className={`${isFirst ? '' : 'mt-10'}`}
     >
       {/* Day Header */}
-      <div className="flex items-center mb-4">
-        {/* Date column */}
-        <div className="w-[72px] flex-shrink-0 pr-4 text-right">
-          <div className={`text-[13px] font-semibold ${isToday ? 'text-[var(--accent)]' : 'text-[var(--text)]'}`}>
+      <div className="relative flex" style={{ minHeight: '100px' }}>
+        {/* Left column - Day info */}
+        <div className="w-[140px] flex-shrink-0 pr-8 text-right pt-2">
+          <h2 className={`text-[28px] font-black tracking-tight leading-none ${isToday ? 'text-[var(--accent)]' : 'text-[var(--text)]'}`}>
             {isToday ? 'Today' : dayOfWeek}
-          </div>
-          <div className="text-[12px] text-[var(--muted)]">
+          </h2>
+          <p className={`text-[28px] font-black tracking-tight mt-1 ${isToday ? 'text-[var(--accent)]' : 'text-[var(--muted)]'}`}>
             {monthDay}
-          </div>
+          </p>
         </div>
 
-        {/* Day node */}
-        <div className="flex-shrink-0">
+        {/* Center column - Line & Day marker */}
+        <div className="w-[100px] flex-shrink-0 flex flex-col items-center relative">
+          {/* Top line - connects from previous section */}
+          {!isFirst && (
+            <div className="w-[2px] h-6 bg-[var(--border2)]" />
+          )}
+          {isFirst && <div className="h-6" />}
+
+          {/* Day marker node */}
           <div
-            className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200"
+            className="w-20 rounded-[28px] py-6 flex items-center justify-center z-10 transition-all duration-200"
             style={{
-              backgroundColor: isToday
-                ? 'var(--accent)'
-                : hasActiveItem
-                  ? 'var(--accentSoft)'
-                  : 'var(--border)',
+              backgroundColor: isToday ? 'var(--accent)' : 'var(--border)',
+              boxShadow: isToday ? '0 6px 24px rgba(217, 93, 57, 0.3)' : 'none',
             }}
           >
             <span
-              className="text-[13px] font-bold"
-              style={{
-                color: isToday ? '#fff' : hasActiveItem ? 'var(--accent)' : 'var(--muted)',
-              }}
+              className="text-[28px] font-black"
+              style={{ color: isToday ? '#fff' : 'var(--muted)' }}
             >
               {items.length}
             </span>
           </div>
+
+          {/* Bottom line - connects to first item */}
+          <div className="w-[2px] flex-1 bg-[var(--border2)]" style={{ minHeight: '24px' }} />
         </div>
 
-        {/* Event count label */}
-        <div className="ml-4 flex-1">
-          <span className={`text-[13px] ${isToday ? 'text-[var(--accent)]' : 'text-[var(--muted)]'}`}>
+        {/* Right column - Moment count */}
+        <div className="flex-1 pl-6 pt-4">
+          <span className={`text-[18px] font-semibold ${isToday ? 'text-[var(--accent)]' : 'text-[var(--muted)]'}`}>
             {items.length} {items.length === 1 ? 'moment' : 'moments'}
           </span>
         </div>
       </div>
 
       {/* Timeline Items */}
-      <div className="relative">
-        {items.map((item, idx) => (
-          <TimelineEventBlock
-            key={item.id}
-            item={item}
-            onClick={() => item.kind === 'event' ? onSelectEvent(item.id) : onSelectCapture(item.id)}
-            isLast={idx === items.length - 1}
-            index={idx}
-          />
-        ))}
-      </div>
+      {items.map((item, idx) => (
+        <TimelineEventBlock
+          key={item.id}
+          item={item}
+          onClick={() => item.kind === 'event' ? onSelectEvent(item.id) : onSelectCapture(item.id)}
+          showLine={!(idx === items.length - 1 && isLast)}
+          index={idx}
+        />
+      ))}
     </motion.div>
   )
 }
@@ -389,23 +404,23 @@ export function TimelineView(props: {
     <div className="flex flex-col h-full w-full overflow-hidden bg-[var(--bg)]">
       {/* Header */}
       {!props.hideHeader && (
-        <div className="flex-shrink-0 px-6 py-5 border-b border-[var(--border)]">
+        <div className="flex-shrink-0 px-12 py-8 border-b border-[var(--border)]">
           {/* Title row */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-[var(--text)] tracking-tight">
+            <div className="flex items-center gap-4">
+              <h1 className="text-[32px] font-black text-[var(--text)] tracking-tight">
                 Timeline
               </h1>
 
               {/* Active indicator */}
               {stats.activeCount > 0 && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--accentSoft)]">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--accentSoft)]">
                   <motion.div
                     animate={{ opacity: [0.5, 1, 0.5] }}
                     transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-                    className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]"
+                    className="w-2.5 h-2.5 rounded-full bg-[var(--accent)]"
                   />
-                  <span className="text-[12px] font-semibold text-[var(--accent)]">
+                  <span className="text-[15px] font-bold text-[var(--accent)]">
                     {stats.activeCount} active
                   </span>
                 </div>
@@ -413,12 +428,12 @@ export function TimelineView(props: {
             </div>
 
             {/* Filter toggle */}
-            <div className="flex rounded-lg p-0.5 bg-[var(--border)]">
+            <div className="flex rounded-xl p-1 bg-[var(--border)]">
               {(['all', 'events', 'captures'] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setFilterMode(mode)}
-                  className={`px-3 py-1 text-[12px] font-medium rounded-md transition-all duration-200 ${
+                  className={`px-5 py-2 text-[14px] font-semibold rounded-lg transition-all duration-200 ${
                     filterMode === mode
                       ? 'bg-[var(--panel2)] text-[var(--text)] shadow-sm'
                       : 'text-[var(--muted)] hover:text-[var(--text)]'
@@ -432,12 +447,12 @@ export function TimelineView(props: {
 
           {/* Tag filters */}
           {allTags.length > 0 && (
-            <div className="flex items-center gap-2 mt-4 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="flex items-center gap-3 mt-6 overflow-x-auto pb-1 scrollbar-hide">
               {allTags.slice(0, 10).map((t) => (
                 <button
                   key={t}
                   onClick={() => props.onToggleTag(t)}
-                  className={`px-2.5 py-1 rounded-md text-[12px] font-medium whitespace-nowrap transition-all duration-200 ${
+                  className={`px-4 py-2 rounded-lg text-[14px] font-semibold whitespace-nowrap transition-all duration-200 ${
                     props.activeTagFilters.includes(t)
                       ? 'bg-[var(--text)] text-[var(--bg)]'
                       : 'bg-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]'
@@ -451,26 +466,26 @@ export function TimelineView(props: {
         </div>
       )}
 
-      {/* Timeline Content - fills remaining space */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 min-h-0">
+      {/* Timeline Content */}
+      <div className="flex-1 overflow-y-auto px-12 py-10 min-h-0">
         <AnimatePresence mode="popLayout">
           {days.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center h-full py-16"
+              className="flex flex-col items-center justify-center h-full py-24"
             >
               <div
-                className="w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-[var(--border)]"
+                className="w-24 h-24 rounded-full flex items-center justify-center mb-6 bg-[var(--border)]"
                 style={{ color: 'var(--muted)' }}
               >
-                <Icon name="calendar" size={24} />
+                <Icon name="calendar" size={36} />
               </div>
-              <h3 className="text-base font-semibold text-[var(--text)] mb-1">
+              <h3 className="text-[22px] font-bold text-[var(--text)] mb-2">
                 Your timeline awaits
               </h3>
-              <p className="text-[13px] text-[var(--muted)] text-center max-w-xs">
+              <p className="text-[16px] text-[var(--muted)] text-center max-w-sm">
                 {props.activeTagFilters.length > 0
                   ? 'Try removing some filters to see more'
                   : 'Start capturing moments to see them here'
@@ -478,7 +493,7 @@ export function TimelineView(props: {
               </p>
             </motion.div>
           ) : (
-            <div className="max-w-3xl">
+            <div className="max-w-4xl mx-auto">
               {days.map((day, idx) => (
                 <DaySection
                   key={day}
@@ -487,12 +502,13 @@ export function TimelineView(props: {
                   onSelectEvent={props.onSelectEvent}
                   onSelectCapture={props.onSelectCapture}
                   isFirst={idx === 0}
+                  isLast={idx === days.length - 1}
                   sectionIndex={idx}
                 />
               ))}
 
-              {/* Bottom padding */}
-              <div className="h-16" />
+              {/* Bottom breathing room */}
+              <div className="h-24" />
             </div>
           )}
         </AnimatePresence>

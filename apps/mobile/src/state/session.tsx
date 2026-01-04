@@ -22,6 +22,7 @@ export type ActiveSession = {
   title: string;
   kind: SessionKind;
   startedAt: number;
+  endAt?: number | null;
   estimatedMinutes?: number | null;
   importance?: number | null;
   difficulty?: number | null;
@@ -31,6 +32,9 @@ export type ActiveSession = {
   parentEventId?: string | null;
   sourceTaskId?: string;
   locked?: boolean;
+  category?: string | null;
+  subcategory?: string | null;
+  goal?: string | null;
 };
 
 export type SessionStartInput = {
@@ -39,6 +43,7 @@ export type SessionStartInput = {
   kind: SessionKind;
   startedAt?: number;
   estimatedMinutes?: number | null;
+  estimateMinutes?: number | null; // Alias for habit compatibility
   importance?: number | null;
   difficulty?: number | null;
   trackerKey?: string | null;
@@ -77,8 +82,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     findActiveEvent().then((event) => {
       if (!mounted || !event) return;
       const elapsedSeconds = Math.max(0, Math.round((Date.now() - event.startAt) / 1000));
-      const remainingSeconds =
-        event.estimateMinutes != null
+      const remainingSeconds = event.endAt
+        ? Math.max(0, Math.round((event.endAt - Date.now()) / 1000))
+        : event.estimateMinutes != null
           ? Math.max(0, Math.round(event.estimateMinutes * 60 - elapsedSeconds))
           : null;
       setActive({
@@ -86,6 +92,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         title: event.title,
         kind: event.kind === 'task' ? 'task' : 'event',
         startedAt: event.startAt,
+        endAt: event.endAt ?? null,
         estimatedMinutes: event.estimateMinutes ?? null,
         importance: event.importance ?? null,
         difficulty: event.difficulty ?? null,
@@ -94,6 +101,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         taskId: event.taskId ?? null,
         parentEventId: event.parentEventId ?? null,
         locked: false,
+        category: event.category ?? null,
+        subcategory: event.subcategory ?? null,
+        goal: event.goal ?? null,
       });
       void startLiveActivity({
         title: event.title,
@@ -106,6 +116,117 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
     };
   }, []);
+
+  const startSession = useCallback(async (next: SessionStartInput) => {
+    const startedAt = next.startedAt ?? Date.now();
+    const kind: MobileEventKind = next.kind === 'task' ? 'task' : 'event';
+    const estimateMinutes = next.estimatedMinutes ?? next.estimateMinutes ?? null;
+    const event = await startEvent({
+      id: next.id,
+      title: next.title,
+      kind,
+      startAt: startedAt,
+      trackerKey: next.trackerKey ?? null,
+      notes: next.notes ?? '',
+      estimateMinutes,
+      importance: next.importance ?? null,
+      difficulty: next.difficulty ?? null,
+      taskId: next.taskId ?? null,
+      parentEventId: next.parentEventId ?? null,
+      tags: next.tags ?? [],
+      contexts: next.contexts ?? [],
+      people: next.people ?? [],
+      location: next.location ?? null,
+      category: next.category ?? null,
+      subcategory: next.subcategory ?? null,
+      project: next.project ?? null,
+      goal: next.goal ?? null,
+      skills: next.skills ?? [],
+      character: next.character ?? [],
+    });
+    const session: ActiveSession = {
+      id: event.id,
+      title: event.title,
+      kind: next.kind,
+      startedAt: event.startAt,
+      endAt: event.endAt ?? null,
+      estimatedMinutes: event.estimateMinutes ?? null,
+      importance: event.importance ?? null,
+      difficulty: event.difficulty ?? null,
+      trackerKey: event.trackerKey ?? null,
+      notes: event.notes ?? '',
+      taskId: next.taskId ?? null,
+      parentEventId: next.parentEventId ?? null,
+      sourceTaskId: next.sourceTaskId,
+      locked: false,
+      category: event.category ?? null,
+      subcategory: event.subcategory ?? null,
+      goal: event.goal ?? null,
+    };
+    setActive((prev) => {
+      const keepParent =
+        prev && next.parentEventId && prev.id === next.parentEventId && prev.kind === 'event' && next.kind === 'task';
+      if (prev && !keepParent) void stopEvent(prev.id);
+      return session;
+    });
+    const remainingSeconds = session.endAt
+      ? Math.max(0, Math.round((session.endAt - Date.now()) / 1000))
+      : session.estimatedMinutes != null
+        ? Math.max(0, Math.round(session.estimatedMinutes * 60))
+        : null;
+    void endLiveActivity();
+    void startLiveActivity({
+      title: session.title,
+      startedAt: session.startedAt,
+      remainingSeconds,
+      trackerKey: session.trackerKey ?? null,
+    });
+    return session;
+  }, []);
+
+  const stopSession = useCallback(async () => {
+    const current = active;
+    if (current) {
+      await stopEvent(current.id);
+    }
+    const nextEvent = await findActiveEvent();
+    if (nextEvent) {
+      const elapsedSeconds = Math.max(0, Math.round((Date.now() - nextEvent.startAt) / 1000));
+      const remainingSeconds = nextEvent.endAt
+        ? Math.max(0, Math.round((nextEvent.endAt - Date.now()) / 1000))
+        : nextEvent.estimateMinutes != null
+          ? Math.max(0, Math.round(nextEvent.estimateMinutes * 60 - elapsedSeconds))
+          : null;
+      setActive({
+        id: nextEvent.id,
+        title: nextEvent.title,
+        kind: nextEvent.kind === 'task' ? 'task' : 'event',
+        startedAt: nextEvent.startAt,
+        endAt: nextEvent.endAt ?? null,
+        estimatedMinutes: nextEvent.estimateMinutes ?? null,
+        importance: nextEvent.importance ?? null,
+        difficulty: nextEvent.difficulty ?? null,
+        trackerKey: nextEvent.trackerKey ?? null,
+        notes: nextEvent.notes ?? '',
+        taskId: nextEvent.taskId ?? null,
+        parentEventId: nextEvent.parentEventId ?? null,
+        locked: false,
+        category: nextEvent.category ?? null,
+        subcategory: nextEvent.subcategory ?? null,
+        goal: nextEvent.goal ?? null,
+      });
+      void endLiveActivity();
+      void startLiveActivity({
+        title: nextEvent.title,
+        startedAt: nextEvent.startAt,
+        remainingSeconds,
+        trackerKey: nextEvent.trackerKey ?? null,
+      });
+      return;
+    }
+    setActive(null);
+    void endLiveActivity();
+  }, [active]);
 
   const handlePendingAction = useCallback(async () => {
     const pending = await consumePendingAction();
@@ -140,104 +261,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
     return () => subscription.remove();
   }, [handlePendingAction]);
-
-  const startSession = useCallback(async (next: SessionStartInput) => {
-    const startedAt = next.startedAt ?? Date.now();
-    const kind: MobileEventKind = next.kind === 'task' ? 'task' : 'event';
-    const event = await startEvent({
-      id: next.id,
-      title: next.title,
-      kind,
-      startAt: startedAt,
-      trackerKey: next.trackerKey ?? null,
-      notes: next.notes ?? '',
-      estimateMinutes: next.estimatedMinutes ?? null,
-      importance: next.importance ?? null,
-      difficulty: next.difficulty ?? null,
-      taskId: next.taskId ?? null,
-      parentEventId: next.parentEventId ?? null,
-      tags: next.tags ?? [],
-      contexts: next.contexts ?? [],
-      people: next.people ?? [],
-      location: next.location ?? null,
-      category: next.category ?? null,
-      subcategory: next.subcategory ?? null,
-      project: next.project ?? null,
-      goal: next.goal ?? null,
-      skills: next.skills ?? [],
-      character: next.character ?? [],
-    });
-    const session: ActiveSession = {
-      id: event.id,
-      title: event.title,
-      kind: next.kind,
-      startedAt: event.startAt,
-      estimatedMinutes: event.estimateMinutes ?? null,
-      importance: event.importance ?? null,
-      difficulty: event.difficulty ?? null,
-      trackerKey: event.trackerKey ?? null,
-      notes: event.notes ?? '',
-      taskId: next.taskId ?? null,
-      parentEventId: next.parentEventId ?? null,
-      sourceTaskId: next.sourceTaskId,
-      locked: false,
-    };
-    setActive((prev) => {
-      const keepParent =
-        prev && next.parentEventId && prev.id === next.parentEventId && prev.kind === 'event' && next.kind === 'task';
-      if (prev && !keepParent) void stopEvent(prev.id);
-      return session;
-    });
-    const remainingSeconds =
-      session.estimatedMinutes != null ? Math.max(0, Math.round(session.estimatedMinutes * 60)) : null;
-    void endLiveActivity();
-    void startLiveActivity({
-      title: session.title,
-      startedAt: session.startedAt,
-      remainingSeconds,
-      trackerKey: session.trackerKey ?? null,
-    });
-    return session;
-  }, []);
-
-  const stopSession = useCallback(async () => {
-    const current = active;
-    if (current) {
-      await stopEvent(current.id);
-    }
-    const nextEvent = await findActiveEvent();
-    if (nextEvent) {
-      const elapsedSeconds = Math.max(0, Math.round((Date.now() - nextEvent.startAt) / 1000));
-      const remainingSeconds =
-        nextEvent.estimateMinutes != null
-          ? Math.max(0, Math.round(nextEvent.estimateMinutes * 60 - elapsedSeconds))
-          : null;
-      setActive({
-        id: nextEvent.id,
-        title: nextEvent.title,
-        kind: nextEvent.kind === 'task' ? 'task' : 'event',
-        startedAt: nextEvent.startAt,
-        estimatedMinutes: nextEvent.estimateMinutes ?? null,
-        importance: nextEvent.importance ?? null,
-        difficulty: nextEvent.difficulty ?? null,
-        trackerKey: nextEvent.trackerKey ?? null,
-        notes: nextEvent.notes ?? '',
-        taskId: nextEvent.taskId ?? null,
-        parentEventId: nextEvent.parentEventId ?? null,
-        locked: false,
-      });
-      void endLiveActivity();
-      void startLiveActivity({
-        title: nextEvent.title,
-        startedAt: nextEvent.startAt,
-        remainingSeconds,
-        trackerKey: nextEvent.trackerKey ?? null,
-      });
-      return;
-    }
-    setActive(null);
-    void endLiveActivity();
-  }, [active]);
 
   const updateNotes = useCallback((notes: string) => {
     setActive((prev) => {

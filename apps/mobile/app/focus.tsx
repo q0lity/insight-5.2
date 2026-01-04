@@ -3,9 +3,8 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router } from 'expo-router';
 
-import Colors from '@/constants/Colors';
 import { Text, View } from '@/components/Themed';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useTheme } from '@/src/state/theme';
 import { updateLiveActivity } from '@/src/native/liveActivity';
 import { getEvent, updateEvent } from '@/src/storage/events';
 import { useSession } from '@/src/state/session';
@@ -17,6 +16,8 @@ import {
   parseTagList,
   uniqStrings,
 } from '@/src/utils/frontmatter';
+import { computeXp, formatXp } from '@/src/utils/points';
+import { RollingNumber } from '@/src/components/RollingNumber';
 
 function formatClock(ms: number) {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -29,10 +30,15 @@ function formatClock(ms: number) {
   return `${hh}:${mm}:${ss}`;
 }
 
+function formatTimeMarker(date = new Date()) {
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  return `[${hh}:${mm}] `;
+}
+
 export default function FocusScreen() {
   const { active, stopSession, updateNotes, updateMetrics } = useSession();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette, sizes, isDark } = useTheme();
   const [now, setNow] = useState(Date.now());
   const [notes, setNotes] = useState(active?.notes ?? '');
   const [importance, setImportance] = useState(active?.importance ?? 5);
@@ -53,7 +59,7 @@ export default function FocusScreen() {
   const [estimateMinutes, setEstimateMinutes] = useState('');
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    const id = setInterval(() => setNow(Date.now()), 100);
     return () => clearInterval(id);
   }, []);
 
@@ -113,6 +119,16 @@ export default function FocusScreen() {
   useEffect(() => {
     if (!active?.id) return;
     const id = setTimeout(() => {
+      const duration = estimateMinutesValue ?? Math.max(0, elapsedMs / 60000);
+      const pointsValue = Number(
+        computeXp({
+          importance,
+          difficulty,
+          durationMinutes: duration,
+          goal,
+          fallbackGoalImportance: importance,
+        }).toFixed(3)
+      );
       void updateEvent(active.id, {
         tags,
         people,
@@ -126,7 +142,7 @@ export default function FocusScreen() {
         estimateMinutes: estimateMinutesValue ?? null,
         importance,
         difficulty,
-        points: Math.round(importance * difficulty),
+        points: pointsValue,
       });
     }, 400);
     return () => clearTimeout(id);
@@ -159,12 +175,29 @@ export default function FocusScreen() {
   const remainingBucket = remainingSeconds != null ? Math.floor(remainingSeconds / 30) : null;
 
   const title = active?.title ?? 'No active focus';
-  const points = useMemo(() => Math.round(importance * difficulty), [importance, difficulty]);
-
+  const durationMinutes = Math.max(0, elapsedMs / 60000);
+  const pointsRaw = useMemo(
+    () =>
+      computeXp({
+        importance,
+        difficulty,
+        durationMinutes,
+        goal,
+        fallbackGoalImportance: importance,
+      }),
+    [importance, difficulty, durationMinutes, goal]
+  );
   const addTimestampLine = () => {
-    const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const line = `- **${stamp}** - `;
+    const line = formatTimeMarker();
     setNotes((prev) => (prev ? `${prev}\n${line}` : line));
+  };
+
+  const addSegmentDivider = () => {
+    setNotes((prev) => {
+      const trimmed = prev.trim();
+      if (!trimmed) return '---\n';
+      return `${trimmed}\n\n---\n`;
+    });
   };
 
   const addTagsFromDraft = () => {
@@ -210,11 +243,11 @@ export default function FocusScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: palette.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: 'transparent' }]}>
         <Pressable onPress={() => router.back()} style={styles.iconButton}>
           <FontAwesome name="chevron-left" size={18} color={palette.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Focus</Text>
+        <Text style={[styles.headerTitle, { color: palette.text }]}>Focus</Text>
         <Pressable style={styles.iconButton}>
           <FontAwesome name="ellipsis-h" size={18} color={palette.text} />
         </Pressable>
@@ -225,8 +258,8 @@ export default function FocusScreen() {
           style={[
             styles.card,
             {
-              backgroundColor: colorScheme === 'dark' ? 'rgba(15,19,32,0.92)' : 'rgba(255,255,255,0.85)',
-              borderColor: colorScheme === 'dark' ? 'rgba(148,163,184,0.16)' : 'rgba(28,28,30,0.06)',
+              backgroundColor: isDark ? 'rgba(15,19,32,0.92)' : 'rgba(255,255,255,0.85)',
+              borderColor: isDark ? 'rgba(148,163,184,0.16)' : 'rgba(28,28,30,0.06)',
             },
           ]}>
           <Text style={styles.title}>{title}</Text>
@@ -238,7 +271,7 @@ export default function FocusScreen() {
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
           </View>
-          <Text style={styles.points}>+{points} XP</Text>
+          <RollingNumber value={formatXp(pointsRaw)} prefix="+" suffix=" XP" textStyle={styles.points} />
 
           <View style={styles.actions}>
             <Pressable style={[styles.actionButton, styles.secondaryButton]}>
@@ -253,7 +286,7 @@ export default function FocusScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionLabel}>Notes</Text>
-            <Pressable style={styles.timestampButton} onPress={addTimestampLine}>
+            <Pressable style={styles.timestampButton} onPress={addTimestampLine} onLongPress={addSegmentDivider}>
               <Text style={styles.timestampText}>Add timestamp</Text>
             </Pressable>
           </View>
@@ -262,14 +295,14 @@ export default function FocusScreen() {
               styles.notesInput,
               {
                 color: palette.text,
-                borderColor: colorScheme === 'dark' ? 'rgba(148,163,184,0.24)' : 'rgba(28,28,30,0.1)',
+                borderColor: isDark ? 'rgba(148,163,184,0.24)' : 'rgba(28,28,30,0.1)',
               },
             ]}
             multiline
             value={notes}
             onChangeText={setNotes}
-            placeholder="- **09:20** - Draft outline"
-            placeholderTextColor={colorScheme === 'dark' ? 'rgba(148,163,184,0.6)' : 'rgba(28,28,30,0.35)'}
+            placeholder="[09:20] Draft outline"
+            placeholderTextColor={isDark ? 'rgba(148,163,184,0.6)' : 'rgba(28,28,30,0.35)'}
           />
         </View>
 
@@ -292,7 +325,7 @@ export default function FocusScreen() {
                 onSubmitEditing={addTagsFromDraft}
                 onBlur={addTagsFromDraft}
                 placeholder="#work #meeting"
-                placeholderTextColor={colorScheme === 'dark' ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
+                placeholderTextColor={isDark ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
                 style={[styles.chipInput, { color: palette.text }]}
               />
             </View>
@@ -313,7 +346,7 @@ export default function FocusScreen() {
                 onSubmitEditing={addPeopleFromDraft}
                 onBlur={addPeopleFromDraft}
                 placeholder="Mom, Alex"
-                placeholderTextColor={colorScheme === 'dark' ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
+                placeholderTextColor={isDark ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
                 style={[styles.chipInput, { color: palette.text }]}
               />
             </View>
@@ -327,12 +360,12 @@ export default function FocusScreen() {
                 onChangeText={setEstimateMinutes}
                 keyboardType="number-pad"
                 placeholder="45"
-                placeholderTextColor={colorScheme === 'dark' ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
+                placeholderTextColor={isDark ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
                 style={[
                   styles.smallInput,
                   {
                     color: palette.text,
-                    borderColor: colorScheme === 'dark' ? 'rgba(148,163,184,0.2)' : 'rgba(28,28,30,0.1)',
+                    borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(28,28,30,0.1)',
                   },
                 ]}
               />
@@ -352,29 +385,9 @@ export default function FocusScreen() {
                   onSubmitEditing={addLocationsFromDraft}
                   onBlur={addLocationsFromDraft}
                   placeholder="Home"
-                  placeholderTextColor={colorScheme === 'dark' ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
+                  placeholderTextColor={isDark ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
                   style={[styles.chipInput, { color: palette.text }]}
                 />
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.gridRow}>
-            <View style={styles.gridItem}>
-              <Text style={styles.fieldLabel}>Points</Text>
-              <View style={styles.pointsCard}>
-                <Text style={styles.pointsValue}>{points}</Text>
-                <Text style={styles.pointsMeta}>
-                  {importance} x {difficulty}
-                  {estimateMinutesValue ? ` - ${estimateMinutesValue} min` : ''}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.gridItem}>
-              <Text style={styles.fieldLabel}>Running</Text>
-              <View style={styles.pointsCard}>
-                <Text style={styles.pointsValue}>{active ? 'Active' : '--'}</Text>
-                <Text style={styles.pointsMeta}>{active ? `${formatClock(elapsedMs)} elapsed` : 'Not running'}</Text>
               </View>
             </View>
           </View>
@@ -394,7 +407,7 @@ export default function FocusScreen() {
                 onSubmitEditing={addSkillsFromDraft}
                 onBlur={addSkillsFromDraft}
                 placeholder="communication, lifting"
-                placeholderTextColor={colorScheme === 'dark' ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
+                placeholderTextColor={isDark ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
                 style={[styles.chipInput, { color: palette.text }]}
               />
             </View>
@@ -421,12 +434,12 @@ export default function FocusScreen() {
                 value={goal}
                 onChangeText={setGoal}
                 placeholder="get shredded"
-                placeholderTextColor={colorScheme === 'dark' ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
+                placeholderTextColor={isDark ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
                 style={[
                   styles.smallInput,
                   {
                     color: palette.text,
-                    borderColor: colorScheme === 'dark' ? 'rgba(148,163,184,0.2)' : 'rgba(28,28,30,0.1)',
+                    borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(28,28,30,0.1)',
                   },
                 ]}
               />
@@ -437,12 +450,12 @@ export default function FocusScreen() {
                 value={project}
                 onChangeText={setProject}
                 placeholder="workout plan"
-                placeholderTextColor={colorScheme === 'dark' ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
+                placeholderTextColor={isDark ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
                 style={[
                   styles.smallInput,
                   {
                     color: palette.text,
-                    borderColor: colorScheme === 'dark' ? 'rgba(148,163,184,0.2)' : 'rgba(28,28,30,0.1)',
+                    borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(28,28,30,0.1)',
                   },
                 ]}
               />
@@ -456,12 +469,12 @@ export default function FocusScreen() {
                 value={category}
                 onChangeText={setCategory}
                 placeholder="Work / Health / Study"
-                placeholderTextColor={colorScheme === 'dark' ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
+                placeholderTextColor={isDark ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
                 style={[
                   styles.smallInput,
                   {
                     color: palette.text,
-                    borderColor: colorScheme === 'dark' ? 'rgba(148,163,184,0.2)' : 'rgba(28,28,30,0.1)',
+                    borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(28,28,30,0.1)',
                   },
                 ]}
               />
@@ -472,12 +485,12 @@ export default function FocusScreen() {
                 value={subcategory}
                 onChangeText={setSubcategory}
                 placeholder="Clinic / Surgery / Gym"
-                placeholderTextColor={colorScheme === 'dark' ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
+                placeholderTextColor={isDark ? 'rgba(148,163,184,0.5)' : 'rgba(28,28,30,0.35)'}
                 style={[
                   styles.smallInput,
                   {
                     color: palette.text,
-                    borderColor: colorScheme === 'dark' ? 'rgba(148,163,184,0.2)' : 'rgba(28,28,30,0.1)',
+                    borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(28,28,30,0.1)',
                   },
                 ]}
               />

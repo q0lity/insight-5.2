@@ -2,16 +2,16 @@ import type { CalendarEvent } from '../storage/calendar'
 import type { IconName } from './icons'
 
 export const EVENT_COLOR_PRESETS: Array<{ name: string; hex: string }> = [
-  { name: 'Violet', hex: '#7c3aed' },
-  { name: 'Indigo', hex: '#4f46e5' },
-  { name: 'Blue', hex: '#2563eb' },
-  { name: 'Cyan', hex: '#06b6d4' },
-  { name: 'Green', hex: '#16a34a' },
-  { name: 'Lime', hex: '#65a30d' },
-  { name: 'Amber', hex: '#d97706' },
-  { name: 'Orange', hex: '#ea580c' },
-  { name: 'Pink', hex: '#db2777' },
-  { name: 'Slate', hex: '#64748b' },
+  { name: 'Moss', hex: '#A3B87C' },
+  { name: 'Sage', hex: '#7BAF7B' },
+  { name: 'Lavender', hex: '#8B7EC8' },
+  { name: 'Indigo', hex: '#5B5F97' },
+  { name: 'Steel', hex: '#6B8CAE' },
+  { name: 'Teal', hex: '#7EBDC3' },
+  { name: 'Caramel', hex: '#D4A574' },
+  { name: 'Clay', hex: '#D95D39' },
+  { name: 'Rose', hex: '#C88B9D' },
+  { name: 'Stone', hex: '#8C8B88' },
 ]
 
 export type EventTitleMode = 'compact' | 'detailed' | 'focus'
@@ -32,7 +32,7 @@ export function formatEventTitle(ev: CalendarEvent, mode: EventTitleMode) {
 
 export function hexToRgba(hex: string, alpha: number) {
   const normalized = hex.trim().replace(/^#/, '')
-  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return `rgba(124, 58, 237, ${alpha})`
+  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return `rgba(163, 184, 124, ${alpha})`
   const r = parseInt(normalized.slice(0, 2), 16)
   const g = parseInt(normalized.slice(2, 4), 16)
   const b = parseInt(normalized.slice(4, 6), 16)
@@ -136,55 +136,55 @@ export function eventAccent(ev: CalendarEvent): { color: string; icon: IconName 
   const explicitColor = normalizeColor(ev.color)
   const explicitIcon = normalizeIcon(ev.icon)
   if (explicitColor || explicitIcon) {
-    return { color: explicitColor ?? '#7c3aed', icon: explicitIcon ?? 'calendar' }
+    return { color: explicitColor ?? '#A3B87C', icon: explicitIcon ?? 'calendar' }
   }
 
   if (ev.kind === 'log' || ev.kind === 'episode') {
     const tracker = detectTracker(ev)
-    if (tracker === 'habit') return { color: '#22c55e', icon: 'check' }
-    if (tracker === 'period') return { color: '#ef4444', icon: 'droplet' }
-    if (tracker === 'pain') return { color: '#ef4444', icon: 'heart' }
-    if (tracker === 'sleep') return { color: '#64748b', icon: 'moonStar' }
-    if (tracker === 'workout') return { color: '#16a34a', icon: 'dumbbell' }
-    if (tracker === 'energy') return { color: '#d97706', icon: 'bolt' }
-    if (tracker === 'stress') return { color: '#db2777', icon: 'frown' }
-    if (tracker === 'bored') return { color: '#64748b', icon: 'frown' }
-    if (tracker === 'water') return { color: '#0ea5e9', icon: 'droplet' }
+    if (tracker === 'habit') return { color: '#7BAF7B', icon: 'check' }
+    if (tracker === 'period') return { color: '#C97B7B', icon: 'droplet' }
+    if (tracker === 'pain') return { color: '#C97B7B', icon: 'heart' }
+    if (tracker === 'sleep') return { color: '#8C8B88', icon: 'moonStar' }
+    if (tracker === 'workout') return { color: '#7BAF7B', icon: 'dumbbell' }
+    if (tracker === 'energy') return { color: '#D4A574', icon: 'bolt' }
+    if (tracker === 'stress') return { color: '#C88B9D', icon: 'frown' }
+    if (tracker === 'bored') return { color: '#8C8B88', icon: 'frown' }
+    if (tracker === 'water') return { color: '#7EBDC3', icon: 'droplet' }
     if (tracker === 'mood') {
       const v = ev.title.toLowerCase().match(/\bmood:\s*(\d{1,2})/)?.[1]
       const moodVal = v ? Math.max(0, Math.min(10, Number(v))) : null
-      return { color: '#7c3aed', icon: moodVal != null && moodVal < 6 ? 'frown' : 'smile' }
+      return { color: '#8B7EC8', icon: moodVal != null && moodVal < 6 ? 'frown' : 'smile' }
     }
-    return { color: '#7c3aed', icon: 'sparkle' }
+    return { color: '#A3B87C', icon: 'sparkle' }
   }
 
   const category = detectCategory(ev)
   switch (category) {
     case 'task':
-      return { color: '#2563eb', icon: 'check' }
+      return { color: '#6B8CAE', icon: 'check' }
     case 'work':
-      return { color: '#4f46e5', icon: 'briefcase' }
+      return { color: '#5B5F97', icon: 'briefcase' }
     case 'clinic':
-      return { color: '#0ea5e9', icon: 'stethoscope' }
+      return { color: '#7EBDC3', icon: 'stethoscope' }
     case 'food':
-      return { color: '#ea580c', icon: 'food' }
+      return { color: '#D95D39', icon: 'food' }
     case 'fitness':
-      return { color: '#16a34a', icon: 'dumbbell' }
+      return { color: '#7BAF7B', icon: 'dumbbell' }
     case 'hygiene':
-      return { color: '#06b6d4', icon: 'tooth' }
+      return { color: '#7EBDC3', icon: 'tooth' }
     case 'shopping':
-      return { color: '#d97706', icon: 'cart' }
+      return { color: '#D4A574', icon: 'cart' }
     case 'sleep':
-      return { color: '#64748b', icon: 'moonStar' }
+      return { color: '#8C8B88', icon: 'moonStar' }
     case 'study':
-      return { color: '#2563eb', icon: 'book' }
+      return { color: '#6B8CAE', icon: 'book' }
     case 'commute':
-      return { color: '#64748b', icon: 'pin' }
+      return { color: '#8C8B88', icon: 'pin' }
     case 'transport':
-      return { color: '#64748b', icon: 'pin' }
+      return { color: '#8C8B88', icon: 'pin' }
     case 'call':
-      return { color: '#db2777', icon: 'phone' }
+      return { color: '#C88B9D', icon: 'phone' }
     default:
-      return { color: '#7c3aed', icon: 'calendar' }
+      return { color: '#A3B87C', icon: 'calendar' }
   }
 }

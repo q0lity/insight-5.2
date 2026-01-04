@@ -77,6 +77,11 @@ Form:
 
 ## A6) Timestamped Dividers and Segments
 Behavior (MVP):
+- Live capture shows a best-effort markdown preview alongside the transcript.
+- Offline capture logs raw text with timestamp markers; divider/segment formatting is finalized after sync.
+- Timestamp markers use `[HH:MM]` or `[HH:MM:SS]` at natural speech breaks.
+- Divider markers use `---` and may include an optional label (e.g., `--- errands`).
+- Simple commands should create a minimal event preview; multi-topic capture uses divider markers to split blocks.
 - The app stores segments in DB with `atOffsetMinutes`.
 - Markdown export can render segments as:
 ```md

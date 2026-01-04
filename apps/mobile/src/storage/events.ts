@@ -178,7 +178,7 @@ export async function listEvents() {
     return events.sort((a, b) => b.startAt - a.startAt);
   }
   const { supabase, user } = session;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('entries')
     .select('id, title, created_at, start_at, end_at, body_markdown, tags, people, contexts, importance, difficulty, duration_minutes, frontmatter')
     .eq('user_id', user.id)
@@ -187,7 +187,10 @@ export async function listEvents() {
     .order('start_at', { ascending: false })
     .limit(2000);
 
-  if (!data) return [];
+  if (error || !data) {
+    const events = await loadEventsLocal();
+    return events.sort((a, b) => b.startAt - a.startAt);
+  }
   return data.map(entryToMobileEvent);
 }
 
@@ -198,14 +201,18 @@ export async function getEvent(id: string) {
     return events.find((event) => event.id === id) ?? null;
   }
   const { supabase, user } = session;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('entries')
     .select('id, title, created_at, start_at, end_at, body_markdown, tags, people, contexts, importance, difficulty, duration_minutes, frontmatter')
     .eq('user_id', user.id)
     .eq('id', id)
     .maybeSingle();
 
-  return data ? entryToMobileEvent(data) : null;
+  if (error || !data) {
+    const events = await loadEventsLocal();
+    return events.find((event) => event.id === id) ?? null;
+  }
+  return entryToMobileEvent(data);
 }
 
 export async function startEvent(input: {
@@ -213,6 +220,7 @@ export async function startEvent(input: {
   title: string;
   kind?: MobileEventKind;
   startAt?: number;
+  endAt?: number | null;
   trackerKey?: string | null;
   notes?: string;
   frontmatter?: string;
@@ -234,13 +242,15 @@ export async function startEvent(input: {
   parentEventId?: string | null;
 }) {
   const now = Date.now();
+  const endAt = input.endAt ?? null;
+  const isCompleted = endAt !== null || input.kind === 'log';
   const event: MobileEvent = {
     id: input.id ?? makeEventId(),
     title: input.title,
     kind: input.kind ?? 'event',
     startAt: input.startAt ?? now,
-    endAt: null,
-    active: true,
+    endAt,
+    active: !isCompleted,
     trackerKey: input.trackerKey ?? null,
     notes: input.notes ?? '',
     frontmatter: input.frontmatter ?? '',
@@ -274,7 +284,10 @@ export async function startEvent(input: {
   const payload = mobileEventToEntry(event, user.id);
   const { data, error } = await supabase.from('entries').insert(payload).select('id').single();
   if (error || !data) {
-    throw new Error(error?.message ?? 'Failed to create event.');
+    const events = await loadEventsLocal();
+    events.unshift(event);
+    await saveEventsLocal(events);
+    return event;
   }
   void ensureEntitiesFromEntry({ tags: event.tags ?? [], people: event.people ?? [], location: event.location ?? null });
   return { ...event, id: data.id };
@@ -295,14 +308,24 @@ export async function updateEvent(id: string, patch: Partial<MobileEvent>) {
   if (!existing) return null;
   const next = { ...existing, ...patch };
 
-  const { supabase, user } = session;
-  const payload = mobileEventToEntry(next, user.id);
-  const { error } = await supabase.from('entries').update(payload).eq('id', id);
-  if (error) {
-    throw new Error(error.message);
+  try {
+    const { supabase, user } = session;
+    const payload = mobileEventToEntry(next, user.id);
+    const { error } = await supabase.from('entries').update(payload).eq('id', id);
+    if (error) {
+      throw new Error(error.message);
+    }
+    void ensureEntitiesFromEntry({ tags: next.tags ?? [], people: next.people ?? [], location: next.location ?? null });
+    return next;
+  } catch (err) {
+    console.warn('Failed to update event; keeping local copy if available.', err);
+    const events = await loadEventsLocal();
+    const idx = events.findIndex((e) => e.id === id);
+    if (idx < 0) return null;
+    events[idx] = { ...events[idx], ...patch };
+    await saveEventsLocal(events);
+    return events[idx];
   }
-  void ensureEntitiesFromEntry({ tags: next.tags ?? [], people: next.people ?? [], location: next.location ?? null });
-  return next;
 }
 
 export async function stopEvent(id: string, endAt = Date.now()) {
@@ -317,6 +340,95 @@ export async function findActiveEvent() {
 export async function findActiveEventByTrackerKey(trackerKey: string) {
   const events = await listEvents();
   return events.find((e) => e.active && e.trackerKey === trackerKey) ?? null;
+}
+
+export async function getPointsByDay(startDate: Date, endDate: Date): Promise<Record<string, number>> {
+  const events = await listEvents();
+  const result: Record<string, number> = {};
+
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+
+  for (const event of events) {
+    if (event.startAt < start.getTime() || event.startAt > end.getTime()) continue;
+
+    const day = new Date(event.startAt);
+    const year = day.getFullYear();
+    const month = String(day.getMonth() + 1).padStart(2, '0');
+    const dayNum = String(day.getDate()).padStart(2, '0');
+    const key = `${year}-${month}-${dayNum}`;
+
+    const points = event.points ?? 0;
+    result[key] = (result[key] ?? 0) + points;
+  }
+
+  return result;
+}
+
+export async function getDailyStats(days: number): Promise<{
+  totalPoints: number;
+  totalMinutes: number;
+  activeDays: number;
+  streak: number;
+}> {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days + 1);
+  startDate.setHours(0, 0, 0, 0);
+
+  const events = await listEvents();
+  const dayStats: Record<string, { points: number; minutes: number }> = {};
+
+  for (const event of events) {
+    if (event.startAt < startDate.getTime() || event.startAt > endDate.getTime()) continue;
+
+    const day = new Date(event.startAt);
+    const year = day.getFullYear();
+    const month = String(day.getMonth() + 1).padStart(2, '0');
+    const dayNum = String(day.getDate()).padStart(2, '0');
+    const key = `${year}-${month}-${dayNum}`;
+
+    if (!dayStats[key]) {
+      dayStats[key] = { points: 0, minutes: 0 };
+    }
+
+    dayStats[key].points += event.points ?? 0;
+
+    if (event.endAt) {
+      dayStats[key].minutes += Math.round((event.endAt - event.startAt) / 60000);
+    } else if (event.estimateMinutes) {
+      dayStats[key].minutes += event.estimateMinutes;
+    }
+  }
+
+  const totalPoints = Object.values(dayStats).reduce((sum, d) => sum + d.points, 0);
+  const totalMinutes = Object.values(dayStats).reduce((sum, d) => sum + d.minutes, 0);
+  const activeDays = Object.keys(dayStats).length;
+
+  // Calculate streak (consecutive days with activity ending today)
+  let streak = 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = 0; i < days; i++) {
+    const checkDate = new Date(today);
+    checkDate.setDate(checkDate.getDate() - i);
+    const year = checkDate.getFullYear();
+    const month = String(checkDate.getMonth() + 1).padStart(2, '0');
+    const dayNum = String(checkDate.getDate()).padStart(2, '0');
+    const key = `${year}-${month}-${dayNum}`;
+
+    if (dayStats[key] && dayStats[key].points > 0) {
+      streak++;
+    } else if (i > 0) {
+      // Allow today to have no activity, but break if any previous day is missing
+      break;
+    }
+  }
+
+  return { totalPoints, totalMinutes, activeDays, streak };
 }
 
 export async function syncLocalEventsToSupabase() {

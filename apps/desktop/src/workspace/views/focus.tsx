@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Icon } from '../../ui/icons'
+import { basePoints, multiplierFor, pointsForMinutes } from '../../scoring/points'
+import { useAnimatedNumber } from '../../ui/useAnimatedNumber'
 import { eventAccent, hexToRgba } from '../../ui/event-visual'
 import {
   type CalendarEvent,
@@ -220,11 +222,19 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
   }, [activeSubEvent, tick])
 
   const accent = parentEvent ? eventAccent(parentEvent) : { color: '#D95D39', icon: 'calendar' as const }
+  const parentPoints = useMemo(() => {
+    if (!parentEvent) return 0
+    const base = basePoints(parentEvent.importance, parentEvent.difficulty)
+    if (base <= 0) return 0
+    const mult = multiplierFor(parentEvent.goal ?? null, parentEvent.project ?? null)
+    return pointsForMinutes(base, parentDuration, mult)
+  }, [parentEvent, parentDuration])
+  const animatedPoints = useAnimatedNumber(parentPoints, { durationMs: 600 })
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-[#F2F0ED]">
-        <div className="text-[#8E8E93] font-bold animate-pulse">Loading...</div>
+      <div className="flex items-center justify-center h-full bg-[var(--panel)]">
+        <div className="text-[var(--muted)] font-bold animate-pulse">Loading...</div>
       </div>
     )
   }
@@ -232,12 +242,12 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
   // No active event
   if (!parentEvent) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-[#F2F0ED] text-center p-8">
-        <div className="w-24 h-24 rounded-full bg-[#E5E5EA] flex items-center justify-center mb-6">
-          <Icon name="coffee" className="w-12 h-12 text-[#8E8E93]" />
+      <div className="flex flex-col items-center justify-center h-full bg-[var(--panel)] text-center p-8">
+        <div className="w-24 h-24 rounded-full bg-[var(--border)] flex items-center justify-center mb-6">
+          <Icon name="coffee" className="w-12 h-12 text-[var(--muted)]" />
         </div>
-        <h2 className="text-2xl font-bold text-[#1C1C1E] mb-2">No Active Event</h2>
-        <p className="text-[#8E8E93] max-w-md">
+        <h2 className="text-2xl font-bold text-[var(--text)] mb-2">No Active Event</h2>
+        <p className="text-[var(--muted)] max-w-md">
           Start an event from the timeline or planner to see it here.
           You can track sub-activities and add notes in real-time.
         </p>
@@ -246,14 +256,14 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#F2F0ED] font-['Figtree']">
+    <div className="flex flex-col h-full bg-[var(--panel)] font-['Figtree']">
       {/* Header */}
       <div className="px-6 pt-8 pb-4 border-b border-[#E5E5EA]">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[#8E8E93]">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">
             Active Session
           </span>
-          <span className="text-xs font-bold text-[#8E8E93]">
+          <span className="text-xs font-bold text-[var(--muted)]">
             Started {formatTime(parentEvent.startAt)}
           </span>
         </div>
@@ -281,8 +291,8 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
               </div>
 
               <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold text-[#1C1C1E] truncate">{parentEvent.title}</h1>
-                <div className="flex items-center gap-4 mt-2 text-sm font-semibold text-[#8E8E93]">
+                <h1 className="text-2xl font-bold text-[var(--text)] truncate">{parentEvent.title}</h1>
+                <div className="flex items-center gap-4 mt-2 text-sm font-semibold text-[var(--muted)]">
                   <span className="flex items-center gap-1">
                     <Icon name="clock" size={14} />
                     {formatDuration(parentDuration)}
@@ -305,7 +315,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
 
               {/* Timer Display */}
               <div className="text-right">
-                <div className="text-4xl font-bold text-[#1C1C1E] tabular-nums">
+                <div className="text-4xl font-bold text-[var(--text)] tabular-nums">
                   {formatDuration(parentDuration)}
                 </div>
                 <motion.div
@@ -315,6 +325,9 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                 >
                   ACTIVE
                 </motion.div>
+                <div className="text-xs font-bold text-[var(--accent)] mt-2 tabular-nums">
+                  +{animatedPoints.toFixed(3)} XP
+                </div>
               </div>
             </div>
 
@@ -338,7 +351,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
           <div className="p-4 flex items-center gap-3">
             <button
               onClick={() => onOpenCapture?.(parentEvent.id)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#F2F0ED] rounded-xl text-sm font-bold text-[#1C1C1E] hover:bg-[#E5E5EA] transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--panel)] rounded-xl text-sm font-bold text-[var(--text)] hover:bg-[var(--border)] transition-colors"
             >
               <Icon name="mic" size={16} />
               Add Note
@@ -371,14 +384,14 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
               className="bg-white rounded-2xl border border-blue-200 shadow-sm overflow-hidden"
             >
               <div className="p-4">
-                <h3 className="text-sm font-bold text-[#1C1C1E] mb-3">Start Sub-Activity</h3>
+                <h3 className="text-sm font-bold text-[var(--text)] mb-3">Start Sub-Activity</h3>
                 <div className="flex gap-3">
                   <input
                     type="text"
                     value={newSubEventTitle}
                     onChange={(e) => setNewSubEventTitle(e.target.value)}
                     placeholder="What are you working on?"
-                    className="flex-1 px-4 py-2 bg-[#F2F0ED] rounded-xl text-sm font-medium placeholder-[#8E8E93] outline-none focus:ring-2 focus:ring-blue-300"
+                    className="flex-1 px-4 py-2 bg-[var(--panel)] rounded-xl text-sm font-medium placeholder-[#8E8E93] outline-none focus:ring-2 focus:ring-blue-300"
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleStartSubEvent()
@@ -394,7 +407,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                   </button>
                   <button
                     onClick={() => setShowSubEventForm(false)}
-                    className="px-4 py-2 bg-[#F2F0ED] text-[#8E8E93] rounded-xl text-sm font-bold hover:bg-[#E5E5EA]"
+                    className="px-4 py-2 bg-[var(--panel)] text-[var(--muted)] rounded-xl text-sm font-bold hover:bg-[var(--border)]"
                   >
                     Cancel
                   </button>
@@ -430,8 +443,8 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                     <Icon name="play" size={20} />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-[#1C1C1E]">{activeSubEvent.title}</h3>
-                    <p className="text-xs font-semibold text-[#8E8E93]">
+                    <h3 className="text-lg font-bold text-[var(--text)]">{activeSubEvent.title}</h3>
+                    <p className="text-xs font-semibold text-[var(--muted)]">
                       Started {formatTime(activeSubEvent.startAt)}
                     </p>
                   </div>
@@ -445,7 +458,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                 <div className="flex items-center gap-3 mt-4">
                   <button
                     onClick={() => onOpenCapture?.(activeSubEvent.id)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-[#1C1C1E] hover:bg-[#F2F0ED] transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-[var(--text)] hover:bg-[var(--panel)] transition-colors"
                   >
                     <Icon name="mic" size={14} />
                     Note
@@ -467,7 +480,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
         {/* Sub-Event History */}
         {subEvents.filter((e) => !e.active).length > 0 && (
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-[#8E8E93]">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">
               Session Timeline
             </h3>
             {subEvents
@@ -480,16 +493,16 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                   whileHover={{ x: 4 }}
                   className="w-full flex items-center gap-3 p-3 bg-white rounded-xl border border-[#E5E5EA] text-left hover:shadow-sm transition-shadow"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-[#F2F0ED] text-[#8E8E93] flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--panel)] text-[var(--muted)] flex items-center justify-center">
                     <Icon name="check" size={16} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-[#1C1C1E] truncate">{sub.title}</p>
-                    <p className="text-xs font-semibold text-[#8E8E93]">
+                    <p className="font-bold text-[var(--text)] truncate">{sub.title}</p>
+                    <p className="text-xs font-semibold text-[var(--muted)]">
                       {formatTime(sub.startAt)} – {formatTime(sub.endAt)}
                     </p>
                   </div>
-                  <span className="text-sm font-bold text-[#8E8E93]">
+                  <span className="text-sm font-bold text-[var(--muted)]">
                     {formatDuration(getEventDurationMinutes(sub))}
                   </span>
                 </motion.button>
@@ -500,7 +513,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
         {/* Tasks Section */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-[#8E8E93]">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">
               Tasks {taskStats && `(${taskStats.done}/${taskStats.total})`}
             </h3>
             <button
@@ -514,7 +527,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
 
           {/* Task Progress Bar */}
           {taskStats && taskStats.total > 0 && (
-            <div className="h-2 bg-[#E5E5EA] rounded-full overflow-hidden">
+            <div className="h-2 bg-[var(--border)] rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${taskStats.percentComplete}%` }}
@@ -538,7 +551,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                     value={newTaskTitle}
                     onChange={(e) => setNewTaskTitle(e.target.value)}
                     placeholder="What needs to be done?"
-                    className="flex-1 px-3 py-1.5 bg-[#F2F0ED] rounded-lg text-sm font-medium placeholder-[#8E8E93] outline-none focus:ring-2 focus:ring-green-300"
+                    className="flex-1 px-3 py-1.5 bg-[var(--panel)] rounded-lg text-sm font-medium placeholder-[#8E8E93] outline-none focus:ring-2 focus:ring-green-300"
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleCreateTask()
@@ -554,7 +567,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                   </button>
                   <button
                     onClick={() => setShowTaskForm(false)}
-                    className="px-3 py-1.5 bg-[#F2F0ED] text-[#8E8E93] rounded-lg text-xs font-bold"
+                    className="px-3 py-1.5 bg-[var(--panel)] text-[var(--muted)] rounded-lg text-xs font-bold"
                   >
                     Cancel
                   </button>
@@ -581,7 +594,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                     <Icon name="play" size={16} />
                   </motion.div>
                   <div className="flex-1">
-                    <p className="font-bold text-[#1C1C1E]">{activeTask.title}</p>
+                    <p className="font-bold text-[var(--text)]">{activeTask.title}</p>
                     <p className="text-xs font-semibold text-green-600">
                       Working on this • {formatDuration(getTaskDuration(activeTask.id))}
                     </p>
@@ -589,7 +602,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handlePauseTask(activeTask.id)}
-                      className="px-3 py-1.5 bg-[#F2F0ED] text-[#8E8E93] rounded-lg text-xs font-bold hover:bg-[#E5E5EA]"
+                      className="px-3 py-1.5 bg-[var(--panel)] text-[var(--muted)] rounded-lg text-xs font-bold hover:bg-[var(--border)]"
                     >
                       Pause
                     </button>
@@ -623,7 +636,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                     animate={{ opacity: 1, x: 0 }}
                     className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                       task.status === 'done'
-                        ? 'bg-[#F2F0ED]/50 border-[#E5E5EA]'
+                        ? 'bg-[var(--panel)]/50 border-[#E5E5EA]'
                         : 'bg-white border-[#E5E5EA] hover:border-green-200'
                     }`}
                   >
@@ -639,7 +652,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                     </button>
                     <span
                       className={`flex-1 font-medium ${
-                        task.status === 'done' ? 'text-[#8E8E93] line-through' : 'text-[#1C1C1E]'
+                        task.status === 'done' ? 'text-[var(--muted)] line-through' : 'text-[var(--text)]'
                       }`}
                     >
                       {task.title}
@@ -653,7 +666,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                       </button>
                     )}
                     {task.estimateMinutes && task.status !== 'done' && (
-                      <span className="text-xs font-bold text-[#8E8E93]">
+                      <span className="text-xs font-bold text-[var(--muted)]">
                         ~{task.estimateMinutes}m
                       </span>
                     )}
@@ -664,7 +677,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
 
           {/* Empty state */}
           {eventTasks.length === 0 && !showTaskForm && (
-            <div className="text-center py-6 text-sm text-[#8E8E93]">
+            <div className="text-center py-6 text-sm text-[var(--muted)]">
               No tasks yet. Add one to track your progress.
             </div>
           )}
@@ -673,11 +686,11 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
         {/* Notes Preview */}
         {parentEvent.notes && (
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-[#8E8E93]">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">
               Session Notes
             </h3>
             <div className="bg-white rounded-xl border border-[#E5E5EA] p-4">
-              <p className="text-sm text-[#1C1C1E] whitespace-pre-wrap line-clamp-6">
+              <p className="text-sm text-[var(--text)] whitespace-pre-wrap line-clamp-6">
                 {parentEvent.notes}
               </p>
             </div>

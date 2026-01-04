@@ -1,9 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, type PressableStateCallbackType, StyleSheet, TextInput } from 'react-native';
 
-import Colors from '@/constants/Colors';
 import { Text, View } from '@/components/Themed';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useTheme } from '@/src/state/theme';
 import type { InboxCapture } from '@/src/storage/inbox';
 import { listInboxCaptures } from '@/src/storage/inbox';
 
@@ -123,16 +122,45 @@ function renderMarkdown(content: string) {
   return nodes;
 }
 
+function extractHashtags(text: string) {
+  const tags = new Set<string>();
+  for (const match of text.matchAll(/#([a-zA-Z][\w/-]*)/g)) {
+    tags.add(match[1].toLowerCase());
+  }
+  return Array.from(tags);
+}
+
 export default function ExploreScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette, sizes, isDark } = useTheme();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [captures, setCaptures] = useState<InboxCapture[]>([]);
 
-  const captures = useMemo(() => {
-    return [] as InboxCapture[];
+  useEffect(() => {
+    let mounted = true;
+    listInboxCaptures().then((rows) => {
+      if (!mounted) return;
+      setCaptures(rows);
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
+
+  const recentCaptures = useMemo(() => captures.slice(0, 4), [captures]);
+  const topTags = useMemo(() => {
+    const counts = new Map<string, number>();
+    captures.forEach((capture) => {
+      extractHashtags(capture.rawText).forEach((tag) => {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      });
+    });
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([tag]) => tag);
+  }, [captures]);
 
   async function onSend() {
     const text = input.trim();
@@ -155,14 +183,14 @@ export default function ExploreScreen() {
         <View
           style={[
             styles.nodeBadge,
-            { borderColor: colorScheme === 'dark' ? 'rgba(148,163,184,0.24)' : 'rgba(28,28,30,0.1)' },
+            { borderColor: palette.border },
           ]}>
           <Text style={styles.nodeBadgeText}>1</Text>
         </View>
         <Text style={styles.topMeta}>Explore</Text>
       </View>
 
-      <View style={[styles.chat, { borderColor: colorScheme === 'dark' ? 'rgba(148,163,184,0.18)' : 'rgba(28,28,30,0.08)' }]}>
+      <View style={[styles.chat, { borderColor: palette.border }]}>
         {messages.length === 0 ? (
           <Text style={styles.empty}>Ask: “Show #mood entries” or “What did I log about driving?”</Text>
         ) : (
@@ -175,9 +203,7 @@ export default function ExploreScreen() {
                 {
                   borderColor: m.role === 'user'
                     ? 'rgba(217,93,57,0.45)'
-                    : colorScheme === 'dark'
-                      ? 'rgba(148,163,184,0.16)'
-                      : 'rgba(28,28,30,0.08)',
+                    : palette.border,
                 },
               ]}>
               <Text style={styles.bubbleRole}>{m.role === 'user' ? 'You' : 'Insight'}</Text>
@@ -191,8 +217,29 @@ export default function ExploreScreen() {
         )}
       </View>
 
+      <View style={styles.recentSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent captures</Text>
+          <Text style={styles.sectionMeta}>{captures.length} total</Text>
+        </View>
+        {recentCaptures.length ? (
+          recentCaptures.map((capture) => (
+            <View key={capture.id} style={styles.recentRow}>
+              <Text style={styles.recentTime}>
+                {new Date(capture.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+              <Text style={styles.recentText} numberOfLines={1}>
+                {capture.rawText}
+              </Text>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.recentEmpty}>No captures yet. Try logging from the Capture tab.</Text>
+        )}
+      </View>
+
       <View style={styles.metaChips}>
-        {['#tags', '@people', '@places', '+context', 'attachments'].map((chip) => (
+        {(topTags.length ? topTags.map((tag) => `#${tag}`) : ['#tags', '@people', '@places', '+context', 'attachments']).map((chip) => (
           <View key={chip} style={styles.chip}>
             <Text style={styles.chipText}>{chip}</Text>
           </View>
@@ -204,12 +251,12 @@ export default function ExploreScreen() {
           value={input}
           onChangeText={setInput}
           placeholder='Ask: "show me mentions of groceries"'
-          placeholderTextColor={colorScheme === 'dark' ? 'rgba(148,163,184,0.6)' : 'rgba(28,28,30,0.35)'}
+          placeholderTextColor={palette.textSecondary}
           style={[
             styles.input,
             {
               color: palette.text,
-              borderColor: colorScheme === 'dark' ? 'rgba(148,163,184,0.24)' : 'rgba(28,28,30,0.1)',
+              borderColor: palette.border,
             },
           ]}
           multiline
@@ -343,6 +390,41 @@ const styles = StyleSheet.create({
   imageCaption: {
     fontSize: 12,
     opacity: 0.7,
+  },
+  recentSection: {
+    gap: 10,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  sectionMeta: {
+    fontSize: 12,
+    opacity: 0.6,
+  },
+  recentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  recentTime: {
+    fontSize: 12,
+    fontWeight: '700',
+    opacity: 0.7,
+  },
+  recentText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  recentEmpty: {
+    fontSize: 12,
+    opacity: 0.6,
   },
   metaChips: {
     flexDirection: 'row',

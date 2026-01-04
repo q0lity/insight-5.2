@@ -1044,20 +1044,20 @@ export function GoalsView(props: {
   const planPreviewDensityClass = planPreviewDensity === 0 ? 'density-tight' : planPreviewDensity === 1 ? 'density-compact' : 'density-roomy'
 
   return (
-    <div className="flex flex-col h-full bg-[#F8F7F4] text-[#1C1C1E] font-['Figtree'] overflow-hidden">
+    <div className="flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
       {planPreviewMaximized ? (
         <div className="goalPlanPreviewBackdrop" onClick={() => setPlanPreviewMaximized(false)} aria-hidden="true" />
       ) : null}
-      <div className={`px-10 ${headerSpacing} bg-[#F8F7F4]/80 backdrop-blur-xl sticky top-0 z-10 max-w-7xl mx-auto w-full`}>
+      <div className={`px-10 ${headerSpacing} bg-[var(--bg)]/80 backdrop-blur-xl sticky top-0 z-10 max-w-7xl mx-auto w-full`}>
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-3xl font-extrabold tracking-tight">{title}</h1>
-            <p className="text-sm text-[#86868B] font-semibold">{subtitle}</p>
+            <p className="text-sm text-[var(--muted)] font-semibold">{subtitle}</p>
           </div>
           {showList ? (
             <div className="flex items-center gap-4">
               <div className="px-4 py-2 bg-white/50 backdrop-blur border border-white/20 rounded-full shadow-sm flex items-center gap-2">
-                <Icon name="target" size={14} className="text-[#D95D39]" />
+                <Icon name="target" size={14} className="text-[var(--accent)]" />
                 <span className="text-xs font-bold">{goals.length} Goals</span>
               </div>
             </div>
@@ -1065,7 +1065,7 @@ export function GoalsView(props: {
           {showDetail ? (
             <div className="flex items-center gap-2">
               <button
-                className="px-4 py-2 text-xs font-bold rounded-2xl bg-white/70 border border-black/5 hover:bg-white transition-all"
+                className="px-4 py-2 text-xs font-bold rounded-2xl bg-white/70 border border-black/5 hover:bg-[var(--panel)] transition-all"
                 onClick={() => void commitPlan()}
                 disabled={!activeGoal || planOutline.length === 0}
               >
@@ -1120,7 +1120,7 @@ export function GoalsView(props: {
                 aria-label="Create a new goal"
               />
               <button
-                className="h-11 px-4 rounded-2xl bg-white/70 border border-black/5 text-xs font-bold hover:bg-white transition-all"
+                className="h-11 px-4 rounded-2xl bg-white/70 border border-black/5 text-xs font-bold hover:bg-[var(--panel)] transition-all"
                 onClick={() => addGoal(newGoalDraft)}
                 disabled={goalLimitReached || !newGoalDraft.trim()}>
                 Add

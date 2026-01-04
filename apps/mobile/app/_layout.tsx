@@ -1,5 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -22,9 +22,9 @@ import {
   SpaceGrotesk_700Bold,
 } from '@expo-google-fonts/space-grotesk';
 
-import { useColorScheme } from '@/components/useColorScheme';
 import { SessionProvider } from '@/src/state/session';
 import { AuthProvider, useAuth } from '@/src/state/auth';
+import { ThemeProvider, useTheme } from '@/src/state/theme';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -72,13 +72,15 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <RootLayoutNav />
+      <ThemeProvider>
+        <RootLayoutNav />
+      </ThemeProvider>
     </AuthProvider>
   );
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { isDark } = useTheme();
   const { session, loading } = useAuth();
 
   if (loading) {
@@ -86,13 +88,14 @@ function RootLayoutNav() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       <SessionProvider>
         <Stack screenOptions={{ headerShown: false }}>
           {session ? (
             <>
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="voice" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="focus" />
             </>
           ) : (
@@ -100,6 +103,6 @@ function RootLayoutNav() {
           )}
         </Stack>
       </SessionProvider>
-    </ThemeProvider>
+    </NavigationThemeProvider>
   );
 }

@@ -1,5 +1,5 @@
 import { loadSettings } from '../assistant/storage'
-import { db, type CalendarEvent, type Entity, type Note, type Task } from '../db/insight-db'
+import { db, type CalendarEvent, type Entity, type Note, type Task, type Workout, type Meal, type WorkoutType, type MealType, type Exercise, type ExerciseSet } from '../db/insight-db'
 import { callOpenAiEmbedding } from '../openai'
 import { ensureEntity } from '../storage/entities'
 import { getSupabaseClient } from './client'
@@ -322,6 +322,224 @@ function entryToNote(entry: any, entityIds: string[]): Note {
   }
 }
 
+function workoutTypeToTemplate(type: WorkoutType) {
+  if (type === 'cardio') return 'cardio'
+  if (type === 'mobility' || type === 'recovery') return 'mobility'
+  return 'strength'
+}
+
+function templateToWorkoutType(template: string | null | undefined): WorkoutType {
+  if (template === 'cardio') return 'cardio'
+  if (template === 'mobility') return 'mobility'
+  return 'strength'
+}
+
+function buildExercisesFromWorkoutRows(rows: any[], fallbackType: WorkoutType): Exercise[] {
+  const map = new Map<string, Exercise>()
+  for (const row of rows) {
+    const name = typeof row.exercise === 'string' && row.exercise.trim() ? row.exercise.trim() : 'Exercise'
+    const meta = (row.metadata ?? {}) as Record<string, any>
+    const type = (meta.workoutType as WorkoutType | undefined) ?? fallbackType
+    let exercise = map.get(name)
+    if (!exercise) {
+      exercise = {
+        id: typeof meta.localExerciseId === 'string' ? meta.localExerciseId : `${name}_${Math.random().toString(16).slice(2)}`,
+        name,
+        type,
+        sets: [],
+        notes: typeof row.notes === 'string' ? row.notes : undefined,
+        muscleGroups: Array.isArray(meta.muscleGroups) ? meta.muscleGroups : undefined,
+      }
+      map.set(name, exercise)
+    }
+    const set: ExerciseSet = {}
+    if (row.reps != null) set.reps = Number(row.reps)
+    if (row.weight != null) set.weight = Number(row.weight)
+    if (row.duration_seconds != null) set.duration = Number(row.duration_seconds)
+    if (row.distance != null) set.distance = Number(row.distance)
+    if (row.rpe != null) set.rpe = Number(row.rpe)
+    if (Object.keys(set).length) exercise.sets.push(set)
+  }
+  return Array.from(map.values())
+}
+
+function buildWorkoutRowsPayload(workout: Workout, sessionId: string, userId: string) {
+  const rows: Array<Record<string, unknown>> = []
+  for (const exercise of workout.exercises ?? []) {
+    const sets = exercise.sets?.length ? exercise.sets : [{} as ExerciseSet]
+    sets.forEach((set, idx) => {
+      rows.push({
+        user_id: userId,
+        session_id: sessionId,
+        exercise: exercise.name,
+        set_index: idx + 1,
+        reps: set.reps ?? null,
+        weight: set.weight ?? null,
+        weight_unit: set.weight != null ? 'lb' : null,
+        rpe: set.rpe ?? workout.overallRpe ?? null,
+        duration_seconds: set.duration ?? null,
+        distance: set.distance ?? null,
+        distance_unit: null,
+        notes: exercise.notes ?? null,
+        metadata: {
+          localWorkoutId: workout.id,
+          localExerciseId: exercise.id,
+          workoutType: workout.type,
+          muscleGroups: exercise.muscleGroups ?? [],
+        },
+      })
+    })
+  }
+  return rows
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
+async function resolveEntryIdFromLegacy(
+  supabase: any,
+  userId: string,
+  legacyId: string,
+  legacyType: string,
+) {
+  if (!legacyId) return null
+  if (isUuid(legacyId)) return legacyId
+  const { data } = await supabase
+    .from('entries')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('frontmatter->>legacyId', legacyId)
+    .eq('frontmatter->>legacyType', legacyType)
+    .maybeSingle()
+  return data?.id ?? null
+}
+
+async function pullWorkoutsFromSupabase(userId: string, supabase: any, sinceIso: string | null) {
+  const query = supabase
+    .from('workout_sessions')
+    .select(
+      'id, entry_id, template, created_at, updated_at, workout_rows ( exercise, set_index, reps, weight, weight_unit, rpe, duration_seconds, distance, distance_unit, notes, metadata ), entries ( id, title, created_at, updated_at, start_at, end_at, duration_minutes, tags, frontmatter )',
+    )
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (sinceIso) {
+    query.gte('updated_at', sinceIso)
+  }
+
+  const { data, error } = await query
+  if (error || !data) return []
+
+  return data.map((row: any) => {
+    const entry = Array.isArray(row.entries) ? row.entries[0] : row.entries
+    const rows = Array.isArray(row.workout_rows) ? row.workout_rows : []
+    const startAt = fromIso(entry?.start_at) ?? fromIso(entry?.created_at) ?? Date.now()
+    const computedDuration = rows.reduce((sum: number, item: any) => sum + (item?.duration_seconds ?? 0), 0)
+    const totalDuration =
+      typeof entry?.duration_minutes === 'number'
+        ? entry.duration_minutes
+        : computedDuration
+          ? Math.round(computedDuration / 60)
+          : undefined
+    const endAt = fromIso(entry?.end_at) ?? (totalDuration != null ? startAt + totalDuration * 60 * 1000 : startAt)
+    const fallbackType = templateToWorkoutType(row.template)
+    const metaType = rows
+      .map((item: any) => item?.metadata?.workoutType)
+      .find((value: any) => value && typeof value === 'string')
+    const workoutType = (metaType as WorkoutType | undefined) ?? fallbackType
+    const exercises = buildExercisesFromWorkoutRows(rows, workoutType)
+    const rpeValues = rows
+      .map((item: any) => (item?.rpe != null ? Number(item.rpe) : null))
+      .filter((value: number | null) => value != null) as number[]
+    const overallRpe = rpeValues.length ? rpeValues.reduce((sum, v) => sum + v, 0) / rpeValues.length : undefined
+    const legacyId = entry?.frontmatter?.legacyId as string | undefined
+    const eventId = legacyId ?? entry?.id ?? row.entry_id ?? row.id
+
+    return {
+      id: legacyId ?? row.id,
+      eventId,
+      type: workoutType,
+      title: entry?.title ?? 'Workout',
+      exercises,
+      startAt,
+      endAt,
+      totalDuration,
+      estimatedCalories: typeof entry?.frontmatter?.estimatedCalories === 'number' ? entry.frontmatter.estimatedCalories : undefined,
+      overallRpe,
+      notes: typeof entry?.frontmatter?.notes === 'string' ? entry.frontmatter.notes : undefined,
+      goalId: entry?.frontmatter?.goal ?? undefined,
+      tags: Array.isArray(entry?.tags) ? entry.tags : undefined,
+      location: entry?.frontmatter?.location ?? undefined,
+      createdAt: fromIso(entry?.created_at) ?? Date.now(),
+      updatedAt: fromIso(entry?.updated_at) ?? fromIso(entry?.created_at) ?? Date.now(),
+    } as Workout
+  })
+}
+
+function normalizeMealType(value: string | null | undefined): MealType {
+  if (value === 'breakfast' || value === 'lunch' || value === 'dinner' || value === 'snack' || value === 'drink') {
+    return value
+  }
+  return 'snack'
+}
+
+async function pullMealsFromSupabase(userId: string, supabase: any, sinceIso: string | null) {
+  const query = supabase
+    .from('nutrition_logs')
+    .select(
+      'id, entry_id, created_at, updated_at, calories, protein_g, carbs_g, fat_g, fiber_g, saturated_fat_g, trans_fat_g, sugar_g, sodium_mg, potassium_mg, cholesterol_mg, estimation_model, metadata, entries ( id, title, created_at, updated_at, start_at, tags, frontmatter )',
+    )
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (sinceIso) {
+    query.gte('updated_at', sinceIso)
+  }
+
+  const { data, error } = await query
+  if (error || !data) return []
+
+  return data.map((row: any) => {
+    const entry = Array.isArray(row.entries) ? row.entries[0] : row.entries
+    const meta = (row.metadata ?? {}) as Record<string, any>
+    const eatenAt = fromIso(entry?.start_at) ?? fromIso(entry?.created_at) ?? Date.now()
+    const createdAt = fromIso(row.created_at) ?? eatenAt
+    const updatedAt = fromIso(row.updated_at) ?? createdAt
+    const legacyId = entry?.frontmatter?.legacyId as string | undefined
+    const eventId = legacyId ?? entry?.id ?? row.entry_id ?? row.id
+
+    return {
+      id: typeof meta.legacyId === 'string' ? meta.legacyId : row.id,
+      eventId,
+      type: normalizeMealType(meta.type ?? entry?.frontmatter?.mealType),
+      title: typeof meta.title === 'string' ? meta.title : entry?.title ?? 'Meal',
+      items: Array.isArray(meta.items) ? meta.items : [],
+      totalCalories: Number(row.calories ?? 0),
+      macros: {
+        protein: Number(row.protein_g ?? 0),
+        carbs: Number(row.carbs_g ?? 0),
+        fat: Number(row.fat_g ?? 0),
+        fiber: row.fiber_g != null ? Number(row.fiber_g) : undefined,
+        saturatedFat: row.saturated_fat_g != null ? Number(row.saturated_fat_g) : undefined,
+        transFat: row.trans_fat_g != null ? Number(row.trans_fat_g) : undefined,
+        sugar: row.sugar_g != null ? Number(row.sugar_g) : undefined,
+        sodium: row.sodium_mg != null ? Number(row.sodium_mg) : undefined,
+        potassium: row.potassium_mg != null ? Number(row.potassium_mg) : undefined,
+        cholesterol: row.cholesterol_mg != null ? Number(row.cholesterol_mg) : undefined,
+      },
+      location: typeof meta.location === 'string' ? meta.location : undefined,
+      notes: typeof meta.notes === 'string' ? meta.notes : undefined,
+      goalId: entry?.frontmatter?.goal ?? undefined,
+      tags: Array.isArray(meta.tags) ? meta.tags : Array.isArray(entry?.tags) ? entry.tags : undefined,
+      eatenAt,
+      createdAt,
+      updatedAt,
+      estimationModel: typeof row.estimation_model === 'string' ? row.estimation_model : undefined,
+    } as Meal
+  })
+}
+
 
 async function embedEntry(payload: { id: string } & EntryPayload) {
   const settings = loadSettings()
@@ -441,11 +659,13 @@ export async function migrateLocalDataToSupabase() {
   const alreadyMigrated = window.localStorage.getItem('insight5.supabase.migrated.v1')
   if (alreadyMigrated) return
 
-  const [entities, tasks, events, notes] = await Promise.all([
+  const [entities, tasks, events, notes, workouts, meals] = await Promise.all([
     db.entities.toArray(),
     db.tasks.toArray(),
     db.events.toArray(),
     db.notes.toArray(),
+    db.workouts.toArray(),
+    db.meals.toArray(),
   ])
 
   const entitiesById = entityMapFromList(entities)
@@ -484,6 +704,13 @@ export async function migrateLocalDataToSupabase() {
     } catch (err) {
       console.warn('Embedding failed', err)
     }
+  }
+
+  for (const workout of workouts) {
+    await syncWorkoutToSupabase(workout)
+  }
+  for (const meal of meals) {
+    await syncMealToSupabase(meal)
   }
 
   window.localStorage.setItem('insight5.supabase.migrated.v1', String(Date.now()))
@@ -589,6 +816,109 @@ export async function syncNoteToSupabase(note: Note) {
   }
 }
 
+export async function syncWorkoutToSupabase(workout: Workout) {
+  const supabase = getSupabaseClient()
+  if (!supabase) return
+  const { data } = await supabase.auth.getUser()
+  if (!data.user) return
+
+  const entryId = await resolveEntryIdFromLegacy(supabase, data.user.id, workout.eventId, 'event')
+  if (!entryId) return
+
+  const { data: sessionRow } = await supabase
+    .from('workout_sessions')
+    .upsert(
+      {
+        user_id: data.user.id,
+        entry_id: entryId,
+        template: workoutTypeToTemplate(workout.type),
+      },
+      { onConflict: 'entry_id' },
+    )
+    .select('id')
+    .single()
+
+  if (!sessionRow?.id) return
+
+  await supabase.from('workout_rows').delete().eq('session_id', sessionRow.id)
+  const rows = buildWorkoutRowsPayload(workout, sessionRow.id, data.user.id)
+  if (rows.length) {
+    await supabase.from('workout_rows').insert(rows)
+  }
+}
+
+export async function deleteWorkoutFromSupabase(workout: Workout) {
+  const supabase = getSupabaseClient()
+  if (!supabase) return
+  const { data } = await supabase.auth.getUser()
+  if (!data.user) return
+
+  const entryId = await resolveEntryIdFromLegacy(supabase, data.user.id, workout.eventId, 'event')
+  if (!entryId) return
+
+  const { data: existing } = await supabase
+    .from('workout_sessions')
+    .select('id')
+    .eq('entry_id', entryId)
+    .maybeSingle()
+  if (!existing?.id) return
+  await supabase.from('workout_rows').delete().eq('session_id', existing.id)
+  await supabase.from('workout_sessions').delete().eq('id', existing.id)
+}
+
+export async function syncMealToSupabase(meal: Meal) {
+  const supabase = getSupabaseClient()
+  if (!supabase) return
+  const { data } = await supabase.auth.getUser()
+  if (!data.user) return
+
+  const entryId = await resolveEntryIdFromLegacy(supabase, data.user.id, meal.eventId, 'event')
+  if (!entryId) return
+
+  await supabase.from('nutrition_logs').upsert(
+    {
+      user_id: data.user.id,
+      entry_id: entryId,
+      calories: meal.totalCalories ?? null,
+      protein_g: meal.macros?.protein ?? null,
+      carbs_g: meal.macros?.carbs ?? null,
+      fat_g: meal.macros?.fat ?? null,
+      // Extended micronutrients
+      fiber_g: meal.macros?.fiber ?? null,
+      saturated_fat_g: meal.macros?.saturatedFat ?? null,
+      trans_fat_g: meal.macros?.transFat ?? null,
+      sugar_g: meal.macros?.sugar ?? null,
+      sodium_mg: meal.macros?.sodium ?? null,
+      potassium_mg: meal.macros?.potassium ?? null,
+      cholesterol_mg: meal.macros?.cholesterol ?? null,
+      estimation_model: meal.estimationModel ?? null,
+      confidence: null,
+      source: 'estimate',
+      metadata: {
+        legacyId: meal.id,
+        title: meal.title,
+        type: meal.type,
+        items: meal.items ?? [],
+        location: meal.location ?? null,
+        notes: meal.notes ?? null,
+        tags: meal.tags ?? [],
+      },
+    },
+    { onConflict: 'entry_id' },
+  )
+}
+
+export async function deleteMealFromSupabase(meal: Meal) {
+  const supabase = getSupabaseClient()
+  if (!supabase) return
+  const { data } = await supabase.auth.getUser()
+  if (!data.user) return
+
+  const entryId = await resolveEntryIdFromLegacy(supabase, data.user.id, meal.eventId, 'event')
+  if (!entryId) return
+  await supabase.from('nutrition_logs').delete().eq('entry_id', entryId)
+}
+
 export async function markEntryDeleted(legacyId: string, legacyType: LegacyKind) {
   const supabase = getSupabaseClient()
   if (!supabase) return
@@ -599,6 +929,150 @@ export async function markEntryDeleted(legacyId: string, legacyType: LegacyKind)
     .update({ deleted_at: new Date().toISOString() })
     .eq('frontmatter->>legacyId', legacyId)
     .eq('frontmatter->>legacyType', legacyType)
+}
+
+// ============================================================================
+// Habit Sync
+// ============================================================================
+
+type HabitDef = {
+  id: string
+  name: string
+  category: string | null
+  subcategory: string | null
+  difficulty: number
+  importance: number
+  character: Array<'STR' | 'INT' | 'CON' | 'PER'>
+  skills: string[]
+  tags: string[]
+  people: string[]
+  estimateMinutes?: number | null
+  location?: string | null
+  goal?: string | null
+  project?: string | null
+  polarity?: 'positive' | 'negative' | 'both'
+  schedule?: string | null
+  targetPerWeek?: number | null
+  color?: string | null
+  icon?: string | null
+  isTimed?: boolean
+}
+
+function habitDefToEntry(habit: HabitDef, userId: string): EntryPayload {
+  return {
+    user_id: userId,
+    title: habit.name,
+    facets: ['habit_def'],
+    start_at: null,
+    end_at: null,
+    duration_minutes: habit.estimateMinutes ?? null,
+    difficulty: habit.difficulty,
+    importance: habit.importance,
+    tags: habit.tags ?? [],
+    contexts: [],
+    people: habit.people ?? [],
+    frontmatter: {
+      legacyId: habit.id,
+      legacyType: 'habit_def',
+      sourceApp: 'desktop',
+      kind: 'habit_def',
+      category: habit.category,
+      subcategory: habit.subcategory,
+      character: habit.character ?? [],
+      skills: habit.skills ?? [],
+      polarity: habit.polarity ?? 'both',
+      schedule: habit.schedule ?? null,
+      targetPerWeek: habit.targetPerWeek ?? null,
+      estimateMinutes: habit.estimateMinutes ?? null,
+      location: habit.location ?? null,
+      goal: habit.goal ?? null,
+      project: habit.project ?? null,
+      color: habit.color ?? null,
+      icon: habit.icon ?? null,
+      isTimed: habit.isTimed ?? false,
+    },
+    body_markdown: '',
+    source: 'app',
+  }
+}
+
+function entryToHabitDef(entry: any): HabitDef {
+  const fm = (entry.frontmatter ?? {}) as Record<string, any>
+  return {
+    id: fm.legacyId ?? entry.id,
+    name: entry.title ?? 'Habit',
+    category: fm.category ?? null,
+    subcategory: fm.subcategory ?? null,
+    difficulty: entry.difficulty ?? fm.difficulty ?? 5,
+    importance: entry.importance ?? fm.importance ?? 5,
+    character: Array.isArray(fm.character) ? fm.character : [],
+    skills: Array.isArray(fm.skills) ? fm.skills : [],
+    tags: Array.isArray(entry.tags) ? entry.tags : [],
+    people: Array.isArray(entry.people) ? entry.people : [],
+    estimateMinutes: fm.estimateMinutes ?? entry.duration_minutes ?? null,
+    location: fm.location ?? null,
+    goal: fm.goal ?? null,
+    project: fm.project ?? null,
+    polarity: fm.polarity ?? 'both',
+    schedule: fm.schedule ?? null,
+    targetPerWeek: fm.targetPerWeek ?? null,
+    color: fm.color ?? null,
+    icon: fm.icon ?? null,
+    isTimed: fm.isTimed ?? false,
+  }
+}
+
+export async function syncHabitToSupabase(habit: HabitDef) {
+  const supabase = getSupabaseClient()
+  if (!supabase) return
+  const { data } = await supabase.auth.getUser()
+  if (!data.user) return
+
+  const payload = habitDefToEntry(habit, data.user.id)
+  await upsertSingleEntry(data.user.id, habit.id, 'habit_def' as LegacyKind, payload)
+}
+
+export async function syncAllHabitsToSupabase(habits: HabitDef[]) {
+  const supabase = getSupabaseClient()
+  if (!supabase) return
+  const { data } = await supabase.auth.getUser()
+  if (!data.user) return
+
+  for (const habit of habits) {
+    const payload = habitDefToEntry(habit, data.user.id)
+    await upsertSingleEntry(data.user.id, habit.id, 'habit_def' as LegacyKind, payload)
+  }
+}
+
+export async function pullHabitsFromSupabase(): Promise<HabitDef[]> {
+  const supabase = getSupabaseClient()
+  if (!supabase) return []
+  const { data } = await supabase.auth.getUser()
+  if (!data.user) return []
+
+  const { data: entries, error } = await supabase
+    .from('entries')
+    .select('id, title, created_at, updated_at, difficulty, importance, duration_minutes, tags, frontmatter')
+    .eq('user_id', data.user.id)
+    .contains('facets', ['habit_def'])
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true })
+
+  if (error || !entries) return []
+  return entries.map(entryToHabitDef)
+}
+
+export async function deleteHabitFromSupabase(habitId: string) {
+  const supabase = getSupabaseClient()
+  if (!supabase) return
+  const { data } = await supabase.auth.getUser()
+  if (!data.user) return
+
+  await supabase
+    .from('entries')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('frontmatter->>legacyId', habitId)
+    .eq('frontmatter->>legacyType', 'habit_def')
 }
 
 export async function pullSupabaseToLocal() {
@@ -668,6 +1142,12 @@ export async function pullSupabaseToLocal() {
   if (tasks.length) await db.tasks.bulkPut(tasks)
   if (events.length) await db.events.bulkPut(events)
   if (notes.length) await db.notes.bulkPut(notes)
+
+  const workouts = await pullWorkoutsFromSupabase(data.user.id, supabase, sinceIso)
+  const meals = await pullMealsFromSupabase(data.user.id, supabase, sinceIso)
+
+  if (workouts.length) await db.workouts.bulkPut(workouts)
+  if (meals.length) await db.meals.bulkPut(meals)
 
   window.localStorage.setItem('insight5.supabase.lastPull.v1', String(Date.now()))
 }

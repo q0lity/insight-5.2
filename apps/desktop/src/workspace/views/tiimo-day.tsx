@@ -3,6 +3,7 @@ import type { CalendarEvent } from '../../storage/calendar'
 import { Icon } from '../../ui/icons'
 import { eventAccent, formatEventTitle, hexToRgba, type EventTitleMode } from '../../ui/event-visual'
 import { parseChecklistMarkdown, toggleChecklistLine } from '../../ui/checklist'
+import { pointsForEvent } from '../../scoring/points'
 
 function startOfDayMs(d: Date) {
   const x = new Date(d)
@@ -33,8 +34,32 @@ function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n))
 }
 
+type CardSizeClass = 'micro' | 'compact' | 'standard' | 'full'
+
+function getCardSizeClass(durationMinutes: number): CardSizeClass {
+  if (durationMinutes <= 20) return 'micro'
+  if (durationMinutes <= 45) return 'compact'
+  if (durationMinutes <= 120) return 'standard'
+  return 'full'
+}
+
+function formatElapsed(ms: number): string {
+  if (ms <= 0) return '0m'
+  const totalMins = Math.floor(ms / 60000)
+  const hours = Math.floor(totalMins / 60)
+  const mins = totalMins % 60
+  if (hours > 0) return `${hours}h ${mins}m`
+  return `${mins}m`
+}
+
+function formatPoints(pts: number): string {
+  if (pts >= 1000) return `${(pts / 1000).toFixed(1)}k`
+  return Math.round(pts).toString()
+}
+
 type SlotMinutes = 15 | 30 | 60
 const SLOT_OPTIONS: SlotMinutes[] = [15, 30, 60]
+const SNAP_INTERVAL = 5 // 5-minute snap for precise dragging
 const LOG_COL_STORAGE_KEY = 'insight5.timeline.logColWidth'
 
 function extractSegmentsFromNotes(notes: string | null | undefined, dayStartMs: number) {
@@ -185,8 +210,10 @@ export function TiimoDayView(props: {
 
   const [draft, setDraft] = useState<null | { startMin: number; endMin: number }>(null)
   const [drag, setDrag] = useState<null | { id: string; mode: 'move' | 'resize'; startAt: number; endAt: number; offsetMin: number }>(null)
+  const [contextMenu, setContextMenu] = useState<null | { eventId: string; x: number; y: number }>(null)
   const gridRef = useRef<HTMLDivElement | null>(null)
   const logMenuRef = useRef<HTMLDivElement | null>(null)
+  const contextMenuRef = useRef<HTMLDivElement | null>(null)
   const [logMenu, setLogMenu] = useState<null | { id: string; top: string }>(null)
   const resizeRef = useRef<null | { startX: number; startWidth: number }>(null)
   const [logColWidth, setLogColWidth] = useState(() => {
@@ -199,6 +226,30 @@ export function TiimoDayView(props: {
     }
     return 160
   })
+
+  // Current time indicator - updates every minute
+  const [nowMinute, setNowMinute] = useState(() => minuteOfDay(Date.now()))
+  const isToday = startOfDayMs(new Date()) === dayStart
+
+  // Track elapsed time for active events - updates every second
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  const hasActiveEvents = useMemo(() => dayEvents.some((e) => e.active), [dayEvents])
+
+  useEffect(() => {
+    if (!isToday) return
+    const interval = setInterval(() => {
+      setNowMinute(minuteOfDay(Date.now()))
+    }, 60 * 1000) // Update every minute
+    return () => clearInterval(interval)
+  }, [isToday])
+
+  useEffect(() => {
+    if (!hasActiveEvents) return
+    const interval = setInterval(() => {
+      setNowMs(Date.now())
+    }, 1000) // Update every second for active events
+    return () => clearInterval(interval)
+  }, [hasActiveEvents])
 
   useEffect(() => {
     function onMove(e: MouseEvent) {
@@ -277,6 +328,78 @@ export function TiimoDayView(props: {
     return () => window.removeEventListener('mousedown', onDown)
   }, [logMenu])
 
+  // Close context menu on click outside
+  useEffect(() => {
+    if (!contextMenu) return
+    function onDown(e: MouseEvent) {
+      if (contextMenuRef.current?.contains(e.target as Node)) return
+      setContextMenu(null)
+    }
+    window.addEventListener('mousedown', onDown)
+    window.addEventListener('contextmenu', onDown)
+    return () => {
+      window.removeEventListener('mousedown', onDown)
+      window.removeEventListener('contextmenu', onDown)
+    }
+  }, [contextMenu])
+
+  // Context menu action handlers
+  function handleStartNow(eventId: string) {
+    const now = Date.now()
+    const ev = props.events.find((e) => e.id === eventId)
+    if (!ev) return
+    props.onMoveEvent(eventId, now, ev.endAt > now ? ev.endAt : now + 60 * 60 * 1000)
+    setContextMenu(null)
+  }
+
+  function handleStopNow(eventId: string) {
+    const now = Date.now()
+    const ev = props.events.find((e) => e.id === eventId)
+    if (!ev) return
+    if (now > ev.startAt) {
+      props.onMoveEvent(eventId, ev.startAt, now)
+    }
+    setContextMenu(null)
+  }
+
+  function handleDuplicate(eventId: string) {
+    const ev = props.events.find((e) => e.id === eventId)
+    if (!ev) return
+    props.onCreateEvent({
+      title: ev.title,
+      startAt: ev.startAt,
+      endAt: ev.endAt,
+      kind: ev.kind,
+      tags: ev.tags,
+      category: ev.category,
+      subcategory: ev.subcategory,
+    })
+    setContextMenu(null)
+  }
+
+  function handleDelete(eventId: string) {
+    props.onUpdateEvent(eventId, { deleted: true })
+    setContextMenu(null)
+  }
+
+  function handleMoveTomorrow(eventId: string) {
+    const ev = props.events.find((e) => e.id === eventId)
+    if (!ev) return
+    const duration = ev.endAt - ev.startAt
+    const newStart = ev.startAt + 24 * 60 * 60 * 1000
+    props.onMoveEvent(eventId, newStart, newStart + duration)
+    setContextMenu(null)
+  }
+
+  function handleMoveNextWeek(eventId: string) {
+    const ev = props.events.find((e) => e.id === eventId)
+    if (!ev) return
+    const duration = ev.endAt - ev.startAt
+    const newStart = ev.startAt + 7 * 24 * 60 * 60 * 1000
+    props.onMoveEvent(eventId, newStart, newStart + duration)
+    setContextMenu(null)
+  }
+
   useEffect(() => {
     function onMove(e: MouseEvent) {
       const grid = gridRef.current
@@ -284,7 +407,8 @@ export function TiimoDayView(props: {
       const rect = grid.getBoundingClientRect()
       const y = clamp(e.clientY - rect.top, 0, rect.height)
       const minuteOffset = Math.floor((y / rect.height) * totalMinutes)
-      const minute = quantizeTo(startBaseMinutes + minuteOffset, slotMinutes)
+      // Use 5-minute snap for precise positioning during drag
+      const minute = quantizeTo(startBaseMinutes + minuteOffset, SNAP_INTERVAL)
 
       if (draft) {
         setDraft((d) => (d ? { ...d, endMin: minute } : d))
@@ -292,7 +416,7 @@ export function TiimoDayView(props: {
       }
       if (drag) {
         if (drag.mode === 'move') {
-          const durationMin = Math.max(slotMinutes, Math.round((drag.endAt - drag.startAt) / (60 * 1000)))
+          const durationMin = Math.max(SNAP_INTERVAL, Math.round((drag.endAt - drag.startAt) / (60 * 1000)))
           const startMin = clamp(minute - drag.offsetMin, startBaseMinutes, endBaseMinutes - durationMin)
           const startAt = dayStart + startMin * 60 * 1000
           props.onMoveEvent(drag.id, startAt, startAt + durationMin * 60 * 1000)
@@ -300,7 +424,7 @@ export function TiimoDayView(props: {
         }
         if (drag.mode === 'resize') {
           const startMin = minuteOfDay(drag.startAt)
-          const endMin = clamp(minute, startMin + slotMinutes, endBaseMinutes)
+          const endMin = clamp(minute, startMin + SNAP_INTERVAL, endBaseMinutes)
           const startAt = drag.startAt
           const endAt = dayStart + endMin * 60 * 1000
           props.onMoveEvent(drag.id, startAt, endAt)
@@ -312,7 +436,7 @@ export function TiimoDayView(props: {
       if (draft) {
         const startMin = Math.min(draft.startMin, draft.endMin)
         const endMin = Math.max(draft.startMin, draft.endMin)
-        const durMin = Math.max(slotMinutes, endMin - startMin)
+        const durMin = Math.max(SNAP_INTERVAL, endMin - startMin)
         const startAt = dayStart + startMin * 60 * 1000
         const endAt = startAt + durMin * 60 * 1000
         setDraft(null)
@@ -433,7 +557,7 @@ export function TiimoDayView(props: {
             const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
             const y = clamp(e.clientY - rect.top, 0, rect.height)
             const minuteOffset = Math.floor((y / rect.height) * totalMinutes)
-            const minute = quantizeTo(startBaseMinutes + minuteOffset, slotMinutes)
+            const minute = quantizeTo(startBaseMinutes + minuteOffset, SNAP_INTERVAL)
             const startAt = dayStart + minute * 60 * 1000
 
             const taskTitle = e.dataTransfer.getData('text/taskTitle')
@@ -494,13 +618,24 @@ export function TiimoDayView(props: {
 	            const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
 	            const y = clamp(e.clientY - rect.top, 0, rect.height)
 	            const minuteOffset = Math.floor((y / rect.height) * totalMinutes)
-            const minute = quantizeTo(startBaseMinutes + minuteOffset, slotMinutes)
-            setDraft({ startMin: minute, endMin: minute + slotMinutes })
+            const minute = quantizeTo(startBaseMinutes + minuteOffset, SNAP_INTERVAL)
+            setDraft({ startMin: minute, endMin: minute + SNAP_INTERVAL })
           }}>
           {slots.map((minute) => {
             const isHour = minute % 60 === 0
             return <div key={minute} className={isHour ? 'tmRow hour' : 'tmRow'} />
           })}
+
+          {/* Current time indicator line */}
+          {isToday && nowMinute >= startBaseMinutes && nowMinute <= endBaseMinutes && (
+            <div
+              className="tmNowIndicator"
+              style={{ top: `${((nowMinute - startBaseMinutes) / totalMinutes) * 100}%` }}
+            >
+              <div className="tmNowDot" />
+              <div className="tmNowLine" />
+            </div>
+          )}
 
           {dayEvents.map((ev) => {
             const accent = eventAccent(ev)
@@ -519,10 +654,28 @@ export function TiimoDayView(props: {
               .filter((s) => s.atMs >= ev.startAt && s.atMs <= ev.endAt)
               .map((s) => ({ ...s, pct: clamp(((s.atMs - ev.startAt) / Math.max(1, ev.endAt - ev.startAt)) * 100, 0, 100) }))
 
+            // Calculate size class based on duration
+            const durationMins = Math.round((ev.endAt - ev.startAt) / (60 * 1000))
+            const sizeClass = getCardSizeClass(durationMins)
+
+            // Calculate points
+            const points = pointsForEvent(ev)
+
+            // Calculate elapsed time for active events
+            const elapsedMs = ev.active ? Math.max(0, nowMs - ev.startAt) : 0
+
+            // Build class name
+            const cardClasses = [
+              'tmCard',
+              sizeClass,
+              ev.kind === 'task' ? 'task' : null,
+              ev.completedAt ? 'done' : null,
+            ].filter(Boolean).join(' ')
+
             return (
               <div
                 key={ev.id}
-                className={ev.kind === 'task' ? (ev.completedAt ? 'tmCard task done' : 'tmCard task') : 'tmCard'}
+                className={cardClasses}
                 style={{
                   top: `${topPct}%`,
                   height: `${Math.max(1.5, heightPct)}%`,
@@ -530,18 +683,6 @@ export function TiimoDayView(props: {
                   width: `${widthPct}%`,
                   borderColor: hexToRgba(accent.color, 0.42),
                   background: `linear-gradient(180deg, ${hexToRgba(accent.color, 0.20)}, ${hexToRgba(accent.color, 0.10)})`,
-                  ['--card-glow' as any]: hexToRgba(accent.color, 0.45),
-                }}
-                onPointerMove={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect()
-                  const x = e.clientX - rect.left
-                  const y = e.clientY - rect.top
-                  e.currentTarget.style.setProperty('--card-x', `${x}px`)
-                  e.currentTarget.style.setProperty('--card-y', `${y}px`)
-                }}
-                onPointerLeave={(e) => {
-                  e.currentTarget.style.setProperty('--card-x', '50%')
-                  e.currentTarget.style.setProperty('--card-y', '50%')
                 }}
                 onMouseDown={(e) => {
                   if (e.button !== 0) return
@@ -550,7 +691,7 @@ export function TiimoDayView(props: {
                   const rect = (gridRef.current ?? e.currentTarget.parentElement)?.getBoundingClientRect()
                   const y = rect ? clamp(e.clientY - rect.top, 0, rect.height) : 0
                   const minuteOffset = Math.floor((y / (rect?.height ?? 1)) * totalMinutes)
-                  const minute = quantizeTo(startBaseMinutes + minuteOffset, slotMinutes)
+                  const minute = quantizeTo(startBaseMinutes + minuteOffset, SNAP_INTERVAL)
                   setDrag({
                     id: ev.id,
                     mode: isResize ? 'resize' : 'move',
@@ -559,19 +700,45 @@ export function TiimoDayView(props: {
                     offsetMin: clamp(minute - startMin, 0, 12 * 60),
                   })
                 }}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  setContextMenu({ eventId: ev.id, x: e.clientX, y: e.clientY })
+                }}
                 onDoubleClick={() => props.onSelectEvent(ev.id)}>
                 <div className="tmStripe" style={{ background: hexToRgba(accent.color, 0.9) }} />
+
+                {/* Top row: Icon | Title | Checkbox (for tasks) */}
                 <div className="tmCardTop">
                   <div className="tmCardEmoji" style={{ borderColor: hexToRgba(accent.color, 0.40) }}>
                     <Icon name={accent.icon} size={14} />
                   </div>
                   <div className="tmCardTitle">{formatEventTitle(ev, titleMode)}</div>
-                  <div className="tmCardTime">
-                    {formatTime(ev.startAt)}–{formatTime(ev.endAt)}
-                  </div>
+                  {ev.kind === 'task' ? (
+                    <button
+                      className={ev.completedAt ? 'tmCheckTop checked' : 'tmCheckTop'}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        props.onToggleComplete(ev.id)
+                      }}
+                      aria-label={ev.completedAt ? 'Mark incomplete' : 'Mark complete'}>
+                      <Icon name="check" size={12} />
+                    </button>
+                  ) : null}
                 </div>
 
-                {segments.length ? (
+                {/* Middle: Tags (compact, only on non-micro) */}
+                {sizeClass !== 'micro' && (ev.tags ?? []).length > 0 ? (
+                  <div className="tmCardMiddle">
+                    {(ev.tags ?? []).slice(0, sizeClass === 'compact' ? 2 : 3).map((t) => (
+                      <span key={t} className="tmTag compact">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+
+                {segments.length && sizeClass !== 'micro' && sizeClass !== 'compact' ? (
                   <div className="tmSegments" aria-label="Segments">
                     {segments.map((s) => (
                       <div key={`${ev.id}_${s.atMs}`} className="tmSeg" style={{ top: `${s.pct}%` }}>
@@ -582,15 +749,30 @@ export function TiimoDayView(props: {
                   </div>
                 ) : null}
 
+                {/* Bottom row: Play | Points | Checklist ... Time | Elapsed */}
                 <div className="tmCardBottom">
-                  {(ev.tags ?? []).slice(0, 3).map((t) => (
-                    <span key={t} className="tmTag">
-                      {t}
+                  {ev.kind !== 'log' && sizeClass !== 'micro' ? (
+                    <button
+                      className={ev.active ? 'tmPlay active' : 'tmPlay'}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        props.onUpdateEvent(ev.id, { active: !ev.active })
+                      }}
+                      aria-label={ev.active ? 'Pause timer' : 'Start timer'}>
+                      <Icon name={ev.active ? 'pause' : 'play'} size={14} />
+                    </button>
+                  ) : null}
+
+                  {points > 0 && sizeClass !== 'micro' ? (
+                    <span className="tmCardPoints" title={`${Math.round(points)} XP`}>
+                      {formatPoints(points)} XP
                     </span>
-                  ))}
+                  ) : null}
+
                   {(() => {
                     const checklist = parseChecklistMarkdown(ev.notes)
-                    if (!checklist.length) return null
+                    if (!checklist.length || sizeClass === 'micro' || sizeClass === 'compact') return null
                     return (
                       <div className="tmChecklist" aria-label="Checklist">
                         {checklist.slice(0, 3).map((it) => (
@@ -613,31 +795,21 @@ export function TiimoDayView(props: {
                       </div>
                     )
                   })()}
+
                   <span className="tmSpacer" />
-                  {ev.kind !== 'log' ? (
-                    <button
-                      className={ev.active ? 'tmPlay active' : 'tmPlay'}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        props.onUpdateEvent(ev.id, { active: !ev.active })
-                      }}
-                      aria-label={ev.active ? 'Pause timer' : 'Start timer'}>
-                      <Icon name={ev.active ? 'pause' : 'play'} size={14} />
-                    </button>
-                  ) : null}
-                  {ev.kind === 'task' ? (
-                    <button
-                      className={ev.completedAt ? 'tmCheck checked' : 'tmCheck'}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        props.onToggleComplete(ev.id)
-                      }}
-                      aria-label={ev.completedAt ? 'Mark incomplete' : 'Mark complete'}>
-                      <Icon name="check" size={14} />
-                    </button>
-                  ) : null}
+
+                  {/* Time info at bottom-right with optional elapsed time */}
+                  <div className="tmCardTimeInfo">
+                    <span className="tmCardTimeRange">
+                      {formatTime(ev.startAt)}–{formatTime(ev.endAt)}
+                    </span>
+                    {ev.active && elapsedMs > 0 ? (
+                      <>
+                        <span className="tmCardTimeDivider" />
+                        <span className="tmCardElapsed">{formatElapsed(elapsedMs)}</span>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="tmResize" aria-hidden="true" />
@@ -763,6 +935,26 @@ export function TiimoDayView(props: {
         </div>
       </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="calContextMenu"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <button onClick={() => handleStartNow(contextMenu.eventId)}>Start Now</button>
+          <button onClick={() => handleStopNow(contextMenu.eventId)}>Stop Now</button>
+          <div className="calContextMenuDivider" />
+          <button onClick={() => { props.onSelectEvent(contextMenu.eventId); setContextMenu(null) }}>Edit</button>
+          <button onClick={() => handleDuplicate(contextMenu.eventId)}>Duplicate</button>
+          <div className="calContextMenuDivider" />
+          <button onClick={() => handleMoveTomorrow(contextMenu.eventId)}>Move to Tomorrow</button>
+          <button onClick={() => handleMoveNextWeek(contextMenu.eventId)}>Move to Next Week</button>
+          <div className="calContextMenuDivider" />
+          <button className="destructive" onClick={() => handleDelete(contextMenu.eventId)}>Delete</button>
+        </div>
+      )}
     </div>
   )
 }

@@ -265,17 +265,17 @@ export function LifeTrackerDashboard(props: {
   }, [workouts])
 
   return (
-    <div className="flex flex-col h-full bg-[#F8F7F4] text-[#1C1C1E] font-['Figtree'] overflow-hidden">
-      <div className="px-10 pt-10 pb-6 bg-[#F8F7F4]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
+      <div className="px-10 pt-10 pb-6 bg-[var(--bg)]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-3xl font-extrabold tracking-tight text-gradient">Life Tracker</h1>
-            <p className="text-sm text-[#86868B] font-semibold uppercase tracking-widest">{greeting}, track your vitals.</p>
+            <p className="text-sm text-[var(--muted)] font-semibold uppercase tracking-widest">{greeting}, track your vitals.</p>
           </div>
           <div className="flex items-center gap-4">
             <button 
               onClick={props.onRefresh}
-              className="w-10 h-10 rounded-full bg-white border border-black/5 flex items-center justify-center text-[#86868B] hover:text-[#D95D39] transition-colors shadow-sm"
+              className="w-10 h-10 rounded-full bg-white border border-black/5 flex items-center justify-center text-[var(--muted)] hover:text-[var(--accent)] transition-colors shadow-sm"
             >
               <Icon name="bolt" size={18} />
             </button>
@@ -290,13 +290,13 @@ export function LifeTrackerDashboard(props: {
 
         <div className="flex items-center gap-8">
             <div className="flex items-center gap-4 bg-white/40 backdrop-blur border border-white/20 p-1.5 rounded-2xl">
-                <div className="px-3 text-[10px] font-black uppercase text-[#86868B]">Columns</div>
+                <div className="px-3 text-[10px] font-black uppercase text-[var(--muted)]">Columns</div>
                 <div className="flex gap-1">
                     {[1, 2, 3, 4].map(n => (
                         <button 
                             key={n}
                             onClick={() => setLtColumns(n)}
-                            className={`w-8 h-8 rounded-xl font-bold text-xs transition-all ${ltColumns === n ? 'bg-white shadow-md text-[#1C1C1E]' : 'text-[#86868B] hover:text-[#1C1C1E]'}`}
+                            className={`w-8 h-8 rounded-xl font-bold text-xs transition-all ${ltColumns === n ? 'bg-white shadow-md text-[var(--text)]' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
                         >
                             {n}
                         </button>
@@ -311,9 +311,9 @@ export function LifeTrackerDashboard(props: {
           {/* Stress Level */}
           <div className="glassCard space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase tracking-widest text-[#86868B]">Stress Level</h3>
+              <h3 className="text-xs font-black uppercase tracking-widest text-[var(--muted)]">Stress Level</h3>
               <div className="flex gap-2">
-                <button className="w-8 h-8 rounded-lg bg-[#F2F0ED] flex items-center justify-center text-[#86868B]" onClick={() => setLtMaximized('stress')}>
+                <button className="w-8 h-8 rounded-lg bg-[var(--panel)] flex items-center justify-center text-[var(--muted)]" onClick={() => setLtMaximized('stress')}>
                     <Icon name="maximize" size={14} />
                 </button>
               </div>
@@ -324,8 +324,8 @@ export function LifeTrackerDashboard(props: {
           {/* Energy Level */}
           <div className="glassCard space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase tracking-widest text-[#86868B]">Energy (365d)</h3>
-              <button className="w-8 h-8 rounded-lg bg-[#F2F0ED] flex items-center justify-center text-[#86868B]" onClick={() => setLtMaximized('energy')}>
+              <h3 className="text-xs font-black uppercase tracking-widest text-[var(--muted)]">Energy (365d)</h3>
+              <button className="w-8 h-8 rounded-lg bg-[var(--panel)] flex items-center justify-center text-[var(--muted)]" onClick={() => setLtMaximized('energy')}>
                   <Icon name="maximize" size={14} />
               </button>
             </div>
@@ -334,19 +334,19 @@ export function LifeTrackerDashboard(props: {
 
           {/* Quick Track */}
           <div className="glassCard space-y-6">
-            <h3 className="text-xs font-black uppercase tracking-widest text-[#86868B]">Quick Actions</h3>
+            <h3 className="text-xs font-black uppercase tracking-widest text-[var(--muted)]">Quick Actions</h3>
             <div className="grid grid-cols-3 gap-3">
               {QUICK_TRACKERS.map((t) => (
                 <button
                   key={t.id}
-                  className="flex flex-col items-center gap-2 p-4 bg-[#F2F0ED] rounded-2xl hover:bg-white hover:shadow-xl hover:scale-105 transition-all group"
+                  className="flex flex-col items-center gap-2 p-4 bg-[var(--panel)] rounded-2xl hover:bg-[var(--panel)] hover:shadow-xl hover:scale-105 transition-all group"
                   onClick={() => {
                     const next = props.captureDraft.trim().length === 0 ? t.tokenHint : `${props.captureDraft.trim()} ${t.tokenHint}`
                     props.setCaptureDraft(next)
                     props.onOpenCapture()
                   }}>
                   <span className="text-2xl group-hover:scale-110 transition-transform">{t.emoji}</span>
-                  <span className="text-[10px] font-bold uppercase tracking-tighter text-[#86868B] group-hover:text-[#D95D39] transition-colors">{t.label}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-tighter text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors">{t.label}</span>
                 </button>
               ))}
             </div>
@@ -355,10 +355,10 @@ export function LifeTrackerDashboard(props: {
           {/* Workout Studio */}
           <div className="glassCard space-y-6 md:col-span-2">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase tracking-widest text-[#86868B]">Workout Studio</h3>
+              <h3 className="text-xs font-black uppercase tracking-widest text-[var(--muted)]">Workout Studio</h3>
               <div className="flex items-center gap-3">
                 {activeWorkout && <span className="flex items-center gap-2 px-3 py-1 bg-[#3D8856]/10 text-[#3D8856] text-[10px] font-black rounded-full uppercase animate-pulse">● Active</span>}
-                <button className="w-8 h-8 rounded-lg bg-[#F2F0ED] flex items-center justify-center text-[#86868B]" onClick={() => setLtMaximized('workout')}>
+                <button className="w-8 h-8 rounded-lg bg-[var(--panel)] flex items-center justify-center text-[var(--muted)]" onClick={() => setLtMaximized('workout')}>
                     <Icon name="maximize" size={14} />
                 </button>
               </div>
@@ -367,7 +367,7 @@ export function LifeTrackerDashboard(props: {
             {!activeWorkout ? (
               <div className="flex gap-3">
                 <input
-                  className="flex-1 h-12 bg-[#F2F0ED] border-none rounded-2xl px-6 text-sm font-medium outline-none focus:ring-4 focus:ring-[#D95D39]/5 transition-all"
+                  className="flex-1 h-12 bg-[var(--panel)] border-none rounded-2xl px-6 text-sm font-medium outline-none focus:ring-4 focus:ring-[#D95D39]/5 transition-all"
                   value={workoutTitle}
                   onChange={(e) => setWorkoutTitle(e.target.value)}
                   placeholder="Push Day, Morning Yoga..."
@@ -378,10 +378,10 @@ export function LifeTrackerDashboard(props: {
               </div>
             ) : (
               <div className="space-y-8">
-                <div className="flex items-center justify-between p-6 bg-[#F2F0ED] rounded-[32px]">
+                <div className="flex items-center justify-between p-6 bg-[var(--panel)] rounded-[32px]">
                   <div>
-                    <h4 className="text-xl font-bold text-[#1C1C1E]">{activeWorkout.title}</h4>
-                    <p className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest">Started {new Date(activeWorkout.startedAt).toLocaleTimeString()}</p>
+                    <h4 className="text-xl font-bold text-[var(--text)]">{activeWorkout.title}</h4>
+                    <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Started {new Date(activeWorkout.startedAt).toLocaleTimeString()}</p>
                   </div>
                   <button className="h-10 px-6 bg-[#D95D39] text-white rounded-xl font-bold text-xs shadow-lg" onClick={endWorkout}>
                     Finish Session
@@ -392,28 +392,28 @@ export function LifeTrackerDashboard(props: {
                     {activeWorkout.exercises.map((ex) => (
                         <div key={ex.id} className="p-6 bg-white rounded-3xl border border-black/5 shadow-sm space-y-4">
                             <div className="flex justify-between items-center">
-                                <span className="font-bold text-[#1C1C1E]">{ex.name}</span>
-                                <button onClick={() => removeExercise(ex.id)} className="text-[#86868B] hover:text-[#CF423C]">×</button>
+                                <span className="font-bold text-[var(--text)]">{ex.name}</span>
+                                <button onClick={() => removeExercise(ex.id)} className="text-[var(--muted)] hover:text-[#CF423C]">×</button>
                             </div>
                             <div className="grid grid-cols-4 gap-3">
                                 {ex.sets.map((s, idx) => (
-                                    <div key={s.id} className="p-3 bg-[#F2F0ED] rounded-xl flex flex-col items-center relative group">
-                                        <span className="text-[8px] font-bold text-[#86868B] uppercase">Set {idx + 1}</span>
+                                    <div key={s.id} className="p-3 bg-[var(--panel)] rounded-xl flex flex-col items-center relative group">
+                                        <span className="text-[8px] font-bold text-[var(--muted)] uppercase">Set {idx + 1}</span>
                                         <span className="text-xs font-black">{s.reps} × {s.weight}lb</span>
                                         <button onClick={() => removeSet(ex.id, s.id)} className="absolute -top-1 -right-1 w-4 h-4 bg-[#CF423C] text-white rounded-full text-[8px] opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                                     </div>
                                 ))}
                                 <div className="col-span-2 flex gap-2">
-                                    <input className="w-1/3 h-10 bg-[#F2F0ED] border-none rounded-xl px-3 text-xs font-bold text-center" placeholder="Reps" value={setDrafts[ex.id]?.reps ?? ''} onChange={(e) => setSetDrafts((prev) => ({ ...prev, [ex.id]: { reps: e.target.value, weight: prev[ex.id]?.weight ?? '' } }))} />
-                                    <input className="w-1/3 h-10 bg-[#F2F0ED] border-none rounded-xl px-3 text-xs font-bold text-center" placeholder="Lb" value={setDrafts[ex.id]?.weight ?? ''} onChange={(e) => setSetDrafts((prev) => ({ ...prev, [ex.id]: { reps: prev[ex.id]?.reps ?? '', weight: e.target.value } }))} />
+                                    <input className="w-1/3 h-10 bg-[var(--panel)] border-none rounded-xl px-3 text-xs font-bold text-center" placeholder="Reps" value={setDrafts[ex.id]?.reps ?? ''} onChange={(e) => setSetDrafts((prev) => ({ ...prev, [ex.id]: { reps: e.target.value, weight: prev[ex.id]?.weight ?? '' } }))} />
+                                    <input className="w-1/3 h-10 bg-[var(--panel)] border-none rounded-xl px-3 text-xs font-bold text-center" placeholder="Lb" value={setDrafts[ex.id]?.weight ?? ''} onChange={(e) => setSetDrafts((prev) => ({ ...prev, [ex.id]: { reps: prev[ex.id]?.reps ?? '', weight: e.target.value } }))} />
                                     <button className="flex-1 h-10 bg-[#1C1C1E] text-white rounded-xl font-bold text-[10px]" onClick={() => addSetToExercise(ex.id)}>Add Set</button>
                                 </div>
                             </div>
                         </div>
                     ))}
                     <div className="flex gap-2">
-                        <input className="flex-1 h-12 bg-[#F2F0ED] border-none rounded-2xl px-6 text-sm font-medium" placeholder="Add exercise (e.g. Squat)" value={exerciseDraft} onChange={(e) => setExerciseDraft(e.target.value)} />
-                        <button className="h-12 px-6 bg-[#F2F0ED] text-[#1C1C1E] rounded-2xl font-bold text-xs" onClick={() => addExerciseToWorkout(exerciseDraft)}>+ Exercise</button>
+                        <input className="flex-1 h-12 bg-[var(--panel)] border-none rounded-2xl px-6 text-sm font-medium" placeholder="Add exercise (e.g. Squat)" value={exerciseDraft} onChange={(e) => setExerciseDraft(e.target.value)} />
+                        <button className="h-12 px-6 bg-[var(--panel)] text-[var(--text)] rounded-2xl font-bold text-xs" onClick={() => addExerciseToWorkout(exerciseDraft)}>+ Exercise</button>
                     </div>
                 </div>
               </div>

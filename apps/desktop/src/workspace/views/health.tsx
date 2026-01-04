@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Icon } from '../../ui/icons'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import { db } from '../../db/insight-db'
 import type { Workout, Meal, WorkoutType, MealType } from '../../db/insight-db'
 import type { CalendarEvent } from '../../storage/calendar'
@@ -18,6 +19,75 @@ function formatDate(ms: number): string {
 
 function formatTime(ms: number): string {
   return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+function formatPace(distanceMiles: number, durationSeconds: number) {
+  if (!distanceMiles || !durationSeconds) return null
+  const hours = durationSeconds / 3600
+  if (hours <= 0) return null
+  const mph = distanceMiles / hours
+  return `${mph.toFixed(1)} mph`
+}
+
+function workoutPace(workout: Workout) {
+  for (const ex of workout.exercises) {
+    for (const set of ex.sets) {
+      if (set.distance && set.duration) {
+        const pace = formatPace(set.distance, set.duration)
+        if (pace) return pace
+      }
+    }
+  }
+  return null
+}
+
+function formatDistance(distanceMiles?: number | null) {
+  if (!distanceMiles) return null
+  const rounded = distanceMiles >= 10 ? distanceMiles.toFixed(1) : distanceMiles.toFixed(2)
+  return `${rounded} mi`
+}
+
+function exerciseDurationMinutes(exercise: Workout['exercises'][number]) {
+  const seconds = exercise.sets.reduce((sum, set) => sum + (set.duration ?? 0), 0)
+  return seconds > 0 ? Math.round(seconds / 60) : null
+}
+
+function exerciseDistanceMiles(exercise: Workout['exercises'][number]) {
+  const distance = exercise.sets.reduce((sum, set) => sum + (set.distance ?? 0), 0)
+  return distance > 0 ? distance : null
+}
+
+function summarizeExercise(exercise: Workout['exercises'][number]) {
+  const sets = exercise.sets.length
+  const avgReps = Math.round(exercise.sets.reduce((sum, set) => sum + (set.reps ?? 0), 0) / (sets || 1))
+  const avgWeight = Math.round(exercise.sets.reduce((sum, set) => sum + (set.weight ?? 0), 0) / (sets || 1))
+  const durationMinutes = exerciseDurationMinutes(exercise)
+  const distanceMiles = exerciseDistanceMiles(exercise)
+
+  if (exercise.type === 'strength') {
+    const parts = []
+    if (sets > 0 && avgReps > 0) parts.push(`${sets}x${avgReps}`)
+    if (avgWeight > 0) parts.push(`@ ${avgWeight} lb`)
+    return parts.join(' ')
+  }
+
+  const parts = []
+  if (distanceMiles) parts.push(formatDistance(distanceMiles))
+  if (durationMinutes) parts.push(formatDuration(durationMinutes))
+  return parts.join(' / ')
+}
+
+function workoutTotals(workout: Workout) {
+  let durationMinutes = workout.totalDuration ?? 0
+  let distanceMiles = 0
+  if (!durationMinutes) {
+    durationMinutes = workout.exercises.reduce((sum, ex) => sum + (exerciseDurationMinutes(ex) ?? 0), 0)
+  }
+  distanceMiles = workout.exercises.reduce((sum, ex) => sum + (exerciseDistanceMiles(ex) ?? 0), 0)
+  return {
+    durationMinutes: durationMinutes || null,
+    distanceMiles: distanceMiles || null,
+  }
 }
 
 function startOfDayMs(ms: number) {
@@ -150,19 +220,19 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-[#F2F0ED]">
+      <div className="flex items-center justify-center h-full bg-[var(--panel)]">
         <div className="text-[#8E8E93] font-bold animate-pulse">Loading health data...</div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#F2F0ED] font-['Figtree'] overflow-hidden">
+    <div className="flex flex-col h-full bg-[var(--panel)] font-['Figtree'] overflow-hidden">
       {/* Header */}
       <div className="px-8 pt-8 pb-6 border-b border-[#E5E5EA]">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-[#1C1C1E] tracking-tight">Health & Fitness</h1>
+            <h1 className="text-3xl font-bold text-[var(--text)] tracking-tight">Health & Fitness</h1>
             <p className="text-sm text-[#8E8E93] mt-1">Track your workouts, nutrition, and well-being</p>
           </div>
         </div>
@@ -177,7 +247,7 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
                 className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
                   view === v
                     ? 'bg-[#1C1C1E] text-white'
-                    : 'text-[#8E8E93] hover:text-[#1C1C1E]'
+                    : 'text-[#8E8E93] hover:text-[var(--text)]'
                 }`}
               >
                 {v}
@@ -193,7 +263,7 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
                 className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
                   range === r
                     ? 'bg-orange-500 text-white'
-                    : 'text-[#8E8E93] hover:text-[#1C1C1E]'
+                    : 'text-[#8E8E93] hover:text-[var(--text)]'
                 }`}
               >
                 {r}
@@ -206,7 +276,8 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-8">
         {view === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl">
+          <div className="space-y-6 max-w-6xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Workout Summary Card */}
             <div className="bg-white rounded-2xl border border-[#E5E5EA] p-6 shadow-sm">
               <div className="flex items-center gap-3 mb-4">
@@ -217,17 +288,17 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
               </div>
               <div className="space-y-4">
                 <div className="flex justify-between items-baseline">
-                  <span className="text-4xl font-bold text-[#1C1C1E]">{workoutStats.totalSessions}</span>
+                  <span className="text-4xl font-bold text-[var(--text)]">{workoutStats.totalSessions}</span>
                   <span className="text-sm font-bold text-[#8E8E93]">sessions</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="p-3 bg-[#F2F0ED] rounded-xl">
+                  <div className="p-3 bg-[var(--panel)] rounded-xl">
                     <span className="block text-xs font-bold text-[#8E8E93]">Duration</span>
-                    <span className="font-bold text-[#1C1C1E]">{formatDuration(workoutStats.totalDuration)}</span>
+                    <span className="font-bold text-[var(--text)]">{formatDuration(workoutStats.totalDuration)}</span>
                   </div>
-                  <div className="p-3 bg-[#F2F0ED] rounded-xl">
+                  <div className="p-3 bg-[var(--panel)] rounded-xl">
                     <span className="block text-xs font-bold text-[#8E8E93]">Calories</span>
-                    <span className="font-bold text-[#1C1C1E]">{workoutStats.totalCalories.toLocaleString()}</span>
+                    <span className="font-bold text-[var(--text)]">{workoutStats.totalCalories.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -243,7 +314,7 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
               </div>
               <div className="space-y-4">
                 <div className="flex justify-between items-baseline">
-                  <span className="text-4xl font-bold text-[#1C1C1E]">{nutritionStats.avgCaloriesPerDay.toLocaleString()}</span>
+                  <span className="text-4xl font-bold text-[var(--text)]">{nutritionStats.avgCaloriesPerDay.toLocaleString()}</span>
                   <span className="text-sm font-bold text-[#8E8E93]">kcal/day</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-sm">
@@ -274,7 +345,7 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
               <div className="space-y-3">
                 {Array.from(trackerAverages.entries()).slice(0, 4).map(([key, avg]) => (
                   <div key={key} className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-[#1C1C1E] capitalize">{key}</span>
+                    <span className="text-sm font-bold text-[var(--text)] capitalize">{key}</span>
                     <div className="flex items-center gap-2">
                       <div className="w-24 h-2 bg-[#E5E5EA] rounded-full overflow-hidden">
                         <div
@@ -295,13 +366,31 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
                 )}
               </div>
             </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-[#E5E5EA] p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-[#8E8E93]">Apple Health Import</h3>
+                  <p className="text-sm text-[#8E8E93] mt-2">
+                    Connect on iOS to import workouts, steps, and recovery data into your health dashboard.
+                  </p>
+                </div>
+                <button className="px-4 py-2 rounded-lg bg-[#1C1C1E] text-white text-xs font-bold uppercase tracking-wider">
+                  Connect
+                </button>
+              </div>
+              <p className="text-xs text-[#8E8E93] mt-3">
+                iOS-only. Requires HealthKit permissions in the mobile dev client.
+              </p>
+            </div>
           </div>
         )}
 
         {view === 'workouts' && (
-          <div className="space-y-6 max-w-4xl">
+          <div className="space-y-6 max-w-6xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-[#1C1C1E]">Workout History</h2>
+              <h2 className="text-xl font-bold text-[var(--text)]">Workout Log</h2>
               <span className="text-sm font-bold text-[#8E8E93]">
                 {workouts.length} workouts
               </span>
@@ -312,83 +401,84 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
                 <div className="w-16 h-16 mx-auto rounded-full bg-orange-100 flex items-center justify-center mb-4">
                   <Icon name="zap" className="w-8 h-8 text-orange-400" />
                 </div>
-                <h3 className="font-bold text-[#1C1C1E] mb-2">No workouts logged</h3>
+                <h3 className="font-bold text-[var(--text)] mb-2">No workouts logged</h3>
                 <p className="text-sm text-[#8E8E93]">
                   Log your workouts using voice capture or add them manually
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {workouts
-                  .sort((a, b) => b.startAt - a.startAt)
-                  .map((workout) => (
-                    <motion.div
-                      key={workout.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-white rounded-xl border border-[#E5E5EA] p-4 shadow-sm"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                          workout.type === 'strength' ? 'bg-red-100 text-red-600' :
-                          workout.type === 'cardio' ? 'bg-blue-100 text-blue-600' :
-                          workout.type === 'mobility' ? 'bg-green-100 text-green-600' :
-                          'bg-orange-100 text-orange-600'
-                        }`}>
-                          <Icon name={workout.type === 'cardio' ? 'activity' : 'zap'} size={24} />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-bold text-[#1C1C1E]">{workout.title}</h4>
-                          <p className="text-xs font-medium text-[#8E8E93]">
-                            {formatDate(workout.startAt)} at {formatTime(workout.startAt)}
-                          </p>
-                          {workout.exercises.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {workout.exercises.slice(0, 3).map((ex, i) => (
-                                <span
-                                  key={i}
-                                  className="px-2 py-0.5 bg-[#F2F0ED] rounded text-xs font-bold text-[#1C1C1E]"
-                                >
-                                  {ex.name}
-                                </span>
-                              ))}
-                              {workout.exercises.length > 3 && (
-                                <span className="text-xs font-bold text-[#8E8E93]">
-                                  +{workout.exercises.length - 3} more
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          {workout.totalDuration && (
-                            <span className="block font-bold text-[#1C1C1E]">
-                              {formatDuration(workout.totalDuration)}
-                            </span>
-                          )}
-                          {workout.estimatedCalories && (
-                            <span className="block text-xs font-bold text-orange-500">
-                              {workout.estimatedCalories} kcal
-                            </span>
-                          )}
-                          {workout.overallRpe && (
-                            <span className="block text-xs font-bold text-[#8E8E93]">
-                              RPE {workout.overallRpe}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+              <div className="bg-white rounded-2xl border border-[#E5E5EA] shadow-sm overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Workout</TableHead>
+                      <TableHead>Exercises</TableHead>
+                      <TableHead>Duration</TableHead>
+                      <TableHead>Distance</TableHead>
+                      <TableHead>RPE</TableHead>
+                      <TableHead>Calories</TableHead>
+                      <TableHead>Pace</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {workouts
+                      .sort((a, b) => b.startAt - a.startAt)
+                      .map((workout) => {
+                        const pace = workoutPace(workout)
+                        const totals = workoutTotals(workout)
+                        return (
+                          <TableRow key={workout.id}>
+                            <TableCell className="text-xs text-[#8E8E93]">
+                              <div className="font-semibold text-[var(--text)]">{formatDate(workout.startAt)}</div>
+                              <div>{formatTime(workout.startAt)}</div>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <div className="font-bold text-[var(--text)]">{workout.title}</div>
+                              <div className="text-[#8E8E93] uppercase tracking-wider">{workout.type}</div>
+                            </TableCell>
+                            <TableCell className="text-xs text-[var(--text)]">
+                              <div className="space-y-1">
+                                {workout.exercises.map((ex) => {
+                                  const summary = summarizeExercise(ex)
+                                  return (
+                                    <div key={ex.id} className="flex gap-2">
+                                      <span className="font-semibold">{ex.name}</span>
+                                      {summary ? <span className="text-[#8E8E93]">- {summary}</span> : null}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs font-semibold text-[var(--text)]">
+                              {totals.durationMinutes ? formatDuration(totals.durationMinutes) : '-'}
+                            </TableCell>
+                            <TableCell className="text-xs font-semibold text-[var(--text)]">
+                              {totals.distanceMiles ? formatDistance(totals.distanceMiles) : '-'}
+                            </TableCell>
+                            <TableCell className="text-xs font-semibold text-[var(--text)]">
+                              {workout.overallRpe ? `RPE ${workout.overallRpe}` : '-'}
+                            </TableCell>
+                            <TableCell className="text-xs font-semibold text-orange-500">
+                              {workout.estimatedCalories ? `${workout.estimatedCalories} kcal` : '-'}
+                            </TableCell>
+                            <TableCell className="text-xs font-semibold text-blue-600">
+                              {pace ?? '-'}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </div>
         )}
 
         {view === 'nutrition' && (
-          <div className="space-y-6 max-w-4xl">
+          <div className="space-y-6 max-w-6xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-[#1C1C1E]">Meal History</h2>
+              <h2 className="text-xl font-bold text-[var(--text)]">Meal Timeline</h2>
               <span className="text-sm font-bold text-[#8E8E93]">
                 {meals.length} meals
               </span>
@@ -399,64 +489,70 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
                 <div className="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-4">
                   <Icon name="utensils" className="w-8 h-8 text-green-400" />
                 </div>
-                <h3 className="font-bold text-[#1C1C1E] mb-2">No meals logged</h3>
+                <h3 className="font-bold text-[var(--text)] mb-2">No meals logged</h3>
                 <p className="text-sm text-[#8E8E93]">
                   Log your meals using voice capture or add them manually
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {meals
-                  .sort((a, b) => b.eatenAt - a.eatenAt)
-                  .map((meal) => (
-                    <motion.div
-                      key={meal.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-white rounded-xl border border-[#E5E5EA] p-4 shadow-sm"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                          meal.type === 'breakfast' ? 'bg-yellow-100 text-yellow-600' :
-                          meal.type === 'lunch' ? 'bg-green-100 text-green-600' :
-                          meal.type === 'dinner' ? 'bg-blue-100 text-blue-600' :
-                          meal.type === 'snack' ? 'bg-orange-100 text-orange-600' :
-                          'bg-purple-100 text-purple-600'
-                        }`}>
-                          <Icon name="utensils" size={24} />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-bold text-[#1C1C1E]">{meal.title}</h4>
-                          <p className="text-xs font-medium text-[#8E8E93]">
-                            {formatDate(meal.eatenAt)} at {formatTime(meal.eatenAt)}
-                          </p>
-                          {meal.items.length > 0 && (
-                            <div className="mt-2 text-xs text-[#1C1C1E]">
-                              {meal.items.slice(0, 3).map((item, i) => (
-                                <span key={i}>
-                                  {item.quantity} {item.unit} {item.name}
-                                  {i < Math.min(meal.items.length - 1, 2) ? ', ' : ''}
-                                </span>
+              <div className="bg-white rounded-2xl border border-[#E5E5EA] shadow-sm overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Meal</TableHead>
+                      <TableHead>Items</TableHead>
+                      <TableHead>Calories</TableHead>
+                      <TableHead>Protein</TableHead>
+                      <TableHead>Carbs</TableHead>
+                      <TableHead>Fat</TableHead>
+                      <TableHead>Fiber</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {meals
+                      .sort((a, b) => a.eatenAt - b.eatenAt)
+                      .map((meal) => (
+                        <TableRow key={meal.id}>
+                          <TableCell className="text-xs text-[#8E8E93]">
+                            <div className="font-semibold text-[var(--text)]">{formatDate(meal.eatenAt)}</div>
+                            <div>{formatTime(meal.eatenAt)}</div>
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <div className="font-bold text-[var(--text)]">{meal.title}</div>
+                            <div className="text-[#8E8E93] uppercase tracking-wider">{meal.type}</div>
+                          </TableCell>
+                          <TableCell className="text-xs text-[var(--text)]">
+                            <div className="space-y-1">
+                              {meal.items.map((item) => (
+                                <div key={item.id} className="flex gap-2">
+                                  <span className="font-semibold">
+                                    {item.quantity} {item.unit}
+                                  </span>
+                                  <span>{item.name}</span>
+                                </div>
                               ))}
-                              {meal.items.length > 3 && (
-                                <span className="text-[#8E8E93]"> +{meal.items.length - 3} more</span>
-                              )}
                             </div>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <span className="block font-bold text-[#1C1C1E]">
+                          </TableCell>
+                          <TableCell className="text-xs font-semibold text-[var(--text)]">
                             {meal.totalCalories} kcal
-                          </span>
-                          <div className="flex gap-2 mt-1 text-[10px] font-bold">
-                            <span className="text-blue-500">P{meal.macros.protein}g</span>
-                            <span className="text-amber-500">C{meal.macros.carbs}g</span>
-                            <span className="text-red-500">F{meal.macros.fat}g</span>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                          </TableCell>
+                          <TableCell className="text-xs font-semibold text-blue-500">
+                            {meal.macros.protein} g
+                          </TableCell>
+                          <TableCell className="text-xs font-semibold text-amber-500">
+                            {meal.macros.carbs} g
+                          </TableCell>
+                          <TableCell className="text-xs font-semibold text-red-500">
+                            {meal.macros.fat} g
+                          </TableCell>
+                          <TableCell className="text-xs font-semibold text-[var(--text)]">
+                            {meal.macros.fiber ? `${meal.macros.fiber} g` : '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </div>
@@ -464,14 +560,14 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
 
         {view === 'trackers' && (
           <div className="space-y-6 max-w-4xl">
-            <h2 className="text-xl font-bold text-[#1C1C1E]">Tracker Trends</h2>
+            <h2 className="text-xl font-bold text-[var(--text)]">Tracker Trends</h2>
 
             {trackerLogs.size === 0 ? (
               <div className="text-center py-12 bg-white rounded-2xl border border-[#E5E5EA]">
                 <div className="w-16 h-16 mx-auto rounded-full bg-purple-100 flex items-center justify-center mb-4">
                   <Icon name="heart" className="w-8 h-8 text-purple-400" />
                 </div>
-                <h3 className="font-bold text-[#1C1C1E] mb-2">No tracker data</h3>
+                <h3 className="font-bold text-[var(--text)] mb-2">No tracker data</h3>
                 <p className="text-sm text-[#8E8E93]">
                   Log trackers like mood, energy, or pain using voice capture
                 </p>
@@ -489,7 +585,7 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
                       className="bg-white rounded-xl border border-[#E5E5EA] p-6 shadow-sm"
                     >
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-bold text-[#1C1C1E] capitalize">{key}</h3>
+                        <h3 className="text-lg font-bold text-[var(--text)] capitalize">{key}</h3>
                         <div className="text-right">
                           <span className="block text-2xl font-bold text-purple-600">{avg.toFixed(1)}</span>
                           <span className="text-[10px] font-bold text-[#8E8E93]">avg</span>

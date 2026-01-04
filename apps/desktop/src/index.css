@@ -32,8 +32,10 @@ body,
   --muted2: rgba(28, 28, 30, 0.35);
   --accent: #D95D39;
   --accentSoft: rgba(217, 93, 57, 0.1);
-  --indigo: #5B5F97;
+  --accentMid: rgba(217, 93, 57, 0.22);
+  --accentBorder: rgba(217, 93, 57, 0.35);
 
+  --panelAlpha: rgba(255, 255, 255, 0.4);
   --glass: rgba(255, 255, 255, 0.9);
   --overlay: rgba(0, 0, 0, 0.25);
   --radius: 0.625rem;
@@ -72,14 +74,16 @@ body,
   --bg: #0b1020;
   --panel: rgba(15, 19, 32, 0.92);
   --panel2: #141a2a;
-  --border: rgba(148, 163, 184, 0.16);
-  --border2: rgba(148, 163, 184, 0.24);
+  --border: rgba(148, 163, 184, 0.06);
+  --border2: rgba(148, 163, 184, 0.10);
   --text: #e5e7eb;
   --muted: rgba(148, 163, 184, 0.72);
   --muted2: rgba(148, 163, 184, 0.4);
   --accent: #d95d39;
   --accentSoft: rgba(217, 93, 57, 0.18);
-  --indigo: #8b93ff;
+  --accentMid: rgba(217, 93, 57, 0.28);
+  --accentBorder: rgba(217, 93, 57, 0.40);
+  --panelAlpha: rgba(20, 26, 42, 0.5);
   --glass: rgba(15, 19, 32, 0.88);
   --overlay: rgba(0, 0, 0, 0.45);
   --background: #0b1020;
@@ -95,7 +99,7 @@ body,
   --muted-foreground: rgba(148, 163, 184, 0.72);
   --accent-foreground: #ffffff;
   --destructive: #dc2626;
-  --input: rgba(148, 163, 184, 0.22);
+  --input: rgba(148, 163, 184, 0.10);
   --ring: rgba(217, 93, 57, 0.4);
   --sidebar: #0f172a;
   --sidebar-foreground: #e5e7eb;
@@ -103,8 +107,180 @@ body,
   --sidebar-primary-foreground: #e5e7eb;
   --sidebar-accent: #111827;
   --sidebar-accent-foreground: #e5e7eb;
-  --sidebar-border: rgba(148, 163, 184, 0.16);
+  --sidebar-border: rgba(148, 163, 184, 0.06);
   --sidebar-ring: rgba(217, 93, 57, 0.35);
+}
+
+/* Light Theme - Pure white background */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #FFFFFF;
+  --panel: #F8F9FA;
+  --panel2: #FFFFFF;
+  --border: rgba(28, 28, 30, 0.08);
+  --border2: rgba(28, 28, 30, 0.12);
+  --text: #1C1C1E;
+  --muted: #86868B;
+  --muted2: rgba(28, 28, 30, 0.5);
+  --accent: #D95D39;
+  --accentSoft: rgba(217, 93, 57, 0.1);
+  --accentMid: rgba(217, 93, 57, 0.22);
+  --accentBorder: rgba(217, 93, 57, 0.35);
+  --panelAlpha: rgba(248, 249, 250, 0.5);
+  --glass: rgba(255, 255, 255, 0.95);
+  --overlay: rgba(0, 0, 0, 0.2);
+  --background: #FFFFFF;
+  --foreground: #1C1C1E;
+  --card: #F8F9FA;
+  --card-foreground: #1C1C1E;
+  --popover: #FFFFFF;
+  --popover-foreground: #1C1C1E;
+  --primary: #D95D39;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F0F0F0;
+  --secondary-foreground: #1C1C1E;
+  --muted-foreground: #86868B;
+  --accent-foreground: #FFFFFF;
+  --destructive: #DC2626;
+  --input: rgba(28, 28, 30, 0.1);
+  --ring: rgba(217, 93, 57, 0.4);
+  --sidebar: #F8F9FA;
+  --sidebar-foreground: #1C1C1E;
+  --sidebar-primary: #FFFFFF;
+  --sidebar-primary-foreground: #1C1C1E;
+  --sidebar-accent: #F0F0F0;
+  --sidebar-accent-foreground: #1C1C1E;
+  --sidebar-border: rgba(28, 28, 30, 0.08);
+  --sidebar-ring: rgba(217, 93, 57, 0.35);
+}
+
+/* Olive Theme - Dusty sand-brown with sage accents */
+:root[data-theme='olive'] {
+  color-scheme: dark;
+  --bg: #2B2A24;
+  --panel: #383630;
+  --panel2: rgba(56, 54, 48, 0.95);
+  --border: rgba(180, 170, 150, 0.18);
+  --border2: rgba(180, 170, 150, 0.28);
+  --text: #EDE9E0;
+  --muted: rgba(200, 190, 170, 0.72);
+  --muted2: rgba(200, 190, 170, 0.4);
+  --accent: #9CA77A;
+  --accentSoft: rgba(156, 167, 122, 0.18);
+  --accentMid: rgba(156, 167, 122, 0.28);
+  --accentBorder: rgba(156, 167, 122, 0.40);
+  --panelAlpha: rgba(56, 54, 48, 0.55);
+  --glass: rgba(56, 54, 48, 0.88);
+  --overlay: rgba(0, 0, 0, 0.45);
+  --background: #2B2A24;
+  --foreground: #EDE9E0;
+  --card: #383630;
+  --card-foreground: #EDE9E0;
+  --popover: #2B2A24;
+  --popover-foreground: #EDE9E0;
+  --primary: #9CA77A;
+  --primary-foreground: #2B2A24;
+  --secondary: #454238;
+  --secondary-foreground: #EDE9E0;
+  --muted-foreground: rgba(200, 190, 170, 0.72);
+  --accent-foreground: #2B2A24;
+  --destructive: #C97B7B;
+  --input: rgba(180, 170, 150, 0.22);
+  --ring: rgba(156, 167, 122, 0.4);
+  --sidebar: #2B2A24;
+  --sidebar-foreground: #EDE9E0;
+  --sidebar-primary: #383630;
+  --sidebar-primary-foreground: #EDE9E0;
+  --sidebar-accent: #454238;
+  --sidebar-accent-foreground: #EDE9E0;
+  --sidebar-border: rgba(180, 170, 150, 0.18);
+  --sidebar-ring: rgba(156, 167, 122, 0.35);
+}
+
+/* Olive+Orange Theme - Dusty sand-brown with orange accents */
+:root[data-theme='oliveOrange'] {
+  color-scheme: dark;
+  --bg: #2B2A24;
+  --panel: #383630;
+  --panel2: rgba(56, 54, 48, 0.95);
+  --border: rgba(180, 170, 150, 0.18);
+  --border2: rgba(180, 170, 150, 0.28);
+  --text: #EDE9E0;
+  --muted: rgba(200, 190, 170, 0.72);
+  --muted2: rgba(200, 190, 170, 0.4);
+  --accent: #D95D39;
+  --accentSoft: rgba(217, 93, 57, 0.18);
+  --accentMid: rgba(217, 93, 57, 0.28);
+  --accentBorder: rgba(217, 93, 57, 0.40);
+  --panelAlpha: rgba(56, 54, 48, 0.55);
+  --glass: rgba(56, 54, 48, 0.88);
+  --overlay: rgba(0, 0, 0, 0.45);
+  --background: #2B2A24;
+  --foreground: #EDE9E0;
+  --card: #383630;
+  --card-foreground: #EDE9E0;
+  --popover: #2B2A24;
+  --popover-foreground: #EDE9E0;
+  --primary: #D95D39;
+  --primary-foreground: #FFFFFF;
+  --secondary: #454238;
+  --secondary-foreground: #EDE9E0;
+  --muted-foreground: rgba(200, 190, 170, 0.72);
+  --accent-foreground: #FFFFFF;
+  --destructive: #DC2626;
+  --input: rgba(180, 170, 150, 0.22);
+  --ring: rgba(217, 93, 57, 0.4);
+  --sidebar: #2B2A24;
+  --sidebar-foreground: #EDE9E0;
+  --sidebar-primary: #383630;
+  --sidebar-primary-foreground: #EDE9E0;
+  --sidebar-accent: #454238;
+  --sidebar-accent-foreground: #EDE9E0;
+  --sidebar-border: rgba(180, 170, 150, 0.18);
+  --sidebar-ring: rgba(217, 93, 57, 0.35);
+}
+
+/* Rose Gold Theme - Elegant mauve with rose gold accents */
+:root[data-theme='roseGold'] {
+  color-scheme: dark;
+  --bg: #2D2226;
+  --panel: #3A2D32;
+  --panel2: rgba(58, 45, 50, 0.95);
+  --border: rgba(232, 171, 150, 0.18);
+  --border2: rgba(232, 171, 150, 0.28);
+  --text: #F2E4E0;
+  --muted: rgba(220, 200, 195, 0.72);
+  --muted2: rgba(220, 200, 195, 0.4);
+  --accent: #E8AB96;
+  --accentSoft: rgba(232, 171, 150, 0.18);
+  --accentMid: rgba(232, 171, 150, 0.28);
+  --accentBorder: rgba(232, 171, 150, 0.40);
+  --panelAlpha: rgba(58, 45, 50, 0.55);
+  --glass: rgba(58, 45, 50, 0.88);
+  --overlay: rgba(0, 0, 0, 0.45);
+  --background: #2D2226;
+  --foreground: #F2E4E0;
+  --card: #3A2D32;
+  --card-foreground: #F2E4E0;
+  --popover: #2D2226;
+  --popover-foreground: #F2E4E0;
+  --primary: #E8AB96;
+  --primary-foreground: #2D2226;
+  --secondary: #4A3A40;
+  --secondary-foreground: #F2E4E0;
+  --muted-foreground: rgba(220, 200, 195, 0.72);
+  --accent-foreground: #2D2226;
+  --destructive: #D98B8B;
+  --input: rgba(232, 171, 150, 0.22);
+  --ring: rgba(232, 171, 150, 0.4);
+  --sidebar: #2D2226;
+  --sidebar-foreground: #F2E4E0;
+  --sidebar-primary: #3A2D32;
+  --sidebar-primary-foreground: #F2E4E0;
+  --sidebar-accent: #4A3A40;
+  --sidebar-accent-foreground: #F2E4E0;
+  --sidebar-border: rgba(232, 171, 150, 0.18);
+  --sidebar-ring: rgba(232, 171, 150, 0.35);
 }
 
 body {

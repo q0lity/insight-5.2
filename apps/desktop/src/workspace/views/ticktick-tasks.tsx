@@ -95,23 +95,23 @@ export function TickTickTasksView(props: {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#F8F7F4] text-[#1C1C1E] font-['Figtree'] overflow-hidden">
-      <div className="px-10 pt-10 pb-6 bg-[#F8F7F4]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
+      <div className="px-10 pt-10 pb-6 bg-[var(--bg)]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-3xl font-extrabold tracking-tight">Tasks</h1>
-            <p className="text-sm text-[#86868B] font-semibold uppercase tracking-widest">Master your flow.</p>
+            <p className="text-sm text-[var(--muted)] font-semibold uppercase tracking-widest">Master your flow.</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex p-1 bg-white/50 backdrop-blur border border-white/20 rounded-2xl shadow-sm">
               <button
-                className={`px-5 py-2 text-xs font-bold rounded-xl transition-all ${layout === 'table' ? 'bg-white shadow-md text-[#1C1C1E]' : 'text-[#86868B]'}`}
+                className={`px-5 py-2 text-xs font-bold rounded-xl transition-all ${layout === 'table' ? 'bg-white shadow-md text-[var(--text)]' : 'text-[var(--muted)]'}`}
                 onClick={() => setLayout('table')}
               >
                 Table
               </button>
               <button
-                className={`px-5 py-2 text-xs font-bold rounded-xl transition-all ${layout === 'kanban' ? 'bg-white shadow-md text-[#1C1C1E]' : 'text-[#86868B]'}`}
+                className={`px-5 py-2 text-xs font-bold rounded-xl transition-all ${layout === 'kanban' ? 'bg-white shadow-md text-[var(--text)]' : 'text-[var(--muted)]'}`}
                 onClick={() => setLayout('kanban')}
               >
                 Kanban
@@ -156,7 +156,7 @@ export function TickTickTasksView(props: {
                 key={f}
                 onClick={() => setFilter(f)}
                 className={`px-6 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
-                  filter === f ? 'bg-white shadow-md text-[#1C1C1E]' : 'text-[#86868B] hover:text-[#1C1C1E]'
+                  filter === f ? 'bg-white shadow-md text-[var(--text)]' : 'text-[var(--muted)] hover:text-[var(--text)]'
                 }`}
               >
                 <span className="capitalize">{f}</span>

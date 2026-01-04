@@ -1,3 +1,5 @@
+import { useRef, useState, useEffect } from 'react'
+
 export type SeriesPoint = { x: number; y: number }
 
 function clamp(n: number, min: number, max: number) {
@@ -31,10 +33,10 @@ function mapToPath(points: SeriesPoint[], width: number, height: number, padding
 export function LtEmptyChart(props: { message: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center opacity-30">
-      <div className="w-12 h-12 rounded-full border-2 border-dashed border-[#8E8E93] mb-4 flex items-center justify-center">
-        <span className="text-xs">?</span>
+      <div className="w-12 h-12 rounded-full border-2 border-dashed mb-4 flex items-center justify-center" style={{ borderColor: 'var(--muted)' }}>
+        <span className="text-xs" style={{ color: 'var(--muted)' }}>?</span>
       </div>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-[#8E8E93]">{props.message}</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--muted)' }}>{props.message}</p>
     </div>
   )
 }
@@ -66,7 +68,7 @@ export function LtLineAreaChart(props: { points: SeriesPoint[]; color?: string }
       {/* grid */}
       {Array.from({ length: 3 }).map((_, i) => {
         const y = padding + (i / 2) * (height - padding * 2)
-        return <line key={i} x1={padding} y1={y} x2={width - padding} y2={y} stroke="rgba(0,0,0,0.03)" strokeWidth="1" />
+        return <line key={i} x1={padding} y1={y} x2={width - padding} y2={y} stroke="var(--border)" strokeWidth="1" />
       })}
 
       <path d={areaPath} fill={`url(#grad-${stroke})`} />
@@ -83,7 +85,7 @@ export function LtLineAreaChart(props: { points: SeriesPoint[]; color?: string }
         const x = padding + ((p.x - minX) / (maxX - minX)) * (width - padding * 2)
         const t = (p.y - minY) / (maxY - minY || 1)
         const y = height - padding - t * (height - padding * 2)
-        return <circle key={i} cx={x} cy={y} r="5" fill="#FFFFFF" stroke={stroke} strokeWidth="3" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }} />
+        return <circle key={i} cx={x} cy={y} r="5" fill="var(--panel)" stroke={stroke} strokeWidth="3" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }} />
       })}
     </svg>
   )
@@ -106,7 +108,7 @@ export function LtBarChart(props: { values: number[]; color?: string }) {
       {/* grid */}
       {Array.from({ length: 3 }).map((_, i) => {
         const y = padding + (i / 2) * (height - padding * 2)
-        return <line key={i} x1={padding} y1={y} x2={width - padding} y2={y} stroke="rgba(0,0,0,0.03)" strokeWidth="1" />
+        return <line key={i} x1={padding} y1={y} x2={width - padding} y2={y} stroke="var(--border)" strokeWidth="1" />
       })}
 
       {values.map((v, i) => {
@@ -138,13 +140,37 @@ export function LtHeatmap(props: {
   days?: number
   showLabels?: boolean
 }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = useState(800) // sensible default
+
+  // Measure container width responsively
+  useEffect(() => {
+    if (!containerRef.current) return
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width)
+      }
+    })
+    observer.observe(containerRef.current)
+    return () => observer.disconnect()
+  }, [])
+
   const totalDays = Math.max(1, props.days ?? props.valuesByDay.length)
   const weeks = Math.ceil(totalDays / 7)
   const days = 7
-  const cell = 12
+  const showLabels = props.showLabels ?? true
+
+  // Dynamic cell size based on container width and time range
+  const labelWidth = showLabels ? 36 : 0 // day labels width (Mon, Tue, etc.)
+  const availableWidth = containerWidth - labelWidth - 8 // some padding
+  const maxCellSize = 16
+  const minCellSize = 6
+  // Calculate cell size to fit all weeks with 4px gaps
+  const idealCellWithGap = availableWidth / weeks
+  const calculatedSize = Math.floor(idealCellWithGap) - 4 // 4px gap between columns
+  const cell = clamp(calculatedSize, minCellSize, maxCellSize)
   const gap = 4
   const max = props.maxValue || 10
-  const showLabels = props.showLabels ?? true
   const start = new Date()
   start.setHours(0, 0, 0, 0)
   start.setDate(start.getDate() - (totalDays - 1))
@@ -154,10 +180,11 @@ export function LtHeatmap(props: {
 
   const map = new Map(props.valuesByDay.map((d) => [d.dayIndex, d.value]))
 
-  function colorFor(value: number) {
+  // Heatmap intensity levels - uses CSS variables for theme compatibility
+  function getOpacity(value: number): number {
     const t = clamp(value / max, 0, 1)
-    if (t === 0) return '#F2F0ED'
-    return t < 0.3 ? '#FCECE8' : t < 0.7 ? '#E67A5D' : '#D95D39'
+    if (t === 0) return 0
+    return t < 0.3 ? 0.25 : t < 0.7 ? 0.55 : 1
   }
 
   const monthLabels = Array.from({ length: labelWeeks }).map((_, w) => {
@@ -170,17 +197,17 @@ export function LtHeatmap(props: {
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
   return (
-    <div className="space-y-3">
+    <div ref={containerRef} className="w-full space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold text-[#8E8E93] tracking-widest">{props.label ?? 'ACTIVITY'}</span>
+        <span className="text-[10px] font-bold tracking-widest" style={{ color: 'var(--muted)' }}>{props.label ?? 'ACTIVITY'}</span>
         <div className="flex gap-1">
           {[0.1, 0.5, 1].map((v) => (
-            <div key={v} className="w-2 h-2 rounded-sm" style={{ backgroundColor: colorFor(v * max) }} />
+            <div key={v} className="w-2 h-2 rounded-sm" style={{ backgroundColor: 'var(--accent)', opacity: getOpacity(v * max) || 0.1 }} />
           ))}
         </div>
       </div>
       {showLabels ? (
-        <div className="flex gap-[4px] pl-7 text-[10px] font-bold uppercase tracking-widest text-[#8E8E93]">
+        <div className="flex gap-[4px] text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--muted)', paddingLeft: labelWidth }}>
           {monthLabels.map((label, w) => (
             <div key={w} style={{ width: cell }} className="text-center">
               {label}
@@ -188,17 +215,17 @@ export function LtHeatmap(props: {
           ))}
         </div>
       ) : null}
-      <div className="flex gap-3">
+      <div className="flex gap-2">
         {showLabels ? (
-          <div className="flex flex-col gap-[4px] text-[10px] font-bold uppercase tracking-widest text-[#8E8E93]">
+          <div className="flex flex-col gap-[4px] text-[10px] font-bold uppercase tracking-widest shrink-0" style={{ color: 'var(--muted)', width: labelWidth - 8 }}>
             {dayLabels.map((d) => (
-              <div key={d} style={{ height: cell }} className="leading-none">
+              <div key={d} style={{ height: cell }} className="leading-none flex items-center">
                 {d}
               </div>
             ))}
           </div>
         ) : null}
-        <div className="flex gap-[4px]">
+        <div className="flex gap-[4px] flex-1 overflow-hidden">
           {Array.from({ length: labelWeeks }).map((_, w) => (
             <div key={w} className="flex flex-col gap-[4px]">
               {Array.from({ length: days }).map((_, d) => {
@@ -208,7 +235,19 @@ export function LtHeatmap(props: {
                   return <div key={cellIdx} style={{ width: cell, height: cell }} />
                 }
                 const value = map.get(dataIdx) ?? 0
-                return <div key={cellIdx} style={{ width: cell, height: cell, borderRadius: 3, backgroundColor: colorFor(value) }} />
+                const opacity = getOpacity(value)
+                return (
+                  <div
+                    key={cellIdx}
+                    style={{
+                      width: cell,
+                      height: cell,
+                      borderRadius: 3,
+                      backgroundColor: opacity === 0 ? 'var(--border)' : 'var(--accent)',
+                      opacity: opacity === 0 ? 0.5 : opacity,
+                    }}
+                  />
+                )
               })}
             </div>
           ))}

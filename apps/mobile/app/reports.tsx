@@ -3,8 +3,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useTheme } from '@/src/state/theme';
 import { InsightIcon, type InsightIconName } from '@/src/components/InsightIcon';
 import { listEvents, type MobileEvent } from '@/src/storage/events';
 
@@ -26,10 +25,8 @@ function formatMinutes(minutes: number) {
 
 export default function ReportsScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useTheme();
   const insets = useSafeAreaInsets();
-  const isDark = colorScheme === 'dark';
 
   const [events, setEvents] = useState<MobileEvent[]>([]);
   const [range, setRange] = useState<'7d' | '30d' | 'all'>('30d');
@@ -82,17 +79,17 @@ export default function ReportsScreen() {
       </View>
 
       <View style={styles.rangeContainer}>
-        <View style={[styles.rangeRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+        <View style={[styles.rangeRow, { backgroundColor: palette.borderLight }]}>
           {['7d', '30d', 'all'].map((r) => (
             <TouchableOpacity
               key={r}
               onPress={() => setRange(r as any)}
               style={[
                 styles.rangeBtn,
-                r === range && { backgroundColor: isDark ? '#141a2a' : '#FFFFFF' },
+                r === range && { backgroundColor: palette.surface },
                 r === range && styles.activeShadow,
               ]}>
-              <Text style={[styles.rangeText, { color: r === range ? palette.text : palette.tabIconDefault }]}>{r.toUpperCase()}</Text>
+              <Text style={[styles.rangeText, { color: r === range ? palette.text : palette.textSecondary }]}>{r.toUpperCase()}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -100,27 +97,27 @@ export default function ReportsScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.statsOverview}>
-          <View style={[styles.overviewCard, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF', borderColor: isDark ? 'rgba(148, 163, 184, 0.16)' : 'rgba(28, 28, 30, 0.06)' }]}>
-            <Text style={[styles.overviewLabel, { color: palette.tabIconDefault }]}>TOTAL TIME</Text>
+          <View style={[styles.overviewCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <Text style={[styles.overviewLabel, { color: palette.textSecondary }]}>TOTAL TIME</Text>
             <Text style={[styles.overviewValue, { color: palette.text }]}>{formatMinutes(metrics.totalMinutes)}</Text>
           </View>
-          <View style={[styles.overviewCard, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF', borderColor: isDark ? 'rgba(148, 163, 184, 0.16)' : 'rgba(28, 28, 30, 0.06)' }]}>
-            <Text style={[styles.overviewLabel, { color: palette.tabIconDefault }]}>TOTAL XP</Text>
+          <View style={[styles.overviewCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <Text style={[styles.overviewLabel, { color: palette.textSecondary }]}>TOTAL XP</Text>
             <Text style={[styles.overviewValue, { color: palette.text }]}>{metrics.totalPoints.toFixed(0)}</Text>
           </View>
         </View>
 
         <Text style={[styles.sectionTitle, { color: palette.text }]}>Categories</Text>
         
-        <View style={[styles.listCard, { backgroundColor: isDark ? '#141a2a' : '#FFFFFF', borderColor: isDark ? 'rgba(148, 163, 184, 0.16)' : 'rgba(28, 28, 30, 0.06)' }]}>
+        <View style={[styles.listCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           {metrics.byCategory.length === 0 ? (
-            <Text style={[styles.emptyText, { color: palette.tabIconDefault }]}>No data for this range.</Text>
+            <Text style={[styles.emptyText, { color: palette.textSecondary }]}>No data for this range.</Text>
           ) : (
             metrics.byCategory.map((row, idx) => (
               <View key={row.key} style={[styles.row, idx === metrics.byCategory.length - 1 && { borderBottomWidth: 0 }]}>
                 <View style={styles.rowInfo}>
                   <Text style={[styles.rowLabel, { color: palette.text }]}>{row.label}</Text>
-                  <Text style={[styles.rowMeta, { color: palette.tabIconDefault }]}>{row.count} entries</Text>
+                  <Text style={[styles.rowMeta, { color: palette.textSecondary }]}>{row.count} entries</Text>
                 </View>
                 <View style={styles.rowStats}>
                   <Text style={[styles.rowMinutes, { color: palette.text }]}>{formatMinutes(row.minutes)}</Text>
