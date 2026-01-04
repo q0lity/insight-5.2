@@ -1,0 +1,293 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-merriweather), Georgia, serif;
+  
+  /* Custom colors for Tailwind v4 */
+  --color-clay: #D95D39;
+  --color-clay-soft: rgba(217, 93, 57, 0.12);
+  --color-clay-dark: #B84A2B;
+  --color-sand: #E6E4E0;
+  --color-sand-light: #F2F0ED;
+  --color-sand-dark: #D6D4D0;
+  --color-ink: #1C1C1E;
+  --color-ink-soft: #48484A;
+  --color-stone: #48484A;
+  --color-teal: #488B86;
+  --color-peach: #FCECE8;
+}
+
+:root {
+  --background: #E6E4E0;
+  --foreground: #1C1C1E;
+  --card-bg: rgba(255, 255, 255, 0.6);
+  --card-border: rgba(0, 0, 0, 0.04);
+  
+  /* Explicit color variables */
+  --clay: #D95D39;
+  --ink: #1C1C1E;
+  --stone: #48484A;
+  --sand: #E6E4E0;
+}
+
+/* Explicit color utility classes */
+.text-clay {
+  color: #D95D39 !important;
+}
+.bg-clay {
+  background-color: #D95D39 !important;
+}
+.border-clay {
+  border-color: #D95D39 !important;
+}
+.text-ink {
+  color: #1C1C1E;
+}
+.text-stone {
+  color: #48484A;
+}
+.text-sand {
+  color: #E6E4E0;
+}
+.bg-sand {
+  background-color: #E6E4E0;
+}
+.bg-sand-light {
+  background-color: #F2F0ED;
+}
+.bg-ink {
+  background-color: #1C1C1E;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #E6E4E0;
+    --foreground: #1C1C1E;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Minimal glass effect */
+.glass {
+  background: var(--card-bg);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+/* Smooth clay gradient */
+.text-clay-gradient {
+  background: linear-gradient(135deg, #D95D39 0%, #B84A2B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ========================================
+   ANIMATION SYSTEM
+   ======================================== */
+
+/* Smooth easing curves */
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-circ: cubic-bezier(0.85, 0, 0.15, 1);
+}
+
+/* Text reveal animation - characters slide up */
+@keyframes text-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade up with scale */
+@keyframes fade-up-scale {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Draw line animation */
+@keyframes draw-line {
+  from { 
+    transform: scaleX(0); 
+  }
+  to { 
+    transform: scaleX(1); 
+  }
+}
+
+/* Pulse glow */
+@keyframes pulse-glow {
+  0%, 100% { 
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+/* Float animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+/* Stagger delays for children */
+.stagger-reveal > * {
+  opacity: 0;
+  animation: fade-up-scale 0.8s var(--ease-out-expo) forwards;
+}
+.stagger-reveal > *:nth-child(1) { animation-delay: 0.1s; }
+.stagger-reveal > *:nth-child(2) { animation-delay: 0.2s; }
+.stagger-reveal > *:nth-child(3) { animation-delay: 0.3s; }
+.stagger-reveal > *:nth-child(4) { animation-delay: 0.4s; }
+.stagger-reveal > *:nth-child(5) { animation-delay: 0.5s; }
+.stagger-reveal > *:nth-child(6) { animation-delay: 0.6s; }
+
+/* Magnetic hover effect */
+.magnetic {
+  transition: transform 0.4s var(--ease-out-expo);
+}
+.magnetic:hover {
+  transform: scale(1.02);
+}
+
+/* Button with expanding background */
+.btn-expand {
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+.btn-expand::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #D95D39;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s var(--ease-out-expo);
+  z-index: -1;
+}
+.btn-expand:hover::before {
+  transform: scaleX(1);
+}
+.btn-expand:hover {
+  color: white;
+}
+
+/* Smooth underline animation */
+.underline-hover {
+  position: relative;
+}
+.underline-hover::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.4s var(--ease-out-expo);
+}
+.underline-hover:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* Parallax container */
+.parallax-container {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+/* Cursor follower dot */
+.cursor-dot {
+  width: 8px;
+  height: 8px;
+  background: #D95D39;
+  border-radius: 50%;
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: difference;
+  transition: transform 0.15s ease-out, width 0.3s, height 0.3s;
+}
+
+/* Scroll indicator */
+.scroll-indicator {
+  animation: float 2s ease-in-out infinite;
+}
+
+/* Selection */
+::selection {
+  background: rgba(217, 93, 57, 0.2);
+}
+
+/* Custom scrollbar - minimal */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(28, 28, 30, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(28, 28, 30, 0.3);
+}
+
+/* Typography utilities */
+.text-display {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+}
+
+.text-mono {
+  font-family: ui-monospace, 'SF Mono', monospace;
+  font-size: 0.75em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Smooth image loading */
+img {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+img[src] {
+  opacity: 1;
+}
