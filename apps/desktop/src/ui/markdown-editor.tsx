@@ -6,6 +6,8 @@ export function MarkdownEditor(props: {
   onChange: (next: string) => void
   onToggleChecklist?: (lineIndex: number) => void
   onStartTask?: (task: { tokenId: string; title: string; estimateMinutes?: number | null; dueAt?: number | null }) => void
+  taskStateByToken?: Record<string, { status: string; startedAt?: number | null }>
+  nowMs?: number
   placeholder?: string
   ariaLabel?: string
 }) {
@@ -39,7 +41,13 @@ export function MarkdownEditor(props: {
       {mode === 'preview' ? (
         <div className="mdPreviewPane" aria-label="Markdown preview">
           {preview ? (
-            <MarkdownView markdown={preview} onToggleChecklist={props.onToggleChecklist} onStartTask={props.onStartTask} />
+            <MarkdownView
+              markdown={preview}
+              onToggleChecklist={props.onToggleChecklist}
+              onStartTask={props.onStartTask}
+              taskStateByToken={props.taskStateByToken}
+              nowMs={props.nowMs}
+            />
           ) : (
             <div className="mdEmpty">Nothing to preview yet.</div>
           )}

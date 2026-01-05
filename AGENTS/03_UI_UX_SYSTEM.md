@@ -9,3 +9,14 @@
 - Dashboard, Calendar, Habits, Fitness, Nutrition, Timeline, Views, Entry detail
 - Fast capture (one-tap mic, Action Button entry)
 - Calm “Obsidian-like” density without feeling cluttered
+
+## Markdown Notes + Outline (Voice Capture)
+Plugin evidence reviewed:
+- `plugins/journaling/manifest.json` (journal-style continuous daily notes + outline flow)
+- `plugins/obsidian-memos/manifest.json` (capture into daily notes)
+- `plugins/obsidian-tasks-plugin/manifest.json` (checklists + subtasks inside notes)
+
+UI guidance:
+- Markdown preview supports nested checklist items with collapsible subtrees.
+- Collapsible controls live on the left edge of each list item.
+- Dense spacing: tighter line-height/margins for long-form transcript outlines.

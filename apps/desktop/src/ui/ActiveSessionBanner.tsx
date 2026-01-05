@@ -25,7 +25,7 @@ function formatClock(ms: number) {
 function calculateXP(elapsedMs: number, importance: number, difficulty: number) {
   const minutes = elapsedMs / 60000
   const base = importance * difficulty * minutes
-  return Math.round(base * 100) / 100
+  return Math.round(base * 1000) / 1000
 }
 
 export function ActiveSessionBanner({
@@ -43,7 +43,7 @@ export function ActiveSessionBanner({
   const [minimized, setMinimized] = useState(false)
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 100)
+    const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
   }, [])
 
@@ -71,7 +71,7 @@ export function ActiveSessionBanner({
           <div className="asbMinDot" />
           <span className="asbMinTitle">{title}</span>
           <span className="asbMinClock">{formatClock(elapsedMs)}</span>
-          <span className="asbMinXp">+{animatedXp.toFixed(1)} XP</span>
+          <span className="asbMinXp">+{animatedXp.toFixed(3)} XP</span>
           <button className="asbMinExpand" aria-label="Expand">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <polyline points="6 9 12 15 18 9" />
@@ -132,7 +132,7 @@ export function ActiveSessionBanner({
               <div className="asbRemaining">{formatClock(remainingMs)} remaining</div>
             )}
 
-            <div className="asbXp">+{animatedXp.toFixed(1)} XP</div>
+            <div className="asbXp">+{animatedXp.toFixed(3)} XP</div>
 
             <div className="asbActions">
               {onOpen && (

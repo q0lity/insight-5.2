@@ -8,3 +8,12 @@
 - Timers (2-min, pomodoro, countdown, stopwatch)
 - XP accrual live (minutes drive XP)
 - Live Activity shows: title, remaining/elapsed, XP earned, pause/stop
+
+## Subtask Timers + XP Precision
+Plugin evidence reviewed:
+- `plugins/tasknotes/manifest.json` (note-based task management with pomodoro + time tracking)
+- `plugins/obsidian-tasks-plugin/manifest.json` (task checklists + subtasks)
+
+Rules:
+- Subtasks in markdown notes can be started from inline controls and show live elapsed timers.
+- Live XP display uses higher precision (3 decimals) while updating at 1s cadence to reduce CPU churn.

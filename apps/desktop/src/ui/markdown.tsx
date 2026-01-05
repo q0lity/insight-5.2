@@ -10,6 +10,11 @@ type NoteTaskAction = {
   dueAt?: number | null
 }
 
+type NoteTaskState = {
+  status: string
+  startedAt?: number | null
+}
+
 const TOKEN_META_RE = /\{(?:task|note|seg|event|meal|workout|tracker|habit):[^}]+\}/g
 const TASK_TOKEN_RE = /\{task:([^\s}]+)([^}]*)\}/
 const ESTIMATE_RE = /\best\s*:\s*(\d+)\s*m\b/i
@@ -60,10 +65,25 @@ function renderTextWithChips(raw: string) {
   return parts
 }
 
-export function MarkdownView(props: { markdown: string; onToggleChecklist?: (lineIndex: number) => void; onStartTask?: (task: NoteTaskAction) => void }) {
+function formatElapsed(ms: number) {
+  const total = Math.max(0, Math.floor(ms / 1000))
+  const hours = Math.floor(total / 3600)
+  const mins = Math.floor((total % 3600) / 60)
+  const secs = total % 60
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+}
+
+export function MarkdownView(props: {
+  markdown: string
+  onToggleChecklist?: (lineIndex: number) => void
+  onStartTask?: (task: NoteTaskAction) => void
+  taskStateByToken?: Record<string, NoteTaskState>
+  nowMs?: number
+}) {
   const markdown = props.markdown ?? ''
   const checklistItems = useMemo(() => parseChecklistMarkdown(markdown), [markdown])
   let checklistCursor = 0
+  const [collapsedById, setCollapsedById] = useState<Record<string, boolean>>({})
 
   function renderWithChips(children: any) {
     return Children.map(children, (child) => {
@@ -80,27 +100,40 @@ export function MarkdownView(props: { markdown: string; onToggleChecklist?: (lin
     const nested = childArray.filter((child) => isValidElement(child) && (child.type === 'ul' || child.type === 'ol'))
     const main = childArray.filter((child) => !nested.includes(child as any))
     const hasNested = nested.length > 0
-    const [collapsed, setCollapsed] = useState(false)
+    const lineId = typeof node?.position?.start?.line === 'number' ? `line:${node.position.start.line}` : rawText.trim()
+    const collapsed = Boolean(collapsedById[lineId])
+    const running = taskMeta ? props.taskStateByToken?.[taskMeta.tokenId] ?? null : null
+    const isRunning = Boolean(running && running.status === 'in_progress' && running.startedAt)
+    const elapsedMs = isRunning ? (props.nowMs ?? Date.now()) - (running?.startedAt ?? 0) : 0
 
     return (
       <li {...rest} className="mdLi">
         <div className="mdLiRow">
-          <div className="mdLiContent">{renderWithChips(main)}</div>
-          {isTask && taskMeta && props.onStartTask ? (
-            <button
-              className="mdTaskStart"
-              type="button"
-              onClick={() => props.onStartTask?.(taskMeta)}>
-              Start
-            </button>
-          ) : null}
           {hasNested ? (
             <button
               className="mdLiToggle"
               type="button"
-              onClick={() => setCollapsed((v) => !v)}
-              aria-label={collapsed ? 'Expand section' : 'Collapse section'}>
+              onClick={() =>
+                setCollapsedById((prev) => ({
+                  ...prev,
+                  [lineId]: !collapsed,
+                }))
+              }
+              aria-label={collapsed ? 'Expand section' : 'Collapse section'}
+              aria-expanded={!collapsed}>
               {collapsed ? '+' : '–'}
+            </button>
+          ) : null}
+          <div className="mdLiContent">{renderWithChips(main)}</div>
+          {isTask && taskMeta && props.onStartTask ? (
+            <button
+              className={isRunning ? 'mdTaskStart running' : 'mdTaskStart'}
+              type="button"
+              onClick={() => {
+                if (isRunning) return
+                props.onStartTask?.(taskMeta)
+              }}>
+              {isRunning ? `Running ${formatElapsed(elapsedMs)}` : 'Start'}
             </button>
           ) : null}
         </div>
@@ -121,10 +154,11 @@ export function MarkdownView(props: { markdown: string; onToggleChecklist?: (lin
               {children}
             </a>
           ),
-          input: ({ type, checked, ...rest }) => {
+          input: ({ node, type, checked, ...rest }) => {
             if (type !== 'checkbox') return <input {...rest} type={type} />
-            const item = checklistItems[checklistCursor++]
-            const lineIndex = item?.lineIndex
+            const nodeLine = typeof node?.position?.start?.line === 'number' ? node.position.start.line - 1 : null
+            const fallback = checklistItems[checklistCursor++]
+            const lineIndex = typeof nodeLine === 'number' ? nodeLine : fallback?.lineIndex
             const isInteractive = typeof lineIndex === 'number' && Boolean(props.onToggleChecklist)
             return (
               <input

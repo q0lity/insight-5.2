@@ -1893,6 +1893,13 @@ function App() {
       return `${yyyy}-${mm}-${dd}`
     }
 
+    function formatTimeOnly(ms: number) {
+      const d = new Date(ms)
+      const hh = String(d.getHours()).padStart(2, '0')
+      const mm = String(d.getMinutes()).padStart(2, '0')
+      return `${hh}:${mm}`
+    }
+
     function summarizeCapture(text: string) {
       const cleaned = text.replace(/\s+/g, ' ').trim()
       if (!cleaned) return 'Capture'
@@ -1901,13 +1908,17 @@ function App() {
       return words.slice(0, 10).join(' ')
     }
 
-    function buildAttachedCaptureMarkdown(nowMs: number) {
+    function buildAttachedCaptureMarkdown(
+      nowMs: number,
+      opts?: { tasks?: Array<any>; events?: Array<any> },
+    ) {
       const d = new Date(nowMs)
       const hh = String(d.getHours()).padStart(2, '0')
       const mm = String(d.getMinutes()).padStart(2, '0')
       const summary = summarizeCapture(captureText)
       const segmentToken = `{seg:${makeTokenId('seg', `${hh}${mm}`)}}`
       const noteToken = `{note:${makeTokenId('note', `${hh}${mm}`)}}`
+      const typeTag = (label: string) => toInlineToken('#', 'tag', label)
 
       const tagTokens = Array.from(tagNames).slice(0, 6).map((t) => toInlineToken('#', 'tag', t))
       const peopleTokens = uniqStrings(personMentions).slice(0, 4).map((p) => toInlineToken('@', 'person', p))
@@ -1918,20 +1929,26 @@ function App() {
 
       const headerTokens = [...tagTokens, ...peopleTokens, ...contextTokens, ...placeTokens, ...goalToken, ...projectToken].filter(Boolean)
       const header = `- **${hh}:${mm}** - ${summary}${headerTokens.length ? ` ${headerTokens.join(' ')}` : ''} ${segmentToken}`
-      const noteLine = `  - [${hh}:${mm}] ${captureText.trim()} ${noteToken}`
+      const noteType = typeTag('note')
+      const noteLine = `  - [${hh}:${mm}] ${captureText.trim()} ${noteToken}${noteType ? ` ${noteType}` : ''}`
 
       const lines = [header, noteLine]
 
-      const taskCandidates = natural.tasks.length
-        ? natural.tasks.map((t) => ({
+      const taskSource = (opts?.tasks ?? []).filter((t) => typeof t?.title === 'string' && t.title.trim())
+      const taskCandidates = taskSource.length
+        ? taskSource.map((t) => ({
             title: t.title,
             estimateMinutes: t.estimateMinutes ?? durationOverride ?? null,
-            dueAt: t.dueAt ?? null,
+            dueAt: t.dueAt ?? (t.dueAtIso ? new Date(t.dueAtIso).getTime() : null),
+            goal: t.goal ?? null,
+            project: t.project ?? null,
           }))
         : implicitShoppingItems.map((item) => ({
             title: `Buy ${item}`,
             estimateMinutes: 5,
             dueAt: nowMs + 24 * 60 * 60 * 1000,
+            goal: null,
+            project: null,
           }))
 
       for (const task of taskCandidates.slice(0, 10)) {
@@ -1939,7 +1956,35 @@ function App() {
         if (task.estimateMinutes != null) meta.push(`est:${Math.round(task.estimateMinutes)}m`)
         if (task.dueAt != null) meta.push(`due:${formatDateOnly(task.dueAt)}`)
         const token = `{task:${makeTokenId('task', task.title)}${meta.length ? ` ${meta.join(' ')}` : ''}}`
-        lines.push(`  - [ ] ${task.title} ${token}`)
+        const taskType = typeTag('task')
+        const chips = [
+          task.goal ? toInlineToken('^', 'goal', task.goal) : '',
+          task.project ? toInlineToken('$', 'project', task.project) : '',
+        ].filter(Boolean).join(' ')
+        lines.push(`  - [ ] ${task.title} ${token}${taskType ? ` ${taskType}` : ''}${chips ? ` ${chips}` : ''}`)
+      }
+
+      const eventSource = (opts?.events ?? []).filter((e) => typeof e?.title === 'string' && e.title.trim())
+      for (const ev of eventSource.slice(0, 6)) {
+        const kind = (ev.kind as any) ?? 'event'
+        if (kind === 'log') continue
+        const startMs = typeof ev.startAt === 'number' ? ev.startAt : (ev.startAtIso ? new Date(ev.startAtIso).getTime() : NaN)
+        const endMs = typeof ev.endAt === 'number' ? ev.endAt : (ev.endAtIso ? new Date(ev.endAtIso).getTime() : NaN)
+        if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) continue
+        const eventMeta = [
+          `date:${formatDateOnly(startMs)}`,
+          `start:${formatTimeOnly(startMs)}`,
+          `end:${formatTimeOnly(endMs)}`,
+        ]
+        const eventToken = `{event:${makeTokenId('event', ev.title)} ${eventMeta.join(' ')}}`
+        const eventType = typeTag('event')
+        const eventTags = Array.isArray(ev.tags) ? ev.tags.map((t: string) => toInlineToken('#', 'tag', String(t).replace(/^#/, ''))) : []
+        const eventPeople = Array.isArray(ev.people) ? ev.people.map((p: string) => toInlineToken('@', 'person', String(p))) : []
+        const eventLoc = ev.location ? [toInlineToken('!', 'loc', String(ev.location))] : []
+        const eventGoal = ev.goal ? [toInlineToken('^', 'goal', String(ev.goal))] : []
+        const eventProject = ev.project ? [toInlineToken('$', 'project', String(ev.project))] : []
+        const eventChips = [eventType, ...eventTags, ...eventPeople, ...eventLoc, ...eventGoal, ...eventProject].filter(Boolean).join(' ')
+        lines.push(`  - [event] ${ev.title} ${eventToken}${eventChips ? ` ${eventChips}` : ''}`)
       }
 
       if (trackerTokens.length) {
@@ -1947,24 +1992,28 @@ function App() {
           .slice(0, 4)
           .map((t) => `#${t.name}(${Math.round(t.value)}){tracker:${makeTokenId('tracker', t.name)}}`)
           .join(' ')
-        lines.push(`  - ${trackerLine}`)
+        const trackerType = typeTag('tracker')
+        lines.push(`  - ${trackerLine}${trackerType ? ` ${trackerType}` : ''}`)
       }
 
       for (const h of habitHits.slice(0, 4)) {
         const minutes = Math.max(5, h.estimateMinutes ?? 15)
-        lines.push(`  - [x] ${h.name} {habit:${makeTokenId('habit', h.name)} value:${minutes}m}`)
+        const habitType = typeTag('habit')
+        lines.push(`  - [x] ${h.name} {habit:${makeTokenId('habit', h.name)} value:${minutes}m}${habitType ? ` ${habitType}` : ''}`)
       }
 
       if (localMeal && localMeal.items?.length) {
         const mealTitle = localMeal.items.length === 1 ? localMeal.items[0].name : localMeal.type ?? 'Meal'
-        lines.push(`  - [meal] ${mealTitle} {meal:${makeTokenId('meal', mealTitle)}}`)
+        const mealType = typeTag('meal')
+        lines.push(`  - [meal] ${mealTitle} {meal:${makeTokenId('meal', mealTitle)}}${mealType ? ` ${mealType}` : ''}`)
         for (const item of localMeal.items.slice(0, 5)) {
           lines.push(`    - item: ${item.name}`)
         }
       }
 
       if (localWorkout && localWorkout.exercises?.length) {
-        lines.push(`  - [workout] ${localWorkout.title ?? 'Workout'} {workout:${makeTokenId('workout', 'workout')}}`)
+        const workoutType = typeTag('workout')
+        lines.push(`  - [workout] ${localWorkout.title ?? 'Workout'} {workout:${makeTokenId('workout', 'workout')}}${workoutType ? ` ${workoutType}` : ''}`)
         for (const ex of localWorkout.exercises.slice(0, 4)) {
           lines.push(`    - exercise: ${ex.name}`)
         }
@@ -1999,7 +2048,7 @@ function App() {
     if (detectedContexts) setCaptureProgress((p) => [...p, `Detected contexts: ${detectedContexts}`].slice(-10))
 
 	    const nowMs = captureAnchorMs
-	    let attachedMode = false
+	    const attachedMode = Boolean(captureAttachEventId)
 	    const note = await addInboxCapture(text, { createdAt: captureAnchorMs, entityIds })
 	    setCaptures((prev) => [note, ...prev])
 	    setCaptureProgress((p) => [...p, 'Saved transcript note'].slice(-10))
@@ -2009,36 +2058,6 @@ function App() {
 	      if (activeForLogsId !== undefined) return activeForLogsId
 	      activeForLogsId = (await findBestActiveEventAt(nowMs))?.id ?? null
 	      return activeForLogsId
-	    }
-
-	    // If capture is explicitly attached to an event, append as structured markdown and enrich fields.
-    if (captureAttachEventId) {
-      const targetId = captureAttachEventId
-      const ev = events.find((e) => e.id === targetId) ?? null
-      if (ev) {
-        const nextPeople = uniqStrings([...(ev.people ?? []), ...personMentions])
-        const nextLocation = ev.location ?? pickLocationForText(captureText)
-        const { mergedTags: nextTags, inferred } = finalizeCategorizedTags({ title: ev.title, tags: ev.tags ?? [], current: ev, location: nextLocation })
-        const nextDifficulty = ev.difficulty ?? difficultyOverride ?? inferDifficultyFromText(captureText) ?? 5
-        const nextImportance = ev.importance ?? importanceOverride ?? inferImportanceFromText(captureText) ?? 5
-	        const nextNotes = appendMarkdownBlock(ev.notes ?? '', buildAttachedCaptureMarkdown(nowMs))
-	        const nextContexts = uniqStrings([...(ev.contexts ?? []), ...allContexts])
-	        const next = {
-	          ...ev,
-	          tags: nextTags,
-	          people: nextPeople,
-	          location: nextLocation,
-	          category: inferred.category,
-	          subcategory: inferred.subcategory,
-	          difficulty: nextDifficulty,
-	          importance: nextImportance,
-	          contexts: nextContexts,
-	          notes: nextNotes,
-	        }
-	        commitEvent(next)
-	        setCaptureProgress((p) => [...p, `↳ appended to event: ${ev.title}`].slice(-10))
-	        attachedMode = true
-	      }
 	    }
 
     const createdTaskKeys = new Set<string>()
@@ -3176,6 +3195,29 @@ function App() {
 		      setCaptureProgress((p) => [...p, 'Skipped local parsing (AI parser succeeded)'].slice(-10))
 		    }
 
+    if (attachedMode && captureAttachEventId) {
+      const attached = events.find((e) => e.id === captureAttachEventId) ?? null
+      if (attached) {
+        const noteTasks = (llm?.tasks?.length ?? 0) > 0 ? llm!.tasks : natural.tasks
+        const noteEvents = (llm?.events?.length ?? 0) > 0 ? llm!.events : natural.events
+        const block = buildAttachedCaptureMarkdown(nowMs, { tasks: noteTasks, events: noteEvents })
+        const nextNotes = appendMarkdownBlock(attached.notes, block)
+        const nextTags = uniqStrings([...(attached.tags ?? []), ...allTagTokens])
+        const nextPeople = uniqStrings([...(attached.people ?? []), ...personMentions])
+        const nextContexts = uniqStrings([...(attached.contexts ?? []), ...allContexts])
+        const nextLocation = attached.location ?? (placeMentions.length ? uniqStrings(placeMentions).join(', ') : null)
+        commitEvent({
+          ...attached,
+          notes: nextNotes,
+          tags: nextTags,
+          people: nextPeople,
+          contexts: nextContexts,
+          location: nextLocation,
+        })
+        setCaptureProgress((p) => [...p, `Appended transcript to "${attached.title}"`].slice(-10))
+      }
+    }
+
     // Use LLM-parsed workouts if available, otherwise fall back to local regex parser
     const llmWorkout = (llm?.workouts?.length ?? 0) > 0 ? llm!.workouts[0] : null
     const normalizeExerciseName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
@@ -3744,12 +3786,6 @@ function App() {
     setDocTranscriptFocus(null)
   }, [docOpen, selectionKey])
 
-  useEffect(() => {
-    if (!selectedEvent?.active) return
-    const id = window.setInterval(() => setNowTick(Date.now()), 1000)
-    return () => window.clearInterval(id)
-  }, [selectedEvent?.active])
-
 	  const selectedEventLogs = useMemo(() => {
 	    if (!selectedEvent) return []
 	    return events
@@ -3765,6 +3801,29 @@ function App() {
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 50)
   }, [selectedEvent?.id, tasks])
+  const selectedEventNoteTasks = useMemo(() => {
+    if (!selectedEventTasks.length) return {}
+    const map: Record<string, { status: string; startedAt?: number | null }> = {}
+    for (const t of selectedEventTasks) {
+      const tokenId = noteTaskTokenId(t.notes ?? '')
+      if (!tokenId) continue
+      map[tokenId] = {
+        status: t.status,
+        startedAt: t.status === 'in_progress' ? t.updatedAt : null,
+      }
+    }
+    return map
+  }, [selectedEventTasks])
+  const hasRunningNoteTask = useMemo(
+    () => Object.values(selectedEventNoteTasks).some((t) => t.status === 'in_progress'),
+    [selectedEventNoteTasks],
+  )
+
+  useEffect(() => {
+    if (!selectedEvent?.active && !hasRunningNoteTask) return
+    const id = window.setInterval(() => setNowTick(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [selectedEvent?.active, hasRunningNoteTask])
 
   const selectedEventMinutes = selectedEvent
     ? Math.max(0, Math.round(((selectedEvent.active ? nowTick : selectedEvent.endAt) - selectedEvent.startAt) / (60 * 1000)))
@@ -5257,6 +5316,8 @@ function App() {
                     commitEvent({ ...selectedEvent, notes: toggleChecklistLine(selectedEvent.notes, lineIndex) })
                   }}
                   onStartTask={(task) => onStartNoteTask(selectedEvent.id, task)}
+                  taskStateByToken={selectedEventNoteTasks}
+                  nowMs={nowTick}
                   placeholder="Write notes…"
                   ariaLabel="Event notes"
                 />
@@ -6375,6 +6436,9 @@ function App() {
                           }
                           commitEvent({ ...selectedEvent, notes: toggleChecklistLine(selectedEvent.notes, lineIndex) })
                         }}
+                        onStartTask={(task) => onStartNoteTask(selectedEvent.id, task)}
+                        taskStateByToken={selectedEventNoteTasks}
+                        nowMs={nowTick}
                         placeholder="Write markdown notes…"
                         ariaLabel="Event notes (markdown)"
                       />
