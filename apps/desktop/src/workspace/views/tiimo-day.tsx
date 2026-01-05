@@ -174,7 +174,8 @@ export function TiimoDayView(props: {
   const titleMode = props.titleMode ?? 'detailed'
   const dayStart = startOfDayMs(props.date)
   const dayEnd = startOfDayMs(addDays(props.date, 1))
-  const isHabitLog = (e: CalendarEvent) => e.kind === 'log' && Boolean(e.trackerKey?.startsWith('habit:'))
+  const isHabitLog = (e: CalendarEvent) =>
+    e.kind === 'log' && Boolean(e.trackerKey?.startsWith('habit:')) && !e.parentEventId
 
   const [slotMinutes, setSlotMinutes] = useState<SlotMinutes>(15)
   const startBaseMinutes = 0
@@ -216,7 +217,7 @@ export function TiimoDayView(props: {
   const trackerLogs = useMemo(() => {
     return props.events
       .filter((e) => e.startAt >= dayStart && e.startAt < dayEnd)
-      .filter((e) => e.kind === 'log' && !isHabitLog(e))
+      .filter((e) => e.kind === 'log' && !isHabitLog(e) && !e.parentEventId)
       .sort((a, b) => a.startAt - b.startAt)
   }, [dayEnd, dayStart, props.events])
 
@@ -241,6 +242,11 @@ export function TiimoDayView(props: {
     }
     return 160
   })
+
+  // Tracker drag state
+  const logColRef = useRef<HTMLDivElement | null>(null)
+  const [draggingTrackerId, setDraggingTrackerId] = useState<string | null>(null)
+  const [dragGhostY, setDragGhostY] = useState<number>(0)
 
   // Current time indicator - updates every minute
   const [nowMinute, setNowMinute] = useState(() => minuteOfDay(Date.now()))
@@ -413,6 +419,48 @@ export function TiimoDayView(props: {
     const newStart = ev.startAt + 7 * 24 * 60 * 60 * 1000
     props.onMoveEvent(eventId, newStart, newStart + duration)
     setContextMenu(null)
+  }
+
+  // Tracker drag handlers
+  function handleTrackerDragStart(e: React.DragEvent, ev: CalendarEvent) {
+    setDraggingTrackerId(ev.id)
+    e.dataTransfer.setData('text/plain', ev.id)
+    e.dataTransfer.effectAllowed = 'move'
+    // Set a small transparent drag image
+    const img = new Image()
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+    e.dataTransfer.setDragImage(img, 0, 0)
+  }
+
+  function handleTrackerDrag(e: React.DragEvent) {
+    if (e.clientY > 0) {
+      const rect = logColRef.current?.getBoundingClientRect()
+      if (rect) {
+        const y = clamp(e.clientY - rect.top, 0, rect.height)
+        // Snap ghost to 5-minute intervals
+        const minuteOffset = Math.floor((y / rect.height) * totalMinutes)
+        const minute = quantizeTo(startBaseMinutes + minuteOffset, SNAP_INTERVAL)
+        const snappedY = ((minute - startBaseMinutes) / totalMinutes) * rect.height
+        setDragGhostY(snappedY)
+      }
+    }
+  }
+
+  function handleTrackerDragEnd(e: React.DragEvent, ev: CalendarEvent) {
+    const rect = logColRef.current?.getBoundingClientRect()
+    if (rect && e.clientY > 0) {
+      const y = clamp(e.clientY - rect.top, 0, rect.height)
+      const minuteOffset = Math.floor((y / rect.height) * totalMinutes)
+      const minute = quantizeTo(startBaseMinutes + minuteOffset, SNAP_INTERVAL)
+      const newStartAt = dayStart + minute * 60 * 1000
+      // Only update if time actually changed
+      if (newStartAt !== ev.startAt) {
+        const duration = ev.endAt - ev.startAt
+        props.onUpdateEvent(ev.id, { startAt: newStartAt, endAt: newStartAt + duration })
+      }
+    }
+    setDraggingTrackerId(null)
+    setDragGhostY(0)
   }
 
   useEffect(() => {
@@ -863,7 +911,17 @@ export function TiimoDayView(props: {
           ) : null}
 	        </div>
 
-        <div className="tmLogCol" aria-label="Trackers">
+        <div
+          ref={logColRef}
+          className={`tmLogCol${draggingTrackerId ? ' dragging' : ''}`}
+          aria-label="Trackers"
+          onDragOver={(e) => e.preventDefault()}
+        >
+          {/* Vertical rail for drag guidance */}
+          <div className="tmLogRail" aria-hidden="true" />
+          {/* Ghost indicator showing snapped position */}
+          {draggingTrackerId && <div className="tmLogGhost" style={{ top: dragGhostY }} aria-hidden="true" />}
+
           <div
             className="tmLogResize"
             role="separator"
@@ -893,8 +951,17 @@ export function TiimoDayView(props: {
             const bumpPx = lane * 12
             const top = bumpPx ? `calc(${topPct}% + ${bumpPx}px)` : `${topPct}%`
             const label = trackerLabelForEvent(ev)
+            const isDragging = draggingTrackerId === ev.id
             return (
-              <div key={ev.id} className="tmLogBubble" style={{ top }}>
+              <div
+                key={ev.id}
+                className={`tmLogBubble${isDragging ? ' isDragging' : ''}`}
+                style={{ top }}
+                draggable
+                onDragStart={(e) => handleTrackerDragStart(e, ev)}
+                onDrag={handleTrackerDrag}
+                onDragEnd={(e) => handleTrackerDragEnd(e, ev)}
+              >
                 <button
                   className="tmLogMark"
                   style={{

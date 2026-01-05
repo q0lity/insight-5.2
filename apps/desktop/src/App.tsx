@@ -1,5 +1,5 @@
 import './App.css'
-import { useEffect, useMemo, useState, useRef, type DragEvent, useCallback } from 'react'
+import { useEffect, useMemo, useState, useRef, type DragEvent, useCallback, type SetStateAction } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { Session } from '@supabase/supabase-js'
 import { Toaster, toast } from 'sonner'
@@ -15,7 +15,7 @@ import { parseCaptureNatural, type ParsedEvent } from './nlp/natural'
 import { parseCaptureWithBlocksLlm } from './nlp/llm-parse'
 import { estimateNutritionWithLlm } from './nlp/nutrition-estimate'
 import { loadSettings } from './assistant/storage'
-import { makeFoodItemId, type FoodItem } from './db/insight-db'
+import { makeFoodItemId, type ExtendedMacros, type FoodItem } from './db/insight-db'
 import { getSupabaseClient } from './supabase/client'
 import { migrateLocalDataToSupabase, pullSupabaseToLocal } from './supabase/sync'
 
@@ -491,24 +491,141 @@ function toStringList(value: unknown) {
   return []
 }
 
+const NUMBER_WORDS: Record<string, number> = {
+  zero: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+}
+
+const NUMBER_WORD_PATTERN = Object.keys(NUMBER_WORDS).join('|')
+
+function parseNumberToken(raw: string) {
+  const cleaned = raw.trim().toLowerCase()
+  if (!cleaned) return null
+  if (NUMBER_WORDS[cleaned] != null) return NUMBER_WORDS[cleaned]
+  const num = Number(cleaned)
+  return Number.isFinite(num) ? num : null
+}
+
+function parseRatingRange(first: string, second?: string | null) {
+  const a = parseNumberToken(first)
+  if (a == null) return null
+  const b = second ? parseNumberToken(second) : null
+  const value = b != null ? (a + b) / 2 : a
+  return Math.max(0, Math.min(10, value))
+}
+
+function parseRatingNearText(text: string, keyword: string) {
+  const tokenPattern = String.raw`(?:\d{1,2}|${NUMBER_WORD_PATTERN})`
+  const re = new RegExp(
+    String.raw`\b${keyword}\b(?:\s*(?:is|was|were|like|around|about|at|score|rating|of|=|:)?\s*)(${tokenPattern})(?:\s*(?:-|to)\s*(${tokenPattern}))?(?:\s*\/\s*10)?`,
+    'i',
+  )
+  const m = text.match(re)
+  if (!m?.[1]) return null
+  return parseRatingRange(m[1], m[2])
+}
+
+function inferMoodFromAdjectives(text: string) {
+  const moodSignal = /\b(feel(?:ing)?|mood|looking forward|cant wait|can't wait|excited|love (?:doing|this|it))\b/i.test(text)
+  if (!moodSignal) return null
+  const moodAdjectives: Array<{ re: RegExp; value: number }> = [
+    { re: /\b(amazing|awesome|fantastic|incredible)\b/i, value: 9 },
+    { re: /\b(great)\b/i, value: 8 },
+    { re: /\b(very good|really good|pretty good|good)\b/i, value: 7 },
+    { re: /\b(looking forward)\b/i, value: 7 },
+    { re: /\b(cant wait|can't wait|excited)\b/i, value: 8 },
+    { re: /\b(love (?:doing|this|it))\b/i, value: 8 },
+    { re: /\b(okay|ok|fine|neutral)\b/i, value: 5 },
+    { re: /\b(meh)\b/i, value: 4 },
+    { re: /\b(not good|bad|down)\b/i, value: 3 },
+    { re: /\b(sad|depressed)\b/i, value: 2 },
+    { re: /\b(awful|terrible|miserable)\b/i, value: 1 },
+    { re: /\b(happy|joyful|excited)\b/i, value: 8 },
+    { re: /\b(anxious|stressed|angry)\b/i, value: 4 },
+  ]
+  for (const entry of moodAdjectives) {
+    if (entry.re.test(text)) return entry.value
+  }
+  return null
+}
+
+function inferEnergyFromAdjectives(text: string) {
+  const energySignal =
+    /\benergy\b/i.test(text) ||
+    /\b(energized|wired|pumped|tired|exhausted|drained|fatigued|sleepy|sluggish)\b/i.test(text)
+  if (!energySignal) return null
+  const energyAdjectives: Array<{ re: RegExp; value: number }> = [
+    { re: /\b(energized|wired|pumped|high energy|very high energy)\b/i, value: 8 },
+    { re: /\b(great energy|good energy|solid energy)\b/i, value: 7 },
+    { re: /\b(okay energy|fine|average|medium)\b/i, value: 5 },
+    { re: /\b(low energy|tired|fatigued|sluggish)\b/i, value: 3 },
+    { re: /\b(exhausted|drained|wiped|spent)\b/i, value: 2 },
+  ]
+  for (const entry of energyAdjectives) {
+    if (entry.re.test(text)) return entry.value
+  }
+  return null
+}
+
+function inferStressFromAdjectives(text: string) {
+  if (!/\b(stress|stressed|overwhelmed|anxious|calm|relaxed)\b/i.test(text)) return null
+  if (/\b(calm|relaxed)\b/i.test(text)) return 2
+  if (/\b(overwhelmed|very stressed|extremely stressed)\b/i.test(text)) return 8
+  if (/\b(stressed|anxious)\b/i.test(text)) return 7
+  return null
+}
+
 function extractTrackerTokens(text: string) {
   const out: Array<{ name: string; value: number }> = []
-  for (const m of text.matchAll(/#([a-zA-Z][\\w/-]*)\\(([-+]?\\d*\\.?\\d+)\\)/g)) {
+  for (const m of text.matchAll(/#([a-zA-Z][\w/-]*)\(([-+]?\d*\.?\d+)\)/g)) {
     out.push({ name: m[1], value: Number(m[2]) })
   }
-  for (const m of text.matchAll(/#([a-zA-Z][\\w/-]*):([-+]?\\d*\\.?\\d+)/g)) {
+  for (const m of text.matchAll(/#([a-zA-Z][\w/-]*):([-+]?\d*\.?\d+)/g)) {
     out.push({ name: m[1], value: Number(m[2]) })
+  }
+  const lower = text.toLowerCase()
+  const keys = ['mood', 'energy', 'stress', 'pain', 'anxiety', 'focus', 'motivation', 'sleep', 'productivity'] as const
+  for (const key of keys) {
+    if (out.some((t) => t.name.toLowerCase() === key)) continue
+    const value = parseRatingNearText(lower, key)
+    if (value != null) {
+      out.push({ name: key, value })
+    }
+  }
+  if (!out.some((t) => t.name.toLowerCase() === 'mood')) {
+    const moodValue = inferMoodFromAdjectives(lower)
+    if (moodValue != null) out.push({ name: 'mood', value: moodValue })
+  }
+  if (!out.some((t) => t.name.toLowerCase() === 'energy')) {
+    const energyValue = inferEnergyFromAdjectives(lower)
+    if (energyValue != null) out.push({ name: 'energy', value: energyValue })
+  }
+  if (!out.some((t) => t.name.toLowerCase() === 'stress')) {
+    const stressValue = inferStressFromAdjectives(lower)
+    if (stressValue != null) out.push({ name: 'stress', value: stressValue })
   }
   return out
 }
 
 function extractMoodMentions(text: string) {
   const out: Array<{ value: number; hint: 'start' | 'now' | 'unknown' }> = []
-  const re = /\b(?:mood|feel(?:ing)?)\b[^0-9]{0,24}(\d{1,2})(?:\s*\/\s*10)?/gi
+  const tokenPattern = String.raw`(?:\d{1,2}|${NUMBER_WORD_PATTERN})`
+  const re = new RegExp(
+    String.raw`\b(?:mood|feel(?:ing)?)\b(?:\s*(?:is|was|were|like|around|about|at|:)?\s*)(${tokenPattern})(?:\s*(?:-|to)\s*(${tokenPattern}))?(?:\s*\/\s*10)?`,
+    'gi',
+  )
   for (const m of text.matchAll(re)) {
-    const raw = m[1]
-    const value = Number(raw)
-    if (!Number.isFinite(value)) continue
+    const value = parseRatingRange(m[1], m[2])
+    if (value == null) continue
     const idx = m.index ?? 0
     const window = text.slice(Math.max(0, idx - 16), Math.min(text.length, idx + m[0].length + 16)).toLowerCase()
     const hint = /\b(now|right now|currently|at the moment|after|later|end(?:ed)?|finished)\b/.test(window)
@@ -523,16 +640,86 @@ function extractMoodMentions(text: string) {
 
 function extractTaskLines(markdown: string) {
   const titles: string[] = []
-  for (const line of markdown.split(/\\r?\\n/)) {
-    const m = line.match(/^\\s*[-*]\\s*\\[ \\]\\s*(.+)$/)
-    if (m?.[1]) titles.push(m[1].trim())
+  for (const line of markdown.split(/\r?\n/)) {
+    const checklist = line.match(/^\s*[-*+]\s*\[( |x|X)\]\s*(.+)$/)
+    if (checklist?.[2]) {
+      titles.push(checklist[2].trim())
+      continue
+    }
+    if (!/(?:\{task:[^}]+\}|#task\b)/i.test(line)) continue
+    const cleaned = line
+      .replace(/^\s*[-*+]\s+/, '')
+      .replace(/\{task:[^}]+\}/gi, '')
+      .replace(/\s+#task\b/gi, '')
+      .trim()
+    if (cleaned) titles.push(cleaned)
   }
   return titles.slice(0, 50)
 }
 
+async function createTrackerLogsFromText(opts: {
+  text: string
+  atMs: number
+  sourceNoteId?: string
+  events: CalendarEvent[]
+  ensureTrackerDefinition: (opts: { key: string; label?: string; icon?: IconName | null; color?: string | null; defaultValue?: number | null }) => TrackerDef | null
+  defaultTrackerUnit: (key: string) => TrackerDef['unit']
+  findBestActiveEventAt: (atMs: number) => Promise<CalendarEvent | null>
+  createEvent: typeof createEvent
+  setEvents: (value: SetStateAction<CalendarEvent[]>) => void
+}) {
+  const tokens = extractTrackerTokens(opts.text)
+  if (!tokens.length) return { created: 0, skipped: 0 }
+  const parent = await opts.findBestActiveEventAt(opts.atMs)
+  const createdKeys = new Set<string>()
+  let created = 0
+  let skipped = 0
+  for (const tok of tokens) {
+    const key = tok.name.trim().toLowerCase()
+    if (!key) continue
+    const dedupeKey = `${key}|${opts.sourceNoteId ?? ''}`
+    if (createdKeys.has(dedupeKey)) continue
+    const already = opts.events.find((e) => e.kind === 'log' && e.trackerKey === key && e.sourceNoteId === opts.sourceNoteId)
+    if (already) {
+      skipped += 1
+      continue
+    }
+    const def = opts.ensureTrackerDefinition({ key })
+    const unit = def?.unit ?? opts.defaultTrackerUnit(key)
+    let value = typeof tok.value === 'number' && Number.isFinite(tok.value) ? tok.value : null
+    if (value != null) {
+      if (unit.step && unit.step > 0) value = Math.round(value / unit.step) * unit.step
+      if (unit.min != null) value = Math.max(unit.min, value)
+      if (unit.max != null) value = Math.min(unit.max, value)
+    }
+    if (value == null) continue
+    const label = def?.label ?? key
+    const unitSuffix = unit.label && unit.label !== 'value' && unit.label !== 'score' ? ` ${unit.label}` : ''
+    const title = `${label}: ${value}${unitSuffix}`
+    const log = await opts.createEvent({
+      title,
+      startAt: opts.atMs,
+      endAt: opts.atMs + 5 * 60 * 1000,
+      kind: 'log',
+      parentEventId: parent?.id ?? null,
+      tags: [`#${key}`],
+      sourceNoteId: opts.sourceNoteId ?? null,
+      trackerKey: key,
+      icon: def?.icon ?? null,
+      color: def?.color ?? null,
+      category: null,
+      subcategory: null,
+    })
+    opts.setEvents((prev) => [log, ...prev])
+    createdKeys.add(dedupeKey)
+    created += 1
+  }
+  return { created, skipped }
+}
+
 function parseCommaList(raw: string) {
   return raw
-    .split(/[,\\n]+/)
+    .split(/[,\n]+/)
     .map((x) => x.trim())
     .filter(Boolean)
     .slice(0, 20)
@@ -765,7 +952,8 @@ function detectHabitMentions(text: string, defs: HabitDef[]) {
   return defs.filter((h) => {
     const name = (h.name ?? '').trim().toLowerCase()
     if (!name) return false
-    const rx = new RegExp(`\\b${escapeRegExp(name).replace(/\\s+/g, '\\\\s+')}\\b`, 'i')
+    const escaped = escapeRegExp(name).replace(/\s+/g, String.raw`\s+`)
+    const rx = new RegExp(String.raw`\b${escaped}\b`, 'i')
     return rx.test(lower)
   })
 }
@@ -908,16 +1096,17 @@ function App() {
     return next
   }
 
-	  const [captureOpen, setCaptureOpen] = useState(false)
-	  const [captureDraft, setCaptureDraft] = useState('')
-	  const [captureInterim, setCaptureInterim] = useState('')
-	  const [captureAttachEventId, setCaptureAttachEventId] = useState<string | null>(null)
+  const [captureOpen, setCaptureOpen] = useState(false)
+  const [captureDraft, setCaptureDraft] = useState('')
+  const [captureInterim, setCaptureInterim] = useState('')
+  const [captureAttachEventId, setCaptureAttachEventId] = useState<string | null>(null)
 		  const [captureListening, setCaptureListening] = useState(false)
 		  const [captureSaving, setCaptureSaving] = useState(false)
 		  const [captureAiStatus, setCaptureAiStatus] = useState<string>('')
 		  const [captureError, setCaptureError] = useState<string>('')
   const [captureProgress, setCaptureProgress] = useState<string[]>([])
   const [captureAnchorMs, setCaptureAnchorMs] = useState<number>(() => Date.now())
+  const [captureReturnView, setCaptureReturnView] = useState<WorkspaceViewKey | null>(null)
   const [captureExtendedMode, setCaptureExtendedMode] = useState(false)
 
   // Refs for voice capture toggle behavior
@@ -1238,6 +1427,7 @@ function App() {
     }
     setCaptureAnchorMs(anchorMs)
     setCaptureProgress([])
+    setCaptureReturnView(activeTab?.view ?? null)
     setCaptureAttachEventId(opts?.attachEventId ?? null)
     setCaptureOpen(true)
   }
@@ -1263,6 +1453,65 @@ function App() {
     return match?.[1] ?? null
   }
 
+  function normalizeTaskTitle(raw: string) {
+    return raw.trim().toLowerCase().replace(/\s+/g, ' ')
+  }
+
+  function appendTokenToNotes(notes: string | null | undefined, tokenId: string) {
+    const base = notes ?? ''
+    if (!tokenId) return base
+    const tokenRe = new RegExp(String.raw`\btoken:${escapeRegExp(tokenId)}\b`)
+    if (tokenRe.test(base)) return base
+    const trimmed = base.trimEnd()
+    return trimmed ? `${trimmed}\n token:${tokenId}` : `token:${tokenId}`
+  }
+
+  const NOTE_ITEM_INLINE_RE = /\{(task|habit):([^\s}]+)[^}]*\}/i
+
+  function detectInlineItemKind(rawLine: string): NoteItemKind | null {
+    const tokenMatch = rawLine.match(NOTE_ITEM_INLINE_RE)
+    if (tokenMatch?.[1]) return tokenMatch[1] as NoteItemKind
+    if (/#habit\b/i.test(rawLine)) return 'habit'
+    if (/#task\b/i.test(rawLine)) return 'task'
+    return null
+  }
+
+  function deriveNoteItemTitle(rawLine: string) {
+    const cleaned = rawLine
+      .replace(/\{(?:task|note|seg|event|meal|workout|tracker|habit):[^}]+\}/g, '')
+      .replace(/[#@!*^$~][^\s{]+\{[^}]+\}/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+    return cleaned.replace(/^[-*+]\s*(?:\[[ xX]\]\s*)?/, '').replace(/\s+#(?:task|habit)\b/gi, '').trim()
+  }
+
+  function makeNoteItemTokenId(kind: NoteItemKind, title: string) {
+    const slug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 32) || 'item'
+    return `${kind}_${slug}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`
+  }
+
+  function ensureNoteItemTokenInNotes(
+    notes: string | null | undefined,
+    lineIndex: number | null | undefined,
+    kind: NoteItemKind,
+    title: string,
+  ) {
+    const raw = notes ?? ''
+    if (lineIndex == null) return { notes: raw, tokenId: '', line: '' }
+    const lines = raw.split(/\r?\n/)
+    const line = lines[lineIndex] ?? ''
+    const match = line.match(NOTE_ITEM_INLINE_RE)
+    if (match?.[2]) return { notes: raw, tokenId: match[2], line }
+    const tokenId = makeNoteItemTokenId(kind, title)
+    const token = `{${kind}:${tokenId}}`
+    lines[lineIndex] = line.trimEnd() ? `${line.trimEnd()} ${token}` : token
+    return { notes: lines.join('\n'), tokenId, line: lines[lineIndex] ?? line }
+  }
+
   function extractNoteItemLine(notes: string | null | undefined, lineIndex: number) {
     const lines = (notes ?? '').split(/\r?\n/)
     return lines[lineIndex] ?? ''
@@ -1278,6 +1527,24 @@ function App() {
     if (!trimmed) return (existing ?? '').trimEnd()
     const base = (existing ?? '').trimEnd()
     return base ? `${base}\n\n---\n\n${trimmed}` : trimmed
+  }
+
+  function normalizeTaskChecklistNotes(notes: string | null | undefined) {
+    const raw = notes ?? ''
+    if (!raw.trim()) return raw
+    const lines = raw.split(/\r?\n/)
+    let changed = false
+    const next = lines.map((line) => {
+      const trimmed = line.trimStart()
+      if (!/^[-*+]\s+/.test(trimmed)) return line
+      if (/^[-*+]\s*\[[ xX]\]\s+/.test(trimmed)) return line
+      if (!/(?:\{task:[^}]+\}|\{habit:[^}]+\}|#task\b|#habit\b)/i.test(line)) return line
+      const indent = line.match(/^\s*/)?.[0] ?? ''
+      const rest = trimmed.replace(/^[-*+]\s+/, '')
+      changed = true
+      return `${indent}- [ ] ${rest}`
+    })
+    return changed ? next.join('\n') : raw
   }
 
   function inferDifficultyFromText(text: string) {
@@ -1421,7 +1688,30 @@ function App() {
     void upsertTask(next)
   }
 
+  async function stopOtherActiveEvents(excludeId?: string | null, endAtOverride?: number | null) {
+    const now = Date.now()
+    const stopAt = endAtOverride ?? now
+    const activeEvents = events.filter(
+      (e) => e.active && e.id !== excludeId && e.kind !== 'log' && e.kind !== 'episode',
+    )
+    if (!activeEvents.length) return
+    const updates = activeEvents.map((ev) => ({
+      ...ev,
+      active: false,
+      endAt: Math.max(ev.startAt, stopAt),
+    }))
+    for (const next of updates) await upsertEvent(next)
+    setEvents((prev) => prev.map((e) => updates.find((u) => u.id === e.id) ?? e))
+  }
+
   function commitEvent(next: CalendarEvent) {
+    const current = events.find((e) => e.id === next.id)
+    const shouldStopOthers =
+      next.active &&
+      !current?.active &&
+      next.kind !== 'log' &&
+      next.kind !== 'episode'
+    if (shouldStopOthers) void stopOtherActiveEvents(next.id, next.startAt)
     setEvents((prev) => prev.map((e) => (e.id === next.id ? next : e)))
     void upsertEvent(next)
   }
@@ -1740,7 +2030,22 @@ function App() {
     const ev = events.find((e) => e.id === eventId)
     if (!ev || !task.title) return
     const kind = task.kind ?? 'task'
-    const rawLine = task.rawText ?? task.title
+    let rawLine = task.rawText ?? task.title
+    let tokenId = task.tokenId?.trim() ?? ''
+
+    if (!NOTE_ITEM_INLINE_RE.test(rawLine)) {
+      const ensured = ensureNoteItemTokenInNotes(ev.notes, task.lineIndex ?? null, kind, task.title)
+      if (ensured.tokenId) {
+        tokenId = ensured.tokenId
+        rawLine = ensured.line || rawLine
+        if (ensured.notes !== (ev.notes ?? '')) {
+          const normalized = normalizeTaskChecklistNotes(ensured.notes)
+          commitEvent({ ...ev, notes: normalized })
+        }
+      }
+    }
+    if (!tokenId) return
+
     const lineTokens = extractLineTokenCollections(rawLine)
     const lineTags = lineTokens.tags.map((t) => normalizeHashTag(t))
     const tags = uniqStrings([...(ev.tags ?? []), ...lineTags, kind === 'habit' ? '#habit' : '#task'])
@@ -1748,13 +2053,22 @@ function App() {
     const people = uniqStrings([...(ev.people ?? []), ...lineTokens.people])
     const location = ev.location ?? (lineTokens.places.length ? lineTokens.places.join(', ') : null)
 
-    await stopActiveNoteSessions(eventId, task.tokenId)
+    await stopActiveNoteSessions(eventId, tokenId)
 
     if (kind === 'task') {
       const existing = tasks.find(
-        (t) => t.parentEventId === eventId && noteItemTokenId(t.notes ?? '') === task.tokenId,
+        (t) => t.parentEventId === eventId && noteItemTokenId(t.notes ?? '') === tokenId,
       )
       let target = existing ?? null
+      if (!target) {
+        const titleKey = normalizeTaskTitle(task.title)
+        const byTitle = tasks.find((t) => t.parentEventId === eventId && normalizeTaskTitle(t.title) === titleKey) ?? null
+        if (byTitle) {
+          const updated = await upsertTask({ ...byTitle, notes: appendTokenToNotes(byTitle.notes, tokenId) })
+          setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+          target = updated
+        }
+      }
       if (!target) {
         const created = await createTask({
           title: task.title,
@@ -1777,7 +2091,7 @@ function App() {
           project: ev.project ?? null,
           sourceNoteId: ev.sourceNoteId ?? null,
         })
-        const withToken = await upsertTask({ ...created, notes: `token:${task.tokenId}` })
+        const withToken = await upsertTask({ ...created, notes: `token:${tokenId}` })
         setTasks((prev) => [withToken, ...prev])
         target = withToken
       }
@@ -1786,16 +2100,18 @@ function App() {
     }
 
     let habitTrackerKey: string | null = null
+    let habitEstimate: number | null | undefined = task.estimateMinutes ?? null
     if (kind === 'habit') {
       const habit = detectHabitMentions(task.title, habitDefs)[0] ?? null
       habitTrackerKey = habit ? `habit:${habit.id}` : null
+      habitEstimate = task.estimateMinutes ?? habit?.estimateMinutes ?? null
     }
 
     await ensureNoteSubEvent({
       parentEvent: ev,
-      tokenId: task.tokenId,
+      tokenId,
       title: task.title,
-      estimateMinutes: task.estimateMinutes ?? null,
+      estimateMinutes: habitEstimate ?? null,
       tags,
       contexts,
       people,
@@ -1806,34 +2122,64 @@ function App() {
   }
 
   async function onToggleEventNoteChecklist(ev: CalendarEvent, lineIndex: number) {
-    const rawLine = extractNoteItemLine(ev.notes, lineIndex)
-    const isChecklist = /^\s*[-*+]\s*\[([ xX])\]\s+/.test(rawLine)
-    const wasChecked = /^\s*[-*+]\s*\[[xX]\]\s+/.test(rawLine)
-    const nextNotes = toggleChecklistLine(ev.notes, lineIndex)
-    if (!isChecklist) {
-      commitEvent({ ...ev, notes: nextNotes })
-      return
+    let rawLine = extractNoteItemLine(ev.notes, lineIndex)
+    const baseMeta = parseNoteItemMeta(rawLine)
+    const inferredKind = baseMeta?.kind ?? detectInlineItemKind(rawLine)
+    let workingNotes = ev.notes ?? ''
+    let tokenId = baseMeta?.tokenId ?? ''
+    let meta = baseMeta
+
+    if (inferredKind && (!tokenId || !NOTE_ITEM_INLINE_RE.test(rawLine))) {
+      const ensured = ensureNoteItemTokenInNotes(workingNotes, lineIndex, inferredKind, deriveNoteItemTitle(rawLine))
+      if (ensured.notes !== workingNotes) {
+        workingNotes = ensured.notes
+        rawLine = ensured.line || rawLine
+      }
+      tokenId = ensured.tokenId || tokenId
+      meta = parseNoteItemMeta(rawLine) ?? meta
     }
 
-    const nextChecked = !wasChecked
-    const meta = parseNoteItemMeta(rawLine)
+    const nextNotes = toggleChecklistLine(workingNotes, lineIndex)
     commitEvent({ ...ev, notes: nextNotes })
-    if (!meta) return
 
-    const lineTokens = extractLineTokenCollections(rawLine)
+    if (!inferredKind || !tokenId) return
+
+    const nextLine = extractNoteItemLine(nextNotes, lineIndex)
+    const nextChecked = /^\s*[-*+]\s*\[[xX]\]\s+/.test(nextLine)
+    const finalMeta =
+      meta ??
+      ({
+        kind: inferredKind,
+        tokenId,
+        title: deriveNoteItemTitle(nextLine),
+        estimateMinutes: null,
+        dueAt: null,
+        rawText: nextLine,
+      } as const)
+
+    const lineTokens = extractLineTokenCollections(nextLine)
     const lineTags = lineTokens.tags.map((t) => normalizeHashTag(t))
-    const tags = uniqStrings([...(ev.tags ?? []), ...lineTags, meta.kind === 'habit' ? '#habit' : '#task'])
+    const tags = uniqStrings([...(ev.tags ?? []), ...lineTags, finalMeta.kind === 'habit' ? '#habit' : '#task'])
     const contexts = uniqStrings([...(ev.contexts ?? []), ...lineTokens.contexts])
     const people = uniqStrings([...(ev.people ?? []), ...lineTokens.people])
     const location = ev.location ?? (lineTokens.places.length ? lineTokens.places.join(', ') : null)
 
-    const existingSub = findNoteSubEvent(ev.id, meta.tokenId)
+    const existingSub = findNoteSubEvent(ev.id, tokenId)
 
-    if (meta.kind === 'task') {
-      let target = tasks.find((t) => t.parentEventId === ev.id && noteItemTokenId(t.notes ?? '') === meta.tokenId) ?? null
+    if (finalMeta.kind === 'task') {
+      let target = tasks.find((t) => t.parentEventId === ev.id && noteItemTokenId(t.notes ?? '') === tokenId) ?? null
+      if (!target) {
+        const titleKey = normalizeTaskTitle(finalMeta.title)
+        const byTitle = tasks.find((t) => t.parentEventId === ev.id && normalizeTaskTitle(t.title) === titleKey) ?? null
+        if (byTitle) {
+          const updated = await upsertTask({ ...byTitle, notes: appendTokenToNotes(byTitle.notes, tokenId) })
+          setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+          target = updated
+        }
+      }
       if (!target && nextChecked) {
         const created = await createTask({
-          title: meta.title,
+          title: finalMeta.title,
           status: 'done',
           tags,
           contexts,
@@ -1847,13 +2193,13 @@ function App() {
           subcategory: ev.subcategory ?? null,
           importance: ev.importance ?? 5,
           difficulty: ev.difficulty ?? 5,
-          estimateMinutes: meta.estimateMinutes ?? null,
-          dueAt: meta.dueAt ?? null,
+          estimateMinutes: finalMeta.estimateMinutes ?? null,
+          dueAt: finalMeta.dueAt ?? null,
           goal: ev.goal ?? null,
           project: ev.project ?? null,
           sourceNoteId: ev.sourceNoteId ?? null,
         })
-        target = await upsertTask({ ...created, notes: `token:${meta.tokenId}` })
+        target = await upsertTask({ ...created, notes: `token:${tokenId}` })
         setTasks((prev) => [target!, ...prev])
       } else if (target) {
         const updated = await upsertTask({ ...target, status: nextChecked ? 'done' : 'todo' })
@@ -1861,8 +2207,8 @@ function App() {
       }
     }
 
-    if (meta.kind === 'habit') {
-      const habit = detectHabitMentions(meta.title, habitDefs)[0] ?? null
+    if (finalMeta.kind === 'habit') {
+      const habit = detectHabitMentions(finalMeta.title, habitDefs)[0] ?? null
       const trackerKey = habit ? `habit:${habit.id}` : null
 
       if (nextChecked) {
@@ -1873,9 +2219,9 @@ function App() {
         }
         await ensureNoteSubEvent({
           parentEvent: ev,
-          tokenId: meta.tokenId,
-          title: meta.title,
-          estimateMinutes: meta.estimateMinutes ?? habit?.estimateMinutes ?? null,
+          tokenId,
+          title: finalMeta.title,
+          estimateMinutes: finalMeta.estimateMinutes ?? habit?.estimateMinutes ?? null,
           tags,
           contexts,
           people,
@@ -1898,9 +2244,9 @@ function App() {
       } else if (!existingSub) {
         await ensureNoteSubEvent({
           parentEvent: ev,
-          tokenId: meta.tokenId,
-          title: meta.title,
-          estimateMinutes: meta.estimateMinutes ?? null,
+          tokenId,
+          title: finalMeta.title,
+          estimateMinutes: finalMeta.estimateMinutes ?? null,
           tags,
           contexts,
           people,
@@ -2123,6 +2469,15 @@ function App() {
 	      }
 	    }
 
+    const explicitTagNames = new Set<string>(
+      [
+        ...extractTagTokens(captureText),
+        ...fmTags,
+        ...ruleTagNames,
+        ...markdownTokens.tags.map((t) => normalizeTagName(t)),
+      ].filter(Boolean),
+    )
+
     const lowerText = captureText.toLowerCase()
     const periodStartSignal =
       /\b(started|starting|got)\b.*\bperiod\b/.test(lowerText) || /\bon (my )?period\b/.test(lowerText) || /\bmy period\b.*\b(started|began)\b/.test(lowerText)
@@ -2137,33 +2492,17 @@ function App() {
     const workoutStartSignal = /\b(going to|gonna|start(?:ing)?|begin(?:ning)?|about to)\b.*\b(work\s*out|workout)\b/.test(lowerText)
     const workoutEndSignal = /\b(done|finished|ended|stop(?:ping)?)\b.*\b(work\s*out|workout)\b/.test(lowerText)
     const boredSignal = /\b(bored|boredom|boring)\b/.test(lowerText)
-    const moodWordMatch = lowerText.match(/\b(?:i'm|i am|feeling|feel)\s+(?:really\s+)?(happy|great|good|okay|ok|sad|down|depressed|angry|anxious|stressed|meh)\b/)
-    const moodWord = moodWordMatch?.[1] ?? null
-    const moodScaleMap: Record<string, number> = {
-      happy: 8,
-      great: 8,
-      good: 7,
-      okay: 5,
-      ok: 5,
-      sad: 3,
-      down: 3,
-      depressed: 2,
-      angry: 3,
-      anxious: 4,
-      stressed: 4,
-      meh: 4,
-    }
-    const moodValue = moodWord ? moodScaleMap[moodWord] ?? null : null
-
-    function ratingNear(keyword: string) {
-      const re = new RegExp(`${keyword}[^\\d]{0,6}(\\d{1,2})\\s*(?:/\\s*10)?`)
-      const m = lowerText.match(re)
-      if (!m?.[1]) return null
-      const value = Number(m[1])
-      return Number.isFinite(value) ? Math.max(0, Math.min(10, value)) : null
-    }
-    const energyValue = ratingNear('energy') ?? (/\b(energized|wired)\b/.test(lowerText) ? 8 : /\b(tired|exhausted|drained)\b/.test(lowerText) ? 3 : null)
-    const stressValue = ratingNear('stress') ?? (/\b(stressed|overwhelmed|anxious)\b/.test(lowerText) ? 7 : /\b(calm|relaxed)\b/.test(lowerText) ? 2 : null)
+    const moodValue =
+      parseRatingNearText(lowerText, 'mood') ??
+      parseRatingNearText(lowerText, 'feeling') ??
+      parseRatingNearText(lowerText, 'feel') ??
+      inferMoodFromAdjectives(lowerText)
+    const energyValue =
+      parseRatingNearText(lowerText, 'energy') ??
+      inferEnergyFromAdjectives(lowerText)
+    const stressValue =
+      parseRatingNearText(lowerText, 'stress') ??
+      inferStressFromAdjectives(lowerText)
 
     if (periodStartSignal || periodEndSignal) tagNames.add('period')
     if (painSignal || painHealedSignal) tagNames.add('pain')
@@ -2191,7 +2530,7 @@ function App() {
     const moodMentions = extractMoodMentions(captureText)
     const habitHits = detectHabitMentions(captureText, habitDefs)
     const localWorkout = parseWorkoutFromText(captureText)
-    const localMeal = parseMealFromText(captureText)
+    const localMeal = parseMealFromText(captureText, { nowMs: anchorMs ?? Date.now() })
     if (implicitMoneyUsd != null && Number.isFinite(implicitMoneyUsd)) tagNames.add('money')
     if (implicitShoppingItems.length) tagNames.add('shopping')
 
@@ -2291,7 +2630,14 @@ function App() {
       const noteToken = `{note:${makeTokenId('note', `${hh}${mm}`)}}`
       const typeTag = (label: string) => toInlineToken('#', 'tag', label)
 
-      const tagTokens = Array.from(tagNames).slice(0, 6).map((t) => toInlineToken('#', 'tag', t))
+      const summaryLower = summary.toLowerCase()
+      const headerTags = Array.from(tagNames).filter((t) => {
+        if (explicitTagNames.has(t)) return true
+        if (!t) return false
+        const rx = new RegExp(String.raw`\b${escapeRegExp(t)}\b`, 'i')
+        return rx.test(summaryLower)
+      })
+      const tagTokens = headerTags.slice(0, 6).map((t) => toInlineToken('#', 'tag', t))
       const peopleTokens = uniqStrings(personMentions).slice(0, 4).map((p) => toInlineToken('@', 'person', p))
       const contextTokens = allContexts.slice(0, 4).map((c) => toInlineToken('*', 'ctx', c))
       const placeTokens = uniqStrings(placeMentions).slice(0, 3).map((p) => toInlineToken('!', 'loc', p))
@@ -2445,6 +2791,8 @@ function App() {
 	    let lastCreated: Selection = { kind: 'none' }
 	    let navigateToMs: number | null = null
 	    let capturePrimaryEventId: string | null = null
+	    let mealEventId: string | null = null
+	    let mealEvent: CalendarEvent | null = null
 	    let captureHasNonLogEvent = false
 	    let createdEventCount = 0
 	    let createdLogCount = 0
@@ -2575,6 +2923,20 @@ function App() {
         includeGlobals: opts.includeGlobals,
       })
       return { mergedTags, inferred }
+    }
+
+    function isMealEventCandidate(title: string, tags?: string[] | null) {
+      const lower = `${title ?? ''} ${(tags ?? []).join(' ')}`.toLowerCase()
+      if (/\b(breakfast|lunch|dinner|snack|meal|brunch)\b/.test(lower)) return true
+      return (tags ?? []).some((tag) => normalizeTagName(tag) === 'food')
+    }
+
+    function rememberMealEvent(ev: CalendarEvent) {
+      if (mealEventId) return
+      if (ev.kind === 'log') return
+      if (!isMealEventCandidate(ev.title, ev.tags)) return
+      mealEventId = ev.id
+      mealEvent = ev
     }
 
   function inferCategorySubcategory(title: string, tags: string[], baseRules?: Array<{ match: string; category?: string; subcategory?: string; tags?: string[] }>) {
@@ -2967,10 +3329,11 @@ function App() {
           })
           const costLine = typeof e.costUsd === 'number' && Number.isFinite(e.costUsd) ? `\nBudget: $${e.costUsd}` : ''
           const nextNotes = e.notes ?? ev.notes
-          const segmentedNotes = maybeSegmentNotes(nextNotes, times.startAt, times.endAt)
+          const normalizedNotes = normalizeTaskChecklistNotes(nextNotes)
+          const segmentedNotes = maybeSegmentNotes(normalizedNotes, times.startAt, times.endAt)
           const next = await upsertEvent({
             ...ev,
-            notes: (segmentedNotes ?? ev.notes) + costLine,
+            notes: (segmentedNotes ?? normalizedNotes ?? ev.notes) + costLine,
             category: inferred.category,
             subcategory: inferred.subcategory,
             estimateMinutes: e.estimateMinutes ?? durationOverride ?? (Boolean(e.allDay) || kind === 'episode' ? null : Math.round((times.endAt - times.startAt) / (60 * 1000))),
@@ -2984,6 +3347,11 @@ function App() {
             project: e.project ?? ev.project ?? projectOverride ?? null,
             contexts: uniqStrings([...(ev.contexts ?? []), ...allContexts]),
           })
+          rememberMealEvent(next)
+          if (next.active && next.kind !== 'log' && next.kind !== 'episode') {
+            await stopOtherActiveEvents(next.id, next.startAt)
+            activeForLogsId = next.id
+          }
           setEvents((prev) => [next, ...prev])
           createdEventKeys.add(makeEventKey(next.title, next.startAt, next.endAt))
           if (next.kind === 'log') {
@@ -3130,7 +3498,7 @@ function App() {
     for (const raw of fmTrackersRaw.slice(0, 10)) {
       const line = String(raw).trim()
       if (!line) continue
-      const m = line.match(/^([a-zA-Z][\\w/-]*)\\s*[:=]\\s*([-+]?\\d*\\.?\\d+)/)
+      const m = line.match(/^([a-zA-Z][\w/-]*)\s*[:=]\s*([-+]?\d*\.?\d+)/)
       if (!m?.[1] || !m?.[2]) continue
       const name = m[1]
       const value = Number(m[2])
@@ -3476,7 +3844,7 @@ function App() {
       })
       const next = await upsertEvent({
         ...ev,
-        notes: e.notes ?? ev.notes,
+        notes: normalizeTaskChecklistNotes(e.notes ?? ev.notes),
         icon: e.icon ?? null,
         color: e.color ?? null,
         category: inferred.category,
@@ -3512,6 +3880,8 @@ function App() {
 		      setCaptureError('LLM returned empty; local parsing is disabled.')
 		      setCaptureProgress((p) => [...p, 'LLM empty; local parsing disabled'].slice(-10))
 		    } else if (!llmSucceeded) {
+          const shouldForceNowLocal =
+            hasNowSignal && !explicitTimeInCapture && groupedNaturalEvents.length === 1 && natural.tasks.length === 0
 		      for (const e of groupedNaturalEvents) {
 		        if (!allowEventCreation) continue
 		        const startAt = e.startAt
@@ -3526,12 +3896,14 @@ function App() {
 		        const autoCharacter = normalizeCharacterSelection(e.character ?? inferCharacterFromText(baseText, e.tags ?? []))
         const locationHint = e.location ?? pickLocationForText(baseText)
         const { mergedTags, inferred } = finalizeCategorizedTags({ title: e.title, tags: e.tags ?? [], location: locationHint })
+		        const activeNow = shouldForceNowLocal && kind !== 'log' && kind !== 'episode'
 		        const times = applyDurationOverride(startAt, endAt, kind)
 		        const ev = await createEvent({
 		          title: e.title,
 		          startAt: times.startAt,
 		          endAt: times.endAt,
 		          kind,
+		          active: activeNow,
 		                                      parentEventId: null,
 		                                      tags: mergedTags,
 		                                      contexts: allContexts,
@@ -3546,9 +3918,9 @@ function App() {
 		                                                                  importance: autoImportance,
 		                                                                  difficulty: autoDifficulty,
 		                                                                })
-		                                                                const next = await upsertEvent({
+		        const next = await upsertEvent({
 		          ...ev,
-		          notes: e.notes ?? ev.notes,
+		          notes: normalizeTaskChecklistNotes(e.notes ?? ev.notes),
 		          icon: e.icon ?? null,
 		          color: e.color ?? null,
 		          category: inferred.category,
@@ -3564,6 +3936,11 @@ function App() {
 		          project: e.project ?? ev.project ?? projectOverride ?? null,
 		          contexts: uniqStrings([...(ev.contexts ?? []), ...allContexts]),
 		        })
+		        if (next.active && next.kind !== 'log' && next.kind !== 'episode') {
+		          await stopOtherActiveEvents(next.id, next.startAt)
+		          activeForLogsId = next.id
+		        }
+		        rememberMealEvent(next)
 		        setEvents((prev) => [next, ...prev])
 		        createdEventKeys.add(makeEventKey(next.title, next.startAt, next.endAt))
 		                                  createdEventCount += 1
@@ -3654,10 +4031,14 @@ function App() {
     if (attachedMode && captureAttachEventId) {
       const attached = events.find((e) => e.id === captureAttachEventId) ?? null
       if (attached) {
+        if (!mealEventId && isMealEventCandidate(attached.title, attached.tags)) {
+          mealEventId = attached.id
+          mealEvent = attached
+        }
         const noteTasks = (llm?.tasks?.length ?? 0) > 0 ? llm!.tasks : natural.tasks
         const noteEvents = (llm?.events?.length ?? 0) > 0 ? llm!.events : natural.events
         const block = buildAttachedCaptureMarkdown(nowMs, { tasks: noteTasks, events: noteEvents })
-        const nextNotes = appendMarkdownBlock(attached.notes, block)
+        const nextNotes = normalizeTaskChecklistNotes(appendMarkdownBlock(attached.notes, block))
         const nextTags = uniqStrings([...(attached.tags ?? []), ...allTagTokens])
         const nextPeople = uniqStrings([...(attached.people ?? []), ...personMentions])
         const nextContexts = uniqStrings([...(attached.contexts ?? []), ...allContexts])
@@ -3814,6 +4195,7 @@ function App() {
                 : parsedMeal.type === 'drink'
                   ? 'Drink'
                   : 'Snack'
+      const mealTags = ['#food', `#${parsedMeal.type}`]
       const normalizeItem = (item: FoodItem) => ({
         ...item,
         id: item.id ?? makeFoodItemId(),
@@ -3865,6 +4247,44 @@ function App() {
           },
           hasMacroData: protein.has || carbs.has || fat.has || fiber.has || saturatedFat.has || transFat.has || sugar.has || sodium.has || potassium.has || cholesterol.has,
         }
+      }
+
+      const formatUnitLabel = (quantity: number, unit: string) => {
+        const base = unit.trim() || 'serving'
+        if (quantity === 1) return base
+        const noPlural = new Set(['oz', 'g', 'kg', 'mg', 'lb', 'lbs', 'ml'])
+        if (noPlural.has(base)) return base
+        if (base.endsWith('s')) return base
+        return `${base}s`
+      }
+
+      const formatMacroCell = (value: number | undefined, unit: string) =>
+        typeof value === 'number' && Number.isFinite(value) ? `${Math.round(value)}${unit}` : '-'
+
+      const buildNutritionTable = (items: FoodItem[], totalCalories: number, macros: ExtendedMacros) => {
+        if (!items.length) return ''
+        const header = [
+          '## Nutrition',
+          '',
+          '| Qty | Item | Calories | Protein | Carbs | Fat | Fiber | Sodium | Potassium |',
+          '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+        ]
+        const rows = items.map((item) => {
+          const qty = Number.isFinite(item.quantity) ? item.quantity : 1
+          const unit = item.unit?.trim() || 'serving'
+          const qtyLabel = `${qty} ${formatUnitLabel(qty, unit)}`
+          return `| ${qtyLabel} | ${item.name} | ${formatMacroCell(item.calories, ' kcal')} | ${formatMacroCell(item.protein, 'g')} | ${formatMacroCell(item.carbs, 'g')} | ${formatMacroCell(item.fat, 'g')} | ${formatMacroCell(item.fiber, 'g')} | ${formatMacroCell(item.sodium, 'mg')} | ${formatMacroCell(item.potassium, 'mg')} |`
+        })
+        const totalRow = `| **Total** |  | ${formatMacroCell(totalCalories, ' kcal')} | ${formatMacroCell(macros.protein, 'g')} | ${formatMacroCell(macros.carbs, 'g')} | ${formatMacroCell(macros.fat, 'g')} | ${formatMacroCell(macros.fiber, 'g')} | ${formatMacroCell(macros.sodium, 'mg')} | ${formatMacroCell(macros.potassium, 'mg')} |`
+        return [...header, ...rows, totalRow].join('\n')
+      }
+
+      const appendNutritionTable = (notes: string | null | undefined, table: string) => {
+        if (!table) return notes ?? ''
+        const existing = notes ?? ''
+        if (existing.includes('## Nutrition') || existing.includes('| Qty | Item |')) return existing
+        const spacer = existing.trim().length ? '\n\n' : ''
+        return `${existing}${spacer}${table}`.trim()
       }
 
       let items = parsedMeal.items.map((item) => normalizeItem(item as FoodItem))
@@ -3921,6 +4341,14 @@ function App() {
             carbs: item.carbs ?? estimated.carbs,
             fat: item.fat ?? estimated.fat,
             fiber: item.fiber ?? estimated.fiber,
+            saturatedFat: item.saturatedFat ?? estimated.saturatedFat,
+            transFat: item.transFat ?? estimated.transFat,
+            sugar: item.sugar ?? estimated.sugar,
+            sodium: item.sodium ?? estimated.sodium,
+            potassium: item.potassium ?? estimated.potassium,
+            cholesterol: item.cholesterol ?? estimated.cholesterol,
+            confidence: item.confidence ?? estimated.confidence,
+            source: item.source ?? estimated.source,
           }
         })
       }
@@ -3943,10 +4371,63 @@ function App() {
       }
 
       const roundOptional = (value?: number) => (typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : undefined)
+      const nutritionTable = buildNutritionTable(items, totalCalories ?? 0, macros)
+      const mealNotes = appendNutritionTable(parsedMeal.notes ?? '', nutritionTable)
+
+      if (!mealEventId && allowEventCreation) {
+        const startAt = eatenAt
+        const durationMinutes = Math.max(15, durationOverride ?? 30)
+        const endAt = startAt + durationMinutes * 60 * 1000
+        const key = makeEventKey(mealTitle, startAt, endAt)
+        if (!createdEventKeys.has(key)) {
+          const { mergedTags, inferred } = finalizeCategorizedTags({ title: mealTitle, tags: mealTags })
+          const ev = await createEvent({
+            title: mealTitle,
+            startAt,
+            endAt,
+            kind: 'event',
+            tags: mergedTags,
+            contexts: allContexts,
+            entityIds,
+            sourceNoteId: note.id,
+            category: inferred.category,
+            subcategory: inferred.subcategory,
+            goal: goalOverride,
+            project: projectOverride,
+            importance: importanceOverride ?? 5,
+            difficulty: difficultyOverride ?? 5,
+          })
+          const next = await upsertEvent({
+            ...ev,
+            notes: mealNotes || ev.notes,
+            category: inferred.category,
+            subcategory: inferred.subcategory,
+            estimateMinutes: durationMinutes,
+            location: parsedMeal.location ?? null,
+            people: cleanPeopleList(uniqStrings(personMentions)),
+            skills: [],
+            character: normalizeCharacterSelection([]),
+            importance: importanceOverride ?? ev.importance ?? 5,
+            difficulty: difficultyOverride ?? ev.difficulty ?? 5,
+            goal: ev.goal ?? goalOverride ?? null,
+            project: ev.project ?? projectOverride ?? null,
+            contexts: uniqStrings([...(ev.contexts ?? []), ...allContexts]),
+          })
+          rememberMealEvent(next)
+          setEvents((prev) => [next, ...prev])
+          createdEventKeys.add(makeEventKey(next.title, next.startAt, next.endAt))
+          createdEventCount += 1
+          captureHasNonLogEvent = true
+          if (!capturePrimaryEventId) capturePrimaryEventId = next.id
+          lastCreated = { kind: 'event', id: next.id }
+          if (navigateToMs == null || next.startAt < navigateToMs) navigateToMs = next.startAt
+          setCaptureProgress((p) => [...p, `+ event: ${next.title}`].slice(-10))
+        }
+      }
 
       await saveMeal({
         id: `meal_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        eventId: capturePrimaryEventId ?? note.id,
+        eventId: mealEventId ?? capturePrimaryEventId ?? note.id,
         type: parsedMeal.type,
         title: mealTitle,
         items,
@@ -3964,9 +4445,18 @@ function App() {
           cholesterol: roundOptional(macros.cholesterol),
         },
         eatenAt,
-        tags: ['#food', `#${parsedMeal.type}`],
+        tags: mealTags,
         estimationModel,
       })
+
+      if (mealEventId && mealEvent) {
+        const nextNotes = appendNutritionTable(mealEvent.notes, nutritionTable)
+        if (nextNotes !== mealEvent.notes) {
+          const updated = await upsertEvent({ ...mealEvent, notes: nextNotes })
+          setEvents((prev) => prev.map((ev) => (ev.id === updated.id ? updated : ev)))
+          mealEvent = updated
+        }
+      }
     }
 
     setCaptureProgress((p) => [...p, `Created: ${createdEventCount} event(s), ${createdLogCount} log(s), ${createdTaskCount} task(s)`].slice(-10))
@@ -3983,11 +4473,16 @@ function App() {
       setSelection({ kind: 'capture', id: note.id })
     }
 
+    const stayOnCalendar = captureReturnView === 'calendar'
     if (navigateToMs != null) {
       setAgendaDate(new Date(navigateToMs))
       openView('calendar')
+    } else if (stayOnCalendar) {
+      openView('calendar')
     } else if (lastCreated.kind === 'task') {
       openView('tasks')
+    } else if (captureReturnView) {
+      openView(captureReturnView)
     } else {
       openView('notes')
     }
@@ -3996,6 +4491,7 @@ function App() {
 		      setCaptureDraft('')
 		      setCaptureInterim('')
 		      setCaptureAttachEventId(null)
+		      setCaptureReturnView(null)
 		      setCaptureOpen(false)
 		    }
 		    } finally {
@@ -4042,8 +4538,8 @@ function App() {
 
 	  function renderView(view: WorkspaceViewKey) {
 	    switch (view) {
-	      case 'dashboard':
-	        return <DashboardView events={events} tasks={tasks} />
+      case 'dashboard':
+        return <DashboardView events={events} tasks={tasks} trackerDefs={trackerDefs} />
 	              case 'notes':
 	                return (
 	                  <NotesView
@@ -4164,9 +4660,11 @@ function App() {
           <EcosystemView
             events={events}
             tasks={tasks}
+            trackerDefs={trackerDefs}
             onOpenGoal={openGoalDetail}
             onOpenProject={openProjectDetail}
             onOpenTracker={openTrackerDetail}
+            onTrackerDefsChange={setTrackerDefs}
           />
         )
       case 'projects':
@@ -4179,13 +4677,21 @@ function App() {
           />
         )
       case 'trackers':
-        return <TrackersView events={events} trackerKey={selectedTrackerKey} onSelectTracker={setSelectedTrackerKey} />
+        return (
+          <TrackersView
+            events={events}
+            trackerDefs={trackerDefs}
+            trackerKey={selectedTrackerKey}
+            onSelectTracker={setSelectedTrackerKey}
+            onTrackerDefsChange={setTrackerDefs}
+          />
+        )
       case 'rewards':
         return <RewardsView events={events} />
       case 'reports':
         return <ReportsView events={events} tasks={tasks} />
       case 'health':
-        return <HealthDashboard events={events} />
+        return <HealthDashboard events={events} trackerDefs={trackerDefs} />
       case 'people':
         return (
           <PeopleView
@@ -4256,6 +4762,18 @@ function App() {
   const selectedEventPeople = selectedEvent?.people ?? []
   const selectedEventLocations = selectedEvent?.location ? parseCommaList(selectedEvent.location) : []
   const selectedEventSkills = selectedEvent?.skills ?? []
+  const selectedEventTracker = useMemo(() => {
+    if (!selectedEvent?.trackerKey) return null
+    const raw = selectedEvent.trackerKey.trim()
+    if (!raw) return null
+    if (raw.startsWith('habit:')) {
+      const habitId = raw.slice('habit:'.length)
+      const habit = habitDefs.find((h) => h.id === habitId) ?? null
+      return { key: raw, label: habit?.name ?? 'Habit' }
+    }
+    const def = trackerDefs.find((t) => t.key === raw) ?? null
+    return { key: raw, label: def?.label ?? raw }
+  }, [habitDefs, selectedEvent?.trackerKey, trackerDefs])
   const [nowTick, setNowTick] = useState(() => Date.now())
 
   useEffect(() => {
@@ -4395,7 +4913,7 @@ function App() {
 
   function parseTags(raw: string) {
     return raw
-      .split(/[,\\s]+/)
+      .split(/[,\s]+/)
       .map((t) => t.trim())
       .filter(Boolean)
       .map((t) => (t.startsWith('#') ? t : `#${t}`))
@@ -4405,7 +4923,7 @@ function App() {
   function normalizeContextToken(raw: string) {
     const trimmed = raw.trim()
     if (!trimmed) return null
-    const withoutPrefix = trimmed.replace(/^[@+]/, '').replace(/^at\\s+/i, '').trim()
+    const withoutPrefix = trimmed.replace(/^[@+]/, '').replace(/^at\s+/i, '').trim()
     return withoutPrefix || null
   }
 
@@ -4416,7 +4934,7 @@ function App() {
   function formatContextLabel(value: string) {
     const trimmed = value.trim()
     if (!trimmed) return ''
-    if (/^(@|\\+|at\\s+)/i.test(trimmed)) return trimmed
+    if (/^(@|\+|at\s+)/i.test(trimmed)) return trimmed
     return `at ${trimmed}`
   }
 
@@ -5181,8 +5699,8 @@ function App() {
             {explorerRecentOpen ? (
               <div className="sbTree">
                 {captures.slice(0, 12).map((c) => {
-                  const title = (c.rawText.split(/\\r?\\n/)[0] ?? '').trim()
-                  const snippet = c.rawText.replace(/\\s+/g, ' ').slice(0, 72)
+                  const title = (c.rawText.split(/\r?\n/)[0] ?? '').trim()
+                  const snippet = c.rawText.replace(/\s+/g, ' ').slice(0, 72)
                   return (
                     <button
                       key={c.id}
@@ -5841,6 +6359,67 @@ function App() {
                 }}
                 placeholder="Event title..."
               />
+              {selectedEventTracker ? (
+                <div className="detailRow">
+                  <div className="detailLabel">Active tracker</div>
+                  <div className="detailChips">
+                    <button
+                      className="detailChip active"
+                      onClick={() => openTrackerDetail(selectedEventTracker.key)}
+                      type="button">
+                      {selectedEventTracker.label}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="detailRow detailNotesSection" style={{ marginTop: 12 }}>
+                <div className="detailLabelRow">
+                  <div className="detailLabel">Notes</div>
+                  <div className="detailLabelActions">
+                    <button
+                      className="detailInlineBtn"
+                      onClick={() => {
+                        setCaptureDraft('')
+                        setCaptureInterim('')
+                        openCapture({ attachEventId: selectedEvent.id })
+                      }}
+                      type="button">
+                      <Icon name="mic" size={12} />
+                      Transcribe
+                    </button>
+                  </div>
+                </div>
+                <MarkdownEditor
+                  value={selectedEvent.notes ?? ''}
+                  onChange={(next) => commitEvent({ ...selectedEvent, notes: next })}
+                  onToggleChecklist={(lineIndex) => {
+                    if (selectedEvent.kind === 'task' && selectedEvent.taskId) {
+                      onToggleTaskChecklistItem(selectedEvent.taskId, lineIndex)
+                      return
+                    }
+                    void onToggleEventNoteChecklist(selectedEvent, lineIndex)
+                  }}
+                  onStartTask={(task) => onStartNoteTask(selectedEvent.id, task)}
+                  taskStateByToken={selectedEventNoteTasks}
+                  nowMs={nowTick}
+                  placeholder="Write notes…"
+                  ariaLabel="Event notes"
+                />
+                <button
+                  className="secondaryButton detailSegmentBtn"
+                  onClick={() => {
+                    const label = window.prompt('Segment label (e.g., Inpatient)')
+                    if (!label) return
+                    const t = new Date()
+                    const hh = String(t.getHours()).padStart(2, '0')
+                    const mm = String(t.getMinutes()).padStart(2, '0')
+                    const next = `${(selectedEvent.notes ?? '').trim()}\n**${hh}:${mm}** - ${label}\n`
+                    commitEvent({ ...selectedEvent, notes: next.trim() })
+                  }}>
+                  + Segment
+                </button>
+              </div>
               <div className="detailGrid">
                 <label>
                   Start
@@ -5915,55 +6494,6 @@ function App() {
                     ))}
                   </div>
                 </label>
-              </div>
-
-              {/* Notes Section - moved up from bottom */}
-              <div className="detailRow detailNotesSection" style={{ marginTop: 12 }}>
-                <div className="detailLabelRow">
-                  <div className="detailLabel">Notes</div>
-                  <div className="detailLabelActions">
-                    <button
-                      className="detailInlineBtn"
-                      onClick={() => {
-                        setCaptureDraft('')
-                        setCaptureInterim('')
-                        openCapture({ attachEventId: selectedEvent.id })
-                      }}
-                      type="button">
-                      <Icon name="mic" size={12} />
-                      Transcribe
-                    </button>
-                  </div>
-                </div>
-                <MarkdownEditor
-                  value={selectedEvent.notes ?? ''}
-                  onChange={(next) => commitEvent({ ...selectedEvent, notes: next })}
-                  onToggleChecklist={(lineIndex) => {
-                    if (selectedEvent.kind === 'task' && selectedEvent.taskId) {
-                      onToggleTaskChecklistItem(selectedEvent.taskId, lineIndex)
-                      return
-                    }
-                    void onToggleEventNoteChecklist(selectedEvent, lineIndex)
-                  }}
-                  onStartTask={(task) => onStartNoteTask(selectedEvent.id, task)}
-                  taskStateByToken={selectedEventNoteTasks}
-                  nowMs={nowTick}
-                  placeholder="Write notes…"
-                  ariaLabel="Event notes"
-                />
-                <button
-                  className="secondaryButton detailSegmentBtn"
-                  onClick={() => {
-                    const label = window.prompt('Segment label (e.g., Inpatient)')
-                    if (!label) return
-                    const t = new Date()
-                    const hh = String(t.getHours()).padStart(2, '0')
-                    const mm = String(t.getMinutes()).padStart(2, '0')
-                    const next = `${(selectedEvent.notes ?? '').trim()}\n**${hh}:${mm}** - ${label}\n`
-                    commitEvent({ ...selectedEvent, notes: next.trim() })
-                  }}>
-                  + Segment
-                </button>
               </div>
 
               {/* Collapsible Properties Section */}
@@ -6165,22 +6695,20 @@ function App() {
               </div>
 	              {selectedEventLogs.length ? (
 	                <div className="detailRow">
-	                  <div className="detailLabel">
-	                    Running sheet
-	                    <div className="detailLogList">
-	                      {selectedEventLogs.map((l) => (
+	                  <div className="detailLabel">Signals</div>
+	                  <div className="detailLogChips">
+	                    {selectedEventLogs.map((l) => (
                         <button
                           key={l.id}
-                          className="detailLogRow"
+                          className="detailLogChip"
                           onClick={() => {
                             setSelection({ kind: 'event', id: l.id })
                             setRightMode('details')
                           }}>
-                          <span className="detailLogTime">{new Date(l.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                          <span className="detailLogTitle">{l.title}</span>
+                          <span className="detailLogChipTime">{new Date(l.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="detailLogChipTitle">{l.title}</span>
                         </button>
                       ))}
-	                    </div>
 	                  </div>
 	                </div>
 	              ) : null}
@@ -6431,6 +6959,30 @@ function App() {
                     alert(`Created ${titles.length} task(s) from this note.`)
                   }}>
                   Extract tasks
+                </button>
+                <button
+                  className="secondaryButton"
+                  onClick={() => {
+                    void (async () => {
+                      const result = await createTrackerLogsFromText({
+                        text: selectedCapture.rawText,
+                        atMs: selectedCapture.createdAt,
+                        sourceNoteId: selectedCapture.id,
+                        events,
+                        ensureTrackerDefinition,
+                        defaultTrackerUnit,
+                        findBestActiveEventAt,
+                        createEvent,
+                        setEvents,
+                      })
+                      if (result.created === 0) {
+                        alert('No trackers found. Try “mood 7/10”, “energy 6”, or “I feel great”.')
+                      } else {
+                        alert(`Created ${result.created} tracker log(s) from this note.`)
+                      }
+                    })()
+                  }}>
+                  Extract trackers
                 </button>
               </div>
             </div>

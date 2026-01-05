@@ -70,6 +70,10 @@ export type Task = {
   completedAt?: number | null
   tags?: string[]
   contexts?: string[]
+  people?: string[]
+  location?: string | null
+  skills?: string[]
+  character?: string[]
   entityIds: string[]
   parentEventId?: string | null
   project?: string | null

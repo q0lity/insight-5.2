@@ -19,7 +19,15 @@ export function toggleChecklistLine(notes: string | null | undefined, lineIndex:
   const line = lines[lineIndex]
   if (line == null) return notes ?? ''
   const m = line.match(/^(\s*[-*+]\s*\[)( |x|X)(\]\s+)(.+)\s*$/)
-  if (!m) return notes ?? ''
+  if (!m) {
+    const trimmed = line.trimStart()
+    if (!/^[-*+]\s+/.test(trimmed)) return notes ?? ''
+    if (!/(?:\{task:[^}]+\}|\{habit:[^}]+\}|#task\b|#habit\b)/i.test(line)) return notes ?? ''
+    const indent = line.match(/^\s*/)?.[0] ?? ''
+    const rest = trimmed.replace(/^[-*+]\s+/, '')
+    lines[lineIndex] = `${indent}- [x] ${rest}`.trimEnd()
+    return lines.join('\n')
+  }
   const nextMark = (m[2] ?? '').toLowerCase() === 'x' ? ' ' : 'x'
   lines[lineIndex] = `${m[1]}${nextMark}${m[3]}${m[4] ?? ''}`.trimEnd()
   return lines.join('\n')

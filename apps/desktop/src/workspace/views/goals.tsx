@@ -9,6 +9,7 @@ import { HabitHeatmap, parseHabitTrackerKey } from '../../ui/habit-heatmap'
 import { createEvent, deleteEvent, findActiveByTrackerKey, upsertEvent } from '../../storage/calendar'
 import { createTask } from '../../storage/tasks'
 import { loadSettings } from '../../assistant/storage'
+import { emptySharedMeta, loadGoalDefs, saveGoalDefs, type GoalDef } from '../../storage/ecosystem'
 
 function minutesBetween(a: number, b: number) {
   return Math.max(0, Math.round((b - a) / (60 * 1000)))
@@ -34,14 +35,17 @@ type HabitDef = {
   character?: Array<'STR' | 'INT' | 'CON' | 'PER'>
   skills?: string[]
   tags?: string[]
+  contexts?: string[]
+  people?: string[]
+  location?: string | null
+  goal?: string | null
+  project?: string | null
   estimateMinutes?: number | null
+  color?: string | null
+  icon?: string | null
+  isTimed?: boolean
 }
 
-type GoalDef = {
-  id: string
-  name: string
-  createdAt: number
-}
 
 function startOfDayMs(ms: number) {
   const d = new Date(ms)
@@ -103,25 +107,6 @@ function makeGoalId() {
   return `goal_${Date.now()}_${Math.random().toString(16).slice(2)}`
 }
 
-function loadGoalDefs(): GoalDef[] {
-  try {
-    const raw = localStorage.getItem('insight5.goals.defs.v1')
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as GoalDef[]
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((g) => g && typeof g.id === 'string' && typeof g.name === 'string' && typeof g.createdAt === 'number')
-  } catch {
-    return []
-  }
-}
-
-function saveGoalDefs(defs: GoalDef[]) {
-  try {
-    localStorage.setItem('insight5.goals.defs.v1', JSON.stringify(defs))
-  } catch {
-    // ignore
-  }
-}
 
 function parsePlanDate(raw: string): number | null {
   const match = raw.match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/)
@@ -249,7 +234,7 @@ export function GoalsView(props: {
       setNewGoalDraft('')
       return
     }
-    const def: GoalDef = { id: makeGoalId(), name: next, createdAt: Date.now() }
+    const def: GoalDef = { id: makeGoalId(), name: next, createdAt: Date.now(), meta: emptySharedMeta() }
     setGoalDefs((prev) => [def, ...prev.filter((g) => normalizeKey(g.name) !== key)])
     setActiveGoal(next)
     props.onOpenGoal?.(next)

@@ -1,17 +1,26 @@
 import { useMemo, useState } from 'react'
 import { MarkdownView } from './markdown'
+import type { NoteItemKind } from '../markdown/note-items'
 
 export function MarkdownEditor(props: {
   value: string
   onChange: (next: string) => void
   onToggleChecklist?: (lineIndex: number) => void
-  onStartTask?: (task: { tokenId: string; title: string; estimateMinutes?: number | null; dueAt?: number | null }) => void
+  onStartTask?: (task: {
+    tokenId: string
+    title: string
+    estimateMinutes?: number | null
+    dueAt?: number | null
+    kind?: NoteItemKind
+    rawText?: string
+    lineIndex?: number | null
+  }) => void
   taskStateByToken?: Record<string, { status: string; startedAt?: number | null }>
   nowMs?: number
   placeholder?: string
   ariaLabel?: string
 }) {
-  const [mode, setMode] = useState<'edit' | 'preview'>('edit')
+  const [mode, setMode] = useState<'edit' | 'preview'>('preview')
   const trimmed = props.value?.trim() ?? ''
   const preview = useMemo(() => (trimmed ? trimmed : ''), [trimmed])
 

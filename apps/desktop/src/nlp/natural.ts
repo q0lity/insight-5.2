@@ -260,25 +260,71 @@ function estimateMinutes(text: string) {
   return 30
 }
 
+const NUMBER_WORDS: Record<string, number> = {
+  zero: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+}
+
+const NUMBER_WORD_PATTERN = Object.keys(NUMBER_WORDS).join('|')
+
+function parseNumberToken(raw: string) {
+  const cleaned = raw.trim().toLowerCase()
+  if (!cleaned) return null
+  if (NUMBER_WORDS[cleaned] != null) return NUMBER_WORDS[cleaned]
+  const num = Number(cleaned)
+  return Number.isFinite(num) ? num : null
+}
+
+function parseRatingRange(first: string, second?: string | null) {
+  const a = parseNumberToken(first)
+  if (a == null) return null
+  const b = second ? parseNumberToken(second) : null
+  const value = b != null ? (a + b) / 2 : a
+  return clamp(value, 0, 10)
+}
+
 function parseMood(text: string) {
   const t = text.toLowerCase()
   if (/#mood\s*(?:\(|:)/.test(t)) return null
   const wordCount = t.split(/\s+/).filter(Boolean).length
   if (wordCount <= 2 && /\b(ok|okay)\b/.test(t)) return null
-  const frac = t.match(/\b(?:feeling|feel|mood)\b[^0-9]{0,24}(\d{1,2})\s*\/\s*10\b/)
+  const moodSignal = /\b(feeling|feel|mood|looking forward|cant wait|can't wait|excited|love (?:doing|this|it))\b/.test(t)
+  if (!moodSignal) return null
+  const tokenPattern = String.raw`(?:\d{1,2}|${NUMBER_WORD_PATTERN})`
+  const frac = t.match(
+    new RegExp(
+      String.raw`\b(?:feeling|feel|mood)\b(?:\s*(?:is|was|were|like|around|about|at|:)?\s*)(${tokenPattern})(?:\s*(?:-|to)\s*(${tokenPattern}))?\s*\/\s*10\b`,
+    ),
+  )
   if (frac?.[1]) {
-    const v = clamp(Number(frac[1]), 0, 10)
-    return Number.isFinite(v) ? v : null
+    const v = parseRatingRange(frac[1], frac[2])
+    return v != null ? v : null
   }
 
-  const direct = t.match(/\b(?:mood|feeling|feel)\b[^0-9]{0,24}(\d{1,2})\b/)
+  const direct = t.match(
+    new RegExp(
+      String.raw`\b(?:mood|feeling|feel)\b(?:\s*(?:is|was|were|like|around|about|at|:)?\s*)(${tokenPattern})(?:\s*(?:-|to)\s*(${tokenPattern}))?\b`,
+    ),
+  )
   if (direct?.[1]) {
-    const v = clamp(Number(direct[1]), 0, 10)
-    return Number.isFinite(v) ? v : null
+    const v = parseRatingRange(direct[1], direct[2])
+    return v != null ? v : null
   }
 
   const adjectiveMap: Array<{ re: RegExp; value: number }> = [
     { re: /\b(amazing|awesome|fantastic|incredible|great)\b/, value: 9 },
+    { re: /\b(looking forward)\b/, value: 7 },
+    { re: /\b(cant wait|can't wait|excited)\b/, value: 8 },
+    { re: /\b(love (?:doing|this|it))\b/, value: 8 },
     { re: /\b(good|pretty good|fine)\b/, value: 7 },
     { re: /\b(okay|ok|meh|neutral)\b/, value: 5 },
     { re: /\b(bad|not great|not good)\b/, value: 3 },
@@ -290,7 +336,6 @@ function parseMood(text: string) {
   for (const m of adjectiveMap) {
     if (m.re.test(t)) return m.value
   }
-  if (!/\b(?:feeling|feel|mood)\b/.test(t)) return null
   return null
 }
 
@@ -427,6 +472,7 @@ function pickEventAndTaskFromPrefix(prefix: string) {
 export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseNaturalResult {
   const tasks: ParsedTask[] = []
   const events: ParsedEvent[] = []
+  const wallNow = Date.now()
 
   const text = rawText.trim()
   if (!text) return { tasks, events }
@@ -438,6 +484,24 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
   let lastExplicitStartMin: number | null = null
   let lastExplicitEndMin: number | null = null
   let lastTaskIndex: number | null = null
+  let lastMealEventIndex: number | null = null
+  let lastMealType: string | null = null
+
+  const FOOD_ITEM_HINT_RE = /\b(wraps?|tortillas?|tacos?|burritos?|sandwich|salad|pizza|pasta|rice|chicken|beef|fish|cheese|rotisserie|costco|havarti|wellness|protein)\b/i
+
+  function inferMealTypeFromTime(atMs: number) {
+    const hour = new Date(atMs).getHours()
+    if (hour >= 5 && hour < 11) return 'breakfast'
+    if (hour >= 11 && hour < 15) return 'lunch'
+    if (hour >= 17 && hour < 21) return 'dinner'
+    return 'snack'
+  }
+
+  function appendMealItems(ev: ParsedEvent, items: string[]) {
+    if (!items.length) return
+    const lines = items.map((x) => `- ${x}`)
+    ev.notes = ev.notes && ev.notes.trim().length ? `${ev.notes}\n${lines.join('\n')}` : lines.join('\n')
+  }
 
   const phrases = splitCandidatePhrases(text)
   for (const phraseRaw of phrases) {
@@ -468,6 +532,9 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
 
     if (mood != null) {
       let at = isPast ? defaultPastAt(dayStart, phraseRaw, nowMs) : nowMs
+      const moodHint = phraseRaw.toLowerCase()
+      const nowHint = /\b(now|right now|currently|at the moment|after|afterwards|later|end(?:ed)?|finished)\b/.test(moodHint)
+      if (nowHint) at = wallNow
       if (time) {
         let startAt = dayStart + clamp(time.startMin, 0, 24 * 60 - 1) * 60 * 1000
         if (!isPast && startAt < nowMs - 60 * 60 * 1000 && dayOffset === 0) startAt = startAt + 24 * 60 * 60 * 1000
@@ -600,32 +667,46 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
 
   // Food / meals (MVP heuristic).
   const mealKind = /\b(breakfast|lunch|dinner|snack|meal)\b/i.exec(phrase)?.[1]?.toLowerCase() ?? null
-  const ate = phrase.match(/\b(ate|eating|eat|having|have)\b\s+(.+)$/i)
+  const ateMatch = phrase.match(/\b(ate|eating|eat|having|had)\b\s+(.+)$/i)
+  const haveMatch = phrase.match(/\bhave\b\s+(.+)$/i)
+  const haveTail = haveMatch?.[1] ?? ''
+  const haveLooksFood = Boolean(haveMatch) && !/\bhave to\b/i.test(phrase) && FOOD_ITEM_HINT_RE.test(haveTail)
+  const mealTail = ateMatch?.[2] ?? (haveLooksFood ? haveTail : '')
   // Avoid spurious "Meal" events when the word "meal" appears without an eating verb.
-  if ((mealKind && mealKind !== 'meal') || ate?.[2]) {
+  if ((mealKind && mealKind !== 'meal') || mealTail) {
     const at = isPast ? defaultPastAt(dayStart, phrase, nowMs) : nowMs
-    const title = mealKind ? mealKind[0].toUpperCase() + mealKind.slice(1) : 'Meal'
-    const list = (ate?.[2] ?? '')
+    const explicitMealType = mealKind && mealKind !== 'meal' ? mealKind : null
+    const inferredMealType = explicitMealType ?? lastMealType ?? inferMealTypeFromTime(at)
+    const title = inferredMealType ? inferredMealType[0].toUpperCase() + inferredMealType.slice(1) : 'Meal'
+    const list = mealTail
       .split(/,|\band\b/i)
-        .map((x) => x.trim())
-        .filter(Boolean)
-        .slice(0, 12)
-      const dur = Math.max(15, parseDurationMinutes(phrase) ?? 30)
-      const titleNorm = normalizeTitle(title)
-      if (looksLikeGarbagePhrase(titleNorm)) continue
-      events.push({
-        title: titleNorm,
-        startAt: at,
-        endAt: at + dur * 60 * 1000,
-        kind: 'event',
-        tags: ['#food'],
-        notes: list.length ? list.map((x) => `- ${x}`).join('\n') : undefined,
-        estimateMinutes: dur,
-        explicitTime: false,
-        sourceText: phraseRaw,
-      })
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .slice(0, 12)
+    const dur = Math.max(15, parseDurationMinutes(phrase) ?? 30)
+    const titleNorm = normalizeTitle(title)
+    if (looksLikeGarbagePhrase(titleNorm)) continue
+    const existingMeal = lastMealEventIndex != null ? events[lastMealEventIndex] ?? null : null
+    if (existingMeal && !explicitMealType) {
+      appendMealItems(existingMeal, list)
+      lastMealType = inferredMealType ?? lastMealType
       continue
     }
+    events.push({
+      title: titleNorm,
+      startAt: at,
+      endAt: at + dur * 60 * 1000,
+      kind: 'event',
+      tags: ['#food'],
+      notes: list.length ? list.map((x) => `- ${x}`).join('\n') : undefined,
+      estimateMinutes: dur,
+      explicitTime: false,
+      sourceText: phraseRaw,
+    })
+    lastMealEventIndex = events.length - 1
+    lastMealType = inferredMealType ?? lastMealType
+    continue
+  }
 
     // Hydration (MVP).
     const drank = phrase.match(/\b(drank|drink|drinking)\b\s+(.+)$/i)
@@ -657,6 +738,11 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
         sourceText: phraseRaw,
       })
       tasks.push({ title: 'Buy groceries', status: 'done', notes: list.map((x) => `- [x] ${x}`).join('\n'), estimateMinutes: 45 })
+      continue
+    }
+
+    // Skip standalone food item fragments after we already detected a meal.
+    if (lastMealEventIndex != null && FOOD_ITEM_HINT_RE.test(phrase) && !time) {
       continue
     }
 
@@ -758,6 +844,7 @@ function splitOnDividers(text: string): string[] {
  */
 function extractTrackers(text: string): Array<{ key: string; value: number }> {
   const trackers: Array<{ key: string; value: number }> = []
+  const tokenPattern = String.raw`(?:\d{1,2}|${NUMBER_WORD_PATTERN})`
 
   // #tracker(value) pattern
   const parenPattern = /#([a-zA-Z][\w/-]*)\s*\(\s*([-+]?\d*\.?\d+)\s*\)/g
@@ -780,13 +867,31 @@ function extractTrackers(text: string): Array<{ key: string; value: number }> {
   }
 
   // Natural language patterns like "mood 7/10" or "energy is 8"
-  const nlPattern = /\b(mood|energy|stress|pain|anxiety|focus|motivation|sleep|productivity)\b[^0-9]{0,12}(\d{1,2})(?:\s*\/\s*10)?/gi
+  const nlPattern = new RegExp(
+    String.raw`\b(mood|energy|stress|pain|anxiety|focus|motivation|sleep|productivity)\b(?:\s*(?:is|was|were|like|around|about|at|:)?\s*)(${tokenPattern})(?:\s*(?:-|to)\s*(${tokenPattern}))?(?:\s*\/\s*10)?`,
+    'gi',
+  )
   for (const m of text.matchAll(nlPattern)) {
     const key = m[1]!.toLowerCase()
-    const value = clamp(parseInt(m[2]!, 10), 0, 10)
-    if (Number.isFinite(value) && !trackers.some((t) => t.key === key)) {
+    const value = parseRatingRange(m[2]!, m[3])
+    if (value != null && !trackers.some((t) => t.key === key)) {
       trackers.push({ key, value })
     }
+  }
+
+  if (!trackers.some((t) => t.key === 'mood')) {
+    const moodValue = parseMood(text)
+    if (moodValue != null) trackers.push({ key: 'mood', value: moodValue })
+  }
+
+  if (!trackers.some((t) => t.key === 'energy')) {
+    if (/\b(energized|wired|pumped|high energy)\b/i.test(text)) trackers.push({ key: 'energy', value: 8 })
+    else if (/\b(tired|exhausted|drained|fatigued|low energy)\b/i.test(text)) trackers.push({ key: 'energy', value: 3 })
+  }
+
+  if (!trackers.some((t) => t.key === 'stress')) {
+    if (/\b(calm|relaxed)\b/i.test(text)) trackers.push({ key: 'stress', value: 2 })
+    else if (/\b(stressed|overwhelmed|anxious)\b/i.test(text)) trackers.push({ key: 'stress', value: 7 })
   }
 
   return trackers

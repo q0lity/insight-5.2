@@ -1,295 +1,307 @@
-import { useMemo, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useEffect, useMemo, useState } from 'react'
 import type { CalendarEvent } from '../../storage/calendar'
 import type { Task } from '../../storage/tasks'
-import { loadMultipliers, saveMultipliers } from '../../storage/multipliers'
-import { loadCustomTaxonomy, saveCustomTaxonomy, upsertCategory } from '../../taxonomy/custom'
-import { categoriesFromStarter, subcategoriesFromStarter } from '../../taxonomy/starter'
 import { Icon } from '../../ui/icons'
-
-type MultiplierRow = { key: string; label: string; value: number }
+import { MetaEditor } from '../../ui/MetaEditor'
+import { emptySharedMeta, loadProjectDefs, saveProjectDefs, type ProjectDef } from '../../storage/ecosystem'
 
 function normalizeKey(raw: string | null | undefined) {
   return (raw ?? '').trim().toLowerCase()
 }
 
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n))
+function makeId() {
+  return `project_${Date.now()}_${Math.random().toString(16).slice(2)}`
 }
 
-export function ProjectsView(props: { events: CalendarEvent[]; tasks: Task[] }) {
-  const [multipliers, setMultipliers] = useState(() => loadMultipliers())
-  const [customTaxonomy, setCustomTaxonomy] = useState(() => loadCustomTaxonomy())
-  const [goalDraft, setGoalDraft] = useState('')
-  const [projectDraft, setProjectDraft] = useState('')
-  const [categoryDraft, setCategoryDraft] = useState('')
-  const [subcategoryDraft, setSubcategoryDraft] = useState('')
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
+type ProjectStats = {
+  minutes: number
+  eventCount: number
+  taskCount: number
+  lastAt: number
+}
 
-  const goals = useMemo(() => {
-    const keys = new Set<string>()
-    for (const e of props.events) if ((e.goal ?? '').trim()) keys.add(e.goal!.trim())
-    for (const t of props.tasks) if ((t.goal ?? '').trim()) keys.add(t.goal!.trim())
-    return Array.from(keys)
-  }, [props.events, props.tasks])
+export function ProjectsView(props: {
+  events: CalendarEvent[]
+  tasks: Task[]
+  projectName?: string | null
+  onSelectProject?: (name: string | null) => void
+}) {
+  const [defs, setDefs] = useState<ProjectDef[]>(() => loadProjectDefs())
+  const [query, setQuery] = useState('')
+  const [draft, setDraft] = useState('')
+  const [activeKey, setActiveKey] = useState<string | null>(() => {
+    const key = normalizeKey(props.projectName)
+    return key || null
+  })
 
-  const projects = useMemo(() => {
-    const keys = new Set<string>()
-    for (const e of props.events) if ((e.project ?? '').trim()) keys.add(e.project!.trim())
-    for (const t of props.tasks) if ((t.project ?? '').trim()) keys.add(t.project!.trim())
-    return Array.from(keys)
-  }, [props.events, props.tasks])
-
-  const goalRows = useMemo<MultiplierRow[]>(() => {
-    return goals.map((g) => ({
-      key: normalizeKey(g),
-      label: g,
-      value: multipliers.goals[normalizeKey(g)] ?? 1,
-    }))
-  }, [goals, multipliers.goals])
-
-  const projectRows = useMemo<MultiplierRow[]>(() => {
-    return projects.map((p) => ({
-      key: normalizeKey(p),
-      label: p,
-      value: multipliers.projects[normalizeKey(p)] ?? 1,
-    }))
-  }, [multipliers.projects, projects])
-
-  const categories = useMemo(() => categoriesFromStarter(), [])
-
-  function updateMultipliers(next: typeof multipliers) {
-    setMultipliers(next)
-    saveMultipliers(next)
-  }
-
-  function updateGoalMultiplier(goal: string, value: number) {
-    const key = normalizeKey(goal)
-    if (!key) return
-    updateMultipliers({
-      ...multipliers,
-      goals: { ...multipliers.goals, [key]: clamp(value, 0.1, 3) },
-    })
-  }
-
-  function updateProjectMultiplier(project: string, value: number) {
-    const key = normalizeKey(project)
-    if (!key) return
-    updateMultipliers({
-      ...multipliers,
-      projects: { ...multipliers.projects, [key]: clamp(value, 0.1, 3) },
-    })
-  }
-
-  function addCustomCategory() {
-    const category = categoryDraft.trim()
-    if (!category) return
-    upsertCategory(category, [])
-    setCustomTaxonomy(loadCustomTaxonomy())
-    setCategoryDraft('')
-  }
-
-  function addSubcategory() {
-    const category = (activeCategory ?? '').trim()
-    const sub = subcategoryDraft.trim()
-    if (!category || !sub) return
-    const current = loadCustomTaxonomy()
-    const idx = current.findIndex((c) => c.category.toLowerCase() === category.toLowerCase())
-    if (idx >= 0) {
-      const existing = current[idx]!
-      const subs = Array.from(new Set([...existing.subcategories, sub]))
-      current[idx] = { category: existing.category, subcategories: subs }
-    } else {
-      current.push({ category, subcategories: [sub] })
+  useEffect(() => {
+    if (!props.projectName) {
+      setActiveKey(null)
+      return
     }
-    saveCustomTaxonomy(current)
-    setCustomTaxonomy(loadCustomTaxonomy())
-    setSubcategoryDraft('')
+    const key = normalizeKey(props.projectName)
+    if (!key) return
+    ensureProjectDef(props.projectName)
+    setActiveKey(key)
+  }, [props.projectName])
+
+  const projectNames = useMemo(() => {
+    const out = new Map<string, string>()
+    for (const def of defs) out.set(normalizeKey(def.name), def.name)
+    for (const e of props.events) {
+      if (!e.project) continue
+      const key = normalizeKey(e.project)
+      if (!key) continue
+      if (!out.has(key)) out.set(key, e.project)
+    }
+    for (const t of props.tasks) {
+      if (!t.project) continue
+      const key = normalizeKey(t.project)
+      if (!key) continue
+      if (!out.has(key)) out.set(key, t.project)
+    }
+    return out
+  }, [defs, props.events, props.tasks])
+
+  const statsByKey = useMemo(() => {
+    const byKey = new Map<string, ProjectStats>()
+    const ensure = (key: string) => {
+      const existing = byKey.get(key)
+      if (existing) return existing
+      const next = { minutes: 0, eventCount: 0, taskCount: 0, lastAt: 0 }
+      byKey.set(key, next)
+      return next
+    }
+
+    for (const e of props.events) {
+      const key = normalizeKey(e.project)
+      if (!key) continue
+      const row = ensure(key)
+      const minutes = Math.max(0, Math.round((e.endAt - e.startAt) / (60 * 1000)))
+      row.minutes += minutes
+      row.eventCount += 1
+      row.lastAt = Math.max(row.lastAt, e.startAt)
+    }
+
+    for (const t of props.tasks) {
+      const key = normalizeKey(t.project)
+      if (!key) continue
+      const row = ensure(key)
+      row.taskCount += 1
+      if (typeof t.estimateMinutes === 'number') row.minutes += t.estimateMinutes
+      const taskAt = t.scheduledAt ?? t.dueAt ?? t.createdAt
+      if (taskAt) row.lastAt = Math.max(row.lastAt, taskAt)
+    }
+
+    return byKey
+  }, [props.events, props.tasks])
+
+  const projectRows = useMemo(() => {
+    return Array.from(projectNames.entries())
+      .map(([key, name]) => {
+        const def = defs.find((d) => normalizeKey(d.name) === key) ?? null
+        const stats = statsByKey.get(key) ?? { minutes: 0, eventCount: 0, taskCount: 0, lastAt: 0 }
+        return { key, name, def, stats }
+      })
+      .filter((row) => row.name.toLowerCase().includes(query.trim().toLowerCase()))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [defs, projectNames, query, statsByKey])
+
+  function updateDefs(next: ProjectDef[]) {
+    setDefs(next)
+    saveProjectDefs(next)
   }
+
+  function ensureProjectDef(name: string) {
+    const key = normalizeKey(name)
+    if (!key) return null
+    const existing = defs.find((d) => normalizeKey(d.name) === key)
+    if (existing) return existing
+    const next: ProjectDef = { id: makeId(), name, createdAt: Date.now(), meta: emptySharedMeta() }
+    const nextDefs = [next, ...defs]
+    updateDefs(nextDefs)
+    return next
+  }
+
+  const activeProject = activeKey ? defs.find((d) => normalizeKey(d.name) === activeKey) ?? null : null
+  const activeStats = activeKey ? statsByKey.get(activeKey) ?? null : null
+  const linkedGoals = useMemo(() => {
+    if (!activeProject) return []
+    const out = new Set<string>()
+    for (const e of props.events) {
+      if (normalizeKey(e.project) === activeKey && e.goal) out.add(e.goal)
+    }
+    for (const t of props.tasks) {
+      if (normalizeKey(t.project) === activeKey && t.goal) out.add(t.goal)
+    }
+    return Array.from(out)
+  }, [activeKey, activeProject, props.events, props.tasks])
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
-      <div className="px-10 pt-10 pb-6 bg-[var(--bg)]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8 max-w-7xl mx-auto w-full">
+      <div className="px-10 pt-10 pb-6 bg-[var(--bg)]/80 backdrop-blur-xl sticky top-0 z-10 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <h1 className="text-3xl font-extrabold tracking-tight">Ecosystem</h1>
-            <p className="text-sm text-[var(--muted)] font-semibold">Define the structures that organize your digital life.</p>
+            <h1 className="text-3xl font-extrabold tracking-tight">Projects</h1>
+            <p className="text-sm text-[var(--muted)] font-semibold">Organize goals, tags, and linked habits in one place.</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="px-4 py-2 bg-white/50 backdrop-blur border border-white/20 rounded-full shadow-sm flex items-center gap-2">
+              <Icon name="briefcase" size={14} className="text-[var(--accent)]" />
+              <span className="text-xs font-bold">{projectRows.length} Projects</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-6 mt-6">
+          <div className="flex-1 min-w-[240px] max-w-md relative">
+            <input
+              className="w-full h-11 bg-white/50 border border-black/5 rounded-2xl px-10 text-sm font-medium focus:bg-white focus:shadow-md transition-all outline-none"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filter projects..."
+            />
+            <div className="absolute left-3.5 top-3.5 opacity-30">
+              <Icon name="tag" size={16} />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 min-w-[260px] max-w-md w-full">
+            <input
+              className="flex-1 h-11 bg-white/50 border border-black/5 rounded-2xl px-4 text-sm font-medium focus:bg-white focus:shadow-md transition-all outline-none"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="New project name..."
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return
+                const name = draft.trim()
+                if (!name) return
+                const def = ensureProjectDef(name)
+                if (def) setActiveKey(normalizeKey(def.name))
+                props.onSelectProject?.(name)
+                setDraft('')
+              }}
+            />
+            <button
+              className="h-11 px-4 rounded-2xl bg-white/70 border border-black/5 text-xs font-bold hover:bg-[var(--panel)] transition-all"
+              onClick={() => {
+                const name = draft.trim()
+                if (!name) return
+                const def = ensureProjectDef(name)
+                if (def) setActiveKey(normalizeKey(def.name))
+                props.onSelectProject?.(name)
+                setDraft('')
+              }}
+              disabled={!draft.trim()}
+            >
+              Add
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-10 pb-32 max-w-7xl mx-auto w-full">
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
-            {/* Goals & Multipliers */}
-            <div className="space-y-6">
-                <div className="flex items-center gap-3 px-2">
-                    <Icon name="target" size={18} className="text-[var(--accent)]" />
-                    <h2 className="text-xl font-bold tracking-tight">Goal Multipliers</h2>
+      <div className="flex-1 overflow-hidden px-10 pb-32 max-w-7xl mx-auto w-full">
+        <div className="flex gap-8 h-full">
+          <div className="w-full flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
+            {projectRows.length === 0 && <div className="py-20 text-center opacity-30 font-bold uppercase text-xs tracking-widest">No projects yet</div>}
+            {projectRows.map((row) => (
+              <button
+                key={row.key}
+                className={`goalListItem ${activeKey === row.key ? 'active' : ''}`}
+                onClick={() => {
+                  const def = ensureProjectDef(row.name)
+                  if (def) {
+                    setActiveKey(normalizeKey(def.name))
+                    props.onSelectProject?.(def.name)
+                  }
+                }}
+              >
+                <div className="goalListTitleRow">
+                  <h3 className="goalListTitle">{row.name}</h3>
+                  <Icon name="chevronRight" size={16} className="goalListChevron" />
                 </div>
-                <div className="glassCard space-y-6">
-                    <div className="space-y-4">
-                        {goalRows.length === 0 ? (
-                            <div className="py-6 text-center opacity-30 text-xs font-bold uppercase tracking-widest">No goals yet</div>
-                        ) : (
-                            goalRows.map((g) => (
-                            <div key={g.key} className="flex items-center justify-between p-4 bg-[var(--panel)] rounded-2xl group transition-all hover:bg-[var(--panel)] hover:shadow-md">
-                                <div className="space-y-1">
-                                    <div className="font-bold text-[var(--text)]">{g.label}</div>
-                                    <div className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Growth Weight</div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-xs font-bold text-[var(--accent)]">{g.value}x</span>
-                                    <input
-                                        className="w-16 h-8 bg-[var(--panel)] border border-black/5 rounded-lg px-2 text-xs font-bold text-center outline-none focus:border-[#D95D39]/30 transition-all"
-                                        type="number"
-                                        min={0.1}
-                                        max={3}
-                                        step={0.1}
-                                        value={g.value}
-                                        onChange={(e) => updateGoalMultiplier(g.label, Number(e.target.value))}
-                                    />
-                                </div>
-                            </div>
-                            ))
-                        )}
-                    </div>
-                    <div className="flex gap-2 pt-4 border-t border-black/5">
-                        <input
-                            className="flex-1 h-11 bg-[var(--panel)] border-none rounded-xl px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[#D95D39]/10 transition-all"
-                            value={goalDraft}
-                            onChange={(e) => setGoalDraft(e.target.value)}
-                            placeholder="Add goal name…"
-                        />
-                        <button
-                            className="h-11 px-6 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs shadow-lg hover:scale-105 active:scale-95 transition-all"
-                            onClick={() => {
-                                if (!goalDraft.trim()) return
-                                updateGoalMultiplier(goalDraft.trim(), 1)
-                                setGoalDraft('')
-                            }}>
-                            Add
-                        </button>
-                    </div>
+                <div className="goalListMeta">
+                  <span className="goalListDate">{row.stats.lastAt ? new Date(row.stats.lastAt).toLocaleDateString() : 'No activity yet'}</span>
+                  <span className="goalListStat">
+                    <Icon name="calendar" size={10} className="goalListStatIcon calendar" />
+                    {Math.round(row.stats.minutes)}m
+                  </span>
+                  <span className="goalListStat">
+                    <Icon name="bolt" size={10} className="goalListStatIcon" />
+                    {row.stats.eventCount + row.stats.taskCount} items
+                  </span>
                 </div>
-            </div>
+              </button>
+            ))}
+          </div>
 
-            {/* Projects & Multipliers */}
-            <div className="space-y-6">
-                <div className="flex items-center gap-3 px-2">
-                    <Icon name="folder" size={18} className="text-[var(--accent)]" />
-                    <h2 className="text-xl font-bold tracking-tight">Project Multipliers</h2>
-                </div>
-                <div className="glassCard space-y-6">
-                    <div className="space-y-4">
-                        {projectRows.length === 0 ? (
-                            <div className="py-6 text-center opacity-30 text-xs font-bold uppercase tracking-widest">No projects yet</div>
-                        ) : (
-                            projectRows.map((p) => (
-                            <div key={p.key} className="flex items-center justify-between p-4 bg-[var(--panel)] rounded-2xl group transition-all hover:bg-[var(--panel)] hover:shadow-md">
-                                <div className="space-y-1">
-                                    <div className="font-bold text-[var(--text)]">{p.label}</div>
-                                    <div className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Project Focus</div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-xs font-bold text-[var(--accent)]">{p.value}x</span>
-                                    <input
-                                        className="w-16 h-8 bg-[var(--panel)] border border-black/5 rounded-lg px-2 text-xs font-bold text-center outline-none focus:border-[var(--accent)]/30 transition-all"
-                                        type="number"
-                                        min={0.1}
-                                        max={3}
-                                        step={0.1}
-                                        value={p.value}
-                                        onChange={(e) => updateProjectMultiplier(p.label, Number(e.target.value))}
-                                    />
-                                </div>
-                            </div>
-                            ))
-                        )}
+          <div className="flex-1 pageHero overflow-hidden flex flex-col">
+            {!activeProject ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center opacity-20 space-y-4">
+                <Icon name="briefcase" size={64} />
+                <p className="font-bold uppercase tracking-[0.2em] text-sm">Select a project to explore</p>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto px-10 py-8 space-y-6">
+                  <div className="goalKpiGrid">
+                    <div className="goalKpiCard">
+                      <div className="goalKpiLabel">Time spent</div>
+                      <div className="goalKpiValue">{Math.round(activeStats?.minutes ?? 0)}m</div>
+                      <div className="goalKpiMeta">Project-linked activity</div>
                     </div>
-                    <div className="flex gap-2 pt-4 border-t border-black/5">
-                        <input
-                            className="flex-1 h-11 bg-[var(--panel)] border-none rounded-xl px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[var(--accent)]/10 transition-all"
-                            value={projectDraft}
-                            onChange={(e) => setProjectDraft(e.target.value)}
-                            placeholder="Add project name…"
-                        />
-                        <button
-                            className="h-11 px-6 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs shadow-lg hover:scale-105 active:scale-95 transition-all"
-                            onClick={() => {
-                                if (!projectDraft.trim()) return
-                                updateProjectMultiplier(projectDraft.trim(), 1)
-                                setProjectDraft('')
-                            }}>
-                            Add
-                        </button>
+                    <div className="goalKpiCard">
+                      <div className="goalKpiLabel">Events</div>
+                      <div className="goalKpiValue">{activeStats?.eventCount ?? 0}</div>
+                      <div className="goalKpiMeta">Scheduled sessions</div>
                     </div>
-                </div>
-            </div>
+                    <div className="goalKpiCard">
+                      <div className="goalKpiLabel">Tasks</div>
+                      <div className="goalKpiValue">{activeStats?.taskCount ?? 0}</div>
+                      <div className="goalKpiMeta">Linked tasks</div>
+                    </div>
+                    <div className="goalKpiCard">
+                      <div className="goalKpiLabel">Last activity</div>
+                      <div className="goalKpiValue">
+                        {activeStats?.lastAt ? new Date(activeStats.lastAt).toLocaleDateString() : '—'}
+                      </div>
+                      <div className="goalKpiMeta">Most recent check-in</div>
+                    </div>
+                  </div>
 
-            {/* Categories */}
-            <div className="xl:col-span-2 space-y-6">
-                <div className="flex items-center gap-3 px-2">
-                    <Icon name="tag" size={18} className="text-[var(--accent)]" />
-                    <h2 className="text-xl font-bold tracking-tight">Taxonomy</h2>
-                </div>
-                <div className="glassCard flex flex-col md:flex-row gap-10 min-h-[400px]">
-                    <div className="w-full md:w-1/3 space-y-6">
-                        <div className="space-y-3">
-                            {categories.map((c) => (
-                                <button key={c} className={`w-full text-left p-4 rounded-2xl border-2 transition-all flex justify-between items-center group ${activeCategory === c ? 'bg-[var(--panel)] border-[var(--accent)]/30 shadow-lg' : 'bg-[var(--panel)] border-transparent hover:bg-[var(--panel)] hover:border-black/5'}`} onClick={() => setActiveCategory(c)}>
-                                    <span className={`font-bold transition-colors ${activeCategory === c ? 'text-[var(--accent)]' : 'text-[var(--text)]'}`}>{c}</span>
-                                    <span className="text-[10px] font-bold text-[var(--muted)] opacity-40">{subcategoriesFromStarter(c).length}</span>
-                                </button>
-                            ))}
-                        </div>
-                        <div className="flex gap-2 pt-4 border-t border-black/5">
-                            <input
-                                className="flex-1 h-11 bg-[var(--panel)] border-none rounded-xl px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[var(--accent)]/10 transition-all"
-                                value={categoryDraft}
-                                onChange={(e) => setCategoryDraft(e.target.value)}
-                                placeholder="New category…"
-                            />
-                            <button className="h-11 px-4 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs" onClick={addCustomCategory}>
-                                Add
-                            </button>
-                        </div>
+                  <div className="glassCard p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Project details</div>
+                        <div className="text-lg font-bold">{activeProject.name}</div>
+                      </div>
                     </div>
+                    <MetaEditor
+                      value={activeProject.meta}
+                      onChange={(meta) => {
+                        const next = defs.map((p) => (p.id === activeProject.id ? { ...p, meta } : p))
+                        updateDefs(next)
+                      }}
+                    />
+                  </div>
 
-                    <div className="flex-1 bg-[var(--panel)] rounded-3xl p-8 flex flex-col">
-                        {!activeCategory ? (
-                            <div className="flex-1 flex flex-col items-center justify-center text-center opacity-20 space-y-4">
-                                <Icon name="tag" size={48} />
-                                <p className="font-bold uppercase tracking-[0.2em] text-xs">Select a category</p>
-                            </div>
-                        ) : (
-                            <div className="flex-1 flex flex-col">
-                                <div className="flex justify-between items-center mb-8">
-                                    <h3 className="text-xl font-bold">{activeCategory}</h3>
-                                    <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Subcategories</span>
-                                </div>
-                                <div className="flex-1 grid grid-cols-2 gap-3 content-start">
-                                    {subcategoriesFromStarter(activeCategory).map((s) => (
-                                        <div key={s} className="p-4 bg-[var(--panel)] rounded-2xl shadow-sm border border-black/5 font-bold text-sm text-[var(--text)]">
-                                            {s}
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="flex gap-2 pt-8 mt-auto border-t border-black/5">
-                                    <input
-                                        className="flex-1 h-11 bg-[var(--panel)] border-none rounded-xl px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[var(--accent)]/10 transition-all"
-                                        value={subcategoryDraft}
-                                        onChange={(e) => setSubcategoryDraft(e.target.value)}
-                                        placeholder="Add subcategory…"
-                                    />
-                                    <button className="h-11 px-6 bg-[#1C1C1E] text-white rounded-xl font-bold text-xs" onClick={addSubcategory}>
-                                        Add
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                  <div className="glassCard p-6 space-y-4">
+                    <div className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Linked goals</div>
+                    {linkedGoals.length === 0 ? (
+                      <div className="text-sm text-[var(--muted)]">No linked goals yet.</div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {linkedGoals.map((goal) => (
+                          <span key={goal} className="goalProjectTag">
+                            {goal}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-            </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -17,10 +17,18 @@ type HabitDef = {
   character: Array<'STR' | 'INT' | 'CON' | 'PER'>
   skills: string[]
   tags: string[]
+  contexts: string[]
+  people: string[]
+  location?: string | null
+  goal?: string | null
+  project?: string | null
   estimateMinutes?: number | null
   polarity?: 'positive' | 'negative' | 'both'
   schedule?: string | null
   targetPerWeek?: number | null
+  color?: string | null
+  icon?: string | null
+  isTimed?: boolean
 }
 
 function makeId() {
@@ -32,7 +40,27 @@ function loadHabits(): HabitDef[] {
     const raw = localStorage.getItem('insight5.habits.defs.v1')
     if (!raw) return []
     const parsed = JSON.parse(raw) as HabitDef[]
-    return Array.isArray(parsed) ? parsed : []
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((h) => ({
+      ...h,
+      tags: Array.isArray(h.tags) ? h.tags.filter(Boolean) : [],
+      skills: Array.isArray(h.skills) ? h.skills.filter(Boolean) : [],
+      contexts: Array.isArray(h.contexts) ? h.contexts.filter(Boolean) : [],
+      people: Array.isArray(h.people) ? h.people.filter(Boolean) : [],
+      character: Array.isArray(h.character) ? h.character.filter(Boolean) : [],
+      location: typeof h.location === 'string' ? h.location : null,
+      goal: typeof h.goal === 'string' ? h.goal : null,
+      project: typeof h.project === 'string' ? h.project : null,
+      importance: typeof h.importance === 'number' ? h.importance : 3,
+      difficulty: typeof h.difficulty === 'number' ? h.difficulty : 3,
+      estimateMinutes: typeof h.estimateMinutes === 'number' ? h.estimateMinutes : null,
+      polarity: h.polarity ?? 'both',
+      schedule: h.schedule ?? null,
+      targetPerWeek: typeof h.targetPerWeek === 'number' ? h.targetPerWeek : null,
+      color: h.color ?? null,
+      icon: h.icon ?? null,
+      isTimed: h.isTimed ?? false,
+    }))
   } catch {
     return []
   }
@@ -62,6 +90,14 @@ function parseTagInput(raw: string) {
     .map((t) => normalizeTag(t))
     .filter(Boolean)
   return Array.from(new Set(tags)).slice(0, 12)
+}
+
+function parseCommaInput(raw: string) {
+  return raw
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 12)
 }
 
 
@@ -168,8 +204,18 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
       character: ['CON'],
       skills: [],
       tags: [],
+      contexts: [],
+      people: [],
+      location: null,
+      goal: null,
+      project: null,
       estimateMinutes: 15,
       polarity: 'both',
+      schedule: null,
+      targetPerWeek: null,
+      color: null,
+      icon: null,
+      isTimed: false,
     }
     setDefs((prev) => [habit, ...prev])
     setSelectedId(id)
@@ -203,13 +249,18 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
       endAt: now + minutes * 60 * 1000,
       kind: 'log',
       tags: [...new Set(['#habit', ...def.tags])],
+      contexts: def.contexts ?? [],
       trackerKey: polarity === 'negative' ? `habit:${def.id}:neg` : `habit:${def.id}`,
       category: def.category,
       subcategory: def.subcategory,
       difficulty: clamp(def.difficulty, 0, 10),
       importance: clamp(def.importance, 0, 10),
+      location: def.location ?? null,
+      people: def.people ?? [],
       character: def.character,
       skills: def.skills,
+      goal: def.goal ?? null,
+      project: def.project ?? null,
       entityIds: [],
     })
     props.onCreatedEvent(ev)
@@ -427,6 +478,41 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                       updateHabit(selected.id, { tags: parseTagInput((e.target as HTMLInputElement).value) })
                     }}
                     placeholder="#health #morning"
+                  />
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Context</label>
+                  <input
+                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    value={selected.contexts.join(', ')}
+                    onChange={(e) => updateHabit(selected.id, { contexts: parseCommaInput(e.target.value) })}
+                    placeholder="at computer, at gym"
+                  />
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">People</label>
+                  <input
+                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    value={selected.people.join(', ')}
+                    onChange={(e) => updateHabit(selected.id, { people: parseCommaInput(e.target.value) })}
+                    placeholder="Mom, Alex"
+                  />
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Location</label>
+                  <input
+                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    value={selected.location ?? ''}
+                    onChange={(e) => updateHabit(selected.id, { location: e.target.value.trim() || null })}
+                    placeholder="Home, Gym"
+                  />
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Goal</label>
+                  <input
+                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    value={selected.goal ?? ''}
+                    onChange={(e) => updateHabit(selected.id, { goal: e.target.value.trim() || null })}
+                    placeholder="Get shredded"
+                  />
+                  <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Project</label>
+                  <input
+                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    value={selected.project ?? ''}
+                    onChange={(e) => updateHabit(selected.id, { project: e.target.value.trim() || null })}
+                    placeholder="Workout plan"
                   />
                   <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Skills</label>
                   <input

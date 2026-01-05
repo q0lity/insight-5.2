@@ -147,7 +147,7 @@ function eventEntryFromLocal(event: CalendarEvent, entitiesById: Map<string, Ent
 function taskEntryFromLocal(task: Task, entitiesById: Map<string, Entity>, userId: string, source: string): EntryPayload {
   const entityMeta = deriveEntities(task.entityIds ?? [], entitiesById)
   const tags = uniqStrings([...(task.tags ?? []), ...entityMeta.tags])
-  const people = uniqStrings([...entityMeta.people])
+  const people = uniqStrings([...(task.people ?? []), ...entityMeta.people])
   const contexts = uniqStrings([...(task.contexts ?? [])])
 
   const frontmatter = frontmatterBase(task.id, 'task', {
@@ -158,6 +158,9 @@ function taskEntryFromLocal(task: Task, entitiesById: Map<string, Entity>, userI
     category: task.category ?? null,
     subcategory: task.subcategory ?? null,
     estimateMinutes: task.estimateMinutes ?? null,
+    location: task.location ?? null,
+    skills: task.skills ?? [],
+    character: task.character ?? [],
   })
 
   return {
@@ -255,6 +258,10 @@ function entryToTask(entry: any, entityIds: string[]): Task {
     completedAt: fromIso(entry.completed_at),
     tags: Array.isArray(entry.tags) ? entry.tags : [],
     contexts: Array.isArray(entry.contexts) ? entry.contexts : [],
+    people: Array.isArray(entry.people) ? entry.people : [],
+    location: (fm.location as string | null) ?? null,
+    skills: Array.isArray(fm.skills) ? fm.skills : [],
+    character: Array.isArray(fm.character) ? fm.character : [],
     entityIds,
     parentEventId: (fm.parentEventId as string | null) ?? null,
     project: (fm.project as string | null) ?? null,
@@ -945,6 +952,7 @@ type HabitDef = {
   character: Array<'STR' | 'INT' | 'CON' | 'PER'>
   skills: string[]
   tags: string[]
+  contexts: string[]
   people: string[]
   estimateMinutes?: number | null
   location?: string | null
@@ -969,7 +977,7 @@ function habitDefToEntry(habit: HabitDef, userId: string): EntryPayload {
     difficulty: habit.difficulty,
     importance: habit.importance,
     tags: habit.tags ?? [],
-    contexts: [],
+    contexts: habit.contexts ?? [],
     people: habit.people ?? [],
     frontmatter: {
       legacyId: habit.id,
@@ -1008,6 +1016,7 @@ function entryToHabitDef(entry: any): HabitDef {
     character: Array.isArray(fm.character) ? fm.character : [],
     skills: Array.isArray(fm.skills) ? fm.skills : [],
     tags: Array.isArray(entry.tags) ? entry.tags : [],
+    contexts: Array.isArray(entry.contexts) ? entry.contexts : [],
     people: Array.isArray(entry.people) ? entry.people : [],
     estimateMinutes: fm.estimateMinutes ?? entry.duration_minutes ?? null,
     location: fm.location ?? null,

@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { db } from '../../db/insight-db'
 import type { Workout, Meal, WorkoutType, MealType } from '../../db/insight-db'
 import type { CalendarEvent } from '../../storage/calendar'
+import { loadTrackerDefs, type TrackerDef } from '../../storage/ecosystem'
 
 function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes}m`
@@ -100,18 +101,51 @@ function addDaysMs(ms: number, days: number) {
   return ms + days * 24 * 60 * 60 * 1000
 }
 
+function normalizeKey(raw: string | null | undefined) {
+  return (raw ?? '').trim().toLowerCase()
+}
+
+function parseTrackerValue(title: string) {
+  const match = title.match(/(-?\d+(?:\.\d+)?)/)
+  if (!match) return null
+  const value = Number(match[1])
+  return Number.isFinite(value) ? value : null
+}
+
 type HealthView = 'overview' | 'workouts' | 'nutrition' | 'trackers'
 
 interface HealthDashboardProps {
   events: CalendarEvent[]
+  trackerDefs?: TrackerDef[]
 }
 
-export function HealthDashboard({ events }: HealthDashboardProps) {
+export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: HealthDashboardProps) {
   const [view, setView] = useState<HealthView>('overview')
   const [range, setRange] = useState<'today' | 'week' | 'month'>('week')
   const [workouts, setWorkouts] = useState<Workout[]>([])
   const [meals, setMeals] = useState<Meal[]>([])
   const [loading, setLoading] = useState(true)
+  const trackerDefs = useMemo(() => trackerDefsProp ?? loadTrackerDefs(), [trackerDefsProp])
+  const trackerDefsByKey = useMemo(() => new Map(trackerDefs.map((def) => [def.key, def])), [trackerDefs])
+
+  const healthTrackerKeys = useMemo(() => {
+    const matches = trackerDefs.filter((def) => {
+      const cat = (def.meta.category ?? '').toLowerCase()
+      const tags = def.meta.tags.map((t) => t.replace(/^#/, '').toLowerCase())
+      return (
+        cat.includes('health') ||
+        cat.includes('wellness') ||
+        cat.includes('fitness') ||
+        cat.includes('nutrition') ||
+        tags.includes('health') ||
+        tags.includes('wellness') ||
+        tags.includes('fitness') ||
+        tags.includes('nutrition')
+      )
+    })
+    const keys = (matches.length ? matches : trackerDefs).map((def) => def.key)
+    return new Set(keys)
+  }, [trackerDefs])
 
   const now = Date.now()
   const rangeStart = useMemo(() => {
@@ -191,11 +225,10 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
       if (ev.startAt < rangeStart || ev.startAt > rangeEnd) continue
       if (!ev.trackerKey) continue
 
-      const key = ev.trackerKey.toLowerCase()
-      const match = ev.title.match(/:?\s*(\d+(?:\.\d+)?)\s*(?:\/10)?/i)
-      if (!match) continue
-
-      const value = parseFloat(match[1]!)
+      const key = normalizeKey(ev.trackerKey)
+      if (!key) continue
+      const value = parseTrackerValue(ev.title)
+      if (value == null) continue
       if (!Number.isFinite(value)) continue
 
       if (!trackers.has(key)) {
@@ -207,16 +240,42 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
     return trackers
   }, [events, rangeStart, rangeEnd])
 
+  const visibleTrackerLogs = useMemo(() => {
+    const out = new Map<string, Array<{ value: number; at: number }>>()
+    for (const [key, logs] of trackerLogs) {
+      if (!healthTrackerKeys.has(key)) continue
+      out.set(key, logs)
+    }
+    return out
+  }, [healthTrackerKeys, trackerLogs])
+
   // Calculate tracker averages
   const trackerAverages = useMemo(() => {
     const avgs = new Map<string, number>()
-    for (const [key, logs] of trackerLogs) {
+    for (const [key, logs] of visibleTrackerLogs) {
       if (logs.length === 0) continue
       const sum = logs.reduce((a, l) => a + l.value, 0)
       avgs.set(key, sum / logs.length)
     }
     return avgs
-  }, [trackerLogs])
+  }, [visibleTrackerLogs])
+
+  const trackerSummaryRows = useMemo(() => {
+    return Array.from(trackerAverages.entries()).map(([key, avg]) => {
+      const def = trackerDefsByKey.get(key)
+      const min = def?.unit.min ?? 0
+      const max = def?.unit.max ?? 10
+      const span = max - min || 10
+      const pct = Math.max(0, Math.min(1, (avg - min) / span))
+      return {
+        key,
+        label: def?.label ?? key,
+        unit: def?.unit.label ?? 'value',
+        avg,
+        pct,
+      }
+    })
+  }, [trackerAverages, trackerDefsByKey])
 
   if (loading) {
     return (
@@ -343,23 +402,20 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
                 <h3 className="text-sm font-bold uppercase tracking-widest text-[#8E8E93]">Well-being</h3>
               </div>
               <div className="space-y-3">
-                {Array.from(trackerAverages.entries()).slice(0, 4).map(([key, avg]) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-[var(--text)] capitalize">{key}</span>
+                {trackerSummaryRows.slice(0, 4).map((row) => (
+                  <div key={row.key} className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-[var(--text)]">{row.label}</span>
                     <div className="flex items-center gap-2">
                       <div className="w-24 h-2 bg-[#E5E5EA] rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-purple-500 rounded-full"
-                          style={{ width: `${(avg / 10) * 100}%` }}
-                        />
+                        <div className="h-full bg-purple-500 rounded-full" style={{ width: `${row.pct * 100}%` }} />
                       </div>
-                      <span className="text-xs font-bold text-[#8E8E93] w-8 text-right">
-                        {avg.toFixed(1)}
+                      <span className="text-xs font-bold text-[#8E8E93] w-12 text-right">
+                        {row.avg.toFixed(1)} {row.unit}
                       </span>
                     </div>
                   </div>
                 ))}
-                {trackerAverages.size === 0 && (
+                {trackerSummaryRows.length === 0 && (
                   <p className="text-sm text-[#8E8E93] text-center py-4">
                     No tracker data yet
                   </p>
@@ -562,7 +618,7 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
           <div className="space-y-6 max-w-4xl">
             <h2 className="text-xl font-bold text-[var(--text)]">Tracker Trends</h2>
 
-            {trackerLogs.size === 0 ? (
+            {visibleTrackerLogs.size === 0 ? (
               <div className="text-center py-12 bg-white rounded-2xl border border-[#E5E5EA]">
                 <div className="w-16 h-16 mx-auto rounded-full bg-purple-100 flex items-center justify-center mb-4">
                   <Icon name="heart" className="w-8 h-8 text-purple-400" />
@@ -574,10 +630,14 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
               </div>
             ) : (
               <div className="grid gap-6">
-                {Array.from(trackerLogs.entries()).map(([key, logs]) => {
+                {Array.from(visibleTrackerLogs.entries()).map(([key, logs]) => {
                   const avg = trackerAverages.get(key) ?? 0
                   const sorted = [...logs].sort((a, b) => a.at - b.at)
                   const latest = sorted[sorted.length - 1]
+                  const def = trackerDefsByKey.get(key)
+                  const min = def?.unit.min ?? 0
+                  const max = def?.unit.max ?? 10
+                  const span = max - min || 10
 
                   return (
                     <div
@@ -585,7 +645,7 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
                       className="bg-white rounded-xl border border-[#E5E5EA] p-6 shadow-sm"
                     >
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-bold text-[var(--text)] capitalize">{key}</h3>
+                        <h3 className="text-lg font-bold text-[var(--text)]">{def?.label ?? key}</h3>
                         <div className="text-right">
                           <span className="block text-2xl font-bold text-purple-600">{avg.toFixed(1)}</span>
                           <span className="text-[10px] font-bold text-[#8E8E93]">avg</span>
@@ -598,7 +658,7 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
                           <div key={i} className="flex-1 flex flex-col items-center gap-1">
                             <motion.div
                               initial={{ height: 0 }}
-                              animate={{ height: `${(log.value / 10) * 100}%` }}
+                              animate={{ height: `${Math.max(0, Math.min(1, (log.value - min) / span)) * 100}%` }}
                               className="w-full bg-purple-200 rounded-t"
                               style={{ minHeight: 4 }}
                             />
@@ -609,7 +669,9 @@ export function HealthDashboard({ events }: HealthDashboardProps) {
                       <div className="flex items-center justify-between mt-4 text-xs text-[#8E8E93]">
                         <span>{logs.length} entries</span>
                         {latest && (
-                          <span>Latest: {latest.value} ({formatTime(latest.at)})</span>
+                          <span>
+                            Latest: {latest.value} {def?.unit.label ?? ''} ({formatTime(latest.at)})
+                          </span>
                         )}
                       </div>
                     </div>

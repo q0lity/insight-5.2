@@ -1362,6 +1362,42 @@ select:focus-visible {
   gap: 6px;
 }
 
+.detailLogChips {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.detailLogChip {
+  border-radius: 999px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  background: rgba(17, 24, 39, 0.04);
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+:root[data-theme='dark'] .detailLogChip {
+  border-color: rgba(148, 163, 184, 0.12);
+  background: rgba(148, 163, 184, 0.06);
+}
+
+.detailLogChipTime {
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--muted2);
+}
+
+.detailLogChipTitle {
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .detailLogRow {
   width: 100%;
   text-align: left;
@@ -1850,13 +1886,17 @@ select:focus-visible {
 .mdLiContent {
   flex: 1;
   min-width: 0;
-}
-
-.mdLiActions {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
-  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.mdLiText {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .mdLiToggle {
@@ -1881,10 +1921,12 @@ select:focus-visible {
   border: 1px solid rgba(17, 24, 39, 0.18);
   background: rgba(255, 255, 255, 0.8);
   color: var(--text);
-  font-weight: 900;
-  font-size: 11px;
   border-radius: 999px;
-  padding: 1px 8px;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
 
@@ -1898,6 +1940,7 @@ select:focus-visible {
   border-color: var(--accentBorder);
   background: var(--accentSoft);
   color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.2);
 }
 
 .mdTaskStart.running.over {
@@ -2306,6 +2349,389 @@ select:focus-visible {
   .captureModalCard {
     background: var(--panel);
   }
+}
+
+.captureModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel2) 70%, transparent);
+}
+
+.captureModalHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.captureLivePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 999px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+}
+
+.captureLivePill.active {
+  color: var(--accent);
+  border-color: var(--accentBorder);
+  background: var(--accentSoft);
+}
+
+.captureLiveDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--muted);
+}
+
+.captureLivePill.active .captureLiveDot {
+  background: var(--accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.captureAttachRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+}
+
+.captureAttachLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+}
+
+.captureAttachTitle {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.captureAttachDetach {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+}
+
+.captureAttachDetach:hover {
+  color: var(--text);
+  border-color: var(--accentBorder);
+}
+
+.captureModalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 20px 22px;
+  overflow: hidden;
+}
+
+.captureSheet {
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 95%, transparent) 0%, color-mix(in srgb, var(--panel2) 92%, transparent) 100%);
+  padding: 16px 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.captureSheetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.captureSheetTitle {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+
+.captureSheetMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.captureSheetStatus {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.captureSheetStatus.active {
+  background: var(--accentSoft);
+  border-color: var(--accentBorder);
+  color: var(--accent);
+}
+
+.captureSheetCount {
+  font-size: 11px;
+  color: var(--muted2);
+  font-weight: 700;
+}
+
+.captureTextarea {
+  width: 100%;
+  min-height: 180px;
+  max-height: 280px;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.captureInterim {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accentSoft) 45%, transparent);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.captureInterimLead {
+  font-weight: 900;
+  margin-right: 6px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.capturePreviewPanel {
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel2) 85%, transparent);
+  padding: 14px 16px 16px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.captureStatusBar {
+  padding: 10px 20px;
+  background: color-mix(in srgb, var(--panel2) 80%, transparent);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.captureFooter {
+  padding: 14px 18px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--panel);
+}
+
+.captureOutline {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.captureOutline.compact {
+  gap: 10px;
+}
+
+.captureOutlineHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.captureOutlineTitle {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.captureOutlineMeta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.captureOutlineMetaChip {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.captureOutlineMetaChip.active {
+  background: var(--accentSoft);
+  border-color: var(--accentBorder);
+  color: var(--accent);
+}
+
+.captureOutlineList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.captureOutlineItem {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.captureOutlineBullet {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  margin-top: 7px;
+  background: var(--accent);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accentSoft) 70%, transparent);
+}
+
+.captureOutlineContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.captureOutlineLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.captureOutlineLine.compact {
+  font-size: 13px;
+}
+
+.captureOutlineIndex {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted2);
+}
+
+.captureOutlineSnippet {
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.captureOutlineChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.captureOutlineTrackerValue {
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: rgba(99, 102, 241, 0.12);
+  color: rgba(67, 56, 202, 0.95);
+  font-weight: 900;
+}
+
+.captureOutlineSublist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.captureOutlineSubItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.captureOutlineSubText {
+  flex: 1;
+  min-width: 0;
+}
+
+.captureOutlineSubTime {
+  font-size: 11px;
+  color: var(--muted2);
+  font-weight: 700;
+}
+
+.captureOutlineSubBadge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.15);
+  color: rgba(5, 150, 105, 0.9);
+}
+
+.captureOutlineSubMore {
+  font-size: 11px;
+  color: var(--muted2);
+  font-weight: 600;
+}
+
+.mdChip-tracker {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.24);
+  color: rgba(67, 56, 202, 0.9);
 }
 
 /* Recording state - breathing glow */
@@ -5376,6 +5802,45 @@ select:focus-visible {
   --tm-lane-x: 10px;
 }
 
+/* Drag rail - vertical guide that appears during tracker drag */
+.tmLogRail {
+  position: absolute;
+  right: var(--tm-lane-x);
+  transform: translateX(50%);
+  width: 4px;
+  top: 0;
+  bottom: 0;
+  background: var(--accentMid);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.tmLogCol.dragging .tmLogRail {
+  opacity: 0.5;
+}
+
+/* Ghost position indicator - shows snapped drop position */
+.tmLogGhost {
+  position: absolute;
+  right: var(--tm-lane-x);
+  transform: translate(50%, -50%);
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Fade the dragging pill */
+.tmLogBubble.isDragging {
+  opacity: 0.4;
+}
+
 .tmLogResize {
   position: absolute;
   left: -6px;
@@ -5430,9 +5895,14 @@ select:focus-visible {
   left: 0;
   right: 0;
   height: 0;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: grab;
   --tm-pill-right: 30px;
   z-index: 2;
+}
+
+.tmLogBubble:active {
+  cursor: grabbing;
 }
 
 .tmLogDot {

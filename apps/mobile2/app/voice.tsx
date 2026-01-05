@@ -288,7 +288,7 @@ export default function VoiceCaptureScreen() {
           });
         }
 
-        const parsedMeal = parseMealFromText(healthText);
+        const parsedMeal = parseMealFromText(healthText, { nowMs: saved.createdAt ?? Date.now() });
         if (parsedMeal) {
           const now = saved.createdAt ?? Date.now();
           const mealTitle =
@@ -314,6 +314,12 @@ export default function VoiceCaptureScreen() {
               carbs: Math.round(parsedMeal.macros.carbs ?? 0),
               fat: Math.round(parsedMeal.macros.fat ?? 0),
               fiber: parsedMeal.macros.fiber ? Math.round(parsedMeal.macros.fiber) : undefined,
+              saturatedFat: parsedMeal.macros.saturatedFat ? Math.round(parsedMeal.macros.saturatedFat) : undefined,
+              transFat: parsedMeal.macros.transFat ? Math.round(parsedMeal.macros.transFat) : undefined,
+              sugar: parsedMeal.macros.sugar ? Math.round(parsedMeal.macros.sugar) : undefined,
+              sodium: parsedMeal.macros.sodium ? Math.round(parsedMeal.macros.sodium) : undefined,
+              potassium: parsedMeal.macros.potassium ? Math.round(parsedMeal.macros.potassium) : undefined,
+              cholesterol: parsedMeal.macros.cholesterol ? Math.round(parsedMeal.macros.cholesterol) : undefined,
             },
             eatenAt: now,
             createdAt: now,

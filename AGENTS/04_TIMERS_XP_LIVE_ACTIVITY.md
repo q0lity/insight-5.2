@@ -18,3 +18,4 @@ Rules:
 - Subtasks in markdown notes can be started from inline controls and show live elapsed timers.
 - Live XP display uses higher precision (3 decimals) while updating at 1s cadence to reduce CPU churn.
 - Active session XP uses the same minutes/60 formula as points scoring to avoid inflation.
+- Subtask timers create log events with parentEventId for stats accrual without cluttering the calendar grid.

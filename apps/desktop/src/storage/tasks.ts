@@ -23,6 +23,12 @@ function sanitizeStringArray(value: unknown): string[] {
   return value.filter((item) => typeof item === 'string' && item.trim().length > 0).map((item) => item.trim())
 }
 
+function normalizeOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length ? trimmed : null
+}
+
 function hasInvalidStringArray(value: unknown) {
   if (!Array.isArray(value)) return true
   return value.some((item) => typeof item !== 'string' || item.trim().length === 0)
@@ -45,6 +51,10 @@ function normalizeTask(task: Task): Task {
     entityIds: sanitizeStringArray(task.entityIds),
     contexts: sanitizeStringArray(task.contexts),
     tags: sanitizeStringArray(task.tags),
+    people: sanitizeStringArray(task.people),
+    skills: sanitizeStringArray(task.skills),
+    character: sanitizeStringArray(task.character),
+    location: normalizeOptionalString(task.location),
   }
 }
 
@@ -69,7 +79,10 @@ export async function listTasks(): Promise<Task[]> {
         !isTaskNormalized(task) ||
         hasInvalidStringArray(task.entityIds) ||
         hasInvalidStringArray(task.contexts) ||
-        hasInvalidStringArray(task.tags),
+        hasInvalidStringArray(task.tags) ||
+        hasInvalidStringArray(task.people) ||
+        hasInvalidStringArray(task.skills) ||
+        hasInvalidStringArray(task.character),
     )
     if (needsFix) await db.tasks.bulkPut(normalized)
     return normalized.sort((a, b) => b.updatedAt - a.updatedAt)
@@ -81,6 +94,10 @@ export async function createTask(input: {
   status?: TaskStatus
   tags?: string[]
   contexts?: string[]
+  people?: string[]
+  location?: string | null
+  skills?: string[]
+  character?: string[]
   entityIds?: string[]
   sourceNoteId?: string | null
   parentEventId?: string | null
@@ -89,6 +106,8 @@ export async function createTask(input: {
   importance?: number | null
   difficulty?: number | null
   estimateMinutes?: number | null
+  dueAt?: number | null
+  scheduledAt?: number | null
   goal?: string | null
   project?: string | null
 }): Promise<Task> {
@@ -100,11 +119,15 @@ export async function createTask(input: {
     status: input.status ?? 'todo',
     createdAt: now,
     updatedAt: now,
-    dueAt: null,
-    scheduledAt: null,
+    dueAt: isFiniteNumber(input.dueAt) ? input.dueAt : null,
+    scheduledAt: isFiniteNumber(input.scheduledAt) ? input.scheduledAt : null,
     completedAt: null,
     tags: sanitizeStringArray(input.tags),
     contexts: sanitizeStringArray(input.contexts),
+    people: sanitizeStringArray(input.people),
+    location: normalizeOptionalString(input.location),
+    skills: sanitizeStringArray(input.skills),
+    character: sanitizeStringArray(input.character),
     entityIds: sanitizeStringArray(input.entityIds),
     parentEventId: input.parentEventId ?? null,
     project: input.project ?? null,
@@ -267,6 +290,10 @@ export async function createTaskInEvent(input: {
     completedAt: null,
     tags: event?.tags ?? [],
     contexts: event?.contexts ?? [],
+    people: event?.people ?? [],
+    location: event?.location ?? null,
+    skills: event?.skills ?? [],
+    character: event?.character ?? [],
     entityIds: [],
     parentEventId: input.eventId,
     project: event?.project ?? null,

@@ -20,5 +20,6 @@ Plugin evidence reviewed:
 UI guidance:
 - Markdown preview supports nested checklist items with collapsible subtrees.
 - Collapsible controls live on the left edge of each list item.
+- Checklist actions (checkbox + start timer) align to the right for fast thumb targeting.
 - Dense spacing: tighter line-height/margins for long-form transcript outlines.
 - Active events render from their true start to the live “now” line in day view.

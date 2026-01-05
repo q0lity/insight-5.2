@@ -85,9 +85,9 @@ export function CaptureModal({
 
   // Dynamic text sizing based on length
   const getTextSizeClass = (length: number) => {
-    if (length < 100) return 'text-3xl' // ~22pt
-    if (length < 300) return 'text-2xl'
-    return 'text-xl' // ~17pt
+    if (length < 120) return 'text-xl'
+    if (length < 320) return 'text-lg'
+    return 'text-base'
   }
 
   return (
@@ -104,11 +104,11 @@ export function CaptureModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className={`captureModalCard w-full max-w-3xl bg-[var(--panel)] shadow-2xl overflow-hidden relative flex flex-col max-h-[85vh] ${isListening ? 'recording' : ''}`}
+            className={`captureModalCard w-[min(92vw,880px)] bg-[var(--panel)] shadow-2xl overflow-hidden relative flex flex-col max-h-[85vh] ${isListening ? 'recording' : ''}`}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--panel2)]/50 backdrop-blur-md">
-              <div className="flex items-center gap-3">
+            <div className="captureModalHeader">
+              <div className="captureModalHeaderLeft">
                 <h2 className="text-lg font-bold text-[var(--text)] tracking-tight">Capture</h2>
                 {onToggleExtendedMode && (
                   <button
@@ -120,18 +120,10 @@ export function CaptureModal({
                     {extendedMode ? '1hr' : 'Extend'}
                   </button>
                 )}
-                {attachEventId && (
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[var(--accent)] bg-[var(--accentSoft)] px-2 py-0.5 rounded-full">
-                    <span>Appending to: {attachedEventTitle}</span>
-                    <button
-                      onClick={onDetachEvent}
-                      className="hover:text-[var(--text)] transition-colors"
-                      title="Detach"
-                    >
-                      <Icon name="x" className="w-3 h-3" />
-                    </button>
-                  </div>
-                )}
+                <div className={`captureLivePill ${isListening ? 'active' : ''}`}>
+                  <span className="captureLiveDot" />
+                  {isListening ? 'Listening' : 'Ready'}
+                </div>
               </div>
               <button
                 onClick={onClose}
@@ -141,51 +133,52 @@ export function CaptureModal({
               </button>
             </div>
 
-            {/* Waveform Visualizer - shows when recording */}
-            {isListening && (
-              <div className="waveform-container border-b border-[var(--border)] bg-[var(--panel2)]/30">
-                {[...Array(9)].map((_, i) => (
-                  <div key={i} className="waveform-bar" style={{ height: `${8 + Math.random() * 16}px` }} />
-                ))}
-                <span className="ml-3 text-xs font-bold text-[var(--accent)]">Recording...</span>
+            {attachEventId && (
+              <div className="captureAttachRow">
+                <span className="captureAttachLabel">Appending to</span>
+                <span className="captureAttachTitle">{attachedEventTitle}</span>
+                <button onClick={onDetachEvent} className="captureAttachDetach" title="Detach">
+                  <Icon name="x" className="w-3 h-3" />
+                </button>
               </div>
             )}
 
-            {/* Main Input Area */}
-            <div className="flex-1 relative p-6 flex flex-col min-h-[300px]">
-              <textarea
-                ref={textareaRef}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Dump your thoughts..."
-                className={`w-full h-full bg-transparent border-none outline-none resize-none font-medium text-[var(--text)] placeholder-[var(--muted2)] leading-relaxed transition-all duration-200 ${getTextSizeClass(draft.length)}`}
-                style={{ minHeight: '200px' }}
-              />
-              
-              {/* Interim Voice Transcript Overlay */}
-              {isListening && interimTranscript && (
-                <div className="absolute bottom-6 left-6 right-6 p-4 bg-[var(--panel)]/90 backdrop-blur border border-[var(--border)] rounded-xl shadow-lg z-10">
-                  <p className="text-[var(--muted)] font-bold animate-pulse">
-                    ... {interimTranscript}
-                  </p>
+            {/* Main Input + Preview */}
+            <div className="captureModalBody">
+              <div className="captureSheet">
+                <div className="captureSheetHeader">
+                  <div className="captureSheetTitle">Live transcript</div>
+                  <div className="captureSheetMeta">
+                    <span className={`captureSheetStatus ${isListening ? 'active' : ''}`}>
+                      {isListening ? 'Transcribing' : 'Idle'}
+                    </span>
+                    <span className="captureSheetCount">{draft.length} chars</span>
+                  </div>
+                </div>
+                <textarea
+                  ref={textareaRef}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder="Start talking or type your notes..."
+                  className={`captureTextarea ${getTextSizeClass(draft.length)}`}
+                />
+                {isListening && interimTranscript && (
+                  <div className="captureInterim">
+                    <span className="captureInterimLead">...</span> {interimTranscript}
+                  </div>
+                )}
+              </div>
+
+              {previewText && (
+                <div className="capturePreviewPanel">
+                  <CapturePreview text={previewText} isProcessing={isListening} compact />
                 </div>
               )}
             </div>
 
-            {/* Live Preview - Progressive Outline */}
-            {previewText && (
-              <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--panel2)]/30 max-h-[200px] overflow-y-auto">
-                <CapturePreview
-                  text={previewText}
-                  isProcessing={isListening}
-                  compact
-                />
-              </div>
-            )}
-
             {/* Status / Progress */}
             {(isSaving || aiStatus || error || progress.length > 0) && (
-              <div className="px-6 py-3 bg-[var(--panel2)] border-t border-[var(--border)] text-xs font-bold space-y-1">
+              <div className="captureStatusBar">
                  {error ? (
                     <div className="text-red-500">{error}</div>
                  ) : isSaving ? (
@@ -204,7 +197,7 @@ export function CaptureModal({
             )}
 
             {/* Footer Actions */}
-            <div className="p-4 bg-[var(--panel)] border-t border-[var(--border)] flex items-center justify-between gap-4">
+            <div className="captureFooter">
               <div className="flex items-center gap-2">
                  <button
                     onClick={onToggleListening}
@@ -217,10 +210,6 @@ export function CaptureModal({
                     <Icon name="mic" className={isListening ? 'animate-pulse' : ''} />
                     {isListening ? 'Listening...' : 'Voice'}
                  </button>
-                 
-                 <div className="text-xs font-bold text-[var(--muted2)] hidden sm:block">
-                    {draft.length} chars
-                 </div>
               </div>
 
               <div className="flex items-center gap-3">

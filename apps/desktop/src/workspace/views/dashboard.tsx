@@ -4,6 +4,7 @@ import type { CalendarEvent } from '../../storage/calendar'
 import type { Task } from '../../storage/tasks'
 import { basePoints, multiplierFor, pointsForMinutes } from '../../scoring/points'
 import { LtBarChart, LtHeatmap, LtLineAreaChart, type SeriesPoint } from '../../ui/life-tracker-charts'
+import { loadTrackerDefs, type TrackerDef } from '../../storage/ecosystem'
 
 type DashView = 'overview' | 'time' | 'points' | 'radar'
 type WidgetGroup = 'overview' | 'time' | 'points' | 'radar'
@@ -255,9 +256,20 @@ function normalizeCharacterKey(raw: string) {
   return null
 }
 
+function normalizeKey(raw: string | null | undefined) {
+  return (raw ?? '').trim().toLowerCase()
+}
+
+function parseTrackerValue(title: string) {
+  const match = title.match(/(-?\d+(?:\.\d+)?)/)
+  if (!match) return null
+  const value = Number(match[1])
+  return Number.isFinite(value) ? value : null
+}
+
 type FilterType = 'all' | 'category' | 'tag' | 'person' | 'place'
 
-export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[] }) {
+export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; trackerDefs?: TrackerDef[] }) {
   const [range, setRange] = useState<'today' | 'week' | 'month' | 'quarter' | 'year'>('week')
   const [view, setView] = useState<DashView>('overview')
   const [edit, setEdit] = useState(false)
@@ -268,6 +280,7 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[] })
   const [heatmapPeriods, setHeatmapPeriods] = useState(loadHeatmapPeriods)
   const [filterType, setFilterType] = useState<FilterType>('all')
   const [selectedFilters, setSelectedFilters] = useState<string[]>([])
+  const trackerDefs = useMemo(() => props.trackerDefs ?? loadTrackerDefs(), [props.trackerDefs])
 
   useEffect(() => {
     saveViewMode(viewMode)
@@ -319,6 +332,44 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[] })
     }
     return Array.from(set).sort()
   }, [props.events])
+
+  const trackerSummaryRows = useMemo(() => {
+    const valuesByKey = new Map<string, number[]>()
+    const lastByKey = new Map<string, { value: number; at: number }>()
+
+    for (const ev of props.events) {
+      if (ev.kind !== 'log') continue
+      if (!ev.trackerKey) continue
+      if (ev.trackerKey.startsWith('habit:')) continue
+      const key = normalizeKey(ev.trackerKey)
+      if (!key) continue
+      const value = parseTrackerValue(ev.title)
+      if (value == null) continue
+      const list = valuesByKey.get(key) ?? []
+      list.push(value)
+      valuesByKey.set(key, list)
+      const last = lastByKey.get(key)
+      if (!last || ev.startAt > last.at) lastByKey.set(key, { value, at: ev.startAt })
+    }
+
+    return trackerDefs.map((def) => {
+      const values = valuesByKey.get(def.key) ?? []
+      const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : null
+      const last = lastByKey.get(def.key) ?? null
+      const min = def.unit.min ?? 0
+      const max = def.unit.max ?? 10
+      const span = max - min || 10
+      const pct = avg == null ? 0 : Math.max(0, Math.min(1, (avg - min) / span))
+      return {
+        key: def.key,
+        label: def.label,
+        unit: def.unit.label,
+        avg,
+        last,
+        pct,
+      }
+    })
+  }, [props.events, trackerDefs])
 
   const availablePeople = useMemo(() => {
     const set = new Set<string>()
@@ -644,6 +695,40 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[] })
           </div>
         ),
       },
+      {
+        id: 'trackerSummary',
+        title: 'Trackers',
+        group: 'overview' as WidgetGroup,
+        element: (
+          <div className="space-y-3">
+            {trackerSummaryRows.filter((row) => row.avg != null || row.last).length === 0 ? (
+              <div className="text-xs text-[var(--muted)]">No tracker logs yet.</div>
+            ) : (
+              trackerSummaryRows
+                .filter((row) => row.avg != null || row.last)
+                .slice(0, 6)
+                .map((row) => (
+                  <div key={row.key} className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="text-xs font-bold text-[var(--text)]">{row.label}</div>
+                      <div className="text-[10px] text-[var(--muted)]">
+                        Last: {row.last ? `${row.last.value} ${row.unit}` : '—'}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 h-2 bg-[var(--panel)] rounded-full overflow-hidden">
+                        <div className="h-full bg-[var(--accent)]" style={{ width: `${row.pct * 100}%` }} />
+                      </div>
+                      <span className="text-xs font-bold text-[var(--muted)]">
+                        {row.avg != null ? row.avg.toFixed(1) : '—'} {row.unit}
+                      </span>
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
+        ),
+      },
       // Time & Points allocation
       {
         id: 'timePie',
@@ -851,6 +936,7 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[] })
       timeSeries,
       topPeople,
       topPlaces,
+      trackerSummaryRows,
     ],
   )
 

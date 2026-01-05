@@ -3,9 +3,26 @@ import type { ExtendedMacros, FoodItem, Meal, MealType } from '../db/insight-db'
 import { deleteMealFromSupabase, syncMealToSupabase } from '../supabase/sync'
 
 // Common foods database with nutritional info (per serving)
-export const COMMON_FOODS: Array<{ name: string; unit: string; calories: number; protein: number; carbs: number; fat: number; fiber?: number }> = [
+type CommonFood = {
+  name: string
+  unit: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  fiber?: number
+  sodium?: number
+  potassium?: number
+  saturatedFat?: number
+  sugar?: number
+  cholesterol?: number
+  confidence?: number
+}
+
+export const COMMON_FOODS: CommonFood[] = [
   // Proteins
   { name: 'Chicken Breast', unit: 'oz', calories: 46, protein: 8.8, carbs: 0, fat: 1 },
+  { name: 'Rotisserie Chicken White Meat', unit: 'oz', calories: 47, protein: 8.5, carbs: 0, fat: 1.5, sodium: 110, potassium: 70, confidence: 0.7 },
   { name: 'Ground Beef (90% lean)', unit: 'oz', calories: 50, protein: 7, carbs: 0, fat: 2.5 },
   { name: 'Salmon', unit: 'oz', calories: 58, protein: 7, carbs: 0, fat: 3 },
   { name: 'Eggs', unit: 'large', calories: 70, protein: 6, carbs: 0.5, fat: 5 },
@@ -17,6 +34,8 @@ export const COMMON_FOODS: Array<{ name: string; unit: string; calories: number;
   { name: 'Brown Rice (cooked)', unit: 'cup', calories: 215, protein: 5, carbs: 45, fat: 1.8 },
   { name: 'Pasta (cooked)', unit: 'cup', calories: 220, protein: 8, carbs: 43, fat: 1 },
   { name: 'Bread (white)', unit: 'slice', calories: 75, protein: 2, carbs: 14, fat: 1 },
+  { name: 'Extreme Wellness Wrap', unit: 'wrap', calories: 50, protein: 5, carbs: 12, fat: 1.5, fiber: 7, sodium: 200, potassium: 90, confidence: 0.7 },
+  { name: 'Low Carb Tortilla', unit: 'tortilla', calories: 70, protein: 5, carbs: 15, fat: 2, fiber: 6, sodium: 210, confidence: 0.6 },
   { name: 'Oatmeal (cooked)', unit: 'cup', calories: 150, protein: 5, carbs: 27, fat: 3 },
   { name: 'Sweet Potato', unit: 'medium', calories: 100, protein: 2, carbs: 24, fat: 0 },
   { name: 'Banana', unit: 'medium', calories: 105, protein: 1, carbs: 27, fat: 0.4 },
@@ -27,6 +46,7 @@ export const COMMON_FOODS: Array<{ name: string; unit: string; calories: number;
   { name: 'Peanut Butter', unit: 'tbsp', calories: 95, protein: 4, carbs: 3, fat: 8 },
   { name: 'Almonds', unit: 'oz', calories: 165, protein: 6, carbs: 6, fat: 14 },
   { name: 'Cheese (cheddar)', unit: 'oz', calories: 115, protein: 7, carbs: 0.4, fat: 9.5 },
+  { name: 'Havarti Cheese', unit: 'slice', calories: 120, protein: 7, carbs: 1, fat: 9, sodium: 180, saturatedFat: 6, confidence: 0.7 },
   { name: 'Parmesan', unit: 'tbsp', calories: 22, protein: 2, carbs: 0.2, fat: 1.5 },
   { name: 'Pizza Slice', unit: 'slice', calories: 285, protein: 12, carbs: 36, fat: 10 },
   { name: 'Hot Dog', unit: 'item', calories: 150, protein: 5, carbs: 2, fat: 13 },
@@ -72,6 +92,13 @@ export function estimateFoodNutrition(name: string, quantity = 1, unit = 'servin
         carbs: Math.round(food.carbs * quantity),
         fat: Math.round(food.fat * quantity),
         fiber: food.fiber ? Math.round(food.fiber * quantity) : undefined,
+        sodium: food.sodium ? Math.round(food.sodium * quantity) : undefined,
+        potassium: food.potassium ? Math.round(food.potassium * quantity) : undefined,
+        saturatedFat: food.saturatedFat ? Math.round(food.saturatedFat * quantity) : undefined,
+        sugar: food.sugar ? Math.round(food.sugar * quantity) : undefined,
+        cholesterol: food.cholesterol ? Math.round(food.cholesterol * quantity) : undefined,
+        confidence: food.confidence ?? 0.85,
+        source: 'database',
       }
     }
   }
@@ -87,21 +114,24 @@ export function estimateFoodNutrition(name: string, quantity = 1, unit = 'servin
         protein: Math.round(food.protein * quantity),
         carbs: Math.round(food.carbs * quantity),
         fat: Math.round(food.fat * quantity),
+        confidence: 0.75,
+        source: 'database',
       }
     }
   }
 
   // Default estimate based on keywords
-  if (/salad/i.test(name)) return { calories: 150, protein: 5, carbs: 15, fat: 8 }
-  if (/sandwich/i.test(name)) return { calories: 400, protein: 20, carbs: 40, fat: 15 }
-  if (/burger/i.test(name)) return { calories: 600, protein: 30, carbs: 45, fat: 35 }
-  if (/pizza/i.test(name)) return { calories: 285, protein: 12, carbs: 36, fat: 10 }
-  if (/hot\s*dog/i.test(name)) return { calories: 150, protein: 5, carbs: 2, fat: 13 }
-  if (/steak/i.test(name)) return { calories: 300, protein: 40, carbs: 0, fat: 15 }
-  if (/smoothie/i.test(name)) return { calories: 300, protein: 10, carbs: 50, fat: 5 }
-  if (/chipotle/i.test(name) && /bowl|burrito/i.test(name)) return { calories: 700, protein: 40, carbs: 50, fat: 35 }
+  if (/salad/i.test(name)) return { calories: 150, protein: 5, carbs: 15, fat: 8, confidence: 0.4, source: 'database' }
+  if (/sandwich/i.test(name)) return { calories: 400, protein: 20, carbs: 40, fat: 15, confidence: 0.4, source: 'database' }
+  if (/burger/i.test(name)) return { calories: 600, protein: 30, carbs: 45, fat: 35, confidence: 0.4, source: 'database' }
+  if (/pizza/i.test(name)) return { calories: 285, protein: 12, carbs: 36, fat: 10, confidence: 0.5, source: 'database' }
+  if (/hot\s*dog/i.test(name)) return { calories: 150, protein: 5, carbs: 2, fat: 13, confidence: 0.5, source: 'database' }
+  if (/steak/i.test(name)) return { calories: 300, protein: 40, carbs: 0, fat: 15, confidence: 0.45, source: 'database' }
+  if (/smoothie/i.test(name)) return { calories: 300, protein: 10, carbs: 50, fat: 5, confidence: 0.35, source: 'database' }
+  if (/wrap|tortilla/i.test(name)) return { calories: 120, protein: 4, carbs: 22, fat: 3, fiber: 4, confidence: 0.35, source: 'database' }
+  if (/chipotle/i.test(name) && /bowl|burrito/i.test(name)) return { calories: 700, protein: 40, carbs: 50, fat: 35, confidence: 0.6, source: 'database' }
 
-  return { name, quantity, unit }
+  return { name, quantity, unit, confidence: 0.25, source: 'database' }
 }
 
 // Parse meal from natural language
@@ -118,117 +148,168 @@ function singularizeUnit(raw: string) {
   return cleaned
 }
 
-export function parseMealFromText(text: string): Partial<Meal> | null {
+function normalizeFoodName(raw: string) {
+  return raw
+    .replace(/\b(of|a|an|the|some)\b/gi, ' ')
+    .replace(/\b(wraps)\b/gi, 'wrap')
+    .replace(/\b(tortillas)\b/gi, 'tortilla')
+    .replace(/\b(slices)\b/gi, 'slice')
+    .replace(/\b(pieces)\b/gi, 'piece')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function normalizeFoodKey(raw: string) {
+  return normalizeFoodName(raw).toLowerCase()
+}
+
+function inferMealTypeFromTime(nowMs: number): MealType {
+  const hour = new Date(nowMs).getHours()
+  if (hour >= 5 && hour < 11) return 'breakfast'
+  if (hour >= 11 && hour < 15) return 'lunch'
+  if (hour >= 17 && hour < 21) return 'dinner'
+  return 'snack'
+}
+
+export function parseMealFromText(text: string, opts?: { nowMs?: number }): Partial<Meal> | null {
   const items: FoodItem[] = []
 
   // Detect meal type
-  let mealType: MealType = 'snack'
+  let mealType: MealType | null = null
   if (/\b(breakfast|morning)\b/i.test(text)) mealType = 'breakfast'
   else if (/\b(lunch|midday)\b/i.test(text)) mealType = 'lunch'
   else if (/\b(dinner|supper|evening)\b/i.test(text)) mealType = 'dinner'
   else if (/\b(coffee|tea|water|drink|smoothie|shake)\b/i.test(text)) mealType = 'drink'
+  if (!mealType && opts?.nowMs != null) mealType = inferMealTypeFromTime(opts.nowMs)
+  if (!mealType) mealType = 'snack'
 
-  if (!FOOD_CUE_RE.test(text) && WORKOUT_CUE_RE.test(text)) {
+  const hasFoodCue = FOOD_CUE_RE.test(text) || /\b(wraps?|tortillas?|cheese|rotisserie|havarti)\b/i.test(text)
+  if (!hasFoodCue && WORKOUT_CUE_RE.test(text)) {
     return null
   }
 
   const seen = new Set<string>()
+  const UNIT_LEAD_RE = /^(?:oz|ounce|ounces|cup|cups|head|heads|slice|slices|piece|pieces|wrap|wraps|tortilla|tortillas|serving|servings)\b/i
+
+  const recordItem = (foodNameRaw: string, quantity: number, unit: string) => {
+    const cleaned = normalizeFoodName(foodNameRaw)
+    if (!cleaned || cleaned.length < 3) return
+    if (isWorkoutToken(cleaned)) return
+    const key = normalizeFoodKey(cleaned)
+    if (!key || seen.has(key)) return
+    seen.add(key)
+
+    const estimated = estimateFoodNutrition(cleaned, quantity, unit)
+    items.push({
+      id: `food_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      name: estimated.name ?? cleaned,
+      quantity,
+      unit: estimated.unit ?? unit,
+      calories: estimated.calories,
+      protein: estimated.protein,
+      carbs: estimated.carbs,
+      fat: estimated.fat,
+      fiber: estimated.fiber,
+      saturatedFat: estimated.saturatedFat,
+      transFat: estimated.transFat,
+      sugar: estimated.sugar,
+      sodium: estimated.sodium,
+      potassium: estimated.potassium,
+      cholesterol: estimated.cholesterol,
+      confidence: estimated.confidence,
+      source: estimated.source,
+    })
+  }
+
   const explicitUnitPatterns = [
-    /(\d+(?:\.\d+)?)\s*(slice|slices|piece|pieces|serving|servings)\s+of\s+([a-zA-Z][a-zA-Z\s]+)/gi,
+    /(\d+(?:\.\d+)?)\s*(slice|slices|piece|pieces|serving|servings|wrap|wraps|tortilla|tortillas|cup|cups)\s*(?:of\s+)?([a-zA-Z][a-zA-Z\s]+)/gi,
   ]
 
   for (const pattern of explicitUnitPatterns) {
     for (const match of text.matchAll(pattern)) {
       const quantity = parseFloat(match[1])
       const unit = singularizeUnit(match[2] ?? 'serving')
-      const foodName = match[3].trim()
-      const key = foodName.toLowerCase()
-      if (seen.has(key) || foodName.length < 3) continue
-      if (isWorkoutToken(foodName)) continue
-      seen.add(key)
-
-      const estimated = estimateFoodNutrition(foodName, quantity, unit)
-      items.push({
-        id: `food_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        name: estimated.name ?? foodName,
-        quantity,
-        unit: estimated.unit ?? unit,
-        calories: estimated.calories,
-        protein: estimated.protein,
-        carbs: estimated.carbs,
-        fat: estimated.fat,
-        fiber: estimated.fiber,
-      })
+      let foodName = match[3].trim()
+      if ((unit === 'wrap' || unit === 'tortilla') && !new RegExp(`\\b${unit}\\b`, 'i').test(foodName)) {
+        foodName = `${foodName} ${unit}`
+      }
+      recordItem(foodName, quantity, unit)
     }
   }
 
+  // Trailing unit phrases like "2 extreme wellness wraps"
+  const trailingUnitPattern = /(\d+(?:\.\d+)?)\s+([a-zA-Z][a-zA-Z\s]{2,40}?)\s+(wraps?|tortillas?)\b/gi
+  for (const match of text.matchAll(trailingUnitPattern)) {
+    const quantity = parseFloat(match[1])
+    const unit = singularizeUnit(match[3] ?? 'serving')
+    let foodName = match[2].trim()
+    if (!new RegExp(`\\b${unit}\\b`, 'i').test(foodName)) {
+      foodName = `${foodName} ${unit}`
+    }
+    recordItem(foodName, quantity, unit)
+  }
+
   // Parse patterns like "2 heads of romaine" or "6oz chicken"
-  const quantityPatterns = [
-    /(\d+(?:\.\d+)?)\s*(?:oz|ounces?)\s+(?:of\s+)?([a-zA-Z][a-zA-Z\s]+)/gi,
-    /(\d+(?:\.\d+)?)\s+(?:servings?\s+(?:of\s+)?)?([a-zA-Z][a-zA-Z\s]+)/gi,
-    /(\d+(?:\.\d+)?)\s+(?:cups?\s+(?:of\s+)?)?([a-zA-Z][a-zA-Z\s]+)/gi,
-    /(\d+(?:\.\d+)?)\s+(?:heads?\s+(?:of\s+)?)?([a-zA-Z][a-zA-Z\s]+)/gi,
+  const quantityPatterns: Array<{ regex: RegExp; unit: string }> = [
+    { regex: /(\d+(?:\.\d+)?)\s*(?:oz|ounces?)\s+(?:of\s+)?([a-zA-Z][a-zA-Z\s]+)/gi, unit: 'oz' },
+    { regex: /(\d+(?:\.\d+)?)\s*(?:cups?)\s+(?:of\s+)?([a-zA-Z][a-zA-Z\s]+)/gi, unit: 'cup' },
+    { regex: /(\d+(?:\.\d+)?)\s*(?:heads?)\s+(?:of\s+)?([a-zA-Z][a-zA-Z\s]+)/gi, unit: 'head' },
+    { regex: /(\d+(?:\.\d+)?)\s*(?:servings?)\s+(?:of\s+)?([a-zA-Z][a-zA-Z\s]+)/gi, unit: 'serving' },
   ]
 
-  const carried = new Set(items.map((item) => item.name.toLowerCase()))
-  for (const name of carried) seen.add(name)
-  for (const pattern of quantityPatterns) {
-    for (const match of text.matchAll(pattern)) {
+  for (const { regex, unit } of quantityPatterns) {
+    for (const match of text.matchAll(regex)) {
       const quantity = parseFloat(match[1])
       const foodName = match[2].trim()
-      if (/\b(slice|slices|piece|pieces)\b/i.test(foodName)) continue
-      const key = foodName.toLowerCase()
-      if (seen.has(key) || foodName.length < 3) continue
-      if (isWorkoutToken(foodName)) continue
-      seen.add(key)
+      recordItem(foodName, quantity, unit)
+    }
+  }
 
-      const estimated = estimateFoodNutrition(foodName, quantity)
-      items.push({
-        id: `food_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        name: estimated.name ?? foodName,
-        quantity,
-        unit: estimated.unit ?? 'serving',
-        calories: estimated.calories,
-        protein: estimated.protein,
-        carbs: estimated.carbs,
-        fat: estimated.fat,
-        fiber: estimated.fiber,
-      })
+  // Generic quantity: "2 apples"
+  if (hasFoodCue) {
+    const genericQuantityPattern = /(\d+(?:\.\d+)?)\s+([a-zA-Z][a-zA-Z\s]+)/gi
+    for (const match of text.matchAll(genericQuantityPattern)) {
+      const quantity = parseFloat(match[1])
+      const foodName = match[2].trim()
+      if (UNIT_LEAD_RE.test(foodName)) continue
+      recordItem(foodName, quantity, 'serving')
     }
   }
 
   // Parse simple food mentions without quantities
-  const simplePattern = /\bhad\s+(?:a\s+|an\s+)?([a-zA-Z][a-zA-Z\s]{2,20})/gi
+  const simplePattern = /\b(?:had|ate|having)\s+(?:a\s+|an\s+)?([a-zA-Z][a-zA-Z\s]{2,20})/gi
   for (const match of text.matchAll(simplePattern)) {
     const foodName = match[1].trim()
-    const key = foodName.toLowerCase()
-    if (seen.has(key)) continue
-    if (isWorkoutToken(foodName)) continue
-    seen.add(key)
-
-    const estimated = estimateFoodNutrition(foodName, 1)
-    items.push({
-      id: `food_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      name: estimated.name ?? foodName,
-      quantity: 1,
-      unit: estimated.unit ?? 'serving',
-      calories: estimated.calories,
-      protein: estimated.protein,
-      carbs: estimated.carbs,
-      fat: estimated.fat,
-      fiber: estimated.fiber,
-    })
+    recordItem(foodName, 1, 'serving')
   }
 
   if (items.length === 0) return null
 
   // Calculate totals
   const totalCalories = items.reduce((sum, item) => sum + (item.calories ?? 0), 0)
+  const sumOptional = (key: keyof FoodItem) => {
+    let total = 0
+    let has = false
+    for (const item of items) {
+      const value = item[key]
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        total += value
+        has = true
+      }
+    }
+    return has ? total : undefined
+  }
   const macros: ExtendedMacros = {
     protein: items.reduce((sum, item) => sum + (item.protein ?? 0), 0),
     carbs: items.reduce((sum, item) => sum + (item.carbs ?? 0), 0),
     fat: items.reduce((sum, item) => sum + (item.fat ?? 0), 0),
     fiber: items.reduce((sum, item) => sum + (item.fiber ?? 0), 0) || undefined,
+    saturatedFat: sumOptional('saturatedFat'),
+    transFat: sumOptional('transFat'),
+    sugar: sumOptional('sugar'),
+    sodium: sumOptional('sodium'),
+    potassium: sumOptional('potassium'),
+    cholesterol: sumOptional('cholesterol'),
   }
 
   return {
