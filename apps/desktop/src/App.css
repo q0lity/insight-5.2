@@ -1837,6 +1837,10 @@ select:focus-visible {
   list-style: inherit;
 }
 
+.mdLiChecklist {
+  list-style: none;
+}
+
 .mdLiRow {
   display: flex;
   align-items: center;
@@ -1846,6 +1850,13 @@ select:focus-visible {
 .mdLiContent {
   flex: 1;
   min-width: 0;
+}
+
+.mdLiActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
 }
 
 .mdLiToggle {
@@ -1887,6 +1898,50 @@ select:focus-visible {
   border-color: var(--accentBorder);
   background: var(--accentSoft);
   color: var(--accent);
+}
+
+.mdTaskStart.running.over {
+  border-color: rgba(185, 28, 28, 0.4);
+  background: rgba(254, 226, 226, 0.8);
+  color: #b91c1c;
+}
+
+.mdCheck {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.mdCheck:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.mdCheckBox {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(17, 24, 39, 0.2);
+  background: rgba(255, 255, 255, 0.7);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.mdCheck.checked .mdCheckBox {
+  background: var(--accentSoft);
+  border-color: var(--accentBorder);
+}
+
+.mdCheck.checked .mdCheckBox::after {
+  content: '';
+  width: 6px;
+  height: 10px;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  transform: rotate(45deg);
 }
 
 .mdChip {
@@ -2234,13 +2289,109 @@ select:focus-visible {
   flex-direction: column;
 }
 
-/* Capture Modal Polish */
+/* Capture Modal Polish - Glassmorphism */
 .captureModalCard {
-  background: linear-gradient(165deg, var(--panel) 0%, var(--panel2) 100%);
+  background: var(--glass, linear-gradient(165deg, var(--panel) 0%, var(--panel2) 100%));
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--border);
+  border-radius: 28px;
   box-shadow:
-    0 0 0 1px var(--border),
-    0 20px 50px -10px rgba(0, 0, 0, 0.25),
+    0 8px 32px var(--panelAlpha, rgba(0, 0, 0, 0.1)),
     0 0 80px -20px var(--accentSoft);
+}
+
+/* Fallback for browsers without backdrop-filter */
+@supports not (backdrop-filter: blur(1px)) {
+  .captureModalCard {
+    background: var(--panel);
+  }
+}
+
+/* Recording state - breathing glow */
+.captureModalCard.recording {
+  animation: breathingGlow 3s ease-in-out infinite;
+}
+
+@keyframes breathingGlow {
+  0%, 100% {
+    box-shadow:
+      0 8px 32px var(--panelAlpha, rgba(0, 0, 0, 0.1)),
+      0 0 40px var(--accentSoft);
+  }
+  50% {
+    box-shadow:
+      0 8px 32px var(--panelAlpha, rgba(0, 0, 0, 0.1)),
+      0 0 60px var(--accent);
+  }
+}
+
+/* Extended toggle button */
+.extended-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.extended-toggle:hover {
+  border-color: var(--accent);
+}
+
+.extended-toggle.active {
+  background: var(--accentSoft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Waveform visualization */
+.waveform-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 32px;
+  padding: 8px 24px;
+}
+
+.waveform-bar {
+  width: 4px;
+  background: linear-gradient(to top, var(--accent), var(--accentSoft));
+  border-radius: 2px;
+  animation: waveform 1.2s ease-in-out infinite;
+}
+
+.waveform-bar:nth-child(1) { animation-delay: 0s; }
+.waveform-bar:nth-child(2) { animation-delay: 0.1s; }
+.waveform-bar:nth-child(3) { animation-delay: 0.2s; }
+.waveform-bar:nth-child(4) { animation-delay: 0.3s; }
+.waveform-bar:nth-child(5) { animation-delay: 0.4s; }
+.waveform-bar:nth-child(6) { animation-delay: 0.3s; }
+.waveform-bar:nth-child(7) { animation-delay: 0.2s; }
+.waveform-bar:nth-child(8) { animation-delay: 0.1s; }
+.waveform-bar:nth-child(9) { animation-delay: 0s; }
+
+@keyframes waveform {
+  0%, 100% { transform: scaleY(0.3); opacity: 0.5; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+/* Entity chip animations */
+.entity-chip-enter {
+  animation: chipAppear 0.3s ease-out;
+}
+
+@keyframes chipAppear {
+  from { opacity: 0; transform: translateY(8px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .captureVoiceBtn {

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Icon } from './icons'
+import { CapturePreview } from './CapturePreview'
 
 interface CaptureModalProps {
   isOpen: boolean
@@ -18,6 +19,9 @@ interface CaptureModalProps {
   attachEventId: string | null
   onDetachEvent: () => void
   attachedEventTitle: string | null
+  extendedMode?: boolean
+  onToggleExtendedMode?: () => void
+  anchorMs?: number
 }
 
 const LOADING_PHRASES = [
@@ -44,9 +48,18 @@ export function CaptureModal({
   attachEventId,
   onDetachEvent,
   attachedEventTitle,
+  extendedMode = false,
+  onToggleExtendedMode,
+  anchorMs,
 }: CaptureModalProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [loadingPhraseIndex, setLoadingPhraseIndex] = useState(0)
+
+  // Combine draft + interim for live preview
+  const previewText = useMemo(() => {
+    const combined = draft + (interimTranscript ? ` ${interimTranscript}` : '')
+    return combined.trim()
+  }, [draft, interimTranscript])
 
   // Auto-focus and dynamic sizing
   useEffect(() => {
@@ -91,14 +104,24 @@ export function CaptureModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="captureModalCard w-full max-w-3xl bg-[var(--panel)] rounded-2xl shadow-2xl overflow-hidden border border-[var(--border)] relative flex flex-col max-h-[85vh]"
+            className={`captureModalCard w-full max-w-3xl bg-[var(--panel)] shadow-2xl overflow-hidden relative flex flex-col max-h-[85vh] ${isListening ? 'recording' : ''}`}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--panel2)]/50 backdrop-blur-md">
-              <div className="flex flex-col">
+              <div className="flex items-center gap-3">
                 <h2 className="text-lg font-bold text-[var(--text)] tracking-tight">Capture</h2>
+                {onToggleExtendedMode && (
+                  <button
+                    onClick={onToggleExtendedMode}
+                    className={`extended-toggle ${extendedMode ? 'active' : ''}`}
+                    title={extendedMode ? 'Extended mode: up to 1 hour' : 'Click for extended recording (up to 1 hour)'}
+                  >
+                    <Icon name="bolt" size={14} />
+                    {extendedMode ? '1hr' : 'Extend'}
+                  </button>
+                )}
                 {attachEventId && (
-                  <div className="flex items-center gap-2 mt-1 text-xs font-semibold text-[var(--accent)] bg-[var(--accentSoft)] px-2 py-0.5 rounded-full">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[var(--accent)] bg-[var(--accentSoft)] px-2 py-0.5 rounded-full">
                     <span>Appending to: {attachedEventTitle}</span>
                     <button
                       onClick={onDetachEvent}
@@ -117,6 +140,16 @@ export function CaptureModal({
                 <Icon name="x" className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Waveform Visualizer - shows when recording */}
+            {isListening && (
+              <div className="waveform-container border-b border-[var(--border)] bg-[var(--panel2)]/30">
+                {[...Array(9)].map((_, i) => (
+                  <div key={i} className="waveform-bar" style={{ height: `${8 + Math.random() * 16}px` }} />
+                ))}
+                <span className="ml-3 text-xs font-bold text-[var(--accent)]">Recording...</span>
+              </div>
+            )}
 
             {/* Main Input Area */}
             <div className="flex-1 relative p-6 flex flex-col min-h-[300px]">
@@ -138,6 +171,17 @@ export function CaptureModal({
                 </div>
               )}
             </div>
+
+            {/* Live Preview - Progressive Outline */}
+            {previewText && (
+              <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--panel2)]/30 max-h-[200px] overflow-y-auto">
+                <CapturePreview
+                  text={previewText}
+                  isProcessing={isListening}
+                  compact
+                />
+              </div>
+            )}
 
             {/* Status / Progress */}
             {(isSaving || aiStatus || error || progress.length > 0) && (

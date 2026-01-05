@@ -5,11 +5,12 @@ import type { Session } from '@supabase/supabase-js'
 import { Toaster, toast } from 'sonner'
 
 import { addInboxCapture, listInboxCaptures, updateCaptureEntityIds, updateCaptureText, type InboxCapture } from './storage/inbox'
-import { createTask, createTaskInEvent, deleteTask, listTasks, startTask, upsertTask, type Task, type TaskStatus } from './storage/tasks'
+import { createTask, deleteTask, listTasks, startTask, upsertTask, type Task, type TaskStatus } from './storage/tasks'
 import { createEvent, deleteEvent, findActiveByTrackerKey, findActiveEpisode, findBestActiveEventAt, listEvents, upsertEvent, type CalendarEvent } from './storage/calendar'
 import { ensureEntity } from './storage/entities'
 import { estimateCalories, parseWorkoutFromText, saveWorkout } from './storage/workouts'
 import { estimateFoodNutrition, parseMealFromText, saveMeal } from './storage/nutrition'
+import { emptySharedMeta, loadTrackerDefs, saveTrackerDefs, upsertTrackerDef, type TrackerDef } from './storage/ecosystem'
 import { parseCaptureNatural, type ParsedEvent } from './nlp/natural'
 import { parseCaptureWithBlocksLlm } from './nlp/llm-parse'
 import { estimateNutritionWithLlm } from './nlp/nutrition-estimate'
@@ -42,14 +43,17 @@ import { PlacesView } from './workspace/views/places'
 import { TagsView } from './workspace/views/tags'
 import { RewardsView } from './workspace/views/rewards'
 import { GoalsView } from './workspace/views/goals'
+import { EcosystemView } from './workspace/views/ecosystem'
 import { ProjectsView } from './workspace/views/projects'
+import { TrackersView } from './workspace/views/trackers'
 import { HabitsView } from './workspace/views/habits'
 import { ReportsView } from './workspace/views/reports'
 import { basePoints, multiplierFor, pointsForMinutes } from './scoring/points'
 import { loadCustomTaxonomy, saveCustomTaxonomy } from './taxonomy/custom'
 import { categoriesFromStarter, subcategoriesFromStarter } from './taxonomy/starter'
 import { loadTaxonomyRules, TAXONOMY_RULES_CHANGED_EVENT, type TaxonomyRule } from './taxonomy/rules'
-import { collectMarkdownTokens } from './markdown/schema'
+import { collectMarkdownTokens, extractInlineTokens, toTokenCollections } from './markdown/schema'
+import { parseNoteItemMeta, type NoteItemKind } from './markdown/note-items'
 
 type PaneState = {
   tabs: WorkspaceTab[]
@@ -97,17 +101,18 @@ type HabitDef = {
   character: Array<'STR' | 'INT' | 'CON' | 'PER'>
   skills: string[]
   tags: string[]
+  contexts: string[]
+  people: string[]
+  location?: string | null
+  goal?: string | null
+  project?: string | null
   estimateMinutes?: number | null
   polarity?: 'positive' | 'negative' | 'both'
   schedule?: string | null
   targetPerWeek?: number | null
-}
-
-type TrackerDef = {
-  key: string
-  label: string
-  defaultValue?: number | null
-  icon?: IconName
+  color?: string | null
+  icon?: string | null
+  isTimed?: boolean
 }
 
 type Selection =
@@ -145,8 +150,12 @@ function defaultTabTitle(view: WorkspaceViewKey) {
       return 'Goals'
     case 'goal-detail':
       return 'Goal'
+    case 'ecosystem':
+      return 'Ecosystem'
     case 'projects':
       return 'Projects'
+    case 'trackers':
+      return 'Trackers'
     case 'rewards':
       return 'Rewards'
     case 'reports':
@@ -331,22 +340,21 @@ function loadHabitDefsFromStorage(): HabitDef[] {
       .map((h) => ({
         ...h,
         tags: (h.tags ?? []).map((t) => normalizeHashTag(String(t))).filter(Boolean),
+        contexts: Array.isArray(h.contexts) ? h.contexts.map((c) => String(c).trim()).filter(Boolean) : [],
+        people: Array.isArray(h.people) ? h.people.map((p) => String(p).trim()).filter(Boolean) : [],
+        location: typeof h.location === 'string' ? h.location : null,
+        goal: typeof h.goal === 'string' ? h.goal : null,
+        project: typeof h.project === 'string' ? h.project : null,
         estimateMinutes: typeof h.estimateMinutes === 'number' ? h.estimateMinutes : null,
         polarity: h.polarity ?? 'both',
+        color: h.color ?? null,
+        icon: h.icon ?? null,
+        isTimed: h.isTimed ?? false,
       }))
   } catch {
     return []
   }
 }
-
-const TRACKER_LIBRARY: TrackerDef[] = [
-  { key: 'mood', label: 'Mood', defaultValue: 7, icon: 'smile' },
-  { key: 'energy', label: 'Energy', defaultValue: 7, icon: 'bolt' },
-  { key: 'stress', label: 'Stress', defaultValue: 5, icon: 'frown' },
-  { key: 'pain', label: 'Pain', defaultValue: 3, icon: 'heart' },
-  { key: 'bored', label: 'Bored', defaultValue: 7, icon: 'frown' },
-  { key: 'water', label: 'Water', icon: 'droplet' },
-]
 
 /*
 function trackerTitleFor(def: TrackerDef) {
@@ -490,6 +498,25 @@ function extractTrackerTokens(text: string) {
   }
   for (const m of text.matchAll(/#([a-zA-Z][\\w/-]*):([-+]?\\d*\\.?\\d+)/g)) {
     out.push({ name: m[1], value: Number(m[2]) })
+  }
+  return out
+}
+
+function extractMoodMentions(text: string) {
+  const out: Array<{ value: number; hint: 'start' | 'now' | 'unknown' }> = []
+  const re = /\b(?:mood|feel(?:ing)?)\b[^0-9]{0,24}(\d{1,2})(?:\s*\/\s*10)?/gi
+  for (const m of text.matchAll(re)) {
+    const raw = m[1]
+    const value = Number(raw)
+    if (!Number.isFinite(value)) continue
+    const idx = m.index ?? 0
+    const window = text.slice(Math.max(0, idx - 16), Math.min(text.length, idx + m[0].length + 16)).toLowerCase()
+    const hint = /\b(now|right now|currently|at the moment|after|later|end(?:ed)?|finished)\b/.test(window)
+      ? 'now'
+      : /\b(before|earlier|previously|start(?:ed|ing)?|begin(?:ning)?|at first)\b/.test(window)
+        ? 'start'
+        : 'unknown'
+    out.push({ value: Math.max(0, Math.min(10, Math.round(value))), hint })
   }
   return out
 }
@@ -840,24 +867,46 @@ function App() {
   const [authDismissed, setAuthDismissed] = useState(false)
   const supabaseConfigured = Boolean(getSupabaseClient())
   const taxonomyRulesRef = useRef<TaxonomyRule[]>([])
-  const trackerDefs = useMemo(() => {
-    const byKey = new Map<string, TrackerDef>()
-    for (const base of TRACKER_LIBRARY) byKey.set(base.key, base)
+  const [trackerDefs, setTrackerDefs] = useState<TrackerDef[]>(() => loadTrackerDefs())
 
-    for (const e of events) {
-      if (e.kind !== 'log') continue
-      if (e.trackerKey?.startsWith('habit:')) continue
-      const key = (e.trackerKey ?? '').trim().toLowerCase()
-      if (key && !byKey.has(key)) byKey.set(key, { key, label: toTitleCase(key) })
-      for (const tag of e.tags ?? []) {
-        const clean = tag.replace(/^#/, '').trim().toLowerCase()
-        if (!clean || clean === 'habit') continue
-        if (!byKey.has(clean)) byKey.set(clean, { key: clean, label: toTitleCase(clean) })
-      }
+  function defaultTrackerUnit(key: string): TrackerDef['unit'] {
+    const normalized = key.trim().toLowerCase()
+    if (['mood', 'energy', 'stress', 'pain', 'focus', 'sleep'].includes(normalized)) {
+      return { label: 'score', min: 1, max: 10, step: 1, presets: [1, 5, 7, 10] }
     }
+    if (normalized.includes('water') || normalized.includes('hydration')) {
+      return { label: 'oz', min: 0, max: 200, step: 1, presets: [8, 16, 24, 32, 64] }
+    }
+    return { label: 'value', min: null, max: null, step: null, presets: [] }
+  }
 
-    return Array.from(byKey.values()).slice(0, 12)
-  }, [events])
+  function buildTrackerDef(opts: { key: string; label?: string; icon?: IconName | null; color?: string | null; defaultValue?: number | null }) {
+    const key = opts.key.trim().toLowerCase()
+    const now = Date.now()
+    const def: TrackerDef = {
+      id: `trk_${key}_${now}`,
+      key,
+      label: (opts.label ?? toTitleCase(key)).trim() || key,
+      createdAt: now,
+      defaultValue: opts.defaultValue ?? null,
+      icon: opts.icon ?? null,
+      color: opts.color ?? null,
+      unit: defaultTrackerUnit(key),
+      meta: emptySharedMeta(),
+    }
+    return def
+  }
+
+  function ensureTrackerDefinition(opts: { key: string; label?: string; icon?: IconName | null; color?: string | null; defaultValue?: number | null }) {
+    const key = opts.key.trim().toLowerCase()
+    if (!key) return null
+    const existing = loadTrackerDefs().find((t) => t.key === key)
+    if (existing) return existing
+    const next = buildTrackerDef(opts)
+    upsertTrackerDef(next)
+    setTrackerDefs(loadTrackerDefs())
+    return next
+  }
 
 	  const [captureOpen, setCaptureOpen] = useState(false)
 	  const [captureDraft, setCaptureDraft] = useState('')
@@ -869,6 +918,12 @@ function App() {
 		  const [captureError, setCaptureError] = useState<string>('')
   const [captureProgress, setCaptureProgress] = useState<string[]>([])
   const [captureAnchorMs, setCaptureAnchorMs] = useState<number>(() => Date.now())
+  const [captureExtendedMode, setCaptureExtendedMode] = useState(false)
+
+  // Refs for voice capture toggle behavior
+  const speechRecognitionRef = useRef<any>(null)
+  const shouldListenRef = useRef(false)
+  const captureTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const supabase = getSupabaseClient()
@@ -923,6 +978,8 @@ function App() {
   const [selection, setSelection] = useState<Selection>({ kind: 'none' })
   const selectedEventId = selection.kind === 'event' ? selection.id : null
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null)
+  const [selectedProject, setSelectedProject] = useState<string | null>(null)
+  const [selectedTrackerKey, setSelectedTrackerKey] = useState<string | null>(null)
 
   const [leftCollapsed, setLeftCollapsed] = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
@@ -1082,10 +1139,41 @@ function App() {
   }, [])
 
   useEffect(() => {
+    const stored = loadTrackerDefs()
+    const byKey = new Map<string, TrackerDef>()
+    for (const def of stored) byKey.set(def.key, def)
+
+    let changed = false
+    for (const e of events) {
+      if (e.kind !== 'log') continue
+      if (e.trackerKey?.startsWith('habit:')) continue
+      const key = (e.trackerKey ?? '').trim().toLowerCase()
+      if (key && !byKey.has(key)) {
+        byKey.set(key, buildTrackerDef({ key }))
+        changed = true
+      }
+      for (const tag of e.tags ?? []) {
+        const clean = tag.replace(/^#/, '').trim().toLowerCase()
+        if (!clean || clean === 'habit') continue
+        if (!byKey.has(clean)) {
+          byKey.set(clean, buildTrackerDef({ key: clean }))
+          changed = true
+        }
+      }
+    }
+
+    const next = Array.from(byKey.values()).slice(0, 24)
+    if (changed) saveTrackerDefs(next)
+    setTrackerDefs(next)
+  }, [events])
+
+  useEffect(() => {
     setTagDraft('')
     setPeopleDraft('')
     setLocationDraft('')
-  }, [selectedEventId])
+    setContextDraft('')
+    setSkillDraft('')
+  }, [selection.kind, selection.id])
 
   useEffect(() => {
     if (!eventComposerOpen) return
@@ -1170,9 +1258,19 @@ function App() {
     return base ? `${base}\n${line}` : line
   }
 
-  function noteTaskTokenId(notes?: string | null) {
+  function noteItemTokenId(notes?: string | null) {
     const match = notes?.match(/\btoken:([A-Za-z0-9_-]+)\b/)
     return match?.[1] ?? null
+  }
+
+  function extractNoteItemLine(notes: string | null | undefined, lineIndex: number) {
+    const lines = (notes ?? '').split(/\r?\n/)
+    return lines[lineIndex] ?? ''
+  }
+
+  function extractLineTokenCollections(rawLine: string) {
+    const cleaned = rawLine.replace(/\{(?:task|note|seg|event|meal|workout|tracker|habit):[^}]+\}/g, '')
+    return toTokenCollections(extractInlineTokens(cleaned))
   }
 
   function appendMarkdownBlock(existing: string | null | undefined, block: string) {
@@ -1372,6 +1470,16 @@ function App() {
     })
   }
 
+  function openProjectDetail(projectName: string) {
+    setSelectedProject(projectName)
+    openView('projects')
+  }
+
+  function openTrackerDetail(trackerKey: string) {
+    setSelectedTrackerKey(trackerKey)
+    openView('trackers')
+  }
+
   function closeTab(id: string) {
     setWorkspace((p) => {
       const nextTabs = p.tabs.filter((t) => t.id !== id)
@@ -1521,27 +1629,287 @@ function App() {
     commitEvent({ ...ev, completedAt, kind: (ev.kind ?? 'event') as any })
   }
 
-  async function onStartNoteTask(eventId: string, task: { tokenId: string; title: string; estimateMinutes?: number | null; dueAt?: number | null }) {
+  async function stopActiveNoteSessions(parentEventId: string, excludeTokenId?: string | null) {
+    const now = Date.now()
+    const activeChildren = events.filter(
+      (e) => e.parentEventId === parentEventId && e.active && noteItemTokenId(e.notes ?? '') !== excludeTokenId,
+    )
+    if (!activeChildren.length) return
+    const updates: CalendarEvent[] = activeChildren.map((child) => ({
+      ...child,
+      active: false,
+      endAt: Math.max(child.startAt, now),
+    }))
+    for (const next of updates) await upsertEvent(next)
+    setEvents((prev) => prev.map((e) => updates.find((u) => u.id === e.id) ?? e))
+  }
+
+  function findNoteSubEvent(parentEventId: string, tokenId: string) {
+    return events.find((e) => e.parentEventId === parentEventId && noteItemTokenId(e.notes ?? '') === tokenId) ?? null
+  }
+
+  async function ensureNoteSubEvent(opts: {
+    parentEvent: CalendarEvent
+    tokenId: string
+    title: string
+    estimateMinutes?: number | null
+    tags: string[]
+    contexts: string[]
+    people: string[]
+    location: string | null
+    trackerKey?: string | null
+    active: boolean
+    startAt?: number
+  }) {
+    const now = Date.now()
+    const startAt = opts.startAt ?? now
+    const minutes = Math.max(1, Math.round(opts.estimateMinutes ?? 5))
+    const endAt = startAt + minutes * 60 * 1000
+    const existing = events.find(
+      (e) => e.parentEventId === opts.parentEvent.id && noteItemTokenId(e.notes ?? '') === opts.tokenId,
+    )
+    const baseEvent =
+      existing ??
+      (await createEvent({
+        title: opts.title,
+        startAt,
+        endAt,
+        kind: 'log',
+        parentEventId: opts.parentEvent.id,
+        tags: opts.tags,
+        contexts: opts.contexts,
+        entityIds: opts.parentEvent.entityIds ?? [],
+        active: opts.active,
+        category: opts.parentEvent.category,
+        subcategory: opts.parentEvent.subcategory,
+        goal: opts.parentEvent.goal ?? null,
+        project: opts.parentEvent.project ?? null,
+        importance: opts.parentEvent.importance ?? 5,
+        difficulty: opts.parentEvent.difficulty ?? 5,
+        estimateMinutes: opts.estimateMinutes ?? null,
+        location: opts.location,
+        people: opts.people,
+        trackerKey: opts.trackerKey ?? null,
+        notes: `token:${opts.tokenId}`,
+      }))
+
+    const next = await upsertEvent({
+      ...baseEvent,
+      title: opts.title,
+      startAt,
+      endAt,
+      active: opts.active,
+      tags: opts.tags,
+      contexts: opts.contexts,
+      people: opts.people,
+      location: opts.location,
+      trackerKey: opts.trackerKey ?? baseEvent.trackerKey ?? null,
+      notes: `token:${opts.tokenId}`,
+      parentEventId: opts.parentEvent.id,
+      kind: 'log',
+      category: opts.parentEvent.category,
+      subcategory: opts.parentEvent.subcategory,
+      goal: opts.parentEvent.goal ?? null,
+      project: opts.parentEvent.project ?? null,
+      importance: opts.parentEvent.importance ?? 5,
+      difficulty: opts.parentEvent.difficulty ?? 5,
+      estimateMinutes: opts.estimateMinutes ?? baseEvent.estimateMinutes ?? null,
+    })
+    setEvents((prev) => {
+      const existingIdx = prev.findIndex((e) => e.id === next.id)
+      if (existingIdx === -1) return [next, ...prev]
+      const copy = [...prev]
+      copy[existingIdx] = next
+      return copy
+    })
+    return next
+  }
+
+  async function onStartNoteTask(
+    eventId: string,
+    task: {
+      tokenId: string
+      title: string
+      estimateMinutes?: number | null
+      dueAt?: number | null
+      kind?: NoteItemKind
+      rawText?: string
+      lineIndex?: number | null
+    },
+  ) {
     const ev = events.find((e) => e.id === eventId)
     if (!ev || !task.title) return
-    const existing = tasks.find(
-      (t) => t.parentEventId === eventId && noteTaskTokenId(t.notes ?? '') === task.tokenId
-    )
-    let target = existing ?? null
-    if (!target) {
-      const created = await createTaskInEvent({
-        eventId,
-        title: task.title,
-        estimateMinutes: task.estimateMinutes ?? null,
-        importance: ev.importance ?? 5,
-        difficulty: ev.difficulty ?? 5,
-      })
-      const withToken = await upsertTask({ ...created, notes: `token:${task.tokenId}` })
-      setTasks((prev) => [withToken, ...prev])
-      target = withToken
+    const kind = task.kind ?? 'task'
+    const rawLine = task.rawText ?? task.title
+    const lineTokens = extractLineTokenCollections(rawLine)
+    const lineTags = lineTokens.tags.map((t) => normalizeHashTag(t))
+    const tags = uniqStrings([...(ev.tags ?? []), ...lineTags, kind === 'habit' ? '#habit' : '#task'])
+    const contexts = uniqStrings([...(ev.contexts ?? []), ...lineTokens.contexts])
+    const people = uniqStrings([...(ev.people ?? []), ...lineTokens.people])
+    const location = ev.location ?? (lineTokens.places.length ? lineTokens.places.join(', ') : null)
+
+    await stopActiveNoteSessions(eventId, task.tokenId)
+
+    if (kind === 'task') {
+      const existing = tasks.find(
+        (t) => t.parentEventId === eventId && noteItemTokenId(t.notes ?? '') === task.tokenId,
+      )
+      let target = existing ?? null
+      if (!target) {
+        const created = await createTask({
+          title: task.title,
+          status: 'todo',
+          tags,
+          contexts,
+          people,
+          location,
+          skills: ev.skills ?? [],
+          character: ev.character ?? [],
+          entityIds: ev.entityIds ?? [],
+          parentEventId: eventId,
+          category: ev.category ?? null,
+          subcategory: ev.subcategory ?? null,
+          importance: ev.importance ?? 5,
+          difficulty: ev.difficulty ?? 5,
+          estimateMinutes: task.estimateMinutes ?? null,
+          dueAt: task.dueAt ?? null,
+          goal: ev.goal ?? null,
+          project: ev.project ?? null,
+          sourceNoteId: ev.sourceNoteId ?? null,
+        })
+        const withToken = await upsertTask({ ...created, notes: `token:${task.tokenId}` })
+        setTasks((prev) => [withToken, ...prev])
+        target = withToken
+      }
+      const started = await startTask(target.id)
+      if (started) setTasks((prev) => prev.map((t) => (t.id === started.id ? started : t)))
     }
-    const started = await startTask(target.id)
-    if (started) setTasks((prev) => prev.map((t) => (t.id === started.id ? started : t)))
+
+    let habitTrackerKey: string | null = null
+    if (kind === 'habit') {
+      const habit = detectHabitMentions(task.title, habitDefs)[0] ?? null
+      habitTrackerKey = habit ? `habit:${habit.id}` : null
+    }
+
+    await ensureNoteSubEvent({
+      parentEvent: ev,
+      tokenId: task.tokenId,
+      title: task.title,
+      estimateMinutes: task.estimateMinutes ?? null,
+      tags,
+      contexts,
+      people,
+      location,
+      trackerKey: habitTrackerKey,
+      active: true,
+    })
+  }
+
+  async function onToggleEventNoteChecklist(ev: CalendarEvent, lineIndex: number) {
+    const rawLine = extractNoteItemLine(ev.notes, lineIndex)
+    const isChecklist = /^\s*[-*+]\s*\[([ xX])\]\s+/.test(rawLine)
+    const wasChecked = /^\s*[-*+]\s*\[[xX]\]\s+/.test(rawLine)
+    const nextNotes = toggleChecklistLine(ev.notes, lineIndex)
+    if (!isChecklist) {
+      commitEvent({ ...ev, notes: nextNotes })
+      return
+    }
+
+    const nextChecked = !wasChecked
+    const meta = parseNoteItemMeta(rawLine)
+    commitEvent({ ...ev, notes: nextNotes })
+    if (!meta) return
+
+    const lineTokens = extractLineTokenCollections(rawLine)
+    const lineTags = lineTokens.tags.map((t) => normalizeHashTag(t))
+    const tags = uniqStrings([...(ev.tags ?? []), ...lineTags, meta.kind === 'habit' ? '#habit' : '#task'])
+    const contexts = uniqStrings([...(ev.contexts ?? []), ...lineTokens.contexts])
+    const people = uniqStrings([...(ev.people ?? []), ...lineTokens.people])
+    const location = ev.location ?? (lineTokens.places.length ? lineTokens.places.join(', ') : null)
+
+    const existingSub = findNoteSubEvent(ev.id, meta.tokenId)
+
+    if (meta.kind === 'task') {
+      let target = tasks.find((t) => t.parentEventId === ev.id && noteItemTokenId(t.notes ?? '') === meta.tokenId) ?? null
+      if (!target && nextChecked) {
+        const created = await createTask({
+          title: meta.title,
+          status: 'done',
+          tags,
+          contexts,
+          people,
+          location,
+          skills: ev.skills ?? [],
+          character: ev.character ?? [],
+          entityIds: ev.entityIds ?? [],
+          parentEventId: ev.id,
+          category: ev.category ?? null,
+          subcategory: ev.subcategory ?? null,
+          importance: ev.importance ?? 5,
+          difficulty: ev.difficulty ?? 5,
+          estimateMinutes: meta.estimateMinutes ?? null,
+          dueAt: meta.dueAt ?? null,
+          goal: ev.goal ?? null,
+          project: ev.project ?? null,
+          sourceNoteId: ev.sourceNoteId ?? null,
+        })
+        target = await upsertTask({ ...created, notes: `token:${meta.tokenId}` })
+        setTasks((prev) => [target!, ...prev])
+      } else if (target) {
+        const updated = await upsertTask({ ...target, status: nextChecked ? 'done' : 'todo' })
+        setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+      }
+    }
+
+    if (meta.kind === 'habit') {
+      const habit = detectHabitMentions(meta.title, habitDefs)[0] ?? null
+      const trackerKey = habit ? `habit:${habit.id}` : null
+
+      if (nextChecked) {
+        if (existingSub?.active) {
+          const stopped = await upsertEvent({ ...existingSub, active: false, endAt: Date.now() })
+          setEvents((prev) => prev.map((e) => (e.id === stopped.id ? stopped : e)))
+          return
+        }
+        await ensureNoteSubEvent({
+          parentEvent: ev,
+          tokenId: meta.tokenId,
+          title: meta.title,
+          estimateMinutes: meta.estimateMinutes ?? habit?.estimateMinutes ?? null,
+          tags,
+          contexts,
+          people,
+          location,
+          trackerKey,
+          active: false,
+          startAt: Date.now(),
+        })
+      } else if (existingSub) {
+        await deleteEvent(existingSub.id)
+        setEvents((prev) => prev.filter((e) => e.id !== existingSub.id))
+      }
+    } else if (!nextChecked && existingSub) {
+      await deleteEvent(existingSub.id)
+      setEvents((prev) => prev.filter((e) => e.id !== existingSub.id))
+    } else if (nextChecked) {
+      if (existingSub?.active) {
+        const stopped = await upsertEvent({ ...existingSub, active: false, endAt: Date.now() })
+        setEvents((prev) => prev.map((e) => (e.id === stopped.id ? stopped : e)))
+      } else if (!existingSub) {
+        await ensureNoteSubEvent({
+          parentEvent: ev,
+          tokenId: meta.tokenId,
+          title: meta.title,
+          estimateMinutes: meta.estimateMinutes ?? null,
+          tags,
+          contexts,
+          people,
+          location,
+          active: false,
+          startAt: Date.now(),
+        })
+      }
+    }
   }
 
   async function onSaveCapture() {
@@ -1820,6 +2188,7 @@ function App() {
     const implicitMoneyUsd = extractMoneyUsd(captureText)
     const implicitShoppingItems = extractShoppingItems(captureText)
     const trackerTokens = extractTrackerTokens(captureText)
+    const moodMentions = extractMoodMentions(captureText)
     const habitHits = detectHabitMentions(captureText, habitDefs)
     const localWorkout = parseWorkoutFromText(captureText)
     const localMeal = parseMealFromText(captureText)
@@ -2050,6 +2419,7 @@ function App() {
     if (detectedContexts) setCaptureProgress((p) => [...p, `Detected contexts: ${detectedContexts}`].slice(-10))
 
 	    const nowMs = anchorMs
+	    const wallNowMs = Date.now()
 	    const attachedMode = Boolean(captureAttachEventId)
 	    const note = await addInboxCapture(text, { createdAt: anchorMs, entityIds })
 	    setCaptures((prev) => [note, ...prev])
@@ -2086,13 +2456,31 @@ function App() {
       capturePrimaryEventId = captureAttachEventId
     }
 
-    async function createTrackerLog(opts: { key: string; value?: number | null; label?: string; icon?: IconName | null; color?: string | null }) {
+    async function createTrackerLog(opts: {
+      key: string
+      value?: number | null
+      label?: string
+      icon?: IconName | null
+      color?: string | null
+      atMs?: number
+      dedupeKey?: string
+    }) {
       const trackerKey = opts.key.trim().toLowerCase()
-      if (createdTrackerKeys.has(trackerKey)) return null
-      const value = typeof opts.value === 'number' && Number.isFinite(opts.value) ? Math.max(0, Math.min(10, Math.round(opts.value))) : null
-      const title = value != null ? `${trackerKey}: ${value}/10` : opts.label ?? trackerKey
-      const startAt = nowMs
-      const endAt = nowMs + 5 * 60 * 1000
+      const dedupeKey = (opts.dedupeKey ?? trackerKey).trim().toLowerCase()
+      if (createdTrackerKeys.has(dedupeKey)) return null
+      const def = ensureTrackerDefinition({ key: trackerKey, label: opts.label, icon: opts.icon, color: opts.color })
+      const unit = def?.unit ?? defaultTrackerUnit(trackerKey)
+      let value = typeof opts.value === 'number' && Number.isFinite(opts.value) ? opts.value : null
+      if (value != null) {
+        if (unit.step && unit.step > 0) value = Math.round(value / unit.step) * unit.step
+        if (unit.min != null) value = Math.max(unit.min, value)
+        if (unit.max != null) value = Math.min(unit.max, value)
+      }
+      const label = def?.label ?? opts.label ?? trackerKey
+      const unitSuffix = unit.label && unit.label !== 'value' && unit.label !== 'score' ? ` ${unit.label}` : ''
+      const title = value != null ? `${label}: ${value}${unitSuffix}` : label
+      const startAt = opts.atMs ?? nowMs
+      const endAt = startAt + 5 * 60 * 1000
       const key = makeEventKey(title, startAt, endAt)
       if (createdEventKeys.has(key)) return null
       const { mergedTags, inferred } = finalizeCategorizedTags({ title, tags: [`#${trackerKey}`] })
@@ -2107,8 +2495,8 @@ function App() {
         entityIds,
         sourceNoteId: note.id,
         trackerKey,
-        icon: opts.icon ?? null,
-        color: opts.color ?? null,
+        icon: opts.icon ?? def?.icon ?? null,
+        color: opts.color ?? def?.color ?? null,
         goal: goalOverride,
         project: projectOverride,
         importance: importanceOverride ?? 5,
@@ -2118,7 +2506,7 @@ function App() {
       })
       setEvents((prev) => [log, ...prev])
       createdEventKeys.add(makeEventKey(log.title, log.startAt, log.endAt))
-      createdTrackerKeys.add(trackerKey)
+      createdTrackerKeys.add(dedupeKey)
       createdLogCount += 1
       setCaptureProgress((p) => [...p, `+ log: ${log.title}`].slice(-10))
       return log
@@ -2446,25 +2834,30 @@ function App() {
 	      const key = makeEventKey(opts.task.title, startAt, endAt)
 	      if (createdEventKeys.has(key)) return null
 
-	      const ev = await createEvent({
-	        title: opts.task.title,
-	        startAt,
-	        endAt,
-	        kind: 'task',
-	        taskId: opts.task.id,
-	        parentEventId: opts.task.parentEventId ?? null,
-	        tags: opts.tags,
-	        contexts: opts.contexts ?? opts.task.contexts ?? [],
-	        notes: opts.task.notes ?? '',
-	        location: opts.location ?? null,
-	        people: opts.people ?? [],
-	        category: opts.task.category ?? null,
-	        subcategory: opts.task.subcategory ?? null,
-	        goal: opts.task.goal ?? goalOverride ?? null,
-	        project: opts.task.project ?? projectOverride ?? null,
-	        entityIds: opts.entityIds,
-	        sourceNoteId: opts.task.sourceNoteId ?? null,
-	      })
+      const ev = await createEvent({
+        title: opts.task.title,
+        startAt,
+        endAt,
+        kind: 'task',
+        taskId: opts.task.id,
+        parentEventId: opts.task.parentEventId ?? null,
+        tags: opts.tags,
+        contexts: opts.contexts ?? opts.task.contexts ?? [],
+        notes: opts.task.notes ?? '',
+        location: opts.location ?? null,
+        people: opts.people ?? [],
+        skills: opts.task.skills ?? [],
+        character: opts.task.character ?? [],
+        category: opts.task.category ?? null,
+        subcategory: opts.task.subcategory ?? null,
+        goal: opts.task.goal ?? goalOverride ?? null,
+        project: opts.task.project ?? projectOverride ?? null,
+        importance: opts.task.importance ?? 5,
+        difficulty: opts.task.difficulty ?? 5,
+        estimateMinutes,
+        entityIds: opts.entityIds,
+        sourceNoteId: opts.task.sourceNoteId ?? null,
+      })
       setEvents((prev) => [ev, ...prev])
       createdEventKeys.add(makeEventKey(ev.title, ev.startAt, ev.endAt))
       setCaptureProgress((p) => [...p, `+ task block: ${ev.title}`].slice(-10))
@@ -2615,6 +3008,9 @@ function App() {
           const taskBase = `${t.title ?? ''}\n${t.notes ?? ''}\n${(t.tags ?? []).join(' ')}`.trim()
           const autoImportance = t.importance ?? importanceOverride ?? inferImportanceFromText(taskBase) ?? 5
           const autoDifficulty = t.difficulty ?? difficultyOverride ?? inferDifficultyFromText(taskBase) ?? 5
+          const autoCharacter = normalizeCharacterSelection(t.character ?? inferCharacterFromText(taskBase, t.tags ?? []))
+          const locationHint = t.location ?? pickLocationForText(taskBase)
+          const peopleHint = cleanPeopleList(t.people ?? uniqStrings(personMentions))
           let notes = (t.notes ?? '').trim()
           if (!notes && implicitShoppingItems.length && (/\b(shop|shopping|grocery|store|buy)\b/i.test(t.title) || mergedTags.includes('#shopping'))) {
             notes = buildShoppingNotes(implicitShoppingItems, typeof t.costUsd === 'number' ? t.costUsd : implicitMoneyUsd)
@@ -2624,6 +3020,10 @@ function App() {
             status: (t.status as any) ?? 'todo',
             tags: mergedTags,
             contexts: allContexts,
+            people: peopleHint,
+            location: locationHint ?? null,
+            skills: t.skills ?? [],
+            character: autoCharacter,
             entityIds,
             parentEventId: capturePrimaryEventId,
             category: inferred.category,
@@ -2649,6 +3049,10 @@ function App() {
             project: t.project ?? task.project ?? projectOverride ?? null,
             importance: autoImportance ?? task.importance ?? 5,
             difficulty: autoDifficulty ?? task.difficulty ?? 5,
+            people: peopleHint,
+            location: locationHint ?? null,
+            skills: t.skills ?? task.skills ?? [],
+            character: autoCharacter,
             contexts: uniqStrings([...(task.contexts ?? []), ...allContexts]),
           })
 	          setTasks((prev) => [next, ...prev])
@@ -2883,7 +3287,42 @@ function App() {
       }
     }
 
-    if (moodValue != null) {
+    let moodLogged = false
+    if (moodMentions.length) {
+      if (moodMentions.length > 1) {
+        const startMention = moodMentions.find((m) => m.hint === 'start') ?? moodMentions[0]
+        const endMention = moodMentions.find((m) => m.hint === 'now') ?? moodMentions[moodMentions.length - 1]
+        await createTrackerLog({
+          key: 'mood',
+          value: startMention.value,
+          icon: 'smile',
+          color: '#f59e0b',
+          atMs: nowMs,
+          dedupeKey: `mood@start:${Math.round(nowMs / (5 * 60 * 1000))}`,
+        })
+        await createTrackerLog({
+          key: 'mood',
+          value: endMention.value,
+          icon: 'smile',
+          color: '#f59e0b',
+          atMs: wallNowMs,
+          dedupeKey: `mood@end:${Math.round(wallNowMs / (5 * 60 * 1000))}`,
+        })
+      } else {
+        const only = moodMentions[0]
+        const atMs = only.hint === 'now' ? wallNowMs : nowMs
+        await createTrackerLog({
+          key: 'mood',
+          value: only.value,
+          icon: 'smile',
+          color: '#f59e0b',
+          atMs,
+          dedupeKey: `mood@${Math.round(atMs / (5 * 60 * 1000))}`,
+        })
+      }
+      moodLogged = true
+    }
+    if (moodValue != null && !moodLogged) {
       await createTrackerLog({ key: 'mood', value: moodValue, icon: 'smile', color: '#f59e0b' })
     }
     if (energyValue != null) {
@@ -2981,7 +3420,7 @@ function App() {
         kind: 'log',
         parentEventId: await getActiveForLogsId(),
         tags: mergedTags,
-        contexts: allContexts,
+        contexts: uniqStrings([...(allContexts ?? []), ...(h.contexts ?? [])]),
         entityIds,
         sourceNoteId: note.id,
         trackerKey: `habit:${h.id}`,
@@ -2991,6 +3430,10 @@ function App() {
         difficulty: Math.max(0, Math.min(10, h.difficulty)),
         character: h.character,
         skills: h.skills,
+        people: h.people ?? [],
+        location: h.location ?? null,
+        goal: h.goal ?? goalOverride ?? null,
+        project: h.project ?? projectOverride ?? null,
       })
       setEvents((prev) => [ev, ...prev])
       createdEventKeys.add(makeEventKey(ev.title, ev.startAt, ev.endAt))
@@ -3138,11 +3581,18 @@ function App() {
         const taskBase = `${t.title ?? ''}\n${t.notes ?? ''}\n${(t.tags ?? []).join(' ')}`.trim()
 		        const autoImportance = t.importance ?? importanceOverride ?? inferImportanceFromText(taskBase) ?? 5
 		        const autoDifficulty = t.difficulty ?? difficultyOverride ?? inferDifficultyFromText(taskBase) ?? 5
+        const autoCharacter = normalizeCharacterSelection(t.character ?? inferCharacterFromText(taskBase, t.tags ?? []))
+        const locationHint = t.location ?? pickLocationForText(taskBase)
+        const peopleHint = cleanPeopleList(t.people ?? uniqStrings(personMentions))
 		        const task = await createTask({
 		          title: t.title,
 		          status: t.status ?? 'todo',
 		          tags: mergedTags,
 		          contexts: allContexts,
+          people: peopleHint,
+          location: locationHint ?? null,
+          skills: t.skills ?? [],
+          character: autoCharacter,
 		          entityIds,
 		          parentEventId: capturePrimaryEventId,
 		          category: inferred.category,
@@ -3168,6 +3618,10 @@ function App() {
 		          difficulty: autoDifficulty ?? task.difficulty ?? 5,
 		          goal: t.goal ?? task.goal ?? goalOverride ?? null,
 		          project: t.project ?? task.project ?? projectOverride ?? null,
+          people: peopleHint,
+          location: locationHint ?? null,
+          skills: t.skills ?? task.skills ?? [],
+          character: autoCharacter,
 		          contexts: uniqStrings([...(task.contexts ?? []), ...allContexts]),
 		        })
 		        setTasks((prev) => [next, ...prev])
@@ -3183,8 +3637,8 @@ function App() {
 		        const block = await maybeCreateTaskCalendarBlock({
 		          task: next,
 		          tags: mergedTags,
-		          location: pickLocationForText(taskBase),
-		          people: cleanPeopleList(uniqStrings(personMentions)),
+          location: locationHint ?? null,
+          people: peopleHint,
 		          contexts: allContexts,
 		          entityIds,
 		        })
@@ -3705,8 +4159,27 @@ function App() {
             }}
           />
         )
+      case 'ecosystem':
+        return (
+          <EcosystemView
+            events={events}
+            tasks={tasks}
+            onOpenGoal={openGoalDetail}
+            onOpenProject={openProjectDetail}
+            onOpenTracker={openTrackerDetail}
+          />
+        )
       case 'projects':
-        return <ProjectsView events={events} tasks={tasks} />
+        return (
+          <ProjectsView
+            events={events}
+            tasks={tasks}
+            projectName={selectedProject}
+            onSelectProject={setSelectedProject}
+          />
+        )
+      case 'trackers':
+        return <TrackersView events={events} trackerKey={selectedTrackerKey} onSelectTracker={setSelectedTrackerKey} />
       case 'rewards':
         return <RewardsView events={events} />
       case 'reports':
@@ -3774,6 +4247,10 @@ function App() {
   const docTranscriptLines = useMemo(() => parseTimestampedTranscript(docTranscriptText), [docTranscriptText])
   const selectedTaskTags = selectedTask?.tags ?? []
   const selectedTaskContexts = selectedTask?.contexts ?? []
+  const selectedTaskPeople = selectedTask?.people ?? []
+  const selectedTaskLocations = selectedTask?.location ? parseCommaList(selectedTask.location) : []
+  const selectedTaskSkills = selectedTask?.skills ?? []
+  const selectedTaskCharacter = selectedTask?.character ?? []
   const selectedEventTags = selectedEvent?.tags ?? []
   const selectedEventContexts = selectedEvent?.contexts ?? []
   const selectedEventPeople = selectedEvent?.people ?? []
@@ -3803,18 +4280,29 @@ function App() {
       .slice(0, 50)
   }, [selectedEvent?.id, tasks])
   const selectedEventNoteTasks = useMemo(() => {
-    if (!selectedEventTasks.length) return {}
+    if (!selectedEvent) return {}
     const map: Record<string, { status: string; startedAt?: number | null }> = {}
     for (const t of selectedEventTasks) {
-      const tokenId = noteTaskTokenId(t.notes ?? '')
+      const tokenId = noteItemTokenId(t.notes ?? '')
       if (!tokenId) continue
       map[tokenId] = {
         status: t.status,
         startedAt: t.status === 'in_progress' ? t.updatedAt : null,
       }
     }
+    for (const e of events) {
+      if (e.parentEventId !== selectedEvent.id) continue
+      const tokenId = noteItemTokenId(e.notes ?? '')
+      if (!tokenId) continue
+      const status = e.active ? 'in_progress' : 'done'
+      if (map[tokenId]?.status === 'in_progress' && !e.active) continue
+      map[tokenId] = {
+        status,
+        startedAt: e.active ? e.startAt : null,
+      }
+    }
     return map
-  }, [selectedEventTasks])
+  }, [events, selectedEvent, selectedEventTasks])
   const hasRunningNoteTask = useMemo(
     () => Object.values(selectedEventNoteTasks).some((t) => t.status === 'in_progress'),
     [selectedEventNoteTasks],
@@ -3932,46 +4420,98 @@ function App() {
     return `at ${trimmed}`
   }
 
+  function stopVoiceCapture() {
+    shouldListenRef.current = false
+    if (captureTimeoutRef.current) {
+      clearTimeout(captureTimeoutRef.current)
+      captureTimeoutRef.current = null
+    }
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop()
+      } catch {}
+      speechRecognitionRef.current = null
+    }
+    setCaptureListening(false)
+    setCaptureInterim('')
+  }
+
+  function toggleVoiceCapture(opts?: { silentIfUnavailable?: boolean }) {
+    // If already listening, stop
+    if (shouldListenRef.current || captureListening) {
+      stopVoiceCapture()
+      return
+    }
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition ?? (window as any).mozSpeechRecognition
+    if (!SpeechRecognition) {
+      if (!opts?.silentIfUnavailable) alert('Voice capture is not available in this build yet. (Next: Whisper.)')
+      return
+    }
+
+    const rec = new SpeechRecognition()
+    rec.lang = 'en-US'
+    rec.interimResults = true
+    rec.continuous = true // Enable continuous mode for longer recording
+
+    speechRecognitionRef.current = rec
+    shouldListenRef.current = true
+    setCaptureListening(true)
+    setCaptureInterim('')
+
+    // Set timeout based on mode: default 60s, extended 1hr
+    const timeoutMs = captureExtendedMode ? 60 * 60 * 1000 : 60 * 1000
+    captureTimeoutRef.current = setTimeout(() => {
+      stopVoiceCapture()
+    }, timeoutMs)
+
+    rec.onresult = (e: any) => {
+      let finalText = ''
+      let interim = ''
+      const results: SpeechRecognitionResultList | undefined = e.results
+      if (!results) return
+      for (let i = e.resultIndex ?? 0; i < results.length; i++) {
+        const r: any = results[i]
+        const t = r?.[0]?.transcript
+        if (typeof t !== 'string') continue
+        if (r.isFinal) finalText += ` ${t}`
+        else interim += ` ${t}`
+      }
+      const finalTrim = finalText.trim()
+      const interimTrim = interim.trim()
+      setCaptureInterim(interimTrim)
+      if (finalTrim) setCaptureDraft((prev) => (prev.trim() ? `${prev.trim()} ${finalTrim}` : finalTrim))
+    }
+
+    rec.onerror = (e: any) => {
+      // Only stop on fatal errors, not 'no-speech' or 'aborted'
+      if (e.error !== 'no-speech' && e.error !== 'aborted') {
+        stopVoiceCapture()
+      }
+    }
+
+    rec.onend = () => {
+      // Auto-restart if shouldListen is still true and timeout hasn't fired
+      if (shouldListenRef.current && captureTimeoutRef.current) {
+        try {
+          rec.start()
+        } catch {
+          stopVoiceCapture()
+        }
+      } else {
+        setCaptureListening(false)
+        setCaptureInterim('')
+      }
+    }
+
+    rec.start()
+  }
+
+  // Legacy function name for compatibility
   function startVoiceCapture(opts?: { silentIfUnavailable?: boolean }) {
-	    const SpeechRecognition =
-	      (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition ?? (window as any).mozSpeechRecognition
-	    if (!SpeechRecognition) {
-	      if (!opts?.silentIfUnavailable) alert('Voice capture is not available in this build yet. (Next: Whisper.)')
-	      return
-	    }
-	    const rec = new SpeechRecognition()
-	    rec.lang = 'en-US'
-	    rec.interimResults = true
-	    rec.continuous = false
-	    setCaptureListening(true)
-	    setCaptureInterim('')
-	    rec.onresult = (e: any) => {
-	      let finalText = ''
-	      let interim = ''
-	      const results: SpeechRecognitionResultList | undefined = e.results
-	      if (!results) return
-	      for (let i = e.resultIndex ?? 0; i < results.length; i++) {
-	        const r: any = results[i]
-	        const t = r?.[0]?.transcript
-	        if (typeof t !== 'string') continue
-	        if (r.isFinal) finalText += ` ${t}`
-	        else interim += ` ${t}`
-	      }
-	      const finalTrim = finalText.trim()
-	      const interimTrim = interim.trim()
-	      setCaptureInterim(interimTrim)
-	      if (finalTrim) setCaptureDraft((prev) => (prev.trim() ? `${prev.trim()} ${finalTrim}` : finalTrim))
-	    }
-	    rec.onerror = () => {
-	      setCaptureListening(false)
-	      setCaptureInterim('')
-	    }
-	    rec.onend = () => {
-	      setCaptureListening(false)
-	      setCaptureInterim('')
-	    }
-	    rec.start()
-	  }
+    toggleVoiceCapture(opts)
+  }
 
   function startComposerTranscription() {
     const SpeechRecognition =
@@ -4249,6 +4789,26 @@ function App() {
               <Icon name="briefcase" />
               <span className="railLabel" aria-hidden="true">Projects</span>
 
+            </button>
+
+            <button
+              className={`railBtn ${getActiveTab(workspace).view === 'ecosystem' ? 'active' : ''}`}
+              aria-label="Ecosystem"
+              title="Ecosystem"
+              onClick={() => openView('ecosystem')}
+            >
+              <Icon name="monitor" />
+              <span className="railLabel" aria-hidden="true">Ecosystem</span>
+            </button>
+
+            <button
+              className={`railBtn ${getActiveTab(workspace).view === 'trackers' ? 'active' : ''}`}
+              aria-label="Trackers"
+              title="Trackers"
+              onClick={() => openView('trackers')}
+            >
+              <Icon name="droplet" />
+              <span className="railLabel" aria-hidden="true">Trackers</span>
             </button>
 
             <button 
@@ -4893,6 +5453,136 @@ function App() {
                   />
                 </div>
               </div>
+              <div className="detailRow">
+                <div className="detailLabel">People</div>
+                <div className="detailChips">
+                  {selectedTaskPeople.map((person) => (
+                    <button
+                      key={person}
+                      className="detailChip"
+                      onClick={() => commitTask({ ...selectedTask, people: selectedTaskPeople.filter((x) => x !== person) })}
+                      type="button">
+                      {person}
+                      <span className="detailChipRemove">×</span>
+                    </button>
+                  ))}
+                  <input
+                    className="detailChipInput"
+                    value={peopleDraft}
+                    onChange={(e) => setPeopleDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' && e.key !== ',') return
+                      e.preventDefault()
+                      const next = parseCommaList(peopleDraft)
+                      if (!next.length) return
+                      const merged = uniqStrings([...selectedTaskPeople, ...next])
+                      commitTask({ ...selectedTask, people: merged })
+                      setPeopleDraft('')
+                    }}
+                    onBlur={() => {
+                      const next = parseCommaList(peopleDraft)
+                      if (!next.length) return
+                      const merged = uniqStrings([...selectedTaskPeople, ...next])
+                      commitTask({ ...selectedTask, people: merged })
+                      setPeopleDraft('')
+                    }}
+                    placeholder="Mom, Alex"
+                  />
+                </div>
+              </div>
+              <div className="detailRow">
+                <div className="detailLabel">Location</div>
+                <div className="detailChips">
+                  {selectedTaskLocations.map((loc) => (
+                    <button
+                      key={loc}
+                      className="detailChip"
+                      onClick={() => {
+                        const next = selectedTaskLocations.filter((x) => x !== loc)
+                        commitTask({ ...selectedTask, location: next.length ? next.join(', ') : null })
+                      }}
+                      type="button">
+                      {loc}
+                      <span className="detailChipRemove">×</span>
+                    </button>
+                  ))}
+                  <input
+                    className="detailChipInput"
+                    value={locationDraft}
+                    onChange={(e) => setLocationDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' && e.key !== ',') return
+                      e.preventDefault()
+                      const next = parseCommaList(locationDraft)
+                      if (!next.length) return
+                      const merged = uniqStrings([...selectedTaskLocations, ...next])
+                      commitTask({ ...selectedTask, location: merged.length ? merged.join(', ') : null })
+                      setLocationDraft('')
+                    }}
+                    onBlur={() => {
+                      const next = parseCommaList(locationDraft)
+                      if (!next.length) return
+                      const merged = uniqStrings([...selectedTaskLocations, ...next])
+                      commitTask({ ...selectedTask, location: merged.length ? merged.join(', ') : null })
+                      setLocationDraft('')
+                    }}
+                    placeholder="Home"
+                  />
+                </div>
+              </div>
+              <div className="detailRow">
+                <div className="detailLabel">Skills</div>
+                <div className="detailChips">
+                  {selectedTaskSkills.map((skill) => (
+                    <button
+                      key={skill}
+                      className="detailChip"
+                      onClick={() => commitTask({ ...selectedTask, skills: selectedTaskSkills.filter((x) => x !== skill) })}
+                      type="button">
+                      {skill}
+                      <span className="detailChipRemove">×</span>
+                    </button>
+                  ))}
+                  <input
+                    className="detailChipInput"
+                    value={skillDraft}
+                    onChange={(e) => setSkillDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' && e.key !== ',') return
+                      e.preventDefault()
+                      const next = parseCommaList(skillDraft)
+                      if (!next.length) return
+                      const merged = uniqStrings([...selectedTaskSkills, ...next])
+                      commitTask({ ...selectedTask, skills: merged })
+                      setSkillDraft('')
+                    }}
+                    onBlur={() => {
+                      const next = parseCommaList(skillDraft)
+                      if (!next.length) return
+                      const merged = uniqStrings([...selectedTaskSkills, ...next])
+                      commitTask({ ...selectedTask, skills: merged })
+                      setSkillDraft('')
+                    }}
+                    placeholder="communication, lifting"
+                  />
+                </div>
+              </div>
+              <div className="detailRow">
+                <div className="detailLabel">Character</div>
+                <div className="detailCharacterRow">
+                  {CHARACTER_KEYS.map((k) => {
+                    const selected = normalizeCharacterSelection(selectedTaskCharacter).includes(k)
+                    return (
+                      <button
+                        key={k}
+                        className={selected ? 'detailCharacterBtn active' : 'detailCharacterBtn'}
+                        onClick={() => commitTask({ ...selectedTask, character: toggleCharacterSelection(selectedTaskCharacter, k) })}>
+                        {k}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
               <div className="detailGrid">
                 <label>
                   Due
@@ -5253,7 +5943,7 @@ function App() {
                       onToggleTaskChecklistItem(selectedEvent.taskId, lineIndex)
                       return
                     }
-                    commitEvent({ ...selectedEvent, notes: toggleChecklistLine(selectedEvent.notes, lineIndex) })
+                    void onToggleEventNoteChecklist(selectedEvent, lineIndex)
                   }}
                   onStartTask={(task) => onStartNoteTask(selectedEvent.id, task)}
                   taskStateByToken={selectedEventNoteTasks}
@@ -6226,11 +6916,14 @@ function App() {
 
       <CaptureModal
         isOpen={captureOpen}
-        onClose={() => setCaptureOpen(false)}
+        onClose={() => {
+          stopVoiceCapture()
+          setCaptureOpen(false)
+        }}
         draft={captureDraft}
         setDraft={setCaptureDraft}
         isListening={captureListening}
-        onToggleListening={() => startVoiceCapture()}
+        onToggleListening={() => toggleVoiceCapture()}
         interimTranscript={captureInterim}
         isSaving={captureSaving}
         onSave={onSaveCapture}
@@ -6239,8 +6932,11 @@ function App() {
         progress={captureProgress}
         attachEventId={captureAttachEventId}
         onDetachEvent={() => setCaptureAttachEventId(null)}
-                attachedEventTitle={captureAttachEventId ? events.find((e) => e.id === captureAttachEventId)?.title ?? 'Event' : null}
-              />
+        attachedEventTitle={captureAttachEventId ? events.find((e) => e.id === captureAttachEventId)?.title ?? 'Event' : null}
+        extendedMode={captureExtendedMode}
+        onToggleExtendedMode={() => setCaptureExtendedMode(!captureExtendedMode)}
+        anchorMs={captureAnchorMs}
+      />
         
               <AnimatePresence>
               {docOpen ? (	        <motion.div
@@ -6374,7 +7070,7 @@ function App() {
                             onToggleTaskChecklistItem(selectedEvent.taskId, lineIndex)
                             return
                           }
-                          commitEvent({ ...selectedEvent, notes: toggleChecklistLine(selectedEvent.notes, lineIndex) })
+                          void onToggleEventNoteChecklist(selectedEvent, lineIndex)
                         }}
                         onStartTask={(task) => onStartNoteTask(selectedEvent.id, task)}
                         taskStateByToken={selectedEventNoteTasks}
