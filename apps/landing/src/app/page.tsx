@@ -2,8 +2,8 @@
 
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { motion, useScroll, useTransform, useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion, useScroll, useTransform, useInView, AnimatePresence } from "framer-motion";
+import { useRef, useState, useEffect } from "react";
 import { ArrowRight, ArrowDown } from "lucide-react";
 import Link from "next/link";
 
@@ -22,15 +22,86 @@ export default function Home() {
   );
 }
 
+// Lots of words - action verbs on top, scope words on bottom
+const topWords = [
+  "Capture", "Record", "Track", "Log", "Note", "Save",
+  "Organize", "Connect", "Synthesize", "Remember", "Contain",
+  "Transform"
+];
+const bottomWords = [
+  "everything.", "anything.", "anywhere.", "anytime.", "always.",
+  "every thought.", "every idea.", "every moment.", "all of it.",
+  "effortlessly.", "automatically.",
+  "your life."
+];
+
+// Timing: starts fast, slows down exponentially
+const getInterval = (index: number, total: number) => {
+  const progress = index / (total - 2); // 0 to 1 as we approach the end
+  const minSpeed = 120;  // fastest (ms)
+  const maxSpeed = 800;  // slowest before final
+  // Exponential slowdown
+  return minSpeed + (maxSpeed - minSpeed) * Math.pow(progress, 2);
+};
+
+const STAGGER_OFFSET = 60; // Bottom starts slightly after top
+
 function HeroSection() {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end start"]
   });
-  
+
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
   const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95]);
+
+  const [topIndex, setTopIndex] = useState(0);
+  const [bottomIndex, setBottomIndex] = useState(0);
+  const [phase, setPhase] = useState<'cycling' | 'final'>('cycling');
+  const [showTagline, setShowTagline] = useState(false);
+  const [showCTA, setShowCTA] = useState(false);
+
+  // Top word cycles - fast to slow
+  useEffect(() => {
+    if (phase !== 'cycling') return;
+    if (topIndex >= topWords.length - 1) return; // Stop at "Transform"
+
+    const interval = getInterval(topIndex, topWords.length);
+    const timer = setTimeout(() => {
+      setTopIndex(prev => prev + 1);
+    }, interval);
+
+    return () => clearTimeout(timer);
+  }, [topIndex, phase]);
+
+  // Bottom word cycles - staggered, fast to slow
+  useEffect(() => {
+    if (phase !== 'cycling') return;
+    if (bottomIndex >= bottomWords.length - 1) return; // Stop at "your life."
+
+    const interval = bottomIndex === 0
+      ? STAGGER_OFFSET
+      : getInterval(bottomIndex, bottomWords.length);
+
+    const timer = setTimeout(() => {
+      setBottomIndex(prev => prev + 1);
+    }, interval);
+
+    return () => clearTimeout(timer);
+  }, [bottomIndex, phase]);
+
+  // Check if both have landed on final words
+  useEffect(() => {
+    if (topIndex === topWords.length - 1 && bottomIndex === bottomWords.length - 1 && phase === 'cycling') {
+      // Both landed - brief pause then show CTA
+      setTimeout(() => {
+        setPhase('final');
+        setTimeout(() => setShowTagline(true), 300);
+        setTimeout(() => setShowCTA(true), 600);
+      }, 400);
+    }
+  }, [topIndex, bottomIndex, phase]);
 
   return (
     <section ref={ref} className="min-h-screen flex items-center justify-center relative overflow-hidden">
@@ -41,58 +112,145 @@ function HeroSection() {
       }} />
 
       <motion.div style={{ opacity, scale }} className="text-center px-8 relative z-10 max-w-5xl">
-        {/* Main headline */}
-        <motion.h1
-          initial={{ opacity: 0, y: 80 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          className="text-[clamp(4rem,15vw,12rem)] font-bold text-ink leading-[0.85] tracking-tight mb-8"
-        >
-          <span className="text-clay">Capture</span>
-          <br />
-          everything.
-        </motion.h1>
+        {/* Main headline with cycling animation */}
+        <div className="text-[clamp(4rem,15vw,12rem)] font-bold leading-[0.85] tracking-tight mb-8 min-h-[1.8em]">
 
-        {/* Tagline */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 0.3 }}
-          className="text-xl md:text-2xl text-stone max-w-xl mx-auto mb-12"
-        >
-          Your thoughts, <span className="text-clay">synthesized.</span>
-        </motion.p>
+          {/* First word (clay colored) */}
+          <div className="relative h-[1em]">
+            {phase === 'final' ? (
+              <motion.span
+                className="text-clay inline-block"
+                initial={{ scale: 1.02, opacity: 0.8 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{
+                  duration: 1.2,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+              >
+                {topWords[topIndex]}
+              </motion.span>
+            ) : (
+              <span className="text-clay">{topWords[topIndex]}</span>
+            )}
+          </div>
 
-        {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.5 }}
-        >
-          <Link href="/signup">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="bg-ink text-sand px-10 py-5 rounded-full font-semibold text-lg inline-flex items-center gap-3 group"
+          {/* Second word (ink colored) */}
+          <div className="relative h-[1em] text-ink">
+            {phase === 'final' ? (
+              <motion.span
+                className="inline-block"
+                initial={{ scale: 1.02, opacity: 0.8 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{
+                  duration: 1.2,
+                  ease: [0.16, 1, 0.3, 1],
+                  delay: 0.1,
+                }}
+              >
+                {bottomWords[bottomIndex]}
+              </motion.span>
+            ) : (
+              <span>{bottomWords[bottomIndex]}</span>
+            )}
+          </div>
+        </div>
+
+        {/* Elegant line separator */}
+        <AnimatePresence>
+          {showTagline && (
+            <motion.div
+              initial={{ scaleX: 0, opacity: 0 }}
+              animate={{ scaleX: 1, opacity: 1 }}
+              transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+              className="w-24 h-px bg-gradient-to-r from-transparent via-clay/40 to-transparent mx-auto mb-8"
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Tagline - elegant fade in */}
+        <AnimatePresence>
+          {showTagline && (
+            <motion.p
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 1,
+                ease: [0.16, 1, 0.3, 1],
+                delay: 0.2,
+              }}
+              className="text-xl md:text-2xl text-stone max-w-xl mx-auto mb-12"
             >
-              Start Free
-              <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
-            </motion.button>
-          </Link>
-        </motion.div>
+              Your thoughts,{' '}
+              <motion.span
+                className="text-clay font-semibold"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+              >
+                synthesized.
+              </motion.span>
+            </motion.p>
+          )}
+        </AnimatePresence>
+
+        {/* CTA - smooth elegant appearance */}
+        <AnimatePresence>
+          {showCTA && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.8,
+                ease: [0.16, 1, 0.3, 1],
+              }}
+            >
+              <Link href="/signup">
+                <motion.button
+                  initial={{ scale: 0.95 }}
+                  animate={{ scale: 1 }}
+                  transition={{
+                    type: "spring",
+                    damping: 20,
+                    stiffness: 300,
+                    delay: 0.1,
+                  }}
+                  whileHover={{
+                    scale: 1.03,
+                    boxShadow: "0 25px 50px rgba(28, 28, 30, 0.15)",
+                  }}
+                  whileTap={{ scale: 0.98 }}
+                  className="bg-ink text-sand px-12 py-5 rounded-full font-semibold text-lg inline-flex items-center gap-3 group shadow-xl transition-shadow duration-500"
+                >
+                  Start Free
+                  <motion.span
+                    initial={{ x: -5, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.3, duration: 0.5 }}
+                  >
+                    <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
+                  </motion.span>
+                </motion.button>
+              </Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
-      {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.2 }}
-        className="absolute bottom-12 left-1/2 -translate-x-1/2"
-      >
-        <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 2, repeat: Infinity }}>
-          <ArrowDown className="text-stone/30" size={24} />
-        </motion.div>
-      </motion.div>
+      {/* Scroll indicator - only show after animation complete */}
+      <AnimatePresence>
+        {showCTA && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="absolute bottom-12 left-1/2 -translate-x-1/2"
+          >
+            <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 2, repeat: Infinity }}>
+              <ArrowDown className="text-stone/30" size={24} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
