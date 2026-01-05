@@ -1591,6 +1591,35 @@ select:focus-visible {
   flex: 1;
   min-height: 140px;
 }
+.detailActiveSession {
+  margin: 0 0 12px;
+}
+
+.detailActiveSession .asbRoot {
+  border-radius: 16px;
+}
+
+.detailActiveSession .asbContent {
+  padding: 14px 18px 14px 20px;
+  gap: 6px;
+}
+
+.detailActiveSession .asbTitle {
+  font-size: 18px;
+}
+
+.detailActiveSession .asbClock {
+  font-size: 36px;
+}
+
+.detailActiveSession .asbXp {
+  font-size: 18px;
+}
+
+.detailActiveSession .asbOpenBtn,
+.detailActiveSession .asbStopBtn {
+  height: 36px;
+}
 .detailSegmentBtn {
   margin-top: 8px;
   align-self: flex-start;

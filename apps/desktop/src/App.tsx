@@ -21,7 +21,7 @@ import { migrateLocalDataToSupabase, pullSupabaseToLocal } from './supabase/sync
 import { Icon, type IconName } from './ui/icons'
 import { EVENT_COLOR_PRESETS, eventAccent } from './ui/event-visual'
 import { DISPLAY_SETTINGS_CHANGED_EVENT, loadDisplaySettings, type EventTitleDetail } from './ui/display-settings'
-import { applyTheme, loadThemePreference, resolveTheme, saveThemePreference, THEME_CHANGED_EVENT, THEME_LABELS, THEME_PREVIEWS, type ThemePreference } from './ui/theme'
+import { applyTheme, loadThemePreference, resolveTheme, saveThemePreference, THEME_CHANGED_EVENT, type ThemePreference } from './ui/theme'
 import { parseChecklistMarkdown, toggleChecklistLine } from './ui/checklist'
 import { MarkdownEditor } from './ui/markdown-editor'
 import { CaptureModal } from './ui/CaptureModal'
@@ -933,7 +933,6 @@ function App() {
   const [docTab, setDocTab] = useState<'notes' | 'transcript'>('notes')
   const [docTranscriptFocus, setDocTranscriptFocus] = useState<string | null>(null)
   const [themePref, setThemePref] = useState<ThemePreference>(() => loadThemePreference())
-  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false)
   const [eventTitleDetail, setEventTitleDetail] = useState<EventTitleDetail>(() => loadDisplaySettings().eventTitleDetail)
 
   const [tagDraft, setTagDraft] = useState('')
@@ -1558,6 +1557,9 @@ function App() {
     setCaptureProgress([])
 	    try {
 
+    const attachedCaptureEvent = captureAttachEventId ? events.find((e) => e.id === captureAttachEventId) ?? null : null
+    const anchorMs = attachedCaptureEvent?.startAt ?? captureAnchorMs ?? Date.now()
+
     function normalizeTagName(tag: string) {
       return tag.replace(/^#/, '').trim().toLowerCase()
     }
@@ -1724,7 +1726,7 @@ function App() {
     if (!llmKey && llmMode !== 'local') {
       setCaptureProgress((p) => [...p, 'AI parsing disabled (no OpenAI key); using local parser'].slice(-10))
     }
-    const natural = allowLocalFallback ? parseCaptureNatural(captureText, captureAnchorMs) : { tasks: [], events: [] }
+    const natural = allowLocalFallback ? parseCaptureNatural(captureText, anchorMs) : { tasks: [], events: [] }
     if (!allowLocalFallback) {
       setCaptureProgress((p) => [...p, 'Parser mode: LLM (no local fallback)'].slice(-10))
     }
@@ -2047,9 +2049,9 @@ function App() {
     if (detectedPlaces) setCaptureProgress((p) => [...p, `Detected places: ${detectedPlaces}`].slice(-10))
     if (detectedContexts) setCaptureProgress((p) => [...p, `Detected contexts: ${detectedContexts}`].slice(-10))
 
-	    const nowMs = captureAnchorMs
+	    const nowMs = anchorMs
 	    const attachedMode = Boolean(captureAttachEventId)
-	    const note = await addInboxCapture(text, { createdAt: captureAnchorMs, entityIds })
+	    const note = await addInboxCapture(text, { createdAt: anchorMs, entityIds })
 	    setCaptures((prev) => [note, ...prev])
 	    setCaptureProgress((p) => [...p, 'Saved transcript note'].slice(-10))
 
@@ -2481,7 +2483,7 @@ function App() {
     if (shouldTryLlm) {
       try {
         setCaptureAiStatus(`AI parsing (${llmParseModel})…`)
-        llm = await parseCaptureWithBlocksLlm({ apiKey: llmKey, model: llmParseModel, text: captureText, anchorMs: captureAnchorMs })
+        llm = await parseCaptureWithBlocksLlm({ apiKey: llmKey, model: llmParseModel, text: captureText, anchorMs })
         setCaptureProgress((p) => [...p, `AI parsed (${llm.tasks.length} task(s), ${llm.events.length} event(s), ${llm.workouts.length} workout(s))`].slice(-10))
         llmSucceeded = (llm.tasks.length + llm.events.length + llm.workouts.length + llm.meals.length) > 0
         if (!llmSucceeded) {
@@ -2534,7 +2536,7 @@ function App() {
           const shouldForceNow =
             !overrideTimes && hasNowSignal && !explicitTimeInCapture && llm.events.length === 1 && llm.tasks.length === 0 && !e.allDay
           if (shouldForceNow) {
-            startAt = captureAnchorMs
+            startAt = anchorMs
             const fallbackMinutes = e.estimateMinutes ?? durationOverride ?? 60
             endAt = startAt + Math.max(5, fallbackMinutes) * 60 * 1000
           }
@@ -3282,7 +3284,7 @@ function App() {
       const durationMinutes =
         parsedWorkout.totalDuration ??
         (Math.round(parsedWorkout.exercises.flatMap((ex) => ex.sets).reduce((sum, set) => sum + (set.duration ?? 0), 0) / 60) || undefined)
-      const startAt = captureAnchorMs ?? nowMs
+      const startAt = anchorMs ?? nowMs
       const endAt = durationMinutes ? startAt + durationMinutes * 60 * 1000 : startAt
       const typeLabel = parsedWorkout.type ?? 'mixed'
       const defaultTitle =
@@ -3345,7 +3347,7 @@ function App() {
         }
       : localMeal
     if (parsedMeal && parsedMeal.items?.length) {
-      const eatenAt = captureAnchorMs ?? nowMs
+      const eatenAt = anchorMs ?? nowMs
       const mealTitle =
         parsedMeal.items.length === 1
           ? parsedMeal.items[0].name
@@ -3760,7 +3762,6 @@ function App() {
   const selectedTask = selection.kind === 'task' ? tasks.find((t) => t.id === selection.id) ?? null : null
   const selectedEvent = selection.kind === 'event' ? events.find((e) => e.id === selection.id) ?? null : null
   const selectedCapture = selection.kind === 'capture' ? captures.find((c) => c.id === selection.id) ?? null : null
-  const runningEvent = useMemo(() => events.find((e) => e.active) ?? null, [events])
   const selectionKey = selection.kind === 'none' ? 'none' : `${selection.kind}:${selection.id}`
   const docTranscriptText =
     selection.kind === 'capture'
@@ -4081,48 +4082,6 @@ function App() {
               },
             }}
           />
-
-          {/* Theme Selector - Top Right */}
-          <div className="themeSelector">
-            <button
-              className="themeSelectorBtn"
-              aria-label="Change theme"
-              title="Change theme"
-              onClick={() => setThemeDropdownOpen((v) => !v)}
-              onBlur={(e) => {
-                if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) {
-                  setThemeDropdownOpen(false)
-                }
-              }}>
-              <Icon name="palette" />
-            </button>
-            <div
-              className={`themeDropdown${themeDropdownOpen ? ' open' : ''}`}
-              onMouseDown={(e) => e.preventDefault()}>
-              {(['system', 'light', 'dark', 'warm', 'olive', 'oliveOrange', 'roseGold'] as const).map((t) => (
-                <button
-                  key={t}
-                  className={`themeOption${themePref === t ? ' active' : ''}`}
-                  onClick={() => {
-                    setThemePref(t)
-                    setThemeDropdownOpen(false)
-                  }}>
-                  <div
-                    className="themeOptionPreview"
-                    style={{
-                      backgroundColor: t === 'system' ? 'var(--bg)' : THEME_PREVIEWS[t].bg,
-                      borderColor: t === 'system' ? 'var(--border)' : THEME_PREVIEWS[t].accent,
-                    }}>
-                    {t !== 'system' && (
-                      <div className="inner" style={{ backgroundColor: THEME_PREVIEWS[t].accent }} />
-                    )}
-                    {t === 'system' && <Icon name="monitor" size={10} />}
-                  </div>
-                  <span>{THEME_LABELS[t]}</span>
-                </button>
-              ))}
-            </div>
-          </div>
 
                   <main
 
@@ -4784,31 +4743,6 @@ function App() {
 	        </aside>
 
       <div className="ws">
-        {runningEvent && (
-          <ActiveSessionBanner
-            title={runningEvent.title}
-            category={runningEvent.category}
-            subcategory={runningEvent.subcategory}
-            startedAt={runningEvent.start}
-            estimatedMinutes={runningEvent.estimatedMinutes}
-            importance={runningEvent.importance}
-            difficulty={runningEvent.difficulty}
-            onStop={() => {
-              setEvents((prev) =>
-                prev.map((e) =>
-                  e.id === runningEvent.id
-                    ? { ...e, active: false, end: Date.now() }
-                    : e
-                )
-              )
-            }}
-            onOpen={() => {
-              setSelection({ kind: 'event', id: runningEvent.id })
-              setRightCollapsed(false)
-              setRightMode('details')
-            }}
-          />
-        )}
         <Pane
           tabs={workspace.tabs}
           activeTabId={workspace.activeTabId}
@@ -5110,25 +5044,24 @@ function App() {
           <div className="detailsBody">
             <div className="detailCard">
               {selectedEvent.active ? (
-                <ActiveSessionBanner
-                  title={selectedEvent.title}
-                  category={selectedEvent.category}
-                  subcategory={selectedEvent.subcategory}
-                  startedAt={selectedEvent.startAt}
-                  estimatedMinutes={selectedEvent.estimateMinutes ?? Math.round((selectedEvent.endAt - selectedEvent.startAt) / (60 * 1000))}
-                  importance={selectedEvent.importance}
-                  difficulty={selectedEvent.difficulty}
-                  onStop={() => {
-                    const now = Date.now()
-                    commitEvent({ ...selectedEvent, endAt: Math.max(now, selectedEvent.startAt + 5 * 60 * 1000), active: false })
-                  }}
-                />
-              ) : (
-                <div className="detailTitle">Calendar Event</div>
-              )}
-              <div className="detailMeta">
-                {new Date(selectedEvent.startAt).toLocaleString()} – {new Date(selectedEvent.endAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </div>
+                <div className="detailActiveSession">
+                  <ActiveSessionBanner
+                    title={selectedEvent.title}
+                    category={selectedEvent.category}
+                    subcategory={selectedEvent.subcategory}
+                    startedAt={selectedEvent.startAt}
+                    estimatedMinutes={selectedEvent.estimateMinutes ?? Math.round((selectedEvent.endAt - selectedEvent.startAt) / (60 * 1000))}
+                    importance={selectedEvent.importance}
+                    difficulty={selectedEvent.difficulty}
+                    goal={selectedEvent.goal}
+                    project={selectedEvent.project}
+                    onStop={() => {
+                      const now = Date.now()
+                      commitEvent({ ...selectedEvent, endAt: Math.max(now, selectedEvent.startAt + 5 * 60 * 1000), active: false })
+                    }}
+                  />
+                </div>
+              ) : null}
               <div className="detailBadgeRow">
                 <span className="detailBadge">{selectedEvent.kind ?? 'event'}</span>
                 {selectedEvent.kind !== 'log' ? (
@@ -5146,7 +5079,14 @@ function App() {
                 {selectedEvent.kind !== 'log' ? (
                   <button
                     className={selectedEvent.active ? 'detailToggle active' : 'detailToggle'}
-                    onClick={() => commitEvent({ ...selectedEvent, active: !selectedEvent.active })}>
+                    onClick={() => {
+                      if (selectedEvent.active) {
+                        const now = Date.now()
+                        commitEvent({ ...selectedEvent, endAt: Math.max(now, selectedEvent.startAt + 5 * 60 * 1000), active: false })
+                      } else {
+                        commitEvent({ ...selectedEvent, active: true })
+                      }
+                    }}>
                     {selectedEvent.active ? 'Active' : 'Inactive'}
                   </button>
                 ) : null}

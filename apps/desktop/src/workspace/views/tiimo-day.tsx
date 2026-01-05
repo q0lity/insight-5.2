@@ -3,7 +3,7 @@ import type { CalendarEvent } from '../../storage/calendar'
 import { Icon } from '../../ui/icons'
 import { eventAccent, formatEventTitle, hexToRgba, type EventTitleMode } from '../../ui/event-visual'
 import { parseChecklistMarkdown, toggleChecklistLine } from '../../ui/checklist'
-import { pointsForEvent } from '../../scoring/points'
+import { basePoints, multiplierFor, pointsForEvent, pointsForMinutes } from '../../scoring/points'
 
 function startOfDayMs(d: Date) {
   const x = new Date(d)
@@ -55,6 +55,15 @@ function formatElapsed(ms: number): string {
 function formatPoints(pts: number): string {
   if (pts >= 1000) return `${(pts / 1000).toFixed(1)}k`
   return Math.round(pts).toString()
+}
+
+function pointsForEventAt(ev: CalendarEvent, nowMs: number) {
+  const base = basePoints(ev.importance, ev.difficulty)
+  if (base <= 0) return 0
+  const endAt = ev.active ? nowMs : ev.endAt
+  const minutes = Math.max(0, Math.round((endAt - ev.startAt) / (60 * 1000)))
+  const mult = multiplierFor(ev.goal ?? null, ev.project ?? null)
+  return pointsForMinutes(base, minutes, mult)
 }
 
 function formatCategoryMeta(ev: CalendarEvent) {
@@ -648,12 +657,10 @@ export function TiimoDayView(props: {
             const baseStartMin = clamp(minuteOfDay(ev.startAt), startBaseMinutes, endBaseMinutes)
             const endMs = effectiveEndAt(ev)
             const baseEndMin = endMs >= dayEnd ? endBaseMinutes : Math.max(baseStartMin + slotMinutes, minuteOfDay(endMs))
-            const durationMin = Math.max(slotMinutes, Math.round(baseEndMin - baseStartMin))
-            const liveStartMin = Math.floor(minuteOfDay(nowMs) / 5) * 5
-            const displayStartMin = ev.active && isToday ? clamp(liveStartMin, startBaseMinutes, endBaseMinutes) : baseStartMin
-            const displayEndMin = ev.active && isToday
-              ? clamp(displayStartMin + durationMin, displayStartMin + slotMinutes, endBaseMinutes)
-              : baseEndMin
+            const nowMin = clamp(minuteOfDay(nowMs), startBaseMinutes, endBaseMinutes)
+            const activeEndMin = clamp(Math.max(nowMin, baseStartMin + slotMinutes), baseStartMin + slotMinutes, endBaseMinutes)
+            const displayStartMin = baseStartMin
+            const displayEndMin = ev.active && isToday ? activeEndMin : baseEndMin
             const displayStartAt = dayStart + displayStartMin * 60 * 1000
             const displayEndAt = dayStart + displayEndMin * 60 * 1000
             const topPct = ((displayStartMin - startBaseMinutes) / totalMinutes) * 100
@@ -673,7 +680,7 @@ export function TiimoDayView(props: {
             const sizeClass = getCardSizeClass(durationMins)
 
             // Calculate points
-            const points = pointsForEvent(ev)
+            const points = ev.active ? pointsForEventAt(ev, nowMs) : pointsForEvent(ev)
 
             // Calculate elapsed time for active events
             const elapsedMs = ev.active ? Math.max(0, nowMs - ev.startAt) : 0
@@ -825,7 +832,12 @@ export function TiimoDayView(props: {
                           onClick={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
-                            props.onUpdateEvent(ev.id, { active: !ev.active })
+                            if (ev.active) {
+                              const endAt = Math.max(nowMs, ev.startAt + 5 * 60 * 1000)
+                              props.onUpdateEvent(ev.id, { active: false, endAt })
+                            } else {
+                              props.onUpdateEvent(ev.id, { active: true })
+                            }
                           }}
                           aria-label={ev.active ? 'Pause timer' : 'Start timer'}>
                           <Icon name={ev.active ? 'pause' : 'play'} size={14} />

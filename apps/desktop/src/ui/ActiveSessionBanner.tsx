@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAnimatedNumber } from './useAnimatedNumber'
+import { basePoints, multiplierFor, pointsForMinutes } from '../scoring/points'
 
 type ActiveSessionBannerProps = {
   title: string
@@ -10,6 +11,10 @@ type ActiveSessionBannerProps = {
   estimatedMinutes?: number | null
   importance?: number | null
   difficulty?: number | null
+  goal?: string | null
+  project?: string | null
+  defaultMinimized?: boolean
+  allowExpand?: boolean
   onStop: () => void
   onOpen?: () => void
 }
@@ -22,10 +27,11 @@ function formatClock(ms: number) {
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 }
 
-function calculateXP(elapsedMs: number, importance: number, difficulty: number) {
+function calculateXP(elapsedMs: number, importance: number, difficulty: number, goal?: string | null, project?: string | null) {
   const minutes = elapsedMs / 60000
-  const base = importance * difficulty * minutes
-  return Math.round(base * 1000) / 1000
+  const base = basePoints(importance, difficulty)
+  const mult = multiplierFor(goal ?? null, project ?? null)
+  return pointsForMinutes(base, minutes, mult)
 }
 
 export function ActiveSessionBanner({
@@ -38,45 +44,53 @@ export function ActiveSessionBanner({
   difficulty = 5,
   onStop,
   onOpen,
+  goal,
+  project,
+  defaultMinimized,
+  allowExpand = true,
 }: ActiveSessionBannerProps) {
   const [now, setNow] = useState(Date.now())
-  const [minimized, setMinimized] = useState(false)
+  const [minimized, setMinimized] = useState(Boolean(defaultMinimized))
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
   }, [])
 
-  const elapsedMs = now - startedAt
+  const safeStartedAt = Number.isFinite(startedAt) ? startedAt : now
+  const elapsedMs = now - safeStartedAt
   const totalMs = estimatedMinutes != null ? estimatedMinutes * 60 * 1000 : null
   const remainingMs = totalMs != null ? Math.max(0, totalMs - elapsedMs) : null
   const progress = totalMs ? Math.min(1, elapsedMs / totalMs) : 0
 
-  const xp = calculateXP(elapsedMs, importance, difficulty)
+  const xp = calculateXP(elapsedMs, importance, difficulty, goal, project)
   const animatedXp = useAnimatedNumber(xp, { durationMs: 300 })
 
-  const breadcrumb = [category, subcategory, title].filter(Boolean).join(' | ')
+  const breadcrumb = [category, subcategory].filter(Boolean).join(' | ')
+  const isMinimized = allowExpand ? minimized : true
 
   return (
     <AnimatePresence mode="wait">
-      {minimized ? (
+      {isMinimized ? (
         <motion.div
           key="minimized"
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
           className="asbMinimized"
-          onClick={() => setMinimized(false)}
+          onClick={allowExpand ? () => setMinimized(false) : undefined}
         >
           <div className="asbMinDot" />
           <span className="asbMinTitle">{title}</span>
           <span className="asbMinClock">{formatClock(elapsedMs)}</span>
           <span className="asbMinXp">+{animatedXp.toFixed(3)} XP</span>
-          <button className="asbMinExpand" aria-label="Expand">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
+          {allowExpand ? (
+            <button className="asbMinExpand" aria-label="Expand">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          ) : null}
         </motion.div>
       ) : (
         <motion.div
@@ -106,9 +120,9 @@ export function ActiveSessionBanner({
               </button>
             </div>
 
-            {breadcrumb !== title && (
+            {breadcrumb ? (
               <div className="asbBreadcrumb">{breadcrumb}</div>
-            )}
+            ) : null}
 
             <div className="asbTitle">{title}</div>
 
