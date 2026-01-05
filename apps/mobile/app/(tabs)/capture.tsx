@@ -1559,9 +1559,10 @@ export default function CaptureScreen() {
 
       const parsedWorkout = parseWorkoutFromText(rawText);
       if (parsedWorkout) {
-        const durationMinutes =
-          parsedWorkout.totalDuration ??
-          (Math.round(parsedWorkout.exercises.flatMap((ex) => ex.sets).reduce((sum, set) => sum + (set.duration ?? 0), 0) / 60) || undefined);
+        const derivedDuration = Math.round(
+          parsedWorkout.exercises.flatMap((ex) => ex.sets).reduce((sum, set) => sum + (set.duration ?? 0), 0) / 60,
+        );
+        const durationMinutes = parsedWorkout.totalDuration ?? (derivedDuration ? derivedDuration : undefined);
         const startAt = saved.createdAt ?? Date.now();
         const endAt = durationMinutes ? startAt + durationMinutes * 60 * 1000 : startAt;
         const typeLabel = parsedWorkout.type ?? 'mixed';

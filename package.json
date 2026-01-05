@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "dev:mobile": "npm run --prefix \"apps/mobile\" start",
+    "dev:mobile2": "npm run --prefix \"apps/mobile2\" start",
     "dev:desktop": "npm run --prefix \"apps/desktop\" dev"
   }
 }
-

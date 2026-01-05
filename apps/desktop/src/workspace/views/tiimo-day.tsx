@@ -57,6 +57,12 @@ function formatPoints(pts: number): string {
   return Math.round(pts).toString()
 }
 
+function formatCategoryMeta(ev: CalendarEvent) {
+  const category = (ev.category ?? '').trim()
+  const subcategory = (ev.subcategory ?? '').trim()
+  return [category, subcategory].filter(Boolean).join(' | ')
+}
+
 type SlotMinutes = 15 | 30 | 60
 const SLOT_OPTIONS: SlotMinutes[] = [15, 30, 60]
 const SNAP_INTERVAL = 5 // 5-minute snap for precise dragging
@@ -639,11 +645,19 @@ export function TiimoDayView(props: {
 
           {dayEvents.map((ev) => {
             const accent = eventAccent(ev)
-            const startMin = clamp(minuteOfDay(ev.startAt), startBaseMinutes, endBaseMinutes)
+            const baseStartMin = clamp(minuteOfDay(ev.startAt), startBaseMinutes, endBaseMinutes)
             const endMs = effectiveEndAt(ev)
-            const endMin = endMs >= dayEnd ? endBaseMinutes : Math.max(startMin + slotMinutes, minuteOfDay(endMs))
-            const topPct = ((startMin - startBaseMinutes) / totalMinutes) * 100
-            const heightPct = ((endMin - startMin) / totalMinutes) * 100
+            const baseEndMin = endMs >= dayEnd ? endBaseMinutes : Math.max(baseStartMin + slotMinutes, minuteOfDay(endMs))
+            const durationMin = Math.max(slotMinutes, Math.round(baseEndMin - baseStartMin))
+            const liveStartMin = Math.floor(minuteOfDay(nowMs) / 5) * 5
+            const displayStartMin = ev.active && isToday ? clamp(liveStartMin, startBaseMinutes, endBaseMinutes) : baseStartMin
+            const displayEndMin = ev.active && isToday
+              ? clamp(displayStartMin + durationMin, displayStartMin + slotMinutes, endBaseMinutes)
+              : baseEndMin
+            const displayStartAt = dayStart + displayStartMin * 60 * 1000
+            const displayEndAt = dayStart + displayEndMin * 60 * 1000
+            const topPct = ((displayStartMin - startBaseMinutes) / totalMinutes) * 100
+            const heightPct = ((displayEndMin - displayStartMin) / totalMinutes) * 100
 
             const colIdx = colIndexById.get(ev.id) ?? 0
             const colW = 100 / colCount
@@ -663,6 +677,10 @@ export function TiimoDayView(props: {
 
             // Calculate elapsed time for active events
             const elapsedMs = ev.active ? Math.max(0, nowMs - ev.startAt) : 0
+
+            const metaLabel = formatCategoryMeta(ev)
+            const rawTitle = (ev.title ?? '').trim()
+            const titleText = rawTitle || (!metaLabel ? formatEventTitle(ev, titleMode) : '')
 
             // Build class name
             const cardClasses = [
@@ -704,6 +722,7 @@ export function TiimoDayView(props: {
                   e.preventDefault()
                   setContextMenu({ eventId: ev.id, x: e.clientX, y: e.clientY })
                 }}
+                onClick={() => props.onSelectEvent(ev.id)}
                 onDoubleClick={() => props.onSelectEvent(ev.id)}>
                 <div className="tmStripe" style={{ background: hexToRgba(accent.color, 0.9) }} />
 
@@ -712,31 +731,36 @@ export function TiimoDayView(props: {
                   <div className="tmCardEmoji" style={{ borderColor: hexToRgba(accent.color, 0.40) }}>
                     <Icon name={accent.icon} size={14} />
                   </div>
-                  <div className="tmCardTitle">{formatEventTitle(ev, titleMode)}</div>
-                  {ev.kind === 'task' ? (
-                    <button
-                      className={ev.completedAt ? 'tmCheckTop checked' : 'tmCheckTop'}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        props.onToggleComplete(ev.id)
-                      }}
-                      aria-label={ev.completedAt ? 'Mark incomplete' : 'Mark complete'}>
-                      <Icon name="check" size={12} />
-                    </button>
-                  ) : null}
-                </div>
-
-                {/* Middle: Tags (compact, only on non-micro) */}
-                {sizeClass !== 'micro' && (ev.tags ?? []).length > 0 ? (
-                  <div className="tmCardMiddle">
-                    {(ev.tags ?? []).slice(0, sizeClass === 'compact' ? 2 : 3).map((t) => (
-                      <span key={t} className="tmTag compact">
-                        {t}
-                      </span>
-                    ))}
+                  <div className="tmCardTitleGroup">
+                    {metaLabel ? <div className="tmCardMeta">{metaLabel}</div> : null}
+                    {titleText ? <div className="tmCardTitle">{titleText}</div> : null}
                   </div>
-                ) : null}
+                  <div className="tmCardTopRight">
+                    <div className="tmCardTimeInfo">
+                      <span className="tmCardTimeRange">
+                        {formatTime(displayStartAt)}–{formatTime(displayEndAt)}
+                      </span>
+                      {ev.active && elapsedMs > 0 ? (
+                        <>
+                          <span className="tmCardTimeDivider" />
+                          <span className="tmCardElapsed">{formatElapsed(elapsedMs)}</span>
+                        </>
+                      ) : null}
+                    </div>
+                    {ev.kind === 'task' ? (
+                      <button
+                        className={ev.completedAt ? 'tmCheckTop checked' : 'tmCheckTop'}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          props.onToggleComplete(ev.id)
+                        }}
+                        aria-label={ev.completedAt ? 'Mark incomplete' : 'Mark complete'}>
+                        <Icon name="check" size={12} />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
 
                 {segments.length && sizeClass !== 'micro' && sizeClass !== 'compact' ? (
                   <div className="tmSegments" aria-label="Segments">
@@ -749,27 +773,8 @@ export function TiimoDayView(props: {
                   </div>
                 ) : null}
 
-                {/* Bottom row: Play | Points | Checklist ... Time | Elapsed */}
+                {/* Bottom row: Checklist ... Tags | XP | Play */}
                 <div className="tmCardBottom">
-                  {ev.kind !== 'log' && sizeClass !== 'micro' ? (
-                    <button
-                      className={ev.active ? 'tmPlay active' : 'tmPlay'}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        props.onUpdateEvent(ev.id, { active: !ev.active })
-                      }}
-                      aria-label={ev.active ? 'Pause timer' : 'Start timer'}>
-                      <Icon name={ev.active ? 'pause' : 'play'} size={14} />
-                    </button>
-                  ) : null}
-
-                  {points > 0 && sizeClass !== 'micro' ? (
-                    <span className="tmCardPoints" title={`${Math.round(points)} XP`}>
-                      {formatPoints(points)} XP
-                    </span>
-                  ) : null}
-
                   {(() => {
                     const checklist = parseChecklistMarkdown(ev.notes)
                     if (!checklist.length || sizeClass === 'micro' || sizeClass === 'compact') return null
@@ -798,18 +803,36 @@ export function TiimoDayView(props: {
 
                   <span className="tmSpacer" />
 
-                  {/* Time info at bottom-right with optional elapsed time */}
-                  <div className="tmCardTimeInfo">
-                    <span className="tmCardTimeRange">
-                      {formatTime(ev.startAt)}–{formatTime(ev.endAt)}
-                    </span>
-                    {ev.active && elapsedMs > 0 ? (
-                      <>
-                        <span className="tmCardTimeDivider" />
-                        <span className="tmCardElapsed">{formatElapsed(elapsedMs)}</span>
-                      </>
-                    ) : null}
-                  </div>
+                  {sizeClass !== 'micro' && ((ev.tags ?? []).length > 0 || points > 0 || ev.kind !== 'log') ? (
+                    <div className="tmCardBottomRight">
+                      {(ev.tags ?? []).length > 0 ? (
+                        <div className="tmCardTagRow">
+                          {(ev.tags ?? []).slice(0, sizeClass === 'compact' ? 2 : 3).map((t) => (
+                            <span key={t} className="tmTag compact">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                      {points > 0 ? (
+                        <span className="tmCardPoints" title={`${Math.round(points)} XP`}>
+                          {formatPoints(points)} XP
+                        </span>
+                      ) : null}
+                      {ev.kind !== 'log' ? (
+                        <button
+                          className={ev.active ? 'tmPlay tmPlayCompact active' : 'tmPlay tmPlayCompact'}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            props.onUpdateEvent(ev.id, { active: !ev.active })
+                          }}
+                          aria-label={ev.active ? 'Pause timer' : 'Start timer'}>
+                          <Icon name={ev.active ? 'pause' : 'play'} size={14} />
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="tmResize" aria-hidden="true" />

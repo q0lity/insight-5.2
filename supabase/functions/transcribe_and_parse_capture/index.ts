@@ -12,6 +12,7 @@ type CapturePayload = {
   audioBucket?: string | null;
   audioPath?: string | null;
   transcript?: string | null;
+  mode?: "transcribe_only" | "transcribe_and_parse";
   context?: CaptureContext | null;
 };
 
@@ -272,7 +273,7 @@ Deno.serve(async (req) => {
       return json({ error: "Invalid JSON body" }, 400);
     }
 
-    const { captureId, audioBucket, audioPath, transcript, context } = payload ?? {};
+    const { captureId, audioBucket, audioPath, transcript, context, mode } = payload ?? {};
     if (!captureId || (!audioPath && !transcript)) {
       console.error("[Edge] Missing required fields - captureId:", captureId, "audioPath:", audioPath, "transcript:", !!transcript);
       return json(
@@ -368,6 +369,16 @@ Deno.serve(async (req) => {
 
   if (!resolvedTranscript) {
     return json({ error: "Transcription returned empty text" }, 500);
+  }
+
+  if ((mode ?? "transcribe_and_parse") === "transcribe_only") {
+    console.log("[Edge] Transcribe-only mode enabled; skipping parsing/logging.");
+    return json({
+      captureId,
+      status: "transcribed",
+      transcript: resolvedTranscript,
+      context: context ?? null,
+    });
   }
 
   const tokens = extractTrackerTokens(resolvedTranscript);

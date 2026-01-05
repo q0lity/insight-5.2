@@ -5,7 +5,7 @@ import type { Session } from '@supabase/supabase-js'
 import { Toaster, toast } from 'sonner'
 
 import { addInboxCapture, listInboxCaptures, updateCaptureEntityIds, updateCaptureText, type InboxCapture } from './storage/inbox'
-import { createTask, deleteTask, listTasks, upsertTask, type Task, type TaskStatus } from './storage/tasks'
+import { createTask, createTaskInEvent, deleteTask, listTasks, startTask, upsertTask, type Task, type TaskStatus } from './storage/tasks'
 import { createEvent, deleteEvent, findActiveByTrackerKey, findActiveEpisode, findBestActiveEventAt, listEvents, upsertEvent, type CalendarEvent } from './storage/calendar'
 import { ensureEntity } from './storage/entities'
 import { estimateCalories, parseWorkoutFromText, saveWorkout } from './storage/workouts'
@@ -1171,6 +1171,18 @@ function App() {
     return base ? `${base}\n${line}` : line
   }
 
+  function noteTaskTokenId(notes?: string | null) {
+    const match = notes?.match(/\btoken:([A-Za-z0-9_-]+)\b/)
+    return match?.[1] ?? null
+  }
+
+  function appendMarkdownBlock(existing: string | null | undefined, block: string) {
+    const trimmed = block.trim()
+    if (!trimmed) return (existing ?? '').trimEnd()
+    const base = (existing ?? '').trimEnd()
+    return base ? `${base}\n\n---\n\n${trimmed}` : trimmed
+  }
+
   function inferDifficultyFromText(text: string) {
     const t = text.toLowerCase()
     if (/\bmarathon|half[-\s]?marathon\b/.test(t)) return 10
@@ -1510,6 +1522,29 @@ function App() {
     commitEvent({ ...ev, completedAt, kind: (ev.kind ?? 'event') as any })
   }
 
+  async function onStartNoteTask(eventId: string, task: { tokenId: string; title: string; estimateMinutes?: number | null; dueAt?: number | null }) {
+    const ev = events.find((e) => e.id === eventId)
+    if (!ev || !task.title) return
+    const existing = tasks.find(
+      (t) => t.parentEventId === eventId && noteTaskTokenId(t.notes ?? '') === task.tokenId
+    )
+    let target = existing ?? null
+    if (!target) {
+      const created = await createTaskInEvent({
+        eventId,
+        title: task.title,
+        estimateMinutes: task.estimateMinutes ?? null,
+        importance: ev.importance ?? 5,
+        difficulty: ev.difficulty ?? 5,
+      })
+      const withToken = await upsertTask({ ...created, notes: `token:${task.tokenId}` })
+      setTasks((prev) => [withToken, ...prev])
+      target = withToken
+    }
+    const started = await startTask(target.id)
+    if (started) setTasks((prev) => prev.map((t) => (t.id === started.id ? started : t)))
+  }
+
   async function onSaveCapture() {
     if (captureSaving) return
     const text = captureDraft.trim()
@@ -1537,6 +1572,20 @@ function App() {
     function toTagTokenFromLabel(raw: string) {
       const slug = slugifyTag(raw)
       return slug ? `#${slug}` : ''
+    }
+
+    const tokenSeed = Date.now().toString(36)
+    let tokenCounter = 0
+    function makeTokenId(prefix: string, value: string) {
+      const slug = slugifyTag(value) || value.replace(/\s+/g, '-').toLowerCase()
+      return `${prefix}_${slug}_${tokenSeed}_${tokenCounter++}`
+    }
+
+    function toInlineToken(prefix: string, type: string, value: string) {
+      const clean = value.trim()
+      if (!clean) return ''
+      const id = makeTokenId(type, clean)
+      return `${prefix}${clean}{${type}:${id}}`
     }
 
     function inferTrackerKeyFromText(title: string, tags?: string[] | null) {
@@ -1647,6 +1696,7 @@ function App() {
     const goalOverride = fmGoal ? fmGoal : null
     const projectOverride = fmProject ? fmProject : null
 	    const explicitTimeInCapture = hasExplicitTimeRange(captureText)
+	    const hasNowSignal = /\b(currently|right now|at the moment)\b/i.test(captureText)
 
     function ruleTagsForText(text: string, rules: TaxonomyRule[]) {
       const tags: string[] = []
@@ -1668,12 +1718,12 @@ function App() {
     }
 
     const storedMode = llmSettings.mode ?? 'local'
-    const llmMode = llmKey && storedMode === 'local' ? 'llm' : storedMode
-    if (llmKey && storedMode === 'local') {
-      setCaptureProgress((p) => [...p, 'Assistant mode is Local but key is set → using LLM'].slice(-10))
-    }
+    const llmMode = storedMode
     const shouldTryLlm = llmMode !== 'local' && Boolean(llmKey)
     const allowLocalFallback = llmMode === 'local' || llmMode === 'hybrid'
+    if (!llmKey && llmMode !== 'local') {
+      setCaptureProgress((p) => [...p, 'AI parsing disabled (no OpenAI key); using local parser'].slice(-10))
+    }
     const natural = allowLocalFallback ? parseCaptureNatural(captureText, captureAnchorMs) : { tasks: [], events: [] }
     if (!allowLocalFallback) {
       setCaptureProgress((p) => [...p, 'Parser mode: LLM (no local fallback)'].slice(-10))
@@ -1767,6 +1817,10 @@ function App() {
     const implicitPlaces = extractImplicitPlaces(captureText)
     const implicitMoneyUsd = extractMoneyUsd(captureText)
     const implicitShoppingItems = extractShoppingItems(captureText)
+    const trackerTokens = extractTrackerTokens(captureText)
+    const habitHits = detectHabitMentions(captureText, habitDefs)
+    const localWorkout = parseWorkoutFromText(captureText)
+    const localMeal = parseMealFromText(captureText)
     if (implicitMoneyUsd != null && Number.isFinite(implicitMoneyUsd)) tagNames.add('money')
     if (implicitShoppingItems.length) tagNames.add('shopping')
 
@@ -1831,6 +1885,94 @@ function App() {
       return null
     }
 
+    function formatDateOnly(ms: number) {
+      const d = new Date(ms)
+      const yyyy = d.getFullYear()
+      const mm = String(d.getMonth() + 1).padStart(2, '0')
+      const dd = String(d.getDate()).padStart(2, '0')
+      return `${yyyy}-${mm}-${dd}`
+    }
+
+    function summarizeCapture(text: string) {
+      const cleaned = text.replace(/\s+/g, ' ').trim()
+      if (!cleaned) return 'Capture'
+      const sentence = cleaned.split(/[.!?]/)[0] ?? cleaned
+      const words = sentence.split(/\s+/).filter(Boolean)
+      return words.slice(0, 10).join(' ')
+    }
+
+    function buildAttachedCaptureMarkdown(nowMs: number) {
+      const d = new Date(nowMs)
+      const hh = String(d.getHours()).padStart(2, '0')
+      const mm = String(d.getMinutes()).padStart(2, '0')
+      const summary = summarizeCapture(captureText)
+      const segmentToken = `{seg:${makeTokenId('seg', `${hh}${mm}`)}}`
+      const noteToken = `{note:${makeTokenId('note', `${hh}${mm}`)}}`
+
+      const tagTokens = Array.from(tagNames).slice(0, 6).map((t) => toInlineToken('#', 'tag', t))
+      const peopleTokens = uniqStrings(personMentions).slice(0, 4).map((p) => toInlineToken('@', 'person', p))
+      const contextTokens = allContexts.slice(0, 4).map((c) => toInlineToken('*', 'ctx', c))
+      const placeTokens = uniqStrings(placeMentions).slice(0, 3).map((p) => toInlineToken('!', 'loc', p))
+      const goalToken = goalOverride ? [toInlineToken('^', 'goal', goalOverride)] : []
+      const projectToken = projectOverride ? [toInlineToken('$', 'project', projectOverride)] : []
+
+      const headerTokens = [...tagTokens, ...peopleTokens, ...contextTokens, ...placeTokens, ...goalToken, ...projectToken].filter(Boolean)
+      const header = `- **${hh}:${mm}** - ${summary}${headerTokens.length ? ` ${headerTokens.join(' ')}` : ''} ${segmentToken}`
+      const noteLine = `  - [${hh}:${mm}] ${captureText.trim()} ${noteToken}`
+
+      const lines = [header, noteLine]
+
+      const taskCandidates = natural.tasks.length
+        ? natural.tasks.map((t) => ({
+            title: t.title,
+            estimateMinutes: t.estimateMinutes ?? durationOverride ?? null,
+            dueAt: t.dueAt ?? null,
+          }))
+        : implicitShoppingItems.map((item) => ({
+            title: `Buy ${item}`,
+            estimateMinutes: 5,
+            dueAt: nowMs + 24 * 60 * 60 * 1000,
+          }))
+
+      for (const task of taskCandidates.slice(0, 10)) {
+        const meta: string[] = []
+        if (task.estimateMinutes != null) meta.push(`est:${Math.round(task.estimateMinutes)}m`)
+        if (task.dueAt != null) meta.push(`due:${formatDateOnly(task.dueAt)}`)
+        const token = `{task:${makeTokenId('task', task.title)}${meta.length ? ` ${meta.join(' ')}` : ''}}`
+        lines.push(`  - [ ] ${task.title} ${token}`)
+      }
+
+      if (trackerTokens.length) {
+        const trackerLine = trackerTokens
+          .slice(0, 4)
+          .map((t) => `#${t.name}(${Math.round(t.value)}){tracker:${makeTokenId('tracker', t.name)}}`)
+          .join(' ')
+        lines.push(`  - ${trackerLine}`)
+      }
+
+      for (const h of habitHits.slice(0, 4)) {
+        const minutes = Math.max(5, h.estimateMinutes ?? 15)
+        lines.push(`  - [x] ${h.name} {habit:${makeTokenId('habit', h.name)} value:${minutes}m}`)
+      }
+
+      if (localMeal && localMeal.items?.length) {
+        const mealTitle = localMeal.items.length === 1 ? localMeal.items[0].name : localMeal.type ?? 'Meal'
+        lines.push(`  - [meal] ${mealTitle} {meal:${makeTokenId('meal', mealTitle)}}`)
+        for (const item of localMeal.items.slice(0, 5)) {
+          lines.push(`    - item: ${item.name}`)
+        }
+      }
+
+      if (localWorkout && localWorkout.exercises?.length) {
+        lines.push(`  - [workout] ${localWorkout.title ?? 'Workout'} {workout:${makeTokenId('workout', 'workout')}}`)
+        for (const ex of localWorkout.exercises.slice(0, 4)) {
+          lines.push(`    - exercise: ${ex.name}`)
+        }
+      }
+
+      return lines.join('\n').trim()
+    }
+
     const personMentions = cleanPeopleList(personCandidates)
     for (const p of personMentions) {
       const ent = await ensureEntity('person', p, p)
@@ -1857,6 +1999,7 @@ function App() {
     if (detectedContexts) setCaptureProgress((p) => [...p, `Detected contexts: ${detectedContexts}`].slice(-10))
 
 	    const nowMs = captureAnchorMs
+	    let attachedMode = false
 	    const note = await addInboxCapture(text, { createdAt: captureAnchorMs, entityIds })
 	    setCaptures((prev) => [note, ...prev])
 	    setCaptureProgress((p) => [...p, 'Saved transcript note'].slice(-10))
@@ -1868,7 +2011,7 @@ function App() {
 	      return activeForLogsId
 	    }
 
-	    // If capture is explicitly attached to an event, append as a timestamped note line and enrich fields.
+	    // If capture is explicitly attached to an event, append as structured markdown and enrich fields.
     if (captureAttachEventId) {
       const targetId = captureAttachEventId
       const ev = events.find((e) => e.id === targetId) ?? null
@@ -1878,7 +2021,7 @@ function App() {
         const { mergedTags: nextTags, inferred } = finalizeCategorizedTags({ title: ev.title, tags: ev.tags ?? [], current: ev, location: nextLocation })
         const nextDifficulty = ev.difficulty ?? difficultyOverride ?? inferDifficultyFromText(captureText) ?? 5
         const nextImportance = ev.importance ?? importanceOverride ?? inferImportanceFromText(captureText) ?? 5
-	        const nextNotes = appendTimestampedLine(ev.notes ?? '', nowMs, captureText)
+	        const nextNotes = appendMarkdownBlock(ev.notes ?? '', buildAttachedCaptureMarkdown(nowMs))
 	        const nextContexts = uniqStrings([...(ev.contexts ?? []), ...allContexts])
 	        const next = {
 	          ...ev,
@@ -1894,6 +2037,7 @@ function App() {
 	        }
 	        commitEvent(next)
 	        setCaptureProgress((p) => [...p, `↳ appended to event: ${ev.title}`].slice(-10))
+	        attachedMode = true
 	      }
 	    }
 
@@ -1915,6 +2059,11 @@ function App() {
 	    let createdLogCount = 0
 	    let createdTaskCount = 0
     const createdTrackerKeys = new Set<string>()
+    const allowEventCreation = !attachedMode
+    const allowTaskCreation = !attachedMode
+    if (attachedMode && captureAttachEventId) {
+      capturePrimaryEventId = captureAttachEventId
+    }
 
     async function createTrackerLog(opts: { key: string; value?: number | null; label?: string; icon?: IconName | null; color?: string | null }) {
       const trackerKey = opts.key.trim().toLowerCase()
@@ -2305,7 +2454,7 @@ function App() {
     let llmSucceeded = false
     let llmError: string | null = null
     let llm: Awaited<ReturnType<typeof parseCaptureWithBlocksLlm>> | null = null
-    if (!llmKey && llmMode !== 'local') {
+    if (!llmKey && llmMode === 'llm') {
       setCaptureError('OpenAI key is required for LLM mode. Add it in Settings and click Save.')
       setCaptureSaving(false)
       return
@@ -2355,12 +2504,20 @@ function App() {
 	        const overrideTimes = Number.isFinite(fmStartAt ?? NaN) && Number.isFinite(fmEndAt ?? NaN) && llm.events.length === 1 && llm.tasks.length === 0
 
 	        for (const e of llm.events) {
+	          if (!allowEventCreation) continue
 	          let startAt = new Date(e.startAtIso).getTime()
 	          let endAt = new Date(e.endAtIso).getTime()
           if (!Number.isFinite(startAt) || !Number.isFinite(endAt)) continue
           if (overrideTimes && fmStartAt != null && fmEndAt != null) {
             startAt = fmStartAt
             endAt = fmEndAt
+          }
+          const shouldForceNow =
+            !overrideTimes && hasNowSignal && !explicitTimeInCapture && llm.events.length === 1 && llm.tasks.length === 0 && !e.allDay
+          if (shouldForceNow) {
+            startAt = captureAnchorMs
+            const fallbackMinutes = e.estimateMinutes ?? durationOverride ?? 60
+            endAt = startAt + Math.max(5, fallbackMinutes) * 60 * 1000
           }
           const baseText = `${e.title ?? ''}\n${e.notes ?? ''}\n${(e.tags ?? []).join(' ')}`.trim()
           const locationHint = e.location ?? pickLocationForText(baseText)
@@ -2378,7 +2535,7 @@ function App() {
             endAt: Math.max(times.endAt, times.startAt + 5 * 60 * 1000),
             kind,
             allDay: Boolean(e.allDay),
-            active: Boolean(e.active),
+            active: Boolean(e.active) || shouldForceNow,
             parentEventId: kind === 'log' ? await getActiveForLogsId() : null,
             tags: mergedTags,
             contexts: allContexts,
@@ -2432,6 +2589,7 @@ function App() {
 	        }
 
         for (const t of llm.tasks) {
+          if (!allowTaskCreation) continue
           const { mergedTags, inferred } = finalizeCategorizedTags({ title: t.title, tags: t.tags ?? [] })
           const taskBase = `${t.title ?? ''}\n${t.notes ?? ''}\n${(t.tags ?? []).join(' ')}`.trim()
           const autoImportance = t.importance ?? importanceOverride ?? inferImportanceFromText(taskBase) ?? 5
@@ -2511,7 +2669,7 @@ function App() {
 
     // Tracker token logs (#mood(7), #energy(8), etc.) are always recorded.
     // If LLM also produced logs, the createdEventKeys de-dupe prevents duplicates.
-    for (const tok of extractTrackerTokens(captureText).slice(0, 10)) {
+    for (const tok of trackerTokens.slice(0, 10)) {
       const title = `${tok.name}: ${tok.value}`
       const startAt = nowMs
       const endAt = nowMs + 5 * 60 * 1000
@@ -2786,7 +2944,6 @@ function App() {
       }
     }
 
-    const habitHits = detectHabitMentions(captureText, habitDefs)
     for (const h of habitHits) {
       const minutes = Math.max(5, h.estimateMinutes ?? 15)
       const startAt = nowMs
@@ -2892,6 +3049,7 @@ function App() {
 		      setCaptureProgress((p) => [...p, 'LLM empty; local parsing disabled'].slice(-10))
 		    } else if (!llmSucceeded) {
 		      for (const e of groupedNaturalEvents) {
+		        if (!allowEventCreation) continue
 		        const startAt = e.startAt
 		        const endAt = e.endAt
 		        const key = makeEventKey(e.title, startAt, endAt)
@@ -2952,6 +3110,7 @@ function App() {
 		                                  setCaptureProgress((p) => [...p, `+ ${next.kind}: ${next.title}`].slice(-10))		      }
 
 		      for (const t of natural.tasks) {
+		        if (!allowTaskCreation) continue
 		        const key = makeTaskKey(t.title)
 		        if (createdTaskKeys.has(key)) continue
 		        const { mergedTags, inferred } = finalizeCategorizedTags({ title: t.title, tags: t.tags ?? [] })
@@ -3018,7 +3177,6 @@ function App() {
 		    }
 
     // Use LLM-parsed workouts if available, otherwise fall back to local regex parser
-    const localWorkout = parseWorkoutFromText(captureText)
     const llmWorkout = (llm?.workouts?.length ?? 0) > 0 ? llm!.workouts[0] : null
     const normalizeExerciseName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
     const hasMeaningfulSets = (sets: Array<{ reps?: number; weight?: number; duration?: number; distance?: number; rpe?: number }>) =>
@@ -3133,7 +3291,6 @@ function App() {
     }
 
     // Use LLM-parsed meals if available, otherwise fall back to local regex parser
-    const localMeal = parseMealFromText(captureText)
     const llmMeal = (llm?.meals?.length ?? 0) > 0 ? llm!.meals[0] : null
     const parsedMeal = llmMeal
       ? {
@@ -4893,7 +5050,23 @@ function App() {
 	        ) : selection.kind === 'event' && selectedEvent ? (
           <div className="detailsBody">
             <div className="detailCard">
-              <div className="detailTitle">Calendar Event</div>
+              {selectedEvent.active ? (
+                <ActiveSessionBanner
+                  title={selectedEvent.title}
+                  category={selectedEvent.category}
+                  subcategory={selectedEvent.subcategory}
+                  startedAt={selectedEvent.startAt}
+                  estimatedMinutes={selectedEvent.estimateMinutes ?? Math.round((selectedEvent.endAt - selectedEvent.startAt) / (60 * 1000))}
+                  importance={selectedEvent.importance}
+                  difficulty={selectedEvent.difficulty}
+                  onStop={() => {
+                    const now = Date.now()
+                    commitEvent({ ...selectedEvent, endAt: Math.max(now, selectedEvent.startAt + 5 * 60 * 1000), active: false })
+                  }}
+                />
+              ) : (
+                <div className="detailTitle">Calendar Event</div>
+              )}
               <div className="detailMeta">
                 {new Date(selectedEvent.startAt).toLocaleString()} – {new Date(selectedEvent.endAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
@@ -5083,6 +5256,7 @@ function App() {
                     }
                     commitEvent({ ...selectedEvent, notes: toggleChecklistLine(selectedEvent.notes, lineIndex) })
                   }}
+                  onStartTask={(task) => onStartNoteTask(selectedEvent.id, task)}
                   placeholder="Write notes…"
                   ariaLabel="Event notes"
                 />

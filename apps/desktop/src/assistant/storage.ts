@@ -89,8 +89,11 @@ export function loadSettings(): AssistantSettings {
     if (!raw) return { ...DEFAULT_SETTINGS }
     const parsed = JSON.parse(raw) as AssistantSettings
     if (!parsed?.mode) return { ...DEFAULT_SETTINGS }
-    const normalizedMode = parsed.mode === 'llm' ? 'hybrid' : parsed.mode
-    const mode: AssistantMode = normalizedMode === 'local' || normalizedMode === 'hybrid' ? normalizedMode : DEFAULT_MODE
+    const normalizedMode = parsed.mode
+    const mode: AssistantMode =
+      normalizedMode === 'local' || normalizedMode === 'hybrid' || normalizedMode === 'llm'
+        ? normalizedMode
+        : DEFAULT_MODE
     return {
       mode,
       openAiKey: parsed.openAiKey,

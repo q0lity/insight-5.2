@@ -155,6 +155,49 @@ function cleanTitle(raw: string) {
   return raw.replace(/\s+/g, ' ').trim()
 }
 
+function formatLocalIso(ms: number) {
+  const d = new Date(ms)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+function coerceIso(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return null
+    const ms = Date.parse(trimmed)
+    return Number.isFinite(ms) ? trimmed : null
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return new Date(value).toISOString()
+  }
+  return null
+}
+
+function readIsoField(obj: any, keys: string[]): string | null {
+  for (const key of keys) {
+    const iso = coerceIso(obj?.[key])
+    if (iso) return iso
+  }
+  return null
+}
+
+function readNumberField(obj: any, keys: string[]): number | null {
+  for (const key of keys) {
+    const value = obj?.[key]
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+  }
+  return null
+}
+
+function deriveEndIso(startIso: string, minutes: number) {
+  const startMs = Date.parse(startIso)
+  if (!Number.isFinite(startMs)) return null
+  const endMs = startMs + Math.max(5, Math.round(minutes)) * 60 * 1000
+  const hasTz = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(startIso)
+  return hasTz ? new Date(endMs).toISOString() : formatLocalIso(endMs)
+}
+
 function isGarbageTitle(title: string) {
   const t = cleanTitle(title)
   if (t.length < 2) return true
@@ -260,10 +303,12 @@ export async function parseCaptureWithLlm(opts: {
     '',
     '## Time & Event Rules:',
     '- Use ISO timestamps (local time) for all times.',
-    '- Always include endAtIso; if unknown, infer a reasonable duration (default 30m for events, 5m for logs).',
+    '- Events MUST include startAtIso and endAtIso (ISO strings).',
+    '- If end time is unknown, infer a reasonable duration (default 30m for events, 5m for logs) and set endAtIso.',
     '- If the user speaks in past tense ("I went", "I ate", "I did"), mark tasks as done and schedule events in the past (same day unless clearly different).',
     '- If the user is planning the future (tomorrow/next week) and there is NO explicit time, prefer creating TASKS (not events).',
     '- Create EVENTS only when there is an explicit time/range, or the user clearly started/stopped something (start/stop workout/sleep).',
+    '- If the user says they are currently doing something, set active=true and set startAtIso to the anchor time.',
     '',
     '## Tags:',
     '- Use tags like "#food", "#workout", "#sleep", "#mood", "#pain", "#period" when relevant.',
@@ -285,8 +330,11 @@ export async function parseCaptureWithLlm(opts: {
     patternHints ? '## User\'s Learned Patterns (IMPORTANT - Apply these when relevant):' : '',
     patternHints || '',
     patternHints ? '' : '',
-    'JSON schema:',
-    '{ "tasks": LlmParsedTask[], "events": LlmParsedEvent[] }',
+    'JSON schema (field names are REQUIRED):',
+    '{',
+    '  "tasks": [{ "title", "status?", "tags?", "notes?", "estimateMinutes?", "scheduledAtIso?", "dueAtIso?", "location?", "people?", "costUsd?", "goal?", "project?", "importance?", "difficulty?" }],',
+    '  "events": [{ "title", "startAtIso", "endAtIso", "allDay?", "kind?", "tags?", "notes?", "estimateMinutes?", "location?", "people?", "trackerKey?", "active?", "importance?", "difficulty?", "goal?", "project?" }]',
+    '}',
   ].filter(Boolean).join('\n')
 
   const user = [
@@ -344,8 +392,10 @@ export async function parseCaptureWithLlm(opts: {
     }
   }
 
+  const hasNowSignal = /\b(currently|right now|at the moment)\b/i.test(opts.text)
   const tasks = Array.isArray((parsed as any).tasks) ? (parsed as any).tasks : []
   const events = Array.isArray((parsed as any).events) ? (parsed as any).events : []
+  const allowAnchorFallback = hasNowSignal && events.length === 1
 
   // Validate people names to filter out hallucinated/garbage entries
   function validatePeople(people: string[] | undefined): string[] | undefined {
@@ -381,9 +431,9 @@ export async function parseCaptureWithLlm(opts: {
       status: t.status,
       tags: Array.isArray(t.tags) ? t.tags : undefined,
       notes: typeof t.notes === 'string' ? t.notes : undefined,
-      estimateMinutes: typeof t.estimateMinutes === 'number' ? t.estimateMinutes : null,
-      dueAtIso: typeof t.dueAtIso === 'string' ? t.dueAtIso : null,
-      scheduledAtIso: typeof t.scheduledAtIso === 'string' ? t.scheduledAtIso : null,
+      estimateMinutes: readNumberField(t, ['estimateMinutes', 'durationMinutes', 'duration']) ?? null,
+      dueAtIso: readIsoField(t, ['dueAtIso', 'dueAt', 'due', 'due_at']),
+      scheduledAtIso: readIsoField(t, ['scheduledAtIso', 'scheduledAt', 'scheduled', 'startAtIso', 'startAt', 'start', 'start_at']),
       location: typeof t.location === 'string' ? t.location : null,
       people: validatePeople(t.people),
       costUsd: typeof t.costUsd === 'number' ? t.costUsd : null,
@@ -396,20 +446,29 @@ export async function parseCaptureWithLlm(opts: {
 
   function normEvent(e: any): LlmParsedEvent | null {
     if (!e || typeof e.title !== 'string') return null
-    if (typeof e.startAtIso !== 'string' || typeof e.endAtIso !== 'string') return null
+    const startAtIso =
+      readIsoField(e, ['startAtIso', 'startAt', 'start', 'startTime', 'start_time', 'start_at', 'startAtMs']) ??
+      ((typeof e.active === 'boolean' && e.active) || allowAnchorFallback ? formatLocalIso(opts.anchorMs) : null)
+    const endAtIsoRaw = readIsoField(e, ['endAtIso', 'endAt', 'end', 'endTime', 'end_time', 'end_at', 'endAtMs'])
+    if (!startAtIso) return null
     const title = cleanTitle(e.title)
     if (isGarbageTitle(title)) return null
+    const kind = e.kind
+    const fallbackMinutes = kind === 'log' ? 5 : 30
+    const inferredMinutes = readNumberField(e, ['estimateMinutes', 'durationMinutes', 'duration']) ?? fallbackMinutes
+    const endAtIso = endAtIsoRaw ?? deriveEndIso(startAtIso, inferredMinutes)
+    if (!endAtIso) return null
     return {
       title,
-      startAtIso: e.startAtIso,
-      endAtIso: e.endAtIso,
+      startAtIso,
+      endAtIso,
       allDay: Boolean(e.allDay),
-      kind: e.kind,
+      kind,
       tags: Array.isArray(e.tags) ? e.tags : undefined,
       notes: typeof e.notes === 'string' ? e.notes : undefined,
       icon: typeof e.icon === 'string' ? e.icon : null,
       color: typeof e.color === 'string' ? e.color : null,
-      estimateMinutes: typeof e.estimateMinutes === 'number' ? e.estimateMinutes : null,
+      estimateMinutes: readNumberField(e, ['estimateMinutes', 'durationMinutes', 'duration']) ?? null,
       location: typeof e.location === 'string' ? e.location : null,
       people: validatePeople(e.people),
       skills: Array.isArray(e.skills) ? e.skills : undefined,
@@ -574,7 +633,10 @@ export async function parseCaptureWithBlocksLlm(opts: {
     '',
     '## General Rules',
     '- Use ISO timestamps (local time) for all times.',
+    '- Events MUST include startAtIso and endAtIso (ISO strings).',
+    '- If end time is unknown, infer a reasonable duration (default 30m for events, 5m for logs) and set endAtIso.',
     '- If past tense, mark tasks done and events in the past.',
+    '- If the user says they are currently doing something, set active=true and set startAtIso to the anchor time.',
     '- Extract people only when explicit (@mentions, "with Name").',
     '- Include importance (1-10) and difficulty (1-10) for events/tasks.',
     '- Keep output compact: <=10 tasks, <=12 events per block.',
@@ -583,10 +645,10 @@ export async function parseCaptureWithBlocksLlm(opts: {
     patternHints ? '## User\'s Learned Patterns (IMPORTANT - Apply these when relevant):' : '',
     patternHints || '',
     patternHints ? '' : '',
-    '## JSON Schema',
+    '## JSON Schema (field names are REQUIRED)',
     hasMultipleBlocks
-      ? '{ "blocks": LlmParsedBlock[] } where each block has: { blockIndex, rawText, summary, tasks, events, workout?, meal?, trackers, people, tags, contexts, locations }'
-      : '{ "tasks": LlmParsedTask[], "events": LlmParsedEvent[], "workout"?: LlmParsedWorkout, "meal"?: LlmParsedMeal, "trackers": [{key, value}], "people": string[], "tags": string[], "contexts": string[], "locations": string[] }',
+      ? '{ "blocks": [{ "blockIndex", "rawText", "summary?", "tasks", "events", "workout?", "meal?", "trackers", "people", "tags", "contexts", "locations" }] }'
+      : '{ "tasks": [{ "title", "status?", "tags?", "notes?", "estimateMinutes?", "scheduledAtIso?", "dueAtIso?", "location?", "people?", "costUsd?", "goal?", "project?", "importance?", "difficulty?" }], "events": [{ "title", "startAtIso", "endAtIso", "allDay?", "kind?", "tags?", "notes?", "estimateMinutes?", "location?", "people?", "trackerKey?", "active?", "importance?", "difficulty?", "goal?", "project?" }], "workout"?: LlmParsedWorkout, "meal"?: LlmParsedMeal, "trackers": [{key, value}], "people": string[], "tags": string[], "contexts": string[], "locations": string[] }',
   ].filter(Boolean).join('\n')
 
   const user = [
@@ -746,11 +808,14 @@ export async function parseCaptureWithBlocksLlm(opts: {
   }
 
   function normalizeBlock(b: any, index: number): LlmParsedBlock {
+    const blockText = typeof b.rawText === 'string' ? b.rawText : rawBlocks[index] ?? ''
+    const blockNowSignal = /\b(currently|right now|at the moment)\b/i.test(blockText)
+    const allowAnchorFallback = blockNowSignal && Array.isArray(b.events) && b.events.length === 1
     const tasks = Array.isArray(b.tasks)
       ? b.tasks.map((t: any) => normTask(t)).filter(Boolean)
       : []
     const events = Array.isArray(b.events)
-      ? b.events.map((e: any) => normEvent(e)).filter(Boolean)
+      ? b.events.map((e: any) => normEvent(e, allowAnchorFallback)).filter(Boolean)
       : []
     const workout = normalizeWorkout(b.workout)
     const meal = normalizeMeal(b.meal)
@@ -760,7 +825,7 @@ export async function parseCaptureWithBlocksLlm(opts: {
 
     return {
       blockIndex: index,
-      rawText: typeof b.rawText === 'string' ? b.rawText : rawBlocks[index] ?? '',
+      rawText: blockText,
       summary: typeof b.summary === 'string' ? b.summary : undefined,
       tasks,
       events,
@@ -783,9 +848,9 @@ export async function parseCaptureWithBlocksLlm(opts: {
       status: t.status,
       tags: Array.isArray(t.tags) ? t.tags : undefined,
       notes: typeof t.notes === 'string' ? t.notes : undefined,
-      estimateMinutes: typeof t.estimateMinutes === 'number' ? t.estimateMinutes : null,
-      dueAtIso: typeof t.dueAtIso === 'string' ? t.dueAtIso : null,
-      scheduledAtIso: typeof t.scheduledAtIso === 'string' ? t.scheduledAtIso : null,
+      estimateMinutes: readNumberField(t, ['estimateMinutes', 'durationMinutes', 'duration']) ?? null,
+      dueAtIso: readIsoField(t, ['dueAtIso', 'dueAt', 'due', 'due_at']),
+      scheduledAtIso: readIsoField(t, ['scheduledAtIso', 'scheduledAt', 'scheduled', 'startAtIso', 'startAt', 'start', 'start_at']),
       location: typeof t.location === 'string' ? t.location : null,
       people: validatePeople(t.people),
       costUsd: typeof t.costUsd === 'number' ? t.costUsd : null,
@@ -796,22 +861,31 @@ export async function parseCaptureWithBlocksLlm(opts: {
     }
   }
 
-  function normEvent(e: any): LlmParsedEvent | null {
+  function normEvent(e: any, allowAnchorFallback = false): LlmParsedEvent | null {
     if (!e || typeof e.title !== 'string') return null
-    if (typeof e.startAtIso !== 'string' || typeof e.endAtIso !== 'string') return null
+    const startAtIso =
+      readIsoField(e, ['startAtIso', 'startAt', 'start', 'startTime', 'start_time', 'start_at', 'startAtMs']) ??
+      ((typeof e.active === 'boolean' && e.active) || allowAnchorFallback ? formatLocalIso(opts.anchorMs) : null)
+    const endAtIsoRaw = readIsoField(e, ['endAtIso', 'endAt', 'end', 'endTime', 'end_time', 'end_at', 'endAtMs'])
+    if (!startAtIso) return null
     const title = cleanTitle(e.title)
     if (isGarbageTitle(title)) return null
+    const kind = e.kind
+    const fallbackMinutes = kind === 'log' ? 5 : 30
+    const inferredMinutes = readNumberField(e, ['estimateMinutes', 'durationMinutes', 'duration']) ?? fallbackMinutes
+    const endAtIso = endAtIsoRaw ?? deriveEndIso(startAtIso, inferredMinutes)
+    if (!endAtIso) return null
     return {
       title,
-      startAtIso: e.startAtIso,
-      endAtIso: e.endAtIso,
+      startAtIso,
+      endAtIso,
       allDay: Boolean(e.allDay),
-      kind: e.kind,
+      kind,
       tags: Array.isArray(e.tags) ? e.tags : undefined,
       notes: typeof e.notes === 'string' ? e.notes : undefined,
       icon: typeof e.icon === 'string' ? e.icon : null,
       color: typeof e.color === 'string' ? e.color : null,
-      estimateMinutes: typeof e.estimateMinutes === 'number' ? e.estimateMinutes : null,
+      estimateMinutes: readNumberField(e, ['estimateMinutes', 'durationMinutes', 'duration']) ?? null,
       location: typeof e.location === 'string' ? e.location : null,
       people: validatePeople(e.people),
       skills: Array.isArray(e.skills) ? e.skills : undefined,

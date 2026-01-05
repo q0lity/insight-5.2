@@ -68,6 +68,7 @@ export function SettingsView() {
   const [eventTitleDetail, setEventTitleDetail] = useState<EventTitleDetail>(() => loadDisplaySettings().eventTitleDetail)
 
   const [draftKey, setDraftKey] = useState(initial.openAiKey ?? '')
+  const [draftMode, setDraftMode] = useState<AssistantMode>(initial.mode ?? 'hybrid')
   const [draftChatModel, setDraftChatModel] = useState(initial.chatModel ?? 'gpt-4.1-mini')
   const [draftParseModel, setDraftParseModel] = useState(initial.parseModel ?? 'gpt-4.1-mini')
   const [draftNutritionModel, setDraftNutritionModel] = useState(initial.nutritionModel ?? 'gpt-4o-mini')
@@ -106,6 +107,7 @@ export function SettingsView() {
   }
 
   const dirty =
+    draftMode !== (saved.mode ?? 'hybrid') ||
     (draftKey ?? '') !== (saved.openAiKey ?? '') ||
     normalizeModelId(draftChatModel) !== normalizeModelId(saved.chatModel ?? 'gpt-4.1-mini') ||
     normalizeModelId(draftParseModel) !== normalizeModelId(saved.parseModel ?? 'gpt-4.1-mini') ||
@@ -117,6 +119,7 @@ export function SettingsView() {
     function onChange() {
       const next = loadSettings()
       setSaved(next)
+      setDraftMode(next.mode ?? 'hybrid')
       setDraftKey(next.openAiKey ?? '')
       setDraftChatModel(next.chatModel ?? 'gpt-4.1-mini')
       setDraftParseModel(next.parseModel ?? 'gpt-4.1-mini')
@@ -161,7 +164,7 @@ export function SettingsView() {
 
   function onSave() {
     const merged = {
-      mode: 'hybrid' as AssistantMode,
+      mode: draftMode,
       openAiKey: draftKey,
       chatModel: normalizeModelId(draftChatModel) || 'gpt-4.1-mini',
       parseModel: normalizeModelId(draftParseModel) || normalizeModelId(draftChatModel) || 'gpt-4.1-mini',
@@ -177,6 +180,7 @@ export function SettingsView() {
   }
 
   function onReset() {
+    setDraftMode(saved.mode ?? 'hybrid')
     setDraftKey(saved.openAiKey ?? '')
     setDraftChatModel(saved.chatModel ?? 'gpt-4.1-mini')
     setDraftParseModel(saved.parseModel ?? 'gpt-4.1-mini')
@@ -646,6 +650,25 @@ export function SettingsView() {
             <span style={{ color: 'var(--muted)', fontSize: 12, fontWeight: 800 }}>{dirty ? 'Unsaved changes' : 'Up to date'}</span>
             {status ? <span style={{ color: 'var(--muted)', fontSize: 12, fontWeight: 800 }}>{status}</span> : null}
             {error ? <span style={{ color: '#ef4444', fontSize: 12, fontWeight: 900 }}>{error}</span> : null}
+          </div>
+
+          <label style={{ display: 'grid', gap: 6, fontSize: 12, color: 'var(--muted)', fontWeight: 800 }}>
+            Assistant mode
+            <div className="segmented" style={{ justifySelf: 'start' }}>
+              {(['local', 'hybrid', 'llm'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  className={draftMode === mode ? 'segBtn active' : 'segBtn'}
+                  onClick={() => setDraftMode(mode)}
+                >
+                  {mode === 'llm' ? 'LLM only' : mode}
+                </button>
+              ))}
+            </div>
+          </label>
+
+          <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, lineHeight: 1.35 }}>
+            LLM only requires a valid OpenAI key and disables local fallback parsing.
           </div>
 
           <label style={{ display: 'grid', gap: 6, fontSize: 12, color: 'var(--muted)', fontWeight: 800 }}>
