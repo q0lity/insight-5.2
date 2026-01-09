@@ -316,14 +316,13 @@ export function TiimoDayView(props: {
     if (key) return key
     const tags = (ev.tags ?? []).map((t) => t.replace(/^#/, '').toLowerCase())
     for (const t of tags) {
-      if (['mood', 'energy', 'stress', 'pain', 'sleep', 'workout', 'period'].includes(t)) return t
+      if (['mood', 'energy', 'stress', 'pain', 'workout', 'period'].includes(t)) return t
     }
     const text = `${ev.title} ${(ev.tags ?? []).join(' ')}`.toLowerCase()
     if (/\bmood\b/.test(text)) return 'mood'
     if (/\benergy\b/.test(text)) return 'energy'
     if (/\bstress\b/.test(text)) return 'stress'
     if (/\bpain\b/.test(text)) return 'pain'
-    if (/\bsleep\b/.test(text)) return 'sleep'
     if (/\bworkout\b/.test(text)) return 'workout'
     if (/\bperiod\b/.test(text)) return 'period'
     return 'tracker'

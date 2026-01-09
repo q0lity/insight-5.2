@@ -9,7 +9,20 @@ interface CapturePreviewProps {
   showTrackers?: boolean
   showPeople?: boolean
   showTags?: boolean
+  habitNames?: string[]
   compact?: boolean
+}
+
+const QUESTION_HINT_RE = /\?|\b(what|why|how|when|where|who|which|should|could|do i|do we|need to|how do i|how do we|what do i|what do we)\b/i
+
+function hasQuestionIntent(text: string) {
+  return QUESTION_HINT_RE.test(text)
+}
+
+function detectHabits(text: string, habitNames?: string[]) {
+  if (!habitNames?.length) return []
+  const lower = text.toLowerCase()
+  return habitNames.filter((name) => name && lower.includes(name.toLowerCase()))
 }
 
 /**
@@ -23,6 +36,7 @@ export function CapturePreview({
   showTrackers = true,
   showPeople = true,
   showTags = true,
+  habitNames,
   compact = false,
 }: CapturePreviewProps) {
   // Parse text into blocks whenever it changes
@@ -36,6 +50,10 @@ export function CapturePreview({
   }
 
   const { blocks, tasks, events } = parseResult
+  const trackerCount = blocks.reduce((sum, block) => sum + block.trackers.length, 0)
+  const notesCount = blocks.length
+  const questionCount = blocks.reduce((sum, block) => sum + (hasQuestionIntent(block.rawText) ? 1 : 0), 0)
+  const habitHits = detectHabits(text, habitNames)
 
   return (
     <div className={`captureOutline ${compact ? 'compact' : ''}`}>
@@ -43,11 +61,23 @@ export function CapturePreview({
         <div className="captureOutlineTitle">Live outline</div>
         <div className="captureOutlineMeta">
           <span className="captureOutlineMetaChip">{blocks.length} segment{blocks.length !== 1 ? 's' : ''}</span>
+          {notesCount > 0 && (
+            <span className="captureOutlineMetaChip">{notesCount} note{notesCount !== 1 ? 's' : ''}</span>
+          )}
           {events.length > 0 && (
             <span className="captureOutlineMetaChip">{events.length} event{events.length !== 1 ? 's' : ''}</span>
           )}
           {tasks.length > 0 && (
             <span className="captureOutlineMetaChip">{tasks.length} task{tasks.length !== 1 ? 's' : ''}</span>
+          )}
+          {habitHits.length > 0 && (
+            <span className="captureOutlineMetaChip">{habitHits.length} habit{habitHits.length !== 1 ? 's' : ''}</span>
+          )}
+          {trackerCount > 0 && (
+            <span className="captureOutlineMetaChip">{trackerCount} tracker{trackerCount !== 1 ? 's' : ''}</span>
+          )}
+          {questionCount > 0 && (
+            <span className="captureOutlineMetaChip">{questionCount} question{questionCount !== 1 ? 's' : ''}</span>
           )}
           {isProcessing && <span className="captureOutlineMetaChip active">Processing...</span>}
         </div>
@@ -63,6 +93,7 @@ export function CapturePreview({
               showTrackers={showTrackers}
               showPeople={showPeople}
               showTags={showTags}
+              habitNames={habitNames}
               compact={compact}
             />
           ))}
@@ -78,10 +109,11 @@ interface BlockCardProps {
   showTrackers?: boolean
   showPeople?: boolean
   showTags?: boolean
+  habitNames?: string[]
   compact?: boolean
 }
 
-function OutlineBlock({ block, index, showTrackers, showPeople, showTags, compact }: BlockCardProps) {
+function OutlineBlock({ block, index, showTrackers, showPeople, showTags, habitNames, compact }: BlockCardProps) {
   const hasEntities =
     block.trackers.length > 0 ||
     block.people.length > 0 ||
@@ -90,6 +122,8 @@ function OutlineBlock({ block, index, showTrackers, showPeople, showTags, compac
     block.locations.length > 0
   const hasEvents = block.events.length > 0
   const hasTasks = block.tasks.length > 0
+  const hasQuestion = hasQuestionIntent(block.rawText)
+  const habitHits = useMemo(() => detectHabits(block.rawText, habitNames), [block.rawText, habitNames])
   const firstSentence = useMemo(() => {
     const trimmed = block.rawText.trim()
     if (!trimmed) return 'Untitled segment'
@@ -113,6 +147,15 @@ function OutlineBlock({ block, index, showTrackers, showPeople, showTags, compac
         <div className={`captureOutlineLine ${compact ? 'compact' : ''}`}>
           <span className="captureOutlineIndex">{String(index + 1).padStart(2, '0')}</span>
           <span className="captureOutlineSnippet">{snippet}</span>
+        </div>
+
+        <div className="captureOutlineKinds">
+          <span className="captureOutlineKind note">note</span>
+          {hasQuestion && <span className="captureOutlineKind question">question</span>}
+          {hasEvents && <span className="captureOutlineKind event">event</span>}
+          {hasTasks && <span className="captureOutlineKind task">task</span>}
+          {habitHits.length > 0 && <span className="captureOutlineKind habit">habit</span>}
+          {block.trackers.length > 0 && <span className="captureOutlineKind tracker">tracker</span>}
         </div>
 
         {hasEntities && (

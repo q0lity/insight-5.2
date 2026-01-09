@@ -1,0 +1,191 @@
+[
+  {
+    "name": "active_event_with_tasks_and_trackers",
+    "input": "::event Work/Deep \"Weekly Planning\" [start=9am; urgent=true] #focus @Sam +office !hq\nI'm starting the weekly planning session.\n- [ ] Draft outline\n- [x] Send summary\n#mood(7) #energy: 5",
+    "expected": {
+      "segments": [
+        {
+          "header": {
+            "type": "event",
+            "title": "Weekly Planning",
+            "category": "Work",
+            "subcategory": "Deep",
+            "props": {
+              "start": "9am",
+              "urgent": true
+            },
+            "tokens": {
+              "tags": ["focus"],
+              "people": ["Sam"],
+              "contexts": ["office"],
+              "places": ["hq"],
+              "trackers": []
+            },
+            "raw": "::event Work/Deep \"Weekly Planning\" [start=9am; urgent=true] #focus @Sam +office !hq"
+          },
+          "body": "I'm starting the weekly planning session.\n- [ ] Draft outline\n- [x] Send summary\n#mood(7) #energy: 5",
+          "raw": "::event Work/Deep \"Weekly Planning\" [start=9am; urgent=true] #focus @Sam +office !hq\nI'm starting the weekly planning session.\n- [ ] Draft outline\n- [x] Send summary\n#mood(7) #energy: 5",
+          "startLine": 1,
+          "endLine": 5,
+          "tokens": {
+            "tags": ["focus", "mood", "energy"],
+            "people": ["Sam"],
+            "contexts": ["office"],
+            "places": ["hq"],
+            "trackers": [
+              { "key": "mood", "value": 7 },
+              { "key": "energy", "value": 5 }
+            ]
+          }
+        }
+      ],
+      "tokens": {
+        "tags": ["focus", "mood", "energy"],
+        "people": ["Sam"],
+        "contexts": ["office"],
+        "places": ["hq"],
+        "trackers": [
+          { "key": "mood", "value": 7 },
+          { "key": "energy", "value": 5 }
+        ]
+      },
+      "activeEvent": {
+        "type": "event",
+        "title": "Weekly Planning",
+        "category": "Work",
+        "subcategory": "Deep",
+        "contexts": ["office"]
+      },
+      "futureEvents": [],
+      "tasks": [
+        { "title": "Draft outline", "completed": false, "estimate": null, "parentSegment": 0 },
+        { "title": "Send summary", "completed": true, "estimate": null, "parentSegment": 0 }
+      ],
+      "trackerLogs": [
+        { "key": "mood", "value": 7, "timestamp": 1700000000000 },
+        { "key": "energy", "value": 5, "timestamp": 1700000000000 }
+      ]
+    }
+  },
+  {
+    "name": "multi_segment_longform_frontmatter",
+    "input": "---\ntitle: Capture\n---\nThis is the opening note.\n\n---\n::note \"Long Form\"\nFirst paragraph line.\nSecond line.\n\n- [ ] Follow up\n* [x] Done item",
+    "expected": {
+      "segments": [
+        {
+          "header": null,
+          "body": "This is the opening note.",
+          "raw": "This is the opening note.",
+          "startLine": 1,
+          "endLine": 2,
+          "tokens": {
+            "tags": [],
+            "people": [],
+            "contexts": [],
+            "places": [],
+            "trackers": []
+          }
+        },
+        {
+          "header": {
+            "type": "note",
+            "title": "Long Form",
+            "category": null,
+            "subcategory": null,
+            "props": {},
+            "tokens": {
+              "tags": [],
+              "people": [],
+              "contexts": [],
+              "places": [],
+              "trackers": []
+            },
+            "raw": "::note \"Long Form\""
+          },
+          "body": "First paragraph line.\nSecond line.\n\n- [ ] Follow up\n* [x] Done item",
+          "raw": "::note \"Long Form\"\nFirst paragraph line.\nSecond line.\n\n- [ ] Follow up\n* [x] Done item",
+          "startLine": 4,
+          "endLine": 9,
+          "tokens": {
+            "tags": [],
+            "people": [],
+            "contexts": [],
+            "places": [],
+            "trackers": []
+          }
+        }
+      ],
+      "tokens": {
+        "tags": [],
+        "people": [],
+        "contexts": [],
+        "places": [],
+        "trackers": []
+      },
+      "activeEvent": null,
+      "futureEvents": [],
+      "tasks": [
+        { "title": "Follow up", "completed": false, "estimate": null, "parentSegment": 1 },
+        { "title": "Done item", "completed": true, "estimate": null, "parentSegment": 1 }
+      ],
+      "trackerLogs": []
+    }
+  },
+  {
+    "name": "future_event_with_schedule_and_person",
+    "input": "::event Travel/Flight \"Red-eye to NYC\" [start=2026-02-01 21:30] @O\u2019Connor +airport !terminal\nBoarding at 9pm.",
+    "expected": {
+      "segments": [
+        {
+          "header": {
+            "type": "event",
+            "title": "Red-eye to NYC",
+            "category": "Travel",
+            "subcategory": "Flight",
+            "props": {
+              "start": "2026-02-01 21:30"
+            },
+            "tokens": {
+              "tags": [],
+              "people": ["O\u2019Connor"],
+              "contexts": ["airport"],
+              "places": ["terminal"],
+              "trackers": []
+            },
+            "raw": "::event Travel/Flight \"Red-eye to NYC\" [start=2026-02-01 21:30] @O\u2019Connor +airport !terminal"
+          },
+          "body": "Boarding at 9pm.",
+          "raw": "::event Travel/Flight \"Red-eye to NYC\" [start=2026-02-01 21:30] @O\u2019Connor +airport !terminal\nBoarding at 9pm.",
+          "startLine": 1,
+          "endLine": 2,
+          "tokens": {
+            "tags": [],
+            "people": ["O\u2019Connor"],
+            "contexts": ["airport"],
+            "places": ["terminal"],
+            "trackers": []
+          }
+        }
+      ],
+      "tokens": {
+        "tags": [],
+        "people": ["O\u2019Connor"],
+        "contexts": ["airport"],
+        "places": ["terminal"],
+        "trackers": []
+      },
+      "activeEvent": null,
+      "futureEvents": [
+        {
+          "type": "event",
+          "title": "Red-eye to NYC",
+          "scheduledTime": "2026-02-01 21:30",
+          "category": "Travel",
+          "subcategory": "Flight"
+        }
+      ],
+      "tasks": [],
+      "trackerLogs": []
+    }
+  }
+]

@@ -411,7 +411,7 @@ create table if not exists public.external_event_links (
   entry_id uuid not null references public.entries(id) on delete cascade,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  provider text not null check (provider in ('google','device')),
+  provider text not null check (provider in ('google','microsoft','device','apple')),
   external_event_id text not null,
   external_calendar_id text,
   etag text,
@@ -424,4 +424,27 @@ create index if not exists external_event_links_user_id_idx on public.external_e
 
 create trigger external_event_links_set_updated_at
 before update on public.external_event_links
+for each row execute function public.set_updated_at();
+
+-- External calendar accounts (OAuth tokens)
+create table if not exists public.external_accounts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  provider text not null check (provider in ('google','microsoft')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  access_token text not null,
+  refresh_token text,
+  expires_at timestamptz,
+  scope text,
+  external_account_id text,
+  external_email text,
+  metadata jsonb not null default '{}'::jsonb,
+  unique (user_id, provider)
+);
+
+create index if not exists external_accounts_user_id_idx on public.external_accounts(user_id);
+
+create trigger external_accounts_set_updated_at
+before update on public.external_accounts
 for each row execute function public.set_updated_at();

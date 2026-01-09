@@ -69,6 +69,25 @@ function renderTextWithChips(raw: string) {
   return parts
 }
 
+function extractInlineChips(raw: string) {
+  const text = raw.replace(TOKEN_META_RE, '')
+  const chips: JSX.Element[] = []
+  const tokenRegex = /([#@!*^$~])([A-Za-z][\w'’./-]*(?:\s+[A-Za-z][\w'’./-]*){0,3})\{([a-z]+):([^}]+)\}/g
+  for (const match of text.matchAll(tokenRegex)) {
+    const start = match.index ?? 0
+    const prefix = match[1]
+    const label = match[2]
+    const kind = match[3]
+    const tokenId = match[4]
+    chips.push(
+      <span key={`${kind}_${tokenId}_${start}`} className={`mdChip mdChip-${kind}`} data-token-id={tokenId}>
+        {prefix}{label}
+      </span>,
+    )
+  }
+  return chips
+}
+
 function formatElapsed(ms: number) {
   const total = Math.max(0, Math.floor(ms / 1000))
   const hours = Math.floor(total / 3600)
@@ -103,10 +122,6 @@ export function MarkdownView(props: {
     const inlineKind = taskMeta?.kind ?? detectInlineItemKind(rawText)
     const childArray = Children.toArray(children)
     const nested = childArray.filter((child) => isValidElement(child) && (child.type === 'ul' || child.type === 'ol'))
-    const main = childArray.filter((child) => !nested.includes(child as any))
-    const mainWithoutCheckbox = main.filter(
-      (child) => !(isValidElement(child) && child.type === 'input' && (child.props as any)?.type === 'checkbox'),
-    )
     const hasNested = nested.length > 0
     const nodeLineIndex = typeof node?.position?.start?.line === 'number' ? node.position.start.line - 1 : null
     const fallback = isTask ? checklistItems[checklistCursor++] : null
@@ -141,6 +156,8 @@ export function MarkdownView(props: {
             lineIndex,
           }
         : null
+    const displayText = deriveLineTitle(rawText)
+    const inlineChips = extractInlineChips(rawText)
 
     return (
       <li {...rest} className={isChecklistItem ? 'mdLi mdLiChecklist' : 'mdLi'}>
@@ -176,7 +193,7 @@ export function MarkdownView(props: {
             </button>
           ) : null}
           <div className="mdLiContent">
-            <span className="mdLiText">{renderWithChips(mainWithoutCheckbox)}</span>
+            <span className="mdLiText">{displayText}</span>
             {actionMeta && props.onStartTask && (!isChecked || isRunning) ? (
               <button
                 className={
@@ -201,9 +218,10 @@ export function MarkdownView(props: {
                     lineIndex,
                   })
                 }}>
-                <Icon name="play" size={12} />
+                <Icon name="plus" size={12} />
               </button>
             ) : null}
+            {inlineChips.length > 0 ? <span className="mdLiChips">{inlineChips}</span> : null}
           </div>
         </div>
         {hasNested && !collapsed ? <div className="mdLiChildren">{nested}</div> : null}

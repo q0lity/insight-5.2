@@ -10,5 +10,7 @@ These “agents” are parallel workstreams. Each agent produces a concrete deli
 6. `06_VIEWS_ANALYTICS.md` — Bases-like saved views + Life Tracker visualizations + correlations
 7. `07_WORKOUTS_AND_NUTRITION.md` — workout table templates + nutrition POC capture
 8. `08_DESKTOP_APP.md` — Electron app packaging + shared modules strategy
+9. `09_ECOSYSTEM_TABLES.md` — ecosystem card layouts + shared properties map
+10. `10_INSIGHT_SWIFT_ORCHESTRATOR.md` — Swift app orchestration + 4-agent execution rules
 
 Status: create the deliverables above, then we start scaffolding the repo (monorepo + Supabase init).

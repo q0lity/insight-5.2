@@ -4,7 +4,7 @@ Principle: every row is owned by a user (`user_id` or `id` referencing `auth.use
 
 ## Tables
 - `profiles`: `id = auth.uid()`
-- `goals`, `projects`, `entries`, `entry_segments`, `tracker_definitions`, `tracker_logs`, `workout_sessions`, `workout_rows`, `nutrition_logs`, `attachments`, `saved_views`, `timers`, `external_event_links`:
+- `goals`, `projects`, `entries`, `entry_segments`, `tracker_definitions`, `tracker_logs`, `workout_sessions`, `workout_rows`, `nutrition_logs`, `attachments`, `saved_views`, `timers`, `external_event_links`, `external_accounts`:
   - SELECT: `user_id = auth.uid()`
   - INSERT: `user_id = auth.uid()`
   - UPDATE: `user_id = auth.uid()`
@@ -18,4 +18,4 @@ Principle: every row is owned by a user (`user_id` or `id` referencing `auth.use
 - Use per-user folder prefix (e.g., `user/<uid>/...`) and Storage policies that enforce prefix ownership.
 
 ## OAuth tokens
-Do not store plaintext provider tokens. If we store refresh tokens in DB later, they must be encrypted and only accessed via server-side Edge Functions.
+Provider tokens are stored encrypted at rest and only accessed via server-side Edge Functions.

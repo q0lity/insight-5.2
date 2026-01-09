@@ -168,7 +168,6 @@ const QUICK_TRACKERS: TrackerTile[] = [
   { id: 'energy', label: 'Energy', emoji: '⚡', tokenHint: '#energy(7)' },
   { id: 'water', label: 'Water', emoji: '💧', tokenHint: '#water(16)' },
   { id: 'stress', label: 'Stress', emoji: '🫥', tokenHint: '#stress(3)' },
-  { id: 'sleep', label: 'Sleep', emoji: '🛌', tokenHint: '#sleep(8)' },
   { id: 'workout', label: 'Workout', emoji: '🏋️', tokenHint: '#workout(45) +gym' },
 ]
 

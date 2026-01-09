@@ -19,6 +19,7 @@ interface CaptureModalProps {
   attachEventId: string | null
   onDetachEvent: () => void
   attachedEventTitle: string | null
+  habitNames?: string[]
   extendedMode?: boolean
   onToggleExtendedMode?: () => void
   anchorMs?: number
@@ -48,6 +49,7 @@ export function CaptureModal({
   attachEventId,
   onDetachEvent,
   attachedEventTitle,
+  habitNames,
   extendedMode = false,
   onToggleExtendedMode,
   anchorMs,
@@ -171,7 +173,7 @@ export function CaptureModal({
 
               {previewText && (
                 <div className="capturePreviewPanel">
-                  <CapturePreview text={previewText} isProcessing={isListening} compact />
+                  <CapturePreview text={previewText} isProcessing={isListening} compact habitNames={habitNames} />
                 </div>
               )}
             </div>

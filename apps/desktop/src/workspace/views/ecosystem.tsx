@@ -4,8 +4,7 @@ import type { Task } from '../../storage/tasks'
 import { Icon } from '../../ui/icons'
 import { MetaEditor } from '../../ui/MetaEditor'
 import { TrackerUnitEditor } from '../../ui/TrackerUnitEditor'
-import { ChipInput, parseCommaList } from '../../ui/ChipInput'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
+import { parseCommaList } from '../../ui/ChipInput'
 import { loadMultipliers, saveMultipliers } from '../../storage/multipliers'
 import { loadCustomTaxonomy, upsertCategory } from '../../taxonomy/custom'
 import { categoriesFromStarter, subcategoriesFromStarter } from '../../taxonomy/starter'
@@ -164,10 +163,10 @@ function applyMetaToHabit(habit: HabitDef, meta: SharedMeta): HabitDef {
   }
 }
 
-function shortList(items: string[], max = 2) {
-  if (!items.length) return '—'
-  if (items.length <= max) return items.join(', ')
-  return `${items.slice(0, max).join(', ')} +${items.length - max}`
+function splitChips(items: string[], max = 3) {
+  const visible = items.slice(0, max)
+  const remaining = Math.max(0, items.length - visible.length)
+  return { visible, remaining }
 }
 
 function slugify(input: string) {
@@ -177,6 +176,13 @@ function slugify(input: string) {
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
+}
+
+function numberOrNull(raw: string) {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  const n = Number(trimmed)
+  return Number.isFinite(n) ? n : null
 }
 
 export function EcosystemView(props: {
@@ -201,6 +207,7 @@ export function EcosystemView(props: {
   const [habitDraft, setHabitDraft] = useState('')
   const [trackerDraft, setTrackerDraft] = useState('')
   const [categoryDraft, setCategoryDraft] = useState('')
+  const [subcategoryDrafts, setSubcategoryDrafts] = useState(['', '', ''])
 
   useEffect(() => {
     if (!props.trackerDefs) return
@@ -403,6 +410,59 @@ export function EcosystemView(props: {
     props.onTrackerDefsChange?.(next)
   }
 
+  function updateHabitById(id: string, patch: Partial<HabitDef>) {
+    const next = habitDefs.map((h) => (h.id === id ? { ...h, ...patch } : h))
+    updateHabits(next)
+  }
+
+  function updateTrackerByKey(key: string, patch: Partial<TrackerDef>) {
+    const next = trackerDefs.map((t) => (t.key === key ? { ...t, ...patch } : t))
+    updateTrackers(next)
+  }
+
+  function updateTrackerUnit(key: string, patch: Partial<TrackerDef['unit']>) {
+    const next = trackerDefs.map((t) => (t.key === key ? { ...t, unit: { ...t.unit, ...patch } } : t))
+    updateTrackers(next)
+  }
+
+  function removeGoalDef(key: string) {
+    const nextDefs = goalDefs.filter((g) => normalizeKey(g.name) !== key)
+    if (nextDefs.length !== goalDefs.length) {
+      setGoalDefs(nextDefs)
+      saveGoalDefs(nextDefs)
+    }
+    if (multipliers.goals[key] != null) {
+      const { [key]: _, ...rest } = multipliers.goals
+      updateMultipliers({ ...multipliers, goals: rest })
+    }
+    if (selection.kind === 'goal' && selection.key === key) setSelection({ kind: 'none' })
+  }
+
+  function removeProjectDef(key: string) {
+    const nextDefs = projectDefs.filter((p) => normalizeKey(p.name) !== key)
+    if (nextDefs.length !== projectDefs.length) {
+      setProjectDefs(nextDefs)
+      saveProjectDefs(nextDefs)
+    }
+    if (multipliers.projects[key] != null) {
+      const { [key]: _, ...rest } = multipliers.projects
+      updateMultipliers({ ...multipliers, projects: rest })
+    }
+    if (selection.kind === 'project' && selection.key === key) setSelection({ kind: 'none' })
+  }
+
+  function removeHabitById(id: string) {
+    const nextDefs = habitDefs.filter((h) => h.id !== id)
+    if (nextDefs.length !== habitDefs.length) updateHabits(nextDefs)
+    if (selection.kind === 'habit' && selection.id === id) setSelection({ kind: 'none' })
+  }
+
+  function removeTrackerByKey(key: string) {
+    const nextDefs = trackerDefs.filter((t) => t.key !== key)
+    if (nextDefs.length !== trackerDefs.length) updateTrackers(nextDefs)
+    if (selection.kind === 'tracker' && selection.key === key) setSelection({ kind: 'none' })
+  }
+
   function addCustomCategory() {
     const category = categoryDraft.trim()
     if (!category) return
@@ -429,6 +489,19 @@ export function EcosystemView(props: {
   const selectedTracker = selection.kind === 'tracker' ? trackerDefs.find((t) => t.key === selection.key) ?? null : null
   const selectedCategory = selection.kind === 'category' ? selection.category : null
 
+  function buildSubcategoryPath(parts: string[]) {
+    const cleaned = parts.map((p) => p.trim()).filter(Boolean)
+    return cleaned.join(' / ')
+  }
+
+  function addSubcategoryPath(category: string) {
+    const path = buildSubcategoryPath(subcategoryDrafts)
+    if (!path) return
+    const subs = subcategoriesForCategory(category)
+    updateCategorySubcategories(category, uniqStrings([...subs, path]))
+    setSubcategoryDrafts(['', '', ''])
+  }
+
   return (
     <div className="flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
       <div className="px-10 pt-10 pb-6 bg-[var(--bg)]/80 backdrop-blur-xl sticky top-0 z-10 max-w-7xl mx-auto w-full">
@@ -441,72 +514,110 @@ export function EcosystemView(props: {
       </div>
 
       <div className="flex-1 overflow-hidden px-10 pb-32 max-w-7xl mx-auto w-full">
-        <div className="h-full overflow-y-auto custom-scrollbar pr-2">
-          <div className="space-y-10">
-            <section className="space-y-4">
-              <div className="flex items-center gap-3 px-2">
-                <Icon name="target" size={18} className="text-[var(--accent)]" />
-                <h2 className="text-xl font-bold tracking-tight">Goal Multipliers</h2>
-              </div>
-              <div className="glassCard">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Goal</TableHead>
-                      <TableHead>Multiplier</TableHead>
-                      <TableHead>Importance</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Tags</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {goalRows.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-xs uppercase tracking-widest text-[var(--muted)]">
-                          No goals yet
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      goalRows.map((row) => (
-                        <TableRow
+        <div className="flex flex-col xl:flex-row gap-8 h-full">
+          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-10 pb-8">
+              <section className="ecoSection">
+                <div className="ecoSectionHeader">
+                  <div className="ecoSectionTitle">
+                    <Icon name="target" size={18} className="text-[var(--accent)]" />
+                    <div>
+                      <h2 className="ecoSectionTitleText">Goal multipliers</h2>
+                      <p className="ecoSectionSubtitle">Weight goal impact and link tags.</p>
+                    </div>
+                  </div>
+                  <div className="ecoSectionMeta">{goalRows.length} goals</div>
+                </div>
+                <div className="ecoCardGrid">
+                  {goalRows.length === 0 ? (
+                    <div className="ecoEmpty">No goals yet</div>
+                  ) : (
+                    goalRows.map((row) => {
+                      const tags = row.def?.meta.tags ?? []
+                      const { visible, remaining } = splitChips(tags, 3)
+                      const active = selection.kind === 'goal' && selection.key === row.key
+                      return (
+                        <div
                           key={row.key}
-                          data-state={selection.kind === 'goal' && selection.key === row.key ? 'selected' : undefined}
-                          className="cursor-pointer"
+                          className={active ? 'ecoCard active' : 'ecoCard'}
                           onClick={() => {
                             const def = ensureGoalDef(row.name)
                             if (def) setSelection({ kind: 'goal', key: normalizeKey(def.name) })
                           }}
-                          onDoubleClick={() => props.onOpenGoal?.(row.name)}
                         >
-                          <TableCell className="font-semibold">{row.name}</TableCell>
-                          <TableCell>
-                            <input
-                              className="w-16 h-8 bg-[var(--panel)] border border-black/5 rounded-lg px-2 text-xs font-bold text-center outline-none"
-                              type="number"
-                              min={0.1}
-                              max={3}
-                              step={0.1}
-                              value={row.multiplier}
-                              onChange={(e) => updateGoalMultiplier(row.name, Number(e.target.value))}
-                            />
-                          </TableCell>
-                          <TableCell>{row.def?.meta.importance ?? '—'}</TableCell>
-                          <TableCell>{row.def?.meta.category ?? '—'}</TableCell>
-                          <TableCell>{shortList(row.def?.meta.tags ?? [])}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-                <div className="flex gap-2 pt-4 border-t border-black/5">
+                          <div className="ecoCardTop">
+                            <div className="ecoCardTitle">{row.name}</div>
+                            <div className="ecoCardActions">
+                              <button
+                                className="ecoActionBtn"
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  props.onOpenGoal?.(row.name)
+                                }}
+                              >
+                                Open
+                              </button>
+                              {row.def ? (
+                                <button
+                                  className="ecoActionBtn danger"
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    removeGoalDef(row.key)
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="ecoCardMeta">
+                            <label className="ecoMetaRow">
+                              <span>Multiplier</span>
+                              <input
+                                className="ecoMiniInput"
+                                type="number"
+                                min={0.1}
+                                max={3}
+                                step={0.1}
+                                value={row.multiplier}
+                                onClick={(e) => e.stopPropagation()}
+                                onFocus={(e) => e.stopPropagation()}
+                                onChange={(e) => updateGoalMultiplier(row.name, Number(e.target.value))}
+                              />
+                            </label>
+                            <div className="ecoMetaRow">
+                              <span>Importance</span>
+                              <span>{row.def?.meta.importance ?? '—'}</span>
+                            </div>
+                            <div className="ecoMetaRow">
+                              <span>Category</span>
+                              <span>{row.def?.meta.category ?? '—'}</span>
+                            </div>
+                          </div>
+                          <div className="ecoCardChips">
+                            {visible.map((tag) => (
+                              <span key={tag} className="detailChip pointer-events-none">
+                                {tag}
+                              </span>
+                            ))}
+                            {remaining > 0 ? <span className="ecoChipCount">+{remaining}</span> : null}
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+                <div className="ecoAddRow">
                   <input
-                    className="flex-1 h-11 bg-[var(--panel)] border-none rounded-xl px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[var(--accent)]/10 transition-all"
+                    className="ecoAddInput"
                     value={goalDraft}
                     onChange={(e) => setGoalDraft(e.target.value)}
                     placeholder="Add goal name..."
                   />
                   <button
-                    className="h-11 px-6 bg-[var(--accent)] text-white rounded-xl font-bold text-xs shadow-lg hover:opacity-90 transition-all"
+                    className="ecoAddButton"
                     onClick={() => {
                       const name = goalDraft.trim()
                       if (!name) return
@@ -516,76 +627,112 @@ export function EcosystemView(props: {
                       if (def) setSelection({ kind: 'goal', key: normalizeKey(def.name) })
                     }}
                   >
-                    Add
+                    Add goal
                   </button>
                 </div>
-              </div>
-            </section>
+              </section>
 
-            <section className="space-y-4">
-              <div className="flex items-center gap-3 px-2">
-                <Icon name="briefcase" size={18} className="text-[var(--accent)]" />
-                <h2 className="text-xl font-bold tracking-tight">Project Multipliers</h2>
-              </div>
-              <div className="glassCard">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Multiplier</TableHead>
-                      <TableHead>Importance</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Tags</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {projectRows.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-xs uppercase tracking-widest text-[var(--muted)]">
-                          No projects yet
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      projectRows.map((row) => (
-                        <TableRow
+              <section className="ecoSection">
+                <div className="ecoSectionHeader">
+                  <div className="ecoSectionTitle">
+                    <Icon name="briefcase" size={18} className="text-[var(--accent)]" />
+                    <div>
+                      <h2 className="ecoSectionTitleText">Project multipliers</h2>
+                      <p className="ecoSectionSubtitle">Score projects with the right weight.</p>
+                    </div>
+                  </div>
+                  <div className="ecoSectionMeta">{projectRows.length} projects</div>
+                </div>
+                <div className="ecoCardGrid">
+                  {projectRows.length === 0 ? (
+                    <div className="ecoEmpty">No projects yet</div>
+                  ) : (
+                    projectRows.map((row) => {
+                      const tags = row.def?.meta.tags ?? []
+                      const { visible, remaining } = splitChips(tags, 3)
+                      const active = selection.kind === 'project' && selection.key === row.key
+                      return (
+                        <div
                           key={row.key}
-                          data-state={selection.kind === 'project' && selection.key === row.key ? 'selected' : undefined}
-                          className="cursor-pointer"
+                          className={active ? 'ecoCard active' : 'ecoCard'}
                           onClick={() => {
                             const def = ensureProjectDef(row.name)
                             if (def) setSelection({ kind: 'project', key: normalizeKey(def.name) })
                           }}
-                          onDoubleClick={() => props.onOpenProject?.(row.name)}
                         >
-                          <TableCell className="font-semibold">{row.name}</TableCell>
-                          <TableCell>
-                            <input
-                              className="w-16 h-8 bg-[var(--panel)] border border-black/5 rounded-lg px-2 text-xs font-bold text-center outline-none"
-                              type="number"
-                              min={0.1}
-                              max={3}
-                              step={0.1}
-                              value={row.multiplier}
-                              onChange={(e) => updateProjectMultiplier(row.name, Number(e.target.value))}
-                            />
-                          </TableCell>
-                          <TableCell>{row.def?.meta.importance ?? '—'}</TableCell>
-                          <TableCell>{row.def?.meta.category ?? '—'}</TableCell>
-                          <TableCell>{shortList(row.def?.meta.tags ?? [])}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-                <div className="flex gap-2 pt-4 border-t border-black/5">
+                          <div className="ecoCardTop">
+                            <div className="ecoCardTitle">{row.name}</div>
+                            <div className="ecoCardActions">
+                              <button
+                                className="ecoActionBtn"
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  props.onOpenProject?.(row.name)
+                                }}
+                              >
+                                Open
+                              </button>
+                              {row.def ? (
+                                <button
+                                  className="ecoActionBtn danger"
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    removeProjectDef(row.key)
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="ecoCardMeta">
+                            <label className="ecoMetaRow">
+                              <span>Multiplier</span>
+                              <input
+                                className="ecoMiniInput"
+                                type="number"
+                                min={0.1}
+                                max={3}
+                                step={0.1}
+                                value={row.multiplier}
+                                onClick={(e) => e.stopPropagation()}
+                                onFocus={(e) => e.stopPropagation()}
+                                onChange={(e) => updateProjectMultiplier(row.name, Number(e.target.value))}
+                              />
+                            </label>
+                            <div className="ecoMetaRow">
+                              <span>Importance</span>
+                              <span>{row.def?.meta.importance ?? '—'}</span>
+                            </div>
+                            <div className="ecoMetaRow">
+                              <span>Category</span>
+                              <span>{row.def?.meta.category ?? '—'}</span>
+                            </div>
+                          </div>
+                          <div className="ecoCardChips">
+                            {visible.map((tag) => (
+                              <span key={tag} className="detailChip pointer-events-none">
+                                {tag}
+                              </span>
+                            ))}
+                            {remaining > 0 ? <span className="ecoChipCount">+{remaining}</span> : null}
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+                <div className="ecoAddRow">
                   <input
-                    className="flex-1 h-11 bg-[var(--panel)] border-none rounded-xl px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[var(--accent)]/10 transition-all"
+                    className="ecoAddInput"
                     value={projectDraft}
                     onChange={(e) => setProjectDraft(e.target.value)}
                     placeholder="Add project name..."
                   />
                   <button
-                    className="h-11 px-6 bg-[var(--accent)] text-white rounded-xl font-bold text-xs shadow-lg hover:opacity-90 transition-all"
+                    className="ecoAddButton"
                     onClick={() => {
                       const name = projectDraft.trim()
                       if (!name) return
@@ -595,130 +742,87 @@ export function EcosystemView(props: {
                       if (def) setSelection({ kind: 'project', key: normalizeKey(def.name) })
                     }}
                   >
-                    Add
+                    Add project
                   </button>
                 </div>
-              </div>
-            </section>
+              </section>
 
-            <section className="space-y-4">
-              <div className="flex items-center gap-3 px-2">
-                <Icon name="tag" size={18} className="text-[var(--accent)]" />
-                <h2 className="text-xl font-bold tracking-tight">Taxonomy</h2>
-              </div>
-              <div className="glassCard">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Subcategories</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {categories.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={2} className="text-center text-xs uppercase tracking-widest text-[var(--muted)]">
-                          No categories
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      categories.map((cat) => {
-                        const subs = subcategoriesForCategory(cat)
-                        const visible = subs.slice(0, 5)
-                        const remaining = subs.length - visible.length
-                        return (
-                          <TableRow
-                            key={cat}
-                            data-state={selection.kind === 'category' && selection.category === cat ? 'selected' : undefined}
-                            className="cursor-pointer"
-                            onClick={() => setSelection({ kind: 'category', category: cat })}
-                          >
-                            <TableCell className="font-semibold">{cat}</TableCell>
-                            <TableCell>
-                              <div className="flex flex-wrap gap-2">
-                                {visible.map((sub) => (
-                                  <span key={sub} className="detailChip pointer-events-none">
-                                    {sub}
-                                  </span>
-                                ))}
-                                {remaining > 0 ? (
-                                  <span className="text-[10px] font-semibold text-[var(--muted)]">+{remaining}</span>
-                                ) : null}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-                <div className="flex gap-2 pt-4 border-t border-black/5">
-                  <input
-                    className="flex-1 h-11 bg-[var(--panel)] border-none rounded-xl px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[var(--accent)]/10 transition-all"
-                    value={categoryDraft}
-                    onChange={(e) => setCategoryDraft(e.target.value)}
-                    placeholder="New category..."
-                  />
-                  <button
-                    className="h-11 px-6 bg-[var(--accent)] text-white rounded-xl font-bold text-xs shadow-lg hover:opacity-90 transition-all"
-                    onClick={addCustomCategory}
-                  >
-                    Add
-                  </button>
+              <section className="ecoSection">
+                <div className="ecoSectionHeader">
+                  <div className="ecoSectionTitle">
+                    <Icon name="smile" size={18} className="text-[var(--accent)]" />
+                    <div>
+                      <h2 className="ecoSectionTitleText">Habits</h2>
+                      <p className="ecoSectionSubtitle">Default settings for habit tracking.</p>
+                    </div>
+                  </div>
+                  <div className="ecoSectionMeta">{habitDefs.length} habits</div>
                 </div>
-              </div>
-            </section>
-
-            <section className="space-y-4">
-              <div className="flex items-center gap-3 px-2">
-                <Icon name="smile" size={18} className="text-[var(--accent)]" />
-                <h2 className="text-xl font-bold tracking-tight">Habits</h2>
-              </div>
-              <div className="glassCard">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Habit</TableHead>
-                      <TableHead>Importance</TableHead>
-                      <TableHead>Difficulty</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Tags</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {habitDefs.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-xs uppercase tracking-widest text-[var(--muted)]">
-                          No habits yet
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      habitDefs.map((habit) => (
-                        <TableRow
+                <div className="ecoCardGrid">
+                  {habitDefs.length === 0 ? (
+                    <div className="ecoEmpty">No habits yet</div>
+                  ) : (
+                    habitDefs.map((habit) => {
+                      const tags = habit.tags ?? []
+                      const { visible, remaining } = splitChips(tags, 3)
+                      const active = selection.kind === 'habit' && selection.id === habit.id
+                      return (
+                        <div
                           key={habit.id}
-                          data-state={selection.kind === 'habit' && selection.id === habit.id ? 'selected' : undefined}
-                          className="cursor-pointer"
+                          className={active ? 'ecoCard active' : 'ecoCard'}
                           onClick={() => setSelection({ kind: 'habit', id: habit.id })}
                         >
-                          <TableCell className="font-semibold">{habit.name}</TableCell>
-                          <TableCell>{habit.importance ?? '—'}</TableCell>
-                          <TableCell>{habit.difficulty ?? '—'}</TableCell>
-                          <TableCell>{habit.category ?? '—'}</TableCell>
-                          <TableCell>{shortList(habit.tags ?? [])}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-                <div className="flex gap-2 pt-4 border-t border-black/5">
+                          <div className="ecoCardTop">
+                            <div className="ecoCardTitle">{habit.name}</div>
+                            <div className="ecoCardActions">
+                              <button
+                                className="ecoActionBtn danger"
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  removeHabitById(habit.id)
+                                }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                          <div className="ecoCardMeta">
+                            <div className="ecoMetaRow">
+                              <span>Target</span>
+                              <span>{habit.targetPerWeek ? `${habit.targetPerWeek}/wk` : '—'}</span>
+                            </div>
+                            <div className="ecoMetaRow">
+                              <span>Importance</span>
+                              <span>{habit.importance ?? '—'}</span>
+                            </div>
+                            <div className="ecoMetaRow">
+                              <span>Difficulty</span>
+                              <span>{habit.difficulty ?? '—'}</span>
+                            </div>
+                          </div>
+                          <div className="ecoCardChips">
+                            {visible.map((tag) => (
+                              <span key={tag} className="detailChip pointer-events-none">
+                                {tag}
+                              </span>
+                            ))}
+                            {remaining > 0 ? <span className="ecoChipCount">+{remaining}</span> : null}
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+                <div className="ecoAddRow">
                   <input
-                    className="flex-1 h-11 bg-[var(--panel)] border-none rounded-xl px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[var(--accent)]/10 transition-all"
+                    className="ecoAddInput"
                     value={habitDraft}
                     onChange={(e) => setHabitDraft(e.target.value)}
                     placeholder="Add habit name..."
                   />
                   <button
-                    className="h-11 px-6 bg-[var(--accent)] text-white rounded-xl font-bold text-xs shadow-lg hover:opacity-90 transition-all"
+                    className="ecoAddButton"
                     onClick={() => {
                       const name = habitDraft.trim()
                       if (!name) return
@@ -751,63 +855,99 @@ export function EcosystemView(props: {
                       setSelection({ kind: 'habit', id: next.id })
                     }}
                   >
-                    Add
+                    Add habit
                   </button>
                 </div>
-              </div>
-            </section>
+              </section>
 
-            <section className="space-y-4">
-              <div className="flex items-center gap-3 px-2">
-                <Icon name="droplet" size={18} className="text-[var(--accent)]" />
-                <h2 className="text-xl font-bold tracking-tight">Trackers</h2>
-              </div>
-              <div className="glassCard">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tracker</TableHead>
-                      <TableHead>Unit</TableHead>
-                      <TableHead>Range</TableHead>
-                      <TableHead>Presets</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {trackerDefs.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-xs uppercase tracking-widest text-[var(--muted)]">
-                          No trackers yet
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      trackerDefs.map((tracker) => (
-                        <TableRow
+              <section className="ecoSection">
+                <div className="ecoSectionHeader">
+                  <div className="ecoSectionTitle">
+                    <Icon name="droplet" size={18} className="text-[var(--accent)]" />
+                    <div>
+                      <h2 className="ecoSectionTitleText">Trackers</h2>
+                      <p className="ecoSectionSubtitle">Units, ranges, and presets.</p>
+                    </div>
+                  </div>
+                  <div className="ecoSectionMeta">{trackerDefs.length} trackers</div>
+                </div>
+                <div className="ecoCardGrid">
+                  {trackerDefs.length === 0 ? (
+                    <div className="ecoEmpty">No trackers yet</div>
+                  ) : (
+                    trackerDefs.map((tracker) => {
+                      const tags = tracker.meta.tags ?? []
+                      const { visible, remaining } = splitChips(tags, 3)
+                      const active = selection.kind === 'tracker' && selection.key === tracker.key
+                      return (
+                        <div
                           key={tracker.key}
-                          data-state={selection.kind === 'tracker' && selection.key === tracker.key ? 'selected' : undefined}
-                          className="cursor-pointer"
+                          className={active ? 'ecoCard active' : 'ecoCard'}
                           onClick={() => setSelection({ kind: 'tracker', key: tracker.key })}
-                          onDoubleClick={() => props.onOpenTracker?.(tracker.key)}
                         >
-                          <TableCell className="font-semibold">{tracker.label}</TableCell>
-                          <TableCell>{tracker.unit.label}</TableCell>
-                          <TableCell>
-                            {tracker.unit.min ?? '—'} to {tracker.unit.max ?? '—'}
-                          </TableCell>
-                          <TableCell className="text-xs text-[var(--muted)]">{shortList(tracker.unit.presets.map(String))}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-                <div className="flex gap-2 pt-4 border-t border-black/5">
+                          <div className="ecoCardTop">
+                            <div className="ecoCardTitle">{tracker.label}</div>
+                            <div className="ecoCardActions">
+                              <button
+                                className="ecoActionBtn"
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  props.onOpenTracker?.(tracker.key)
+                                }}
+                              >
+                                Open
+                              </button>
+                              <button
+                                className="ecoActionBtn danger"
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  removeTrackerByKey(tracker.key)
+                                }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                          <div className="ecoCardMeta">
+                            <div className="ecoMetaRow">
+                              <span>Unit</span>
+                              <span>{tracker.unit.label}</span>
+                            </div>
+                            <div className="ecoMetaRow">
+                              <span>Range</span>
+                              <span>
+                                {tracker.unit.min ?? '—'} - {tracker.unit.max ?? '—'}
+                              </span>
+                            </div>
+                            <div className="ecoMetaRow">
+                              <span>Presets</span>
+                              <span>{tracker.unit.presets.length ? tracker.unit.presets.join(', ') : '—'}</span>
+                            </div>
+                          </div>
+                          <div className="ecoCardChips">
+                            {visible.map((tag) => (
+                              <span key={tag} className="detailChip pointer-events-none">
+                                {tag}
+                              </span>
+                            ))}
+                            {remaining > 0 ? <span className="ecoChipCount">+{remaining}</span> : null}
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+                <div className="ecoAddRow">
                   <input
-                    className="flex-1 h-11 bg-[var(--panel)] border-none rounded-xl px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[var(--accent)]/10 transition-all"
+                    className="ecoAddInput"
                     value={trackerDraft}
                     onChange={(e) => setTrackerDraft(e.target.value)}
                     placeholder="Add tracker name..."
                   />
                   <button
-                    className="h-11 px-6 bg-[var(--accent)] text-white rounded-xl font-bold text-xs shadow-lg hover:opacity-90 transition-all"
+                    className="ecoAddButton"
                     onClick={() => {
                       const name = trackerDraft.trim()
                       if (!name) return
@@ -833,35 +973,108 @@ export function EcosystemView(props: {
                       setSelection({ kind: 'tracker', key })
                     }}
                   >
-                    Add
+                    Add tracker
                   </button>
                 </div>
-              </div>
-            </section>
+              </section>
+
+              <section className="ecoSection">
+                <div className="ecoSectionHeader">
+                  <div className="ecoSectionTitle">
+                    <Icon name="tag" size={18} className="text-[var(--accent)]" />
+                    <div>
+                      <h2 className="ecoSectionTitleText">Taxonomy</h2>
+                      <p className="ecoSectionSubtitle">Categories and subcategories.</p>
+                    </div>
+                  </div>
+                  <div className="ecoSectionMeta">{categories.length} categories</div>
+                </div>
+                <div className="ecoCardGrid">
+                  {categories.length === 0 ? (
+                    <div className="ecoEmpty">No categories</div>
+                  ) : (
+                    categories.map((cat) => {
+                      const subs = subcategoriesForCategory(cat)
+                      const { visible, remaining } = splitChips(subs, 4)
+                      const active = selection.kind === 'category' && selection.category === cat
+                      return (
+                        <div
+                          key={cat}
+                          className={active ? 'ecoCard active' : 'ecoCard'}
+                          onClick={() => setSelection({ kind: 'category', category: cat })}
+                        >
+                          <div className="ecoCardTop">
+                            <div className="ecoCardTitle">{cat}</div>
+                          </div>
+                          <div className="ecoCardChips">
+                            {visible.map((sub) => (
+                              <span key={sub} className="detailChip pointer-events-none">
+                                {sub}
+                              </span>
+                            ))}
+                            {remaining > 0 ? <span className="ecoChipCount">+{remaining}</span> : null}
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+                <div className="ecoAddRow">
+                  <input
+                    className="ecoAddInput"
+                    value={categoryDraft}
+                    onChange={(e) => setCategoryDraft(e.target.value)}
+                    placeholder="New category..."
+                  />
+                  <button className="ecoAddButton" onClick={addCustomCategory}>
+                    Add category
+                  </button>
+                </div>
+              </section>
+            </div>
           </div>
 
-          <section className="glassCard p-6 space-y-6">
-            <div>
-              <h3 className="text-lg font-bold">Details</h3>
-              <p className="text-xs text-[var(--muted)]">Edit shared properties and advanced defaults.</p>
-            </div>
-
-            {selection.kind === 'none' ? (
-              <div className="flex flex-col items-center justify-center text-center opacity-30 space-y-3">
-                <Icon name="sparkle" size={32} />
-                <p className="text-xs font-bold uppercase tracking-widest">Select a row to edit</p>
+          <aside className="ecoSidebar">
+            <div className="ecoSidebarCard">
+              <div className="ecoSidebarHeader">
+                <div>
+                  <h3 className="ecoSidebarTitle">Inspector</h3>
+                  <p className="ecoSidebarSubtitle">Edit links, chips, and defaults.</p>
+                </div>
+                {selection.kind !== 'none' ? (
+                  <button className="ecoActionBtn" type="button" onClick={() => setSelection({ kind: 'none' })}>
+                    Clear
+                  </button>
+                ) : null}
               </div>
-            ) : null}
 
-            {selection.kind === 'goal' && selectedGoal ? (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <div className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Goal</div>
-                  <div className="text-lg font-bold">{selectedGoal.name}</div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-[var(--muted)]">Multiplier</span>
+              {selection.kind === 'none' ? (
+                <div className="ecoEmptyState">
+                  <Icon name="sparkle" size={28} />
+                  <p>Select a card to edit details.</p>
+                </div>
+              ) : null}
+
+              {selection.kind === 'goal' && selectedGoal ? (
+                <div className="space-y-6">
+                  <div className="ecoDetailHeader">
+                    <div>
+                      <div className="ecoDetailEyebrow">Goal</div>
+                      <div className="ecoDetailTitle">{selectedGoal.name}</div>
+                    </div>
+                    <div className="ecoDetailActions">
+                      <button className="ecoActionBtn" type="button" onClick={() => props.onOpenGoal?.(selectedGoal.name)}>
+                        Open goal
+                      </button>
+                      <button className="ecoActionBtn danger" type="button" onClick={() => removeGoalDef(selection.key)}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                  <div className="ecoDetailRow">
+                    <span className="ecoDetailLabel">Multiplier</span>
                     <input
-                      className="w-20 h-9 bg-[var(--panel)] border border-black/5 rounded-lg px-2 text-xs font-bold text-center"
+                      className="ecoMiniInput"
                       type="number"
                       min={0.1}
                       max={3}
@@ -869,42 +1082,45 @@ export function EcosystemView(props: {
                       value={multipliers.goals[selection.key] ?? 1}
                       onChange={(e) => updateGoalMultiplier(selectedGoal.name, Number(e.target.value))}
                     />
-                    <button
-                      className="ml-auto text-xs font-bold text-[var(--accent)]"
-                      onClick={() => props.onOpenGoal?.(selectedGoal.name)}
-                      type="button"
-                    >
-                      Open goal
-                    </button>
                   </div>
+                  <MetaEditor
+                    value={selectedGoal.meta}
+                    onChange={(meta) => updateGoalMeta(selection.key, meta)}
+                    suggestions={{
+                      tags: tagSuggestions,
+                      contexts: contextSuggestions,
+                      people: peopleSuggestions,
+                      locations: locationSuggestions,
+                      skills: skillSuggestions,
+                      categories,
+                      subcategories: selectedGoal.meta.category ? subcategoriesForCategory(selectedGoal.meta.category) : [],
+                      goals: goalSuggestions,
+                      projects: projectSuggestions,
+                    }}
+                  />
                 </div>
-                <MetaEditor
-                  value={selectedGoal.meta}
-                  onChange={(meta) => updateGoalMeta(selection.key, meta)}
-                  suggestions={{
-                    tags: tagSuggestions,
-                    contexts: contextSuggestions,
-                    people: peopleSuggestions,
-                    locations: locationSuggestions,
-                    skills: skillSuggestions,
-                    categories,
-                    subcategories: selectedGoal.meta.category ? subcategoriesForCategory(selectedGoal.meta.category) : [],
-                    goals: goalSuggestions,
-                    projects: projectSuggestions,
-                  }}
-                />
-              </div>
-            ) : null}
+              ) : null}
 
-            {selection.kind === 'project' && selectedProject ? (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <div className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Project</div>
-                  <div className="text-lg font-bold">{selectedProject.name}</div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-[var(--muted)]">Multiplier</span>
+              {selection.kind === 'project' && selectedProject ? (
+                <div className="space-y-6">
+                  <div className="ecoDetailHeader">
+                    <div>
+                      <div className="ecoDetailEyebrow">Project</div>
+                      <div className="ecoDetailTitle">{selectedProject.name}</div>
+                    </div>
+                    <div className="ecoDetailActions">
+                      <button className="ecoActionBtn" type="button" onClick={() => props.onOpenProject?.(selectedProject.name)}>
+                        Open project
+                      </button>
+                      <button className="ecoActionBtn danger" type="button" onClick={() => removeProjectDef(selection.key)}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                  <div className="ecoDetailRow">
+                    <span className="ecoDetailLabel">Multiplier</span>
                     <input
-                      className="w-20 h-9 bg-[var(--panel)] border border-black/5 rounded-lg px-2 text-xs font-bold text-center"
+                      className="ecoMiniInput"
                       type="number"
                       min={0.1}
                       max={3}
@@ -912,155 +1128,256 @@ export function EcosystemView(props: {
                       value={multipliers.projects[selection.key] ?? 1}
                       onChange={(e) => updateProjectMultiplier(selectedProject.name, Number(e.target.value))}
                     />
-                    <button
-                      className="ml-auto text-xs font-bold text-[var(--accent)]"
-                      onClick={() => props.onOpenProject?.(selectedProject.name)}
-                      type="button"
-                    >
-                      Open project
-                    </button>
                   </div>
-                </div>
-                <MetaEditor
-                  value={selectedProject.meta}
-                  onChange={(meta) => updateProjectMeta(selection.key, meta)}
-                  suggestions={{
-                    tags: tagSuggestions,
-                    contexts: contextSuggestions,
-                    people: peopleSuggestions,
-                    locations: locationSuggestions,
-                    skills: skillSuggestions,
-                    categories,
-                    subcategories: selectedProject.meta.category ? subcategoriesForCategory(selectedProject.meta.category) : [],
-                    goals: goalSuggestions,
-                    projects: projectSuggestions,
-                  }}
-                />
-              </div>
-            ) : null}
-
-            {selection.kind === 'habit' && selectedHabit ? (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <div className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Habit</div>
-                  <input
-                    className="detailSmall"
-                    value={selectedHabit.name}
-                    onChange={(e) => {
-                      const name = e.target.value
-                      const next = habitDefs.map((h) => (h.id === selectedHabit.id ? { ...h, name } : h))
-                      updateHabits(next)
+                  <MetaEditor
+                    value={selectedProject.meta}
+                    onChange={(meta) => updateProjectMeta(selection.key, meta)}
+                    suggestions={{
+                      tags: tagSuggestions,
+                      contexts: contextSuggestions,
+                      people: peopleSuggestions,
+                      locations: locationSuggestions,
+                      skills: skillSuggestions,
+                      categories,
+                      subcategories: selectedProject.meta.category ? subcategoriesForCategory(selectedProject.meta.category) : [],
+                      goals: goalSuggestions,
+                      projects: projectSuggestions,
                     }}
                   />
                 </div>
-                <MetaEditor
-                  value={habitMeta(selectedHabit)}
-                  onChange={(meta) => {
-                    const next = habitDefs.map((h) => (h.id === selectedHabit.id ? applyMetaToHabit(h, meta) : h))
-                    updateHabits(next)
-                  }}
-                  suggestions={{
-                    tags: tagSuggestions,
-                    contexts: contextSuggestions,
-                    people: peopleSuggestions,
-                    locations: locationSuggestions,
-                    skills: skillSuggestions,
-                    categories,
-                    subcategories: selectedHabit.category ? subcategoriesForCategory(selectedHabit.category) : [],
-                    goals: goalSuggestions,
-                    projects: projectSuggestions,
-                  }}
-                />
-              </div>
-            ) : null}
+              ) : null}
 
-            {selection.kind === 'tracker' && selectedTracker ? (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <div className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Tracker</div>
-                  <label>
-                    Label
-                    <input
-                      className="detailSmall"
-                      value={selectedTracker.label}
-                      onChange={(e) => {
-                        const next = trackerDefs.map((t) => (t.key === selectedTracker.key ? { ...t, label: e.target.value } : t))
-                        updateTrackers(next)
-                      }}
-                    />
-                  </label>
-                  <div className="detailGrid">
-                    <label>
-                      Key
-                      <input className="detailSmall" value={selectedTracker.key} readOnly />
-                    </label>
-                    <label>
-                      Default
+              {selection.kind === 'habit' && selectedHabit ? (
+                <div className="space-y-6">
+                  <div className="ecoDetailHeader">
+                    <div>
+                      <div className="ecoDetailEyebrow">Habit</div>
                       <input
                         className="detailSmall"
-                        value={selectedTracker.defaultValue ?? ''}
+                        value={selectedHabit.name}
                         onChange={(e) => {
-                          const value = Number(e.target.value)
-                          const next = trackerDefs.map((t) =>
-                            t.key === selectedTracker.key ? { ...t, defaultValue: Number.isFinite(value) ? value : null } : t
-                          )
+                          const name = e.target.value
+                          const next = habitDefs.map((h) => (h.id === selectedHabit.id ? { ...h, name } : h))
+                          updateHabits(next)
+                        }}
+                      />
+                    </div>
+                    <div className="ecoDetailActions">
+                      <button className="ecoActionBtn danger" type="button" onClick={() => removeHabitById(selectedHabit.id)}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                  <div className="detailGrid">
+                    <label>
+                      Schedule
+                      <input
+                        className="detailSmall"
+                        value={selectedHabit.schedule ?? ''}
+                        onChange={(e) => updateHabitById(selectedHabit.id, { schedule: e.target.value })}
+                        placeholder="Mon/Wed/Fri"
+                      />
+                    </label>
+                    <label>
+                      Target per week
+                      <input
+                        className="detailSmall"
+                        value={selectedHabit.targetPerWeek ?? ''}
+                        onChange={(e) => updateHabitById(selectedHabit.id, { targetPerWeek: numberOrNull(e.target.value) })}
+                        placeholder="4"
+                      />
+                    </label>
+                  </div>
+                  <div className="detailGrid">
+                    <div>
+                      <div className="detailLabel">Timed habit</div>
+                      <button
+                        className={selectedHabit.isTimed ? 'detailToggle active' : 'detailToggle'}
+                        type="button"
+                        onClick={() => updateHabitById(selectedHabit.id, { isTimed: !selectedHabit.isTimed })}
+                      >
+                        {selectedHabit.isTimed ? 'Timed' : 'Untimed'}
+                      </button>
+                    </div>
+                    <label>
+                      Polarity
+                      <select
+                        className="detailSmall"
+                        value={selectedHabit.polarity ?? 'both'}
+                        onChange={(e) => updateHabitById(selectedHabit.id, { polarity: e.target.value as HabitDef['polarity'] })}
+                      >
+                        <option value="positive">positive</option>
+                        <option value="negative">negative</option>
+                        <option value="both">both</option>
+                      </select>
+                    </label>
+                  </div>
+                  <MetaEditor
+                    value={habitMeta(selectedHabit)}
+                    onChange={(meta) => {
+                      const next = habitDefs.map((h) => (h.id === selectedHabit.id ? applyMetaToHabit(h, meta) : h))
+                      updateHabits(next)
+                    }}
+                    suggestions={{
+                      tags: tagSuggestions,
+                      contexts: contextSuggestions,
+                      people: peopleSuggestions,
+                      locations: locationSuggestions,
+                      skills: skillSuggestions,
+                      categories,
+                      subcategories: selectedHabit.category ? subcategoriesForCategory(selectedHabit.category) : [],
+                      goals: goalSuggestions,
+                      projects: projectSuggestions,
+                    }}
+                  />
+                </div>
+              ) : null}
+
+              {selection.kind === 'tracker' && selectedTracker ? (
+                <div className="space-y-6">
+                  <div className="ecoDetailHeader">
+                    <div>
+                      <div className="ecoDetailEyebrow">Tracker</div>
+                      <div className="ecoDetailTitle">{selectedTracker.label}</div>
+                    </div>
+                    <div className="ecoDetailActions">
+                      <button className="ecoActionBtn" type="button" onClick={() => props.onOpenTracker?.(selectedTracker.key)}>
+                        Open tracker
+                      </button>
+                      <button className="ecoActionBtn danger" type="button" onClick={() => removeTrackerByKey(selectedTracker.key)}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                  <div className="detailGrid">
+                    <label>
+                      Label
+                      <input
+                        className="detailSmall"
+                        value={selectedTracker.label}
+                        onChange={(e) => {
+                          const next = trackerDefs.map((t) => (t.key === selectedTracker.key ? { ...t, label: e.target.value } : t))
                           updateTrackers(next)
                         }}
                       />
                     </label>
+                    <label>
+                      Key
+                      <input className="detailSmall" value={selectedTracker.key} readOnly />
+                    </label>
+                  </div>
+                  <TrackerUnitEditor
+                    unit={selectedTracker.unit}
+                    onChange={(unit) => {
+                      const next = trackerDefs.map((t) => (t.key === selectedTracker.key ? { ...t, unit } : t))
+                      updateTrackers(next)
+                    }}
+                  />
+                  <MetaEditor
+                    value={selectedTracker.meta}
+                    onChange={(meta) => {
+                      const next = trackerDefs.map((t) => (t.key === selectedTracker.key ? { ...t, meta } : t))
+                      updateTrackers(next)
+                    }}
+                    suggestions={{
+                      tags: tagSuggestions,
+                      contexts: contextSuggestions,
+                      people: peopleSuggestions,
+                      locations: locationSuggestions,
+                      skills: skillSuggestions,
+                      categories,
+                      subcategories: selectedTracker.meta.category ? subcategoriesForCategory(selectedTracker.meta.category) : [],
+                      goals: goalSuggestions,
+                      projects: projectSuggestions,
+                    }}
+                  />
+                </div>
+              ) : null}
+
+              {selection.kind === 'category' && selectedCategory ? (
+                <div className="space-y-6">
+                  <div className="ecoDetailHeader">
+                    <div>
+                      <div className="ecoDetailEyebrow">Category</div>
+                      <div className="ecoDetailTitle">{selectedCategory}</div>
+                    </div>
+                  </div>
+                  <div className="detailRow">
+                    <div className="detailLabel">Subcategories</div>
+                    <div className="detailChips">
+                      {subcategoriesForCategory(selectedCategory).map((sub) => (
+                        <button
+                          key={sub}
+                          className="detailChip"
+                          onClick={() =>
+                            updateCategorySubcategories(
+                              selectedCategory,
+                              subcategoriesForCategory(selectedCategory).filter((x) => x !== sub),
+                            )
+                          }
+                          type="button">
+                          {sub}
+                          <span className="detailChipRemove">×</span>
+                        </button>
+                      ))}
+                      <div className="taxonomyPathInput">
+                        <input
+                          className="taxonomyPathField"
+                          value={subcategoryDrafts[0] ?? ''}
+                          onChange={(e) => setSubcategoryDrafts([e.target.value, subcategoryDrafts[1] ?? '', subcategoryDrafts[2] ?? ''])}
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter') return
+                            e.preventDefault()
+                            addSubcategoryPath(selectedCategory)
+                          }}
+                          placeholder="Level 1"
+                        />
+                        <span className="taxonomyPathDivider">/</span>
+                        <input
+                          className="taxonomyPathField"
+                          value={subcategoryDrafts[1] ?? ''}
+                          onChange={(e) => setSubcategoryDrafts([subcategoryDrafts[0] ?? '', e.target.value, subcategoryDrafts[2] ?? ''])}
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter') return
+                            e.preventDefault()
+                            addSubcategoryPath(selectedCategory)
+                          }}
+                          placeholder="Level 2"
+                        />
+                        <span className="taxonomyPathDivider">/</span>
+                        <input
+                          className="taxonomyPathField"
+                          value={subcategoryDrafts[2] ?? ''}
+                          onChange={(e) => setSubcategoryDrafts([subcategoryDrafts[0] ?? '', subcategoryDrafts[1] ?? '', e.target.value])}
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter') return
+                            e.preventDefault()
+                            addSubcategoryPath(selectedCategory)
+                          }}
+                          placeholder="Level 3"
+                        />
+                        <button
+                          className="taxonomyPathAdd"
+                          type="button"
+                          onClick={() => addSubcategoryPath(selectedCategory)}
+                        >
+                          Add
+                        </button>
+                        <button
+                          className="taxonomyPathClear"
+                          type="button"
+                          onClick={() => setSubcategoryDrafts(['', '', ''])}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                    <div className="taxonomyPathHint">Example: Professional / Residency / Coding</div>
                   </div>
                 </div>
-                <TrackerUnitEditor
-                  unit={selectedTracker.unit}
-                  onChange={(unit) => {
-                    const next = trackerDefs.map((t) => (t.key === selectedTracker.key ? { ...t, unit } : t))
-                    updateTrackers(next)
-                  }}
-                />
-                <MetaEditor
-                  value={selectedTracker.meta}
-                  onChange={(meta) => {
-                    const next = trackerDefs.map((t) => (t.key === selectedTracker.key ? { ...t, meta } : t))
-                    updateTrackers(next)
-                  }}
-                  suggestions={{
-                    tags: tagSuggestions,
-                    contexts: contextSuggestions,
-                    people: peopleSuggestions,
-                    locations: locationSuggestions,
-                    skills: skillSuggestions,
-                    categories,
-                    subcategories: selectedTracker.meta.category ? subcategoriesForCategory(selectedTracker.meta.category) : [],
-                    goals: goalSuggestions,
-                    projects: projectSuggestions,
-                  }}
-                />
-                <button
-                  className="text-xs font-bold text-[var(--accent)]"
-                  onClick={() => props.onOpenTracker?.(selectedTracker.key)}
-                  type="button"
-                >
-                  Open tracker page
-                </button>
-              </div>
-            ) : null}
-
-            {selection.kind === 'category' && selectedCategory ? (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <div className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Category</div>
-                  <div className="text-lg font-bold">{selectedCategory}</div>
-                </div>
-                <ChipInput
-                  label="Subcategories"
-                  value={subcategoriesForCategory(selectedCategory)}
-                  parse={parseCommaList}
-                  onChange={(subs) => updateCategorySubcategories(selectedCategory, subs)}
-                  placeholder="Breakfast, Lunch"
-                />
-              </div>
-            ) : null}
-          </section>
+              ) : null}
+            </div>
+          </aside>
         </div>
       </div>
     </div>

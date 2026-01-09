@@ -54,6 +54,7 @@ function ChipSuggestions(props: {
               onClick={() => props.onToggle(opt)}
               type="button">
               {opt}
+              {active ? <span className="detailChipRemove">×</span> : null}
             </button>
           )
         })}
@@ -86,6 +87,7 @@ function SingleChipSuggestions(props: {
               onClick={() => props.onSelect(active ? null : opt)}
               type="button">
               {opt}
+              {active ? <span className="detailChipRemove">×</span> : null}
             </button>
           )
         })}

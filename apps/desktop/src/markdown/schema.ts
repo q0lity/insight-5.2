@@ -312,7 +312,7 @@ export function collectMarkdownTokens(rawText: string): MarkdownTokenCollections
 }
 
 // Block detection patterns
-const TRACKER_RE = /#(mood|energy|stress|pain|sleep|anxiety|focus|motivation)\s*(?:\((\d+)\)|:\s*(\d+))/gi
+const TRACKER_RE = /#(mood|energy|stress|pain|anxiety|focus|motivation)\s*(?:\((\d+)\)|:\s*(\d+))/gi
 const WORKOUT_KEYWORDS = /\b(workout|gym|exercise|lift|cardio|run|running|bench|squat|deadlift|push[-\s]?ups?|pull[-\s]?ups?|sets?|reps?|weight)\b/i
 const MEAL_KEYWORDS = /\b(breakfast|lunch|dinner|snack|meal|ate|eating|had|food|calories?|protein|carbs?|fat)\b/i
 const TASK_RE = /^[-*]\s*\[([ xX])\]\s*(.+)$/gm
@@ -340,7 +340,7 @@ function detectBlockType(body: string, header?: MarkdownSegmentHeader): Markdown
 }
 
 function extractTrackerData(body: string): { trackerKey: string; trackerValue: number } | null {
-  const match = body.match(/#(mood|energy|stress|pain|sleep|anxiety|focus|motivation)\s*(?:\((\d+)\)|:\s*(\d+))/i)
+  const match = body.match(/#(mood|energy|stress|pain|anxiety|focus|motivation)\s*(?:\((\d+)\)|:\s*(\d+))/i)
   if (!match) return null
   const value = parseInt(match[2] ?? match[3] ?? '5', 10)
   return { trackerKey: match[1].toLowerCase(), trackerValue: Math.min(10, Math.max(1, value)) }

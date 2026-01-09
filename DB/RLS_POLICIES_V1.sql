@@ -132,6 +132,13 @@ for all to authenticated
 using (user_id = auth.uid())
 with check (user_id = auth.uid());
 
+-- External accounts (OAuth tokens)
+alter table public.external_accounts enable row level security;
+create policy "external_accounts_rw_own" on public.external_accounts
+for all to authenticated
+using (user_id = auth.uid())
+with check (user_id = auth.uid());
+
 -- Join tables: validate ownership through entries
 alter table public.entry_goals enable row level security;
 create policy "entry_goals_rw_via_entry" on public.entry_goals

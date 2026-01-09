@@ -8,9 +8,9 @@
 - `plugins/heatmap-tracker`: heatmap-centric tracker visualization (styles + main bundle).
 
 ## UI Intent
-- Ecosystem page is table-first: Goals, Projects, Taxonomy, Habits, Trackers render as rows with key fields inline.
-- Row selection opens a right-side detail editor (multi-select tags/people/locations + advanced fields).
-- Trackers have editable units: label, min/max, step, and presets for quick entry.
+- Ecosystem page is card-first (table-free) with compact card grids per section (Goals, Projects, Habits, Trackers, Taxonomy), taking cues from `plugins/obsidian-projects` gallery/board cards (`styles.css`).
+- Card selection opens a right-side inspector (multi-select tags/people/locations + advanced fields) sized like the day view panel.
+- Habits and trackers emphasize quick stats + heatmap/units, aligned with `plugins/heatmap-tracker` visualization density and `plugins/obsidian-tracker`/`plugins/tracker-plus` unit editing affordances.
 
 ## Shared Properties (apply across tasks, habits, trackers, goals, projects)
 - `tags`, `contexts`, `category`, `subcategory`

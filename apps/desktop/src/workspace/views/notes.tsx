@@ -1,48 +1,19 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { InboxCapture } from '../../storage/inbox'
 import { Icon } from '../../ui/icons'
-
-function firstLine(text: string) {
-  return (text.split(/\r?\n/)[0] ?? '').trim().slice(0, 60) || 'Untitled'
-}
-
-// Extract #tags
-function extractTags(text: string): string[] {
-  const matches = text.match(/(^|[\s(])#([a-zA-Z][\w/-]*)/g) || []
-  return [...new Set(matches.map((m) => m.trim()))]
-}
-
-// Extract @people
-function extractPeople(text: string): string[] {
-  const matches = text.match(/(^|[\s(])@([a-zA-Z][\w/-]*)/g) || []
-  return [...new Set(matches.map((m) => m.trim()))]
-}
-
-// Extract !places
-function extractPlaces(text: string): string[] {
-  const matches = text.match(/(^|[\s(])!([a-zA-Z][\w/-]*)/g) || []
-  return [...new Set(matches.map((m) => m.trim()))]
-}
-
-function formatDate(ts: number) {
-  const d = new Date(ts)
-  const now = new Date()
-  const diff = now.getTime() - ts
-  if (diff < 86400000 && d.getDate() === now.getDate()) return 'Today'
-  if (diff < 172800000) return 'Yesterday'
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function getPreview(text: string) {
-  // Get first 80 chars of content after title, cleaned up
-  const lines = text.split('\n').slice(1).join(' ').trim()
-  return lines.slice(0, 80) + (lines.length > 80 ? '...' : '')
-}
-
-function wordCount(text: string) {
-  return text.split(/\s+/).filter(Boolean).length
-}
+import { categoriesFromStarter } from '../../taxonomy/starter'
+import {
+  firstLine,
+  extractTags,
+  extractPeople,
+  extractPlaces,
+  extractCategories,
+  formatRelativeDate,
+  getPreview,
+  wordCount,
+  uniqueFilters,
+} from '@insight/shared'
 
 export function NotesView(props: {
   captures: InboxCapture[]
@@ -50,17 +21,89 @@ export function NotesView(props: {
   onSelectCapture: (id: string) => void
   onOpenCapture: () => void
   onUpdateCapture: (id: string, rawText: string) => void
+  initialFilterType?: 'all' | 'category' | 'tag' | 'person' | 'place'
 }) {
   const [q, setQ] = useState('')
-  const [mode, setMode] = useState<'cards' | 'table'>('cards')
   const [sort, setSort] = useState<'recent' | 'oldest' | 'title'>('recent')
-  const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [filterType, setFilterType] = useState<'all' | 'category' | 'tag' | 'person' | 'place'>(props.initialFilterType ?? 'all')
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([])
+
+  const categories = useMemo(() => categoriesFromStarter(), [])
+
+  const allTags = useMemo(
+    () => Array.from(new Set(props.captures.flatMap((c) => extractTags(c.rawText)))).slice(0, 50),
+    [props.captures],
+  )
+
+  const allPeople = useMemo(
+    () => Array.from(new Set(props.captures.flatMap((c) => extractPeople(c.rawText)))).slice(0, 50),
+    [props.captures],
+  )
+
+  const allPlaces = useMemo(
+    () => Array.from(new Set(props.captures.flatMap((c) => extractPlaces(c.rawText)))).slice(0, 50),
+    [props.captures],
+  )
+
+  const allCategories = useMemo(() => {
+    const found: string[] = []
+    for (const c of props.captures) {
+      found.push(...extractCategories(c.rawText, categories))
+    }
+    return uniqueFilters(found).sort((a, b) => a.localeCompare(b))
+  }, [categories, props.captures])
+
+  const currentFilterOptions = useMemo(() => {
+    switch (filterType) {
+      case 'category':
+        return allCategories
+      case 'tag':
+        return allTags
+      case 'person':
+        return allPeople
+      case 'place':
+        return allPlaces
+      default:
+        return []
+    }
+  }, [allCategories, allPeople, allPlaces, allTags, filterType])
+
+  const selectedCapture = useMemo(
+    () => props.captures.find((c) => c.id === props.selectedCaptureId) ?? null,
+    [props.captures, props.selectedCaptureId],
+  )
+
+  const [editorText, setEditorText] = useState('')
+  const [editorDirty, setEditorDirty] = useState(false)
+
+  useEffect(() => {
+    setEditorText(selectedCapture?.rawText ?? '')
+    setEditorDirty(false)
+  }, [selectedCapture?.id])
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase()
-    const base = activeTag
-      ? props.captures.filter((c) => extractTags(c.rawText).includes(activeTag))
-      : props.captures
+    const base = props.captures.filter((c) => {
+      if (filterType === 'all' || selectedFilters.length === 0) return true
+      const filters = selectedFilters
+      if (filterType === 'tag') {
+        const tags = extractTags(c.rawText)
+        return filters.some((f) => tags.includes(f))
+      }
+      if (filterType === 'person') {
+        const people = extractPeople(c.rawText)
+        return filters.some((f) => people.includes(f))
+      }
+      if (filterType === 'place') {
+        const places = extractPlaces(c.rawText)
+        return filters.some((f) => places.includes(f))
+      }
+      if (filterType === 'category') {
+        const cats = extractCategories(c.rawText, categories)
+        return filters.some((f) => cats.includes(f))
+      }
+      return true
+    })
     const searched = needle ? base.filter((c) => c.rawText.toLowerCase().includes(needle)) : base
     const sorted = [...searched].sort((a, b) => {
       if (sort === 'title') return firstLine(a.rawText).localeCompare(firstLine(b.rawText))
@@ -68,39 +111,47 @@ export function NotesView(props: {
       return b.createdAt - a.createdAt
     })
     return sorted.slice(0, 250)
-  }, [activeTag, props.captures, q, sort])
+  }, [categories, filterType, props.captures, q, selectedFilters, sort])
 
-  const allTags = useMemo(
-    () => Array.from(new Set(props.captures.flatMap((c) => extractTags(c.rawText)))).slice(0, 20),
-    [props.captures],
-  )
+  function isFilterActive(type: 'category' | 'tag' | 'person' | 'place', value: string) {
+    return filterType === type && selectedFilters.includes(value)
+  }
+
+  function toggleFilter(type: 'category' | 'tag' | 'person' | 'place', value: string) {
+    setFilterType(type)
+    setSelectedFilters((prev) => {
+      const base = filterType === type ? prev : []
+      return base.includes(value) ? base.filter((item) => item !== value) : [...base, value]
+    })
+  }
+
+  function commitEditor() {
+    if (!selectedCapture) return
+    if (editorText === selectedCapture.rawText) {
+      setEditorDirty(false)
+      return
+    }
+    void props.onUpdateCapture(selectedCapture.id, editorText)
+    setEditorDirty(false)
+  }
+
+  const selectedTags = selectedCapture ? extractTags(selectedCapture.rawText) : []
+  const selectedPeople = selectedCapture ? extractPeople(selectedCapture.rawText) : []
+  const selectedPlaces = selectedCapture ? extractPlaces(selectedCapture.rawText) : []
+  const selectedCategories = selectedCapture ? extractCategories(selectedCapture.rawText, categories) : []
+  const selectedWords = selectedCapture ? wordCount(selectedCapture.rawText) : 0
+  const selectedTitle = selectedCapture ? firstLine(selectedCapture.rawText) : ''
+  const selectedDate = selectedCapture ? new Date(selectedCapture.createdAt).toLocaleString() : ''
 
   return (
     <div className="notesViewRoot">
-      {/* Header */}
       <header className="notesHeader">
         <div className="notesHeaderTop">
           <div>
-            <h1>Notes</h1>
+            <h1>Notes Explorer</h1>
             <p>{props.captures.length} captures</p>
           </div>
           <div className="notesHeaderActions">
-            <div className="notesViewToggle">
-              <button
-                className={mode === 'cards' ? 'active' : ''}
-                onClick={() => setMode('cards')}
-                title="Card view"
-              >
-                <Icon name="grid" size={16} />
-              </button>
-              <button
-                className={mode === 'table' ? 'active' : ''}
-                onClick={() => setMode('table')}
-                title="Table view"
-              >
-                <Icon name="list" size={16} />
-              </button>
-            </div>
             <button className="notesNewBtn" onClick={props.onOpenCapture}>
               <Icon name="plus" size={16} />
               New
@@ -108,140 +159,259 @@ export function NotesView(props: {
           </div>
         </div>
 
-        {/* Search + Sort row */}
         <div className="notesSearchRow">
           <div className="notesSearchInput">
             <Icon name="search" size={14} />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search notes..."
-            />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search notes..." />
           </div>
-          <select
-            className="notesSortSelect"
-            value={sort}
-            onChange={(e) => setSort(e.target.value as typeof sort)}
-          >
+          <select className="notesSortSelect" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
             <option value="recent">Recent</option>
             <option value="oldest">Oldest</option>
             <option value="title">A-Z</option>
           </select>
         </div>
 
-        {/* Tag chips */}
-        {allTags.length > 0 && (
-          <div className="notesTagBar">
-            <button
-              className={`notesTagChip ${activeTag === null ? 'active' : ''}`}
-              onClick={() => setActiveTag(null)}
-            >
-              All
-            </button>
-            {allTags.map((t) => (
+        <div className="notesFilterRow">
+          <div className="notesFilterTabs">
+            {(['all', 'category', 'tag', 'person', 'place'] as const).map((ft) => (
               <button
-                key={t}
-                className={`notesTagChip ${activeTag === t ? 'active' : ''}`}
-                onClick={() => setActiveTag(t)}
+                key={ft}
+                className={`notesFilterTab ${filterType === ft ? 'active' : ''}`}
+                onClick={() => {
+                  setFilterType(ft)
+                  setSelectedFilters([])
+                }}
               >
-                {t}
+                {ft === 'all'
+                  ? 'All'
+                  : ft === 'category'
+                    ? 'Categories'
+                    : ft === 'tag'
+                      ? 'Tags'
+                      : ft === 'person'
+                        ? 'People'
+                        : 'Places'}
               </button>
             ))}
           </div>
-        )}
-      </header>
-
-      {/* Content */}
-      <div className="notesContent">
-        {filtered.length === 0 ? (
-          <div className="notesEmpty">
-            <Icon name="file" size={32} />
-            <span>No notes found</span>
-          </div>
-        ) : mode === 'cards' ? (
-          <div className="notesMasonry">
-            <AnimatePresence mode="popLayout">
-              {filtered.map((c) => {
-                const tags = extractTags(c.rawText)
-                const people = extractPeople(c.rawText)
-                const places = extractPlaces(c.rawText)
-                const preview = getPreview(c.rawText)
-                const words = wordCount(c.rawText)
-                return (
-                  <motion.button
-                    key={c.id}
-                    layout
-                    onClick={() => props.onSelectCapture(c.id)}
-                    className={`notesCard ${props.selectedCaptureId === c.id ? 'active' : ''}`}
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.96 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    <div className="notesCardTitle">
-                      <span>{firstLine(c.rawText)}</span>
-                      <span className="notesCardDate">{formatDate(c.createdAt)}</span>
-                    </div>
-                    {preview && <p className="notesCardPreview">{preview}</p>}
-                    <div className="notesCardMeta">
-                      {places.length > 0 && (
-                        <span className="notesCardPlace">
-                          <Icon name="pin" size={10} />
-                          {places[0]}
-                        </span>
-                      )}
-                      {people.length > 0 && (
-                        <span className="notesCardPerson">
-                          <Icon name="users" size={10} />
-                          {people.slice(0, 2).join(', ')}
-                        </span>
-                      )}
-                      <span className="notesCardWords">{words}w</span>
-                    </div>
-                    {tags.length > 0 && (
-                      <div className="notesCardTags">
-                        {tags.slice(0, 3).map((tag) => (
-                          <span key={`${c.id}_${tag}`}>{tag}</span>
-                        ))}
-                      </div>
-                    )}
-                  </motion.button>
-                )
-              })}
-            </AnimatePresence>
-          </div>
-        ) : (
-          <div className="notesTable">
-            <div className="notesTableHeader">
-              <div className="notesTableCell title">Title</div>
-              <div className="notesTableCell date">Date</div>
-              <div className="notesTableCell tags">Tags</div>
-              <div className="notesTableCell preview">Preview</div>
-            </div>
-            <div className="notesTableBody">
-              {filtered.map((c) => {
-                const tags = extractTags(c.rawText)
-                const preview = getPreview(c.rawText)
+          {filterType !== 'all' && currentFilterOptions.length > 0 && (
+            <div className="notesFilterChips">
+              {currentFilterOptions.map((opt) => {
+                const isSelected = selectedFilters.includes(opt)
                 return (
                   <button
-                    key={c.id}
-                    onClick={() => props.onSelectCapture(c.id)}
-                    className={`notesTableRow ${props.selectedCaptureId === c.id ? 'active' : ''}`}
+                    key={opt}
+                    className={`notesFilterChip ${isSelected ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedFilters(
+                        isSelected ? selectedFilters.filter((f) => f !== opt) : [...selectedFilters, opt],
+                      )
+                    }}
                   >
-                    <div className="notesTableCell title">{firstLine(c.rawText)}</div>
-                    <div className="notesTableCell date">{formatDate(c.createdAt)}</div>
-                    <div className="notesTableCell tags">
-                      {tags.slice(0, 3).map((tag) => (
-                        <span key={`${c.id}_${tag}`} className="notesTableTag">{tag}</span>
-                      ))}
-                    </div>
-                    <div className="notesTableCell preview">{preview || '—'}</div>
+                    {opt}
+                    {isSelected ? <span className="notesFilterChipRemove">x</span> : null}
                   </button>
                 )
               })}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      </header>
+
+      <div className="notesExplorerBody">
+        <div className="notesContent">
+          {filtered.length === 0 ? (
+            <div className="notesEmpty">
+              <Icon name="file" size={32} />
+              <span>No notes found</span>
+            </div>
+          ) : (
+            <div className="notesMasonry">
+              <AnimatePresence mode="popLayout">
+                {filtered.map((c) => {
+                  const tags = extractTags(c.rawText)
+                  const people = extractPeople(c.rawText)
+                  const places = extractPlaces(c.rawText)
+                  const preview = getPreview(c.rawText)
+                  const words = wordCount(c.rawText)
+                  return (
+                    <motion.button
+                      key={c.id}
+                      layout
+                      onClick={() => props.onSelectCapture(c.id)}
+                      className={`notesCard ${props.selectedCaptureId === c.id ? 'active' : ''}`}
+                      initial={{ opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.96 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <div className="notesCardTitle">
+                        <span>{firstLine(c.rawText)}</span>
+                        <span className="notesCardDate">{formatRelativeDate(c.createdAt)}</span>
+                      </div>
+                      {preview && <p className="notesCardPreview">{preview}</p>}
+                      <div className="notesCardMeta">
+                        {places.length > 0 && (
+                          <span className="notesCardPlace">
+                            <Icon name="pin" size={10} />
+                            {places[0]}
+                          </span>
+                        )}
+                        {people.length > 0 && (
+                          <span className="notesCardPerson">
+                            <Icon name="users" size={10} />
+                            {people.slice(0, 2).join(', ')}
+                          </span>
+                        )}
+                        <span className="notesCardWords">{words}w</span>
+                      </div>
+                      {tags.length > 0 && (
+                        <div className="notesCardTags">
+                          {tags.slice(0, 3).map((tag) => (
+                            <span key={`${c.id}_${tag}`}>{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                    </motion.button>
+                  )
+                })}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
+
+        <aside className="notesInspector">
+          {selectedCapture ? (
+            <>
+              <div className="notesInspectorHeader">
+                <div>
+                  <div className="notesInspectorEyebrow">Selected note</div>
+                  <div className="notesInspectorTitle">{selectedTitle}</div>
+                  <div className="notesInspectorMeta">
+                    {selectedDate} | {selectedWords} words
+                  </div>
+                </div>
+              </div>
+
+              <div className="notesInspectorSection">
+                <div className="notesInspectorLabel">Categories</div>
+                {selectedCategories.length ? (
+                  <div className="notesInspectorChips">
+                    {selectedCategories.map((cat) => {
+                      const active = isFilterActive('category', cat)
+                      return (
+                        <button
+                          key={cat}
+                          className={active ? 'notesInspectorChip active' : 'notesInspectorChip'}
+                          onClick={() => toggleFilter('category', cat)}
+                        >
+                          {cat}
+                          {active ? <span className="notesInspectorChipRemove">x</span> : null}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="notesInspectorEmptyMeta">No categories tagged.</div>
+                )}
+              </div>
+
+              <div className="notesInspectorSection">
+                <div className="notesInspectorLabel">Tags</div>
+                {selectedTags.length ? (
+                  <div className="notesInspectorChips">
+                    {selectedTags.map((tag) => {
+                      const active = isFilterActive('tag', tag)
+                      return (
+                        <button
+                          key={tag}
+                          className={active ? 'notesInspectorChip active' : 'notesInspectorChip'}
+                          onClick={() => toggleFilter('tag', tag)}
+                        >
+                          {tag}
+                          {active ? <span className="notesInspectorChipRemove">x</span> : null}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="notesInspectorEmptyMeta">No tags found.</div>
+                )}
+              </div>
+
+              <div className="notesInspectorSection">
+                <div className="notesInspectorLabel">People</div>
+                {selectedPeople.length ? (
+                  <div className="notesInspectorChips">
+                    {selectedPeople.map((person) => {
+                      const active = isFilterActive('person', person)
+                      return (
+                        <button
+                          key={person}
+                          className={active ? 'notesInspectorChip active' : 'notesInspectorChip'}
+                          onClick={() => toggleFilter('person', person)}
+                        >
+                          {person}
+                          {active ? <span className="notesInspectorChipRemove">x</span> : null}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="notesInspectorEmptyMeta">No people tagged.</div>
+                )}
+              </div>
+
+              <div className="notesInspectorSection">
+                <div className="notesInspectorLabel">Places</div>
+                {selectedPlaces.length ? (
+                  <div className="notesInspectorChips">
+                    {selectedPlaces.map((place) => {
+                      const active = isFilterActive('place', place)
+                      return (
+                        <button
+                          key={place}
+                          className={active ? 'notesInspectorChip active' : 'notesInspectorChip'}
+                          onClick={() => toggleFilter('place', place)}
+                        >
+                          {place}
+                          {active ? <span className="notesInspectorChipRemove">x</span> : null}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="notesInspectorEmptyMeta">No places tagged.</div>
+                )}
+              </div>
+
+              <div className="notesInspectorSection">
+                <div className="notesInspectorLabel">Transcript</div>
+                <textarea
+                  className="notesInspectorEditor"
+                  value={editorText}
+                  onChange={(e) => {
+                    setEditorText(e.target.value)
+                    setEditorDirty(true)
+                  }}
+                  onBlur={() => commitEditor()}
+                  placeholder="Add your detailed notes here..."
+                />
+                <div className="notesInspectorActions">
+                  <button className="notesInspectorSave" onClick={() => commitEditor()} disabled={!editorDirty}>
+                    Save
+                  </button>
+                  <span className="notesInspectorHint">{editorDirty ? 'Unsaved changes' : 'Saved'}</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="notesInspectorEmpty">
+              <Icon name="file" size={32} />
+              <div>Select a note to inspect details.</div>
+            </div>
+          )}
+        </aside>
       </div>
     </div>
   )

@@ -241,17 +241,44 @@ export function GoalsView(props: {
     setNewGoalDraft('')
   }
 
+  function commitGoalDraft() {
+    const name = newGoalDraft.trim()
+    if (!name) return
+    addGoal(name)
+  }
+
+  function removeGoalDefByName(name: string) {
+    const key = normalizeKey(name)
+    const next = goalDefs.filter((g) => normalizeKey(g.name) !== key)
+    if (next.length === goalDefs.length) return
+    setGoalDefs(next)
+    if (normalizeKey(activeGoal ?? '') === key) setActiveGoal(null)
+  }
+
   const goals = useMemo(() => {
-    const by = new Map<string, { goal: string; points: number; minutes: number; lastAt: number; projects: Set<string> }>()
+    const by = new Map<
+      string,
+      { goal: string; points: number; minutes: number; lastAt: number; projects: Set<string>; eventCount: number; taskCount: number }
+    >()
     for (const e of props.events) {
       if (e.kind === 'log') continue
       const g = (e.goal ?? '').trim()
       if (!g) continue
       const key = g.toLowerCase()
-      const row = by.get(key) ?? { goal: g, points: 0, minutes: 0, lastAt: 0, projects: new Set<string>() }
+      const row =
+        by.get(key) ?? {
+          goal: g,
+          points: 0,
+          minutes: 0,
+          lastAt: 0,
+          projects: new Set<string>(),
+          eventCount: 0,
+          taskCount: 0,
+        }
       row.minutes += minutesBetween(e.startAt, e.endAt)
       row.points += pointsForEventSafe(e)
       row.lastAt = Math.max(row.lastAt, e.startAt)
+      row.eventCount += 1
       if (e.project) row.projects.add(e.project)
       by.set(key, row)
     }
@@ -259,17 +286,35 @@ export function GoalsView(props: {
       const g = (t.goal ?? '').trim()
       if (!g) continue
       const key = g.toLowerCase()
-      const row = by.get(key) ?? { goal: g, points: 0, minutes: 0, lastAt: 0, projects: new Set<string>() }
+      const row =
+        by.get(key) ?? {
+          goal: g,
+          points: 0,
+          minutes: 0,
+          lastAt: 0,
+          projects: new Set<string>(),
+          eventCount: 0,
+          taskCount: 0,
+        }
       row.minutes += Math.max(0, t.estimateMinutes ?? 0)
       row.points += pointsForTask(t)
       row.lastAt = Math.max(row.lastAt, t.updatedAt)
+      row.taskCount += 1
       if (t.project) row.projects.add(t.project)
       by.set(key, row)
     }
     for (const def of goalDefs) {
       const key = normalizeKey(def.name)
       if (by.has(key)) continue
-      by.set(key, { goal: def.name, points: 0, minutes: 0, lastAt: def.createdAt, projects: new Set<string>() })
+      by.set(key, {
+        goal: def.name,
+        points: 0,
+        minutes: 0,
+        lastAt: def.createdAt,
+        projects: new Set<string>(),
+        eventCount: 0,
+        taskCount: 0,
+      })
     }
     const list = Array.from(by.values()).sort(
       (a, b) => b.points - a.points || b.minutes - a.minutes || b.lastAt - a.lastAt || a.goal.localeCompare(b.goal),
@@ -1100,13 +1145,13 @@ export function GoalsView(props: {
                 disabled={goalLimitReached}
                 onKeyDown={(e) => {
                   if (e.key !== 'Enter') return
-                  addGoal(newGoalDraft)
+                  commitGoalDraft()
                 }}
                 aria-label="Create a new goal"
               />
               <button
                 className="h-11 px-4 rounded-2xl bg-white/70 border border-black/5 text-xs font-bold hover:bg-[var(--panel)] transition-all"
-                onClick={() => addGoal(newGoalDraft)}
+                onClick={() => commitGoalDraft()}
                 disabled={goalLimitReached || !newGoalDraft.trim()}>
                 Add
               </button>
@@ -1117,42 +1162,84 @@ export function GoalsView(props: {
       </div>
 
       <div className="flex-1 overflow-hidden px-10 pb-32 max-w-7xl mx-auto w-full">
-        <div className="flex gap-8 h-full">
+        <div className="flex flex-col xl:flex-row gap-8 h-full">
           {showList ? (
-            <div className="w-full flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
-              {goals.length === 0 && <div className="py-20 text-center opacity-30 font-bold uppercase text-xs tracking-widest">No goals yet</div>}
-              <AnimatePresence mode="popLayout">
-                {goals.map((g) => (
-                  <motion.button
-                    key={g.goal}
-                    layout
-                    onClick={() => {
-                      setActiveGoal(g.goal)
-                      props.onOpenGoal?.(g.goal)
-                    }}
-                    className={`goalListItem ${activeGoal === g.goal ? 'active' : ''}`}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                  >
-                    <div className="goalListTitleRow">
-                      <h3 className="goalListTitle">{g.goal}</h3>
-                      <Icon name="chevronRight" size={16} className="goalListChevron" />
-                    </div>
-                    <div className="goalListMeta">
-                      <span className="goalListDate">{g.lastAt ? new Date(g.lastAt).toLocaleDateString() : 'No activity yet'}</span>
-                      <span className="goalListStat">
-                        <Icon name="bolt" size={10} className="goalListStatIcon" />
-                        {g.points.toFixed(1)}
-                      </span>
-                      <span className="goalListStat">
-                        <Icon name="calendar" size={10} className="goalListStatIcon calendar" />
-                        {Math.round(g.minutes)}m
-                      </span>
-                    </div>
-                  </motion.button>
-                ))}
-              </AnimatePresence>
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+              {goals.length === 0 && (
+                <div className="py-20 text-center opacity-30 font-bold uppercase text-xs tracking-widest">No goals yet</div>
+              )}
+              <div className="goalCardGrid">
+                <AnimatePresence mode="popLayout">
+                  {goals.map((g) => {
+                    const projectList = Array.from(g.projects)
+                    const hasDef = goalDefs.some((d) => normalizeKey(d.name) === normalizeKey(g.goal))
+                    return (
+                      <motion.button
+                        key={g.goal}
+                        layout
+                        onClick={() => {
+                          setActiveGoal(g.goal)
+                          props.onOpenGoal?.(g.goal)
+                        }}
+                        className={`goalCard ${activeGoal === g.goal ? 'active' : ''}`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                      >
+                        <div className="goalCardHeader">
+                          <div>
+                            <div className="goalCardTitle">{g.goal}</div>
+                            <div className="goalCardMeta">
+                              {g.lastAt ? `Last active ${new Date(g.lastAt).toLocaleDateString()}` : 'No activity yet'}
+                            </div>
+                          </div>
+                          {hasDef ? (
+                            <button
+                              className="goalCardRemove"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                removeGoalDefByName(g.goal)
+                              }}
+                            >
+                              Remove
+                            </button>
+                          ) : null}
+                        </div>
+                        <div className="goalCardStats">
+                          <div className="goalCardStat">
+                            <span>Points</span>
+                            <strong>{g.points.toFixed(1)}</strong>
+                          </div>
+                          <div className="goalCardStat">
+                            <span>Minutes</span>
+                            <strong>{Math.round(g.minutes)}m</strong>
+                          </div>
+                          <div className="goalCardStat">
+                            <span>Events</span>
+                            <strong>{g.eventCount}</strong>
+                          </div>
+                          <div className="goalCardStat">
+                            <span>Tasks</span>
+                            <strong>{g.taskCount}</strong>
+                          </div>
+                        </div>
+                        <div className="goalCardFooter">
+                          {projectList.length === 0 ? (
+                            <span className="goalCardFooterEmpty">No linked projects</span>
+                          ) : (
+                            projectList.slice(0, 4).map((project) => (
+                              <span key={project} className="goalCardChip">
+                                {project}
+                              </span>
+                            ))
+                          )}
+                          {projectList.length > 4 ? <span className="goalCardChip">+{projectList.length - 4}</span> : null}
+                        </div>
+                      </motion.button>
+                    )
+                  })}
+                </AnimatePresence>
+              </div>
             </div>
           ) : null}
 

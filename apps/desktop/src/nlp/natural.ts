@@ -171,6 +171,15 @@ function parseTimeRange(
     .replace(/\b(\d{1,2})\s*,\s*(to|until|till)\b/g, '$1 to')
     .replace(/\b(\d{1,2})\s+(\d{1,2}:\d{2})\b/g, '$2')
 
+  const daypartMatch = text.match(/\b(this\s+)?(morning|afternoon|evening|tonight|noon|midday|lunch|dinner)\b/i)
+  if (daypartMatch) {
+    const hour = inferDaypartHour(daypartMatch[0])
+    if (hour != null) {
+      const startMin = hour * 60
+      return { startMin, endMin: startMin, consumed: daypartMatch[0] }
+    }
+  }
+
   const relMin = t.match(/\bin\s+(\d{1,3})\s*(m|min|mins|minute|minutes)\b/)
   if (relMin?.[1]) {
     const delta = clamp(Number(relMin[1]), 1, 12 * 60)
@@ -351,11 +360,18 @@ function parseMoneyUsd(text: string) {
 }
 
 function inferDefaultFutureTaskHour(text: string) {
-  const t = text.toLowerCase()
-  if (/\bmorning\b/.test(t)) return 9
-  if (/\bafternoon\b/.test(t)) return 13
-  if (/\bevening\b/.test(t)) return 18
+  const daypart = inferDaypartHour(text)
+  if (daypart != null) return daypart
   return 9
+}
+
+function inferDaypartHour(text: string) {
+  const t = text.toLowerCase()
+  if (/\bmorning\b/.test(t)) return 8
+  if (/\b(noon|midday|lunch)\b/.test(t)) return 12
+  if (/\bafternoon\b/.test(t)) return 16
+  if (/\b(evening|tonight|night|dinner)\b/.test(t)) return 20
+  return null
 }
 
 function extractBuyList(phrase: string) {
@@ -746,6 +762,27 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
       continue
     }
 
+    const sleepIntent =
+      /\b(go(?:ing)?|gonna|about to|ready to|heading|headed|time to|time for)\s+(?:to\s+)?(?:sleep|bed|nap)\b/i.test(phraseRaw) ||
+      /\b(fall(?:ing)? asleep|sleeping|nap(?:ping)?)\b/i.test(phraseRaw) ||
+      /\b(in bed)\b/i.test(phraseRaw)
+    if (sleepIntent) {
+      const at = isPast ? defaultPastAt(dayStart, phrase, nowMs) : nowMs
+      const dur = Math.max(30, parseDurationMinutes(phrase) ?? estimateMinutes(phrase))
+      const title = /\bnap(?:ping)?\b/i.test(phraseRaw) ? 'Nap' : 'Sleep'
+      events.push({
+        title,
+        startAt: at,
+        endAt: at + dur * 60 * 1000,
+        kind: 'event',
+        tags: ['#sleep'],
+        estimateMinutes: dur,
+        explicitTime: false,
+        sourceText: phraseRaw,
+      })
+      continue
+    }
+
     // Generic: treat as a task if it looks imperative; otherwise an event log in the past.
     const at = isPast ? defaultPastAt(dayStart, phrase, nowMs) : nowMs
     const defaultStart = clamp(at, dayStart, dayStart + 24 * 60 * 60 * 1000 - 1)
@@ -788,13 +825,15 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
     const imperative =
       /^(call|text|email|buy|pick up|schedule|book|do|finish|start)\b/i.test(phrase) ||
       /\b(i have to|i need to|i'm gonna|im gonna|going to|gotta)\b/i.test(phrase)
-    if (imperative || isForgot || isFutureContext) {
+    const conditional = /\bif i (?:have time|can|could|get time|manage to)\b/i.test(phraseRaw)
+    if (imperative || isForgot || isFutureContext || conditional) {
       const normalized = normalizeTitle(stripFirstPersonFuturePrefix(phrase.replace(/^forgot\s+/i, '').trim()))
       if (looksLikeGarbagePhrase(normalized)) continue
       const buyList = extractBuyList(phrase)
       const money = parseMoneyUsd(phrase) ?? parseMoneyUsd(text)
+      const scheduleForToday = conditional && !isFutureContext && dayOffset === 0
       const scheduledAt = isFutureContext ? dayStart + inferDefaultFutureTaskHour(phrase) * 60 * 60 * 1000 : null
-      const dueAt = isFutureContext ? dayStart + 24 * 60 * 60 * 1000 - 1 : null
+      const dueAt = isFutureContext || scheduleForToday ? dayStart + 24 * 60 * 60 * 1000 - 1 : null
       const tags = buyList.length ? ['#shopping'] : undefined
       const noteLines: string[] = []
       if (buyList.length) noteLines.push(...buyList.map((x) => `- [ ] ${x}`))
@@ -850,6 +889,7 @@ function extractTrackers(text: string): Array<{ key: string; value: number }> {
   const parenPattern = /#([a-zA-Z][\w/-]*)\s*\(\s*([-+]?\d*\.?\d+)\s*\)/g
   for (const m of text.matchAll(parenPattern)) {
     const key = m[1]!.toLowerCase()
+    if (key === 'sleep') continue
     const value = parseFloat(m[2]!)
     if (Number.isFinite(value)) {
       trackers.push({ key, value })
@@ -860,6 +900,7 @@ function extractTrackers(text: string): Array<{ key: string; value: number }> {
   const colonPattern = /#([a-zA-Z][\w/-]*)\s*:\s*([-+]?\d*\.?\d+)/g
   for (const m of text.matchAll(colonPattern)) {
     const key = m[1]!.toLowerCase()
+    if (key === 'sleep') continue
     const value = parseFloat(m[2]!)
     if (Number.isFinite(value) && !trackers.some((t) => t.key === key)) {
       trackers.push({ key, value })
@@ -868,7 +909,7 @@ function extractTrackers(text: string): Array<{ key: string; value: number }> {
 
   // Natural language patterns like "mood 7/10" or "energy is 8"
   const nlPattern = new RegExp(
-    String.raw`\b(mood|energy|stress|pain|anxiety|focus|motivation|sleep|productivity)\b(?:\s*(?:is|was|were|like|around|about|at|:)?\s*)(${tokenPattern})(?:\s*(?:-|to)\s*(${tokenPattern}))?(?:\s*\/\s*10)?`,
+    String.raw`\b(mood|energy|stress|pain|anxiety|focus|motivation|productivity)\b(?:\s*(?:is|was|were|like|around|about|at|:)?\s*)(${tokenPattern})(?:\s*(?:-|to)\s*(${tokenPattern}))?(?:\s*\/\s*10)?`,
     'gi',
   )
   for (const m of text.matchAll(nlPattern)) {

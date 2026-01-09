@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Bundle Information -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+
+	<!-- URL Schemes for OAuth Callback -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>OAuth Callback</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>insightswift</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- Background Task Identifiers for BGTaskScheduler -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.insightswift.calendar-sync</string>
+		<string>com.insightswift.refresh</string>
+	</array>
+
+	<!-- Background Modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+
+	<!-- Required Privacy Descriptions -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Insight needs microphone access to record voice captures.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Insight reads your workouts and nutrition to track fitness automatically.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Insight syncs your calendar events to help you track your time.</string>
+
+	<!-- UI Configuration -->
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UILaunchScreen</key>
+	<dict/>
+
+	<!-- Live Activities -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+
+	<!-- Supabase Configuration -->
+	<key>SUPABASE_URL</key>
+	<string>https://oaywymdbbhhewppmpihr.supabase.co</string>
+	<key>SUPABASE_ANON_KEY</key>
+	<string>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9heXd5bWRiYmhoZXdwcG1waWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3NjMxNjQsImV4cCI6MjA4MjMzOTE2NH0.yzU0WY-aAwY1P5sDHlaDMGU9RsuPanWbUwOSsYZPAAA</string>
+</dict>
+</plist>

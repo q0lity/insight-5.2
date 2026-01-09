@@ -100,6 +100,15 @@ function parseCommaInput(raw: string) {
     .slice(0, 12)
 }
 
+function calcStreak(values: number[]) {
+  let streak = 0
+  for (let i = values.length - 1; i >= 0; i -= 1) {
+    if ((values[i] ?? 0) > 0) streak += 1
+    else break
+  }
+  return streak
+}
+
 
 export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev: CalendarEvent) => void; onOpenReports?: (habitId: string) => void }) {
   const [defs, setDefs] = useState<HabitDef[]>(() => loadHabits())
@@ -181,14 +190,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
   const selectedValues = selected ? heatmapByHabit.get(selected.id) ?? [] : []
   const selectedPositive = selectedValues.filter((v) => v > 0).length
   const selectedNegative = selectedValues.filter((v) => v < 0).length
-  const selectedStreak = (() => {
-    let streak = 0
-    for (let i = selectedValues.length - 1; i >= 0; i -= 1) {
-      if ((selectedValues[i] ?? 0) > 0) streak += 1
-      else break
-    }
-    return streak
-  })()
+  const selectedStreak = calcStreak(selectedValues)
 
   function addHabit(name: string) {
     const next = name.trim()
@@ -223,6 +225,13 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
     void syncHabitToSupabase(habit)
   }
 
+  function commitHabitDraft() {
+    const name = draft.trim()
+    if (!name) return
+    addHabit(name)
+    setDraft('')
+  }
+
   function updateHabit(id: string, patch: Partial<HabitDef>) {
     setDefs((prev) => {
       const updated = prev.map((h) => (h.id === id ? { ...h, ...patch } : h))
@@ -231,6 +240,12 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
       if (habit) void syncHabitToSupabase(habit)
       return updated
     })
+  }
+
+  function removeHabit(id: string) {
+    setDefs((prev) => prev.filter((h) => h.id !== id))
+    setSelectedId((prev) => (prev === id ? null : prev))
+    void deleteHabitFromSupabase(id)
   }
 
   function numberOrNull(raw: string) {
@@ -283,9 +298,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                 placeholder="Define a new habit..."
                 onKeyDown={(e) => {
                   if (e.key !== 'Enter') return
-                  const name = draft.trim()
-                  addHabit(name)
-                  setDraft('')
+                  commitHabitDraft()
                 }}
               />
               <div className="absolute left-3.5 top-3.5 opacity-30">
@@ -294,9 +307,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
             </div>
             <button 
               onClick={() => {
-                const name = draft.trim()
-                addHabit(name)
-                setDraft('')
+                commitHabitDraft()
               }}
               className="h-11 px-6 bg-[#D95D39] text-white rounded-2xl font-bold shadow-lg shadow-[#D95D39]/20 hover:scale-105 active:scale-95 transition-all"
             >
@@ -307,17 +318,23 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
       </div>
 
         <div className="flex-1 overflow-hidden px-10 pb-32 max-w-7xl mx-auto w-full">
-        <div className="flex gap-8 h-full">
+        <div className="flex flex-col xl:flex-row gap-8 h-full">
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {defs.length === 0 && <div className="py-20 text-center opacity-30 font-bold uppercase text-xs tracking-widest col-span-full">No habits defined</div>}
+            <div className="flex flex-col gap-4">
+              {defs.length === 0 && <div className="py-20 text-center opacity-30 font-bold uppercase text-xs tracking-widest">No habits defined</div>}
               {defs.map((h) => {
                 const isSelected = selectedId === h.id
+                const values = heatmapByHabit.get(h.id) ?? []
+                const doneCount = values.filter((v) => v > 0).length
+                const missedCount = values.filter((v) => v < 0).length
+                const streak = calcStreak(values)
+                const points = pointsForMinutes(basePoints(h.importance, h.difficulty), h.estimateMinutes ?? 15).toFixed(1)
+                const lastAt = recent.get(h.id)
                 return (
                   <motion.div
                     key={h.id}
-                    className={`glassCard group flex flex-col gap-5 cursor-pointer transition-shadow ${isSelected ? 'ring-2 ring-[#D95D39]/25' : ''}`}
-                    whileHover={{ y: -4 }}
+                    className={isSelected ? 'habitRowCard active' : 'habitRowCard'}
+                    whileHover={{ y: -2 }}
                     onClick={() => setSelectedId(h.id)}
                     role="button"
                     tabIndex={0}
@@ -327,55 +344,79 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                       setSelectedId(h.id)
                     }}
                   >
-                    <div className="flex items-start gap-3">
-                      <button
-                        className="h-12 px-3 rounded-xl bg-[#CF423C]/10 text-[#CF423C] font-bold text-xs hover:bg-[#CF423C] hover:text-white transition-all shadow-sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          void logHabit(h, 'negative')
-                        }}
-                        aria-label={`Mark ${h.name} missed`}
-                      >
-                        − Miss
-                      </button>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-start justify-between gap-3">
-                          <h3 className="font-bold text-lg leading-tight">{h.name}</h3>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              props.onOpenReports?.(h.id)
-                            }}
-                            className="w-9 h-9 rounded-xl bg-[var(--panel)] flex items-center justify-center text-[var(--muted)] hover:bg-[#D95D39]/10 hover:text-[var(--accent)] transition-all"
-                            aria-label={`Open ${h.name} analytics`}
-                          >
-                            <Icon name="dots" size={16} />
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-[var(--muted)] uppercase tracking-tighter">
-                          <span>{h.category ?? 'Personal'}</span>
-                          {recent.get(h.id) && (
-                            <>
-                              <span>·</span>
-                              <span>Last {new Date(recent.get(h.id)!).toLocaleDateString()}</span>
-                            </>
-                          )}
-                        </div>
+                    <div className="habitRowInfo">
+                      <div className="habitRowTitle">{h.name}</div>
+                      <div className="habitRowMeta">
+                        <span>{h.category ?? 'Uncategorized'}</span>
+                        {h.subcategory ? <span>· {h.subcategory}</span> : null}
+                        {lastAt ? <span>· Last {new Date(lastAt).toLocaleDateString()}</span> : null}
                       </div>
-                      <button
-                        className="h-12 px-3 rounded-xl bg-[#3D8856]/10 text-[#3D8856] font-bold text-xs hover:bg-[#3D8856] hover:text-white transition-all shadow-sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          void logHabit(h, 'positive')
-                        }}
-                        aria-label={`Mark ${h.name} done`}
-                      >
-                        + Done
-                      </button>
+                      <div className="habitRowParams">
+                        <span>Target: {h.targetPerWeek ? `${h.targetPerWeek}/wk` : '—'}</span>
+                        <span>Schedule: {h.schedule ?? '—'}</span>
+                      </div>
+                      {h.tags.length > 0 ? (
+                        <div className="habitRowChips">
+                          {h.tags.slice(0, 4).map((tag) => (
+                            <span key={tag} className="detailChip pointer-events-none">
+                              {tag}
+                            </span>
+                          ))}
+                          {h.tags.length > 4 ? <span className="ecoChipCount">+{h.tags.length - 4}</span> : null}
+                        </div>
+                      ) : null}
                     </div>
 
-                    <div className="min-h-[84px]">
-                      <HabitHeatmap values={heatmapByHabit.get(h.id) ?? []} startDate={heatmapStart} maxAbs={heatmapMax} />
+                    <div className="habitRowChart">
+                      <HabitHeatmap values={values} startDate={heatmapStart} maxAbs={heatmapMax} stretch />
+                    </div>
+
+                    <div className="habitRowStats">
+                      <div className="habitRowStat">
+                        <span>Done</span>
+                        <strong>{doneCount}</strong>
+                      </div>
+                      <div className="habitRowStat">
+                        <span>Missed</span>
+                        <strong>{missedCount}</strong>
+                      </div>
+                      <div className="habitRowStat">
+                        <span>Streak</span>
+                        <strong>{streak}</strong>
+                      </div>
+                      <div className="habitRowStat">
+                        <span>Points</span>
+                        <strong>{points}</strong>
+                      </div>
+                      <div className="habitRowActions">
+                        <button
+                          className="habitRowBtn miss"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void logHabit(h, 'negative')
+                          }}
+                        >
+                          − Miss
+                        </button>
+                        <button
+                          className="habitRowBtn done"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void logHabit(h, 'positive')
+                          }}
+                        >
+                          + Done
+                        </button>
+                        <button
+                          className="habitRowBtn"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            props.onOpenReports?.(h.id)
+                          }}
+                        >
+                          Analytics
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 )
@@ -383,7 +424,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
             </div>
           </div>
 
-          <div className="w-[340px] xl:w-[380px] shrink-0">
+          <div className="habitSidebar shrink-0">
             {selected ? (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -442,6 +483,15 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                     className="h-10 px-3 rounded-2xl bg-white/70 text-[var(--text)] text-xs font-bold border border-black/5 hover:bg-[var(--panel)] transition-all"
                     onClick={() => props.onOpenReports?.(selected.id)}>
                     Analytics
+                  </button>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    className="flex-1 h-10 rounded-2xl bg-[#CF423C]/10 text-[#CF423C] text-xs font-bold hover:bg-[#CF423C] hover:text-white transition-all"
+                    onClick={() => removeHabit(selected.id)}
+                  >
+                    Remove habit
                   </button>
                 </div>
 
@@ -613,8 +663,25 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                 </div>
               </motion.div>
             ) : (
-              <div className="pageHero p-6 flex items-center justify-center text-center text-xs font-bold uppercase tracking-widest text-[var(--muted)]">
-                Select a habit to edit
+              <div className="pageHero p-6 flex flex-col gap-4 text-center">
+                <div className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Create a new habit</div>
+                <input
+                  className="w-full h-10 bg-white/70 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return
+                    commitHabitDraft()
+                  }}
+                  placeholder="Habit name..."
+                />
+                <button
+                  className="h-10 rounded-2xl bg-[#D95D39] text-white text-xs font-bold"
+                  onClick={() => commitHabitDraft()}
+                >
+                  Add habit
+                </button>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Select a habit to edit</div>
               </div>
             )}
           </div>
