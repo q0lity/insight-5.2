@@ -100,4 +100,21 @@ enum Tab: String, CaseIterable, Identifiable {
             return "square.grid.2x2"
         }
     }
+
+    var accessibilityLabel: String {
+        switch self {
+        case .dashboard:
+            return "Home dashboard with metrics overview"
+        case .habits:
+            return "Habits tracking and management"
+        case .calendar:
+            return "Calendar view for events and scheduling"
+        case .plan:
+            return "Plan view for tasks and goals"
+        case .timeline:
+            return "Timeline of all entries and activities"
+        case .more:
+            return "More options and settings"
+        }
+    }
 }

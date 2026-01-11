@@ -6,6 +6,7 @@ struct AppShellView: View {
     @Environment(AppStore.self) private var appStore
     @Environment(ThemeStore.self) private var theme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private let pendingStore = CapturePendingStore()
     @State private var showCaptureSheet = false
     @State private var showAssistantSheet = false
@@ -59,10 +60,12 @@ struct AppShellView: View {
 
     private var iPhoneShell: some View {
         TabView(selection: $selectedTab) {
-            ForEach(Tab.allCases) { tab in
+            ForEach(Array(Tab.allCases.enumerated()), id: \.element.id) { index, tab in
                 navigationRoot(for: tab)
                     .tabItem { Label(tab.title, systemImage: tab.systemImage) }
                     .tag(tab)
+                    .accessibilityLabel(tab.accessibilityLabel)
+                    .accessibilityHint(tab == selectedTab ? "Currently selected" : "Double tap to switch to \(tab.title)")
             }
         }
         .tint(theme.palette.tint)
@@ -71,6 +74,8 @@ struct AppShellView: View {
                 .padding(.horizontal, theme.metrics.spacing)
                 .padding(.bottom, theme.metrics.spacingSmall)
                 .padding(.top, theme.metrics.spacingSmall)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Quick actions")
         }
     }
 
@@ -108,6 +113,9 @@ struct AppShellView: View {
                         .foregroundStyle(theme.palette.text)
                         .padding(.vertical, 6)
                         .tag(tab)
+                        .accessibilityLabel(tab.accessibilityLabel)
+                        .accessibilityHint(tab == selectedTab ? "Currently selected" : "Double tap to navigate")
+                        .accessibilityAddTraits(tab == selectedTab ? .isSelected : [])
                 }
             } header: {
                 SidebarQuickActions(
@@ -116,12 +124,16 @@ struct AppShellView: View {
                     focusAction: handleFocus
                 )
                 .textCase(nil)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Quick actions")
             }
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
         .background(theme.palette.background)
         .navigationTitle("Insight")
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Navigation sidebar")
     }
 
     private var sidebarSelection: Binding<Tab?> {
@@ -219,14 +231,14 @@ private struct SidebarQuickActions: View {
 
     var body: some View {
         HStack(spacing: theme.metrics.spacingSmall) {
-            sidebarAction("Capture", systemImage: "mic.fill", action: captureAction)
-            sidebarAction("Search", systemImage: "sparkle.magnifyingglass", action: searchAction)
-            sidebarAction("Focus", systemImage: "bolt.fill", action: focusAction)
+            sidebarAction("Capture", systemImage: "mic.fill", hint: "Start voice capture", action: captureAction)
+            sidebarAction("Search", systemImage: "sparkle.magnifyingglass", hint: "Open AI assistant", action: searchAction)
+            sidebarAction("Focus", systemImage: "bolt.fill", hint: "Start focus session", action: focusAction)
         }
         .padding(.vertical, theme.metrics.spacingSmall)
     }
 
-    private func sidebarAction(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+    private func sidebarAction(_ title: String, systemImage: String, hint: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 6) {
                 Image(systemName: systemImage)
@@ -241,5 +253,9 @@ private struct SidebarQuickActions: View {
             .clipShape(RoundedRectangle(cornerRadius: theme.metrics.radiusSmall, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityHint(hint)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("sidebar.\(title.lowercased())")
     }
 }

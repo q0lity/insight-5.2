@@ -3,21 +3,21 @@ import SwiftUI
 struct DashboardView: View {
     @Environment(AppStore.self) private var appStore
     @Environment(ThemeStore.self) private var theme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var useStackedLayout: Bool {
+        dynamicTypeSize >= .accessibility1
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: theme.metrics.spacing) {
                 InsightHeader(title: "Dashboard", subtitle: "Your day at a glance")
+                    .accessibilityAddTraits(.isHeader)
 
-                HStack(spacing: theme.metrics.spacingSmall) {
-                    MetricTile(title: "Entries", value: "\(appStore.entries.count)", accent: theme.palette.tint)
-                    MetricTile(title: "Open Tasks", value: "\(appStore.tasks.filter { $0.status != .done }.count)", accent: theme.palette.success)
-                }
-
-                HStack(spacing: theme.metrics.spacingSmall) {
-                    MetricTile(title: "Habits", value: "\(appStore.habits.count)", accent: theme.palette.warning)
-                    MetricTile(title: "Trackers", value: "\(appStore.trackers.count)", accent: theme.palette.error)
-                }
+                metricsSection
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel("Dashboard metrics")
 
                 InsightCard {
                     VStack(alignment: .leading, spacing: 12) {
