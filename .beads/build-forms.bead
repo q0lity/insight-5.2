@@ -1,0 +1,369 @@
+# Build Forms Bead
+# Form Components System (shadcn-inspired)
+# Created: 2026-01-09
+
+## Summary
+
+Implemented a comprehensive form component system for the Insight52 desktop app following shadcn/ui patterns with Radix UI primitives, CVA variants, and Tailwind CSS styling.
+
+## Components Created
+
+### 1. InsightTextField
+**Path:** `apps/desktop/src/components/ui/insight-text-field.tsx`
+
+Text input with label, helper text, and validation states.
+
+**Props:**
+- `label?: string` - Field label
+- `helperText?: string` - Helper text below input
+- `errorMessage?: string` - Error message (sets error state)
+- `successMessage?: string` - Success message
+- `warningMessage?: string` - Warning message
+- `leftIcon?: ReactNode` - Icon on left side
+- `rightIcon?: ReactNode` - Icon on right side
+- `variant: "default" | "filled" | "flushed"`
+- `inputSize: "sm" | "md" | "lg"`
+- `state: "default" | "success" | "warning" | "error"`
+
+**Usage:**
+```tsx
+import { InsightTextField } from "@/components/ui/insight-forms"
+
+<InsightTextField
+  label="Email"
+  placeholder="Enter your email"
+  helperText="We'll never share your email"
+  errorMessage={errors.email}
+/>
+```
+
+---
+
+### 2. InsightTextArea
+**Path:** `apps/desktop/src/components/ui/insight-text-area.tsx`
+
+Multiline text input with character count.
+
+**Props:**
+- `label?: string`
+- `helperText?: string`
+- `errorMessage?: string`
+- `successMessage?: string`
+- `warningMessage?: string`
+- `maxLength?: number`
+- `showCharCount?: boolean`
+- `resize: "none" | "vertical" | "horizontal" | "both"`
+- `variant: "default" | "filled" | "flushed"`
+- `textareaSize: "sm" | "md" | "lg"`
+- `state: "default" | "success" | "warning" | "error"`
+
+**Usage:**
+```tsx
+<InsightTextArea
+  label="Description"
+  placeholder="Enter description..."
+  maxLength={500}
+  showCharCount
+/>
+```
+
+---
+
+### 3. InsightSelect
+**Path:** `apps/desktop/src/components/ui/insight-select.tsx`
+
+Native dropdown select with custom styling.
+
+**Props:**
+- `options: { value: string; label: string; disabled?: boolean }[]`
+- `placeholder?: string`
+- `label?: string`
+- `helperText?: string`
+- `errorMessage?: string`
+- `variant: "default" | "filled" | "flushed"`
+- `selectSize: "sm" | "md" | "lg"`
+- `state: "default" | "success" | "warning" | "error"`
+
+**Usage:**
+```tsx
+<InsightSelect
+  label="Category"
+  placeholder="Select a category"
+  options={[
+    { value: "work", label: "Work" },
+    { value: "personal", label: "Personal" },
+  ]}
+/>
+```
+
+---
+
+### 4. InsightCheckbox
+**Path:** `apps/desktop/src/components/ui/insight-checkbox.tsx`
+
+Checkbox with label and description support.
+
+**Props:**
+- `label?: string`
+- `description?: string`
+- `helperText?: string`
+- `errorMessage?: string`
+- `indeterminate?: boolean`
+- `checkboxSize: "sm" | "md" | "lg"`
+- `state: "default" | "success" | "warning" | "error"`
+
+**Usage:**
+```tsx
+<InsightCheckbox
+  label="Accept terms"
+  description="You agree to our terms of service"
+/>
+```
+
+---
+
+### 5. InsightRadio
+**Path:** `apps/desktop/src/components/ui/insight-radio.tsx`
+
+Radio button group with controlled selection.
+
+**Props:**
+- `options: { value: string; label: string; description?: string; disabled?: boolean }[]`
+- `value?: string`
+- `onChange?: (value: string) => void`
+- `label?: string`
+- `orientation: "horizontal" | "vertical"`
+- `radioSize: "sm" | "md" | "lg"`
+- `state: "default" | "success" | "warning" | "error"`
+
+**Usage:**
+```tsx
+<InsightRadio
+  label="Priority"
+  value={priority}
+  onChange={setPriority}
+  options={[
+    { value: "low", label: "Low" },
+    { value: "medium", label: "Medium" },
+    { value: "high", label: "High" },
+  ]}
+/>
+```
+
+---
+
+### 6. InsightSwitch
+**Path:** `apps/desktop/src/components/ui/insight-switch.tsx`
+
+Toggle switch with smooth animation.
+
+**Props:**
+- `checked?: boolean`
+- `defaultChecked?: boolean`
+- `onChange?: (checked: boolean) => void`
+- `label?: string`
+- `description?: string`
+- `labelPosition: "left" | "right"`
+- `switchSize: "sm" | "md" | "lg"`
+- `state: "default" | "success" | "warning" | "error"`
+
+**Usage:**
+```tsx
+<InsightSwitch
+  label="Enable notifications"
+  checked={enabled}
+  onChange={setEnabled}
+/>
+```
+
+---
+
+### 7. InsightSlider
+**Path:** `apps/desktop/src/components/ui/insight-slider.tsx`
+
+Range slider with touch/mouse/keyboard support.
+
+**Props:**
+- `value?: number`
+- `defaultValue?: number`
+- `min?: number`
+- `max?: number`
+- `step?: number`
+- `onChange?: (value: number) => void`
+- `onChangeEnd?: (value: number) => void`
+- `label?: string`
+- `showValue?: boolean`
+- `formatValue?: (value: number) => string`
+- `marks?: { value: number; label?: string }[]`
+- `sliderSize: "sm" | "md" | "lg"`
+- `state: "default" | "success" | "warning" | "error"`
+
+**Usage:**
+```tsx
+<InsightSlider
+  label="Volume"
+  value={volume}
+  onChange={setVolume}
+  min={0}
+  max={100}
+  showValue
+  formatValue={(v) => `${v}%`}
+/>
+```
+
+---
+
+### 8. InsightDatePicker
+**Path:** `apps/desktop/src/components/ui/insight-date-picker.tsx`
+
+Date/time picker using native input types.
+
+**Props:**
+- `value?: Date | null`
+- `onChange?: (date: Date | null) => void`
+- `minDate?: Date`
+- `maxDate?: Date`
+- `clearable?: boolean`
+- `dateFormat: "date" | "datetime-local" | "time" | "month" | "week"`
+- `label?: string`
+- `variant: "default" | "filled" | "flushed"`
+- `pickerSize: "sm" | "md" | "lg"`
+- `state: "default" | "success" | "warning" | "error"`
+
+**Usage:**
+```tsx
+<InsightDatePicker
+  label="Due date"
+  value={dueDate}
+  onChange={setDueDate}
+  minDate={new Date()}
+/>
+```
+
+---
+
+### 9. InsightStepper
+**Path:** `apps/desktop/src/components/ui/insight-stepper.tsx`
+
+Numeric stepper with increment/decrement buttons.
+
+**Props:**
+- `value?: number`
+- `defaultValue?: number`
+- `min?: number`
+- `max?: number`
+- `step?: number`
+- `onChange?: (value: number) => void`
+- `label?: string`
+- `precision?: number`
+- `formatValue?: (value: number) => string`
+- `parseValue?: (value: string) => number`
+- `allowDirectInput?: boolean`
+- `variant: "default" | "filled" | "outline"`
+- `stepperSize: "sm" | "md" | "lg"`
+- `state: "default" | "success" | "warning" | "error"`
+
+**Usage:**
+```tsx
+<InsightStepper
+  label="Quantity"
+  value={quantity}
+  onChange={setQuantity}
+  min={1}
+  max={99}
+/>
+```
+
+---
+
+## Index Export
+**Path:** `apps/desktop/src/components/ui/insight-forms.ts`
+
+Barrel export for all form components:
+```tsx
+import {
+  InsightTextField,
+  InsightTextArea,
+  InsightSelect,
+  InsightCheckbox,
+  InsightRadio,
+  InsightSwitch,
+  InsightSlider,
+  InsightDatePicker,
+  InsightStepper,
+} from "@/components/ui/insight-forms"
+```
+
+---
+
+## Features Implemented
+
+### Validation States
+All components support four validation states:
+- `default` - Normal appearance
+- `success` - Green border/text for valid input
+- `warning` - Yellow border/text for warnings
+- `error` - Red border/text for errors
+
+States are automatically set based on message props:
+- `errorMessage` sets state to "error"
+- `warningMessage` sets state to "warning"
+- `successMessage` sets state to "success"
+
+### Inline Error Messaging
+All components display status messages below the input:
+- Error, warning, and success messages shown with appropriate colors
+- Helper text shown when no status message
+- Messages properly linked via `aria-describedby`
+
+### Focus Management
+- Ring outline on focus (`focus-visible:ring-2`)
+- Proper `tabIndex` management
+- Focus trapping where appropriate
+
+### Keyboard Handling
+- **TextField/TextArea**: Standard input behavior
+- **Select**: Arrow keys navigate options
+- **Checkbox**: Space to toggle
+- **Radio**: Arrow keys to change selection
+- **Switch**: Space/Enter to toggle
+- **Slider**: Arrow keys to adjust, Home/End for min/max
+- **DatePicker**: Native date picker keyboard support
+- **Stepper**: Arrow keys to increment/decrement, Enter to commit
+
+---
+
+## Architecture
+
+### Patterns Used
+- **forwardRef**: All components forward refs properly
+- **displayName**: Set for React DevTools
+- **CVA (Class Variance Authority)**: Variant management
+- **cn utility**: Tailwind class merging with clsx + tailwind-merge
+- **CSS Variables**: Theme-aware through existing design system
+
+### File Structure
+```
+apps/desktop/src/components/ui/
+├── insight-text-field.tsx
+├── insight-text-area.tsx
+├── insight-select.tsx
+├── insight-checkbox.tsx
+├── insight-radio.tsx
+├── insight-switch.tsx
+├── insight-slider.tsx
+├── insight-date-picker.tsx
+├── insight-stepper.tsx
+└── insight-forms.ts (barrel export)
+```
+
+---
+
+## Dependencies
+Uses existing project dependencies:
+- `class-variance-authority` - Variant system
+- `clsx` + `tailwind-merge` - Class composition
+- React 19 hooks (useId, forwardRef)
+- Tailwind CSS 4.1
+
+No new dependencies required.
