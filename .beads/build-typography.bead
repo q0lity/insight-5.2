@@ -1,0 +1,218 @@
+# Typography System Implementation
+
+**Bead ID:** hq-leg-p2r46
+**Status:** Complete
+**File:** `apps/insight_swift/InsightSwiftPackage/Sources/InsightSwiftFeature/Theme/Typography.swift`
+
+---
+
+## Summary
+
+Implemented a comprehensive typography system for the Insight Swift app with full Dynamic Type support, semantic font levels, and accessibility-first design.
+
+---
+
+## Components Implemented
+
+### 1. TypographyLevel Enum (12 Dynamic Type Sizes)
+
+All Apple Dynamic Type text styles mapped to semantic levels:
+
+| Level | Base Size | Weight | Use Case |
+|-------|-----------|--------|----------|
+| `largeTitle` | 34pt | bold | Hero headers, splash screens |
+| `title1` | 28pt | bold | Primary screen titles |
+| `title2` | 22pt | semibold | Section headers |
+| `title3` | 20pt | semibold | Subsection headers |
+| `headline` | 17pt | semibold | List row titles, emphasis |
+| `body` | 17pt | regular | Primary content, paragraphs |
+| `callout` | 16pt | regular | Secondary content |
+| `subheadline` | 15pt | regular | Supporting text, metadata |
+| `footnote` | 13pt | regular | Tertiary info, timestamps |
+| `caption1` | 12pt | regular | Labels, small details |
+| `caption2` | 11pt | regular | Fine print, badges |
+| `extraSmall` | 10pt | regular | Minimal UI elements |
+
+### 2. Font Weight Hierarchy (InsightFontWeight)
+
+9 semantic weight levels with mappings:
+
+```swift
+.ultraLight → .thin → .light → .regular → .medium → .semibold → .bold → .heavy → .black
+```
+
+### 3. Line Height & Spacing Ratios
+
+Each typography level has optimized ratios:
+
+- **Display text:** 1.2x line height (tight)
+- **Titles:** 1.25x line height
+- **Body text:** 1.4x line height (comfortable reading)
+- **Captions:** 1.3x line height
+
+Letter tracking adjusted per size:
+- Large text: -0.5pt (tighter)
+- Body: 0pt (neutral)
+- Captions: +0.2-0.3pt (looser for legibility)
+
+### 4. Truncation Patterns
+
+Semantic truncation modes:
+
+```swift
+.singleLine    // 1 line max
+.twoLines      // 2 lines max
+.threeLines    // 3 lines max
+.paragraph     // 5 lines max (previews)
+.unlimited     // No limit
+```
+
+Usage:
+```swift
+Text("Long text...")
+    .truncation(.twoLines)
+```
+
+### 5. Custom Font Loading
+
+Supports three font families:
+
+- **System/SF Pro** - Apple's default (no registration needed)
+- **Figtree** - Modern geometric sans
+- **Inter** - Highly legible UI font
+
+Registration at app launch:
+```swift
+// In AppDelegate or App init
+FontLoader.registerFonts()
+```
+
+### 6. Font Extension API
+
+Easy-to-use Font static methods:
+
+```swift
+// Semantic levels
+.insight(.body)
+.insight(.title2, weight: .bold)
+
+// Shorthand helpers
+.insightDisplay()    // .largeTitle, .bold
+.insightTitle()      // .title2, .semibold
+.insightBody()       // .body, .regular
+.insightCaption()    // .caption1, .regular
+.insightMono()       // Monospace for code/data
+```
+
+### 7. @ScaledMetric Support
+
+`TypographyMetrics` struct for scaled spacing:
+
+```swift
+struct MyView: View {
+    let metrics = TypographyMetrics()
+
+    var body: some View {
+        VStack(spacing: metrics.paragraphSpacing) {
+            // Content scales with Dynamic Type
+        }
+    }
+}
+```
+
+### 8. Full Styling Modifier
+
+Apply complete typography styling:
+
+```swift
+Text("Heading")
+    .typographyStyle(.title2, weight: .bold, color: .primary)
+```
+
+Applies: font, tracking, line spacing, and color.
+
+---
+
+## Usage Examples
+
+### Basic Usage
+
+```swift
+// Using Font extension
+Text("Welcome")
+    .font(.insight(.largeTitle))
+
+Text("Section Header")
+    .font(.insightTitle())
+
+Text("Body content goes here...")
+    .font(.insightBody())
+
+Text("12:34 PM")
+    .font(.insightCaption())
+```
+
+### With Truncation
+
+```swift
+Text(longDescription)
+    .font(.insightBody())
+    .truncation(.threeLines)
+```
+
+### Complete Styling
+
+```swift
+Text("Important Notice")
+    .typographyStyle(.headline, weight: .bold, color: theme.palette.tint)
+```
+
+### Custom Font Family
+
+```swift
+// In your theme configuration
+let typography = InsightTypography(family: .figtree)
+
+Text("Styled with Figtree")
+    .font(typography.font(.body, weight: .medium))
+```
+
+---
+
+## Integration with Existing Theme
+
+The typography system integrates with `InsightTheme.swift`:
+
+```swift
+// Environment-based access
+@Environment(\.typography) var typography
+
+var body: some View {
+    Text("Hello")
+        .font(typography.font(.body))
+}
+```
+
+---
+
+## Accessibility
+
+- All fonts use `relativeTo:` for Dynamic Type scaling
+- Line heights scale proportionally
+- Tracking adjustments improve legibility at all sizes
+- No fixed-size fonts except where explicitly needed
+
+---
+
+## Files Modified/Created
+
+- **Created:** `Theme/Typography.swift` (370 lines)
+
+---
+
+## Next Steps
+
+1. Add custom font files (Figtree, Inter) to app bundle if using custom fonts
+2. Call `FontLoader.registerFonts()` in AppDelegate if using custom fonts
+3. Migrate existing `AppFont` usages to new typography system
+4. Update `DisplayMetrics` in `InsightTheme.swift` to use `TypographyLevel` for consistency
