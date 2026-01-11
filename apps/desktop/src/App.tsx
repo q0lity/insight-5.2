@@ -5938,6 +5938,14 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                             <Icon name={explorerPinnedTasksOpen ? 'chevronDown' : 'chevronRight'} size={14} />
                           </button>
                           <div className="sbPinnedTitle">Tasks</div>
+                          <button
+                            className="sbSectionAction"
+                            onClick={() => openView('tasks')}
+                            title="Add new task"
+                            aria-label="Add new task">
+                            <Icon name="plus" size={12} />
+                          </button>
+                          <span className="sbShortcut">N</span>
                           <span className="sbDragHandle" title="Drag to reorder">
                             <Icon name="dots" size={12} />
                           </span>
@@ -6016,6 +6024,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                     )
                   }
                   if (key === 'habits') {
+                    const habitColors = ['green', 'teal', 'blue', 'purple', 'pink', 'orange', 'indigo', 'red']
                     return (
                       <div
                         key="habits"
@@ -6029,6 +6038,14 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                             <Icon name={explorerPinnedHabitsOpen ? 'chevronDown' : 'chevronRight'} size={14} />
                           </button>
                           <div className="sbPinnedTitle">Habits</div>
+                          <button
+                            className="sbSectionAction"
+                            onClick={() => openView('habits')}
+                            title="Add new habit"
+                            aria-label="Add new habit">
+                            <Icon name="plus" size={12} />
+                          </button>
+                          <span className="sbShortcut">H</span>
                           <span className="sbDragHandle" title="Drag to reorder">
                             <Icon name="dots" size={12} />
                           </span>
@@ -6038,10 +6055,11 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                             {habitDefs.length === 0 ? (
                               <div className="sbQuickEmpty">No habits yet. Add one in the Habits tab.</div>
                             ) : (
-                              habitDefs.map((h) => (
+                              habitDefs.map((h, idx) => (
                                 <div
                                   key={h.id}
                                   className="sbQuickRow"
+                                  data-color={habitColors[idx % habitColors.length]}
                                   draggable
                                   onDragStart={(e) => {
                                     const payload = {
@@ -6055,6 +6073,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                                     e.dataTransfer.setData(DND_HABIT, JSON.stringify(payload))
                                     e.dataTransfer.setData('text/plain', h.name)
                                   }}>
+                                  <span className="sbQuickDot" />
                                   <span className="sbQuickIcon">
                                     <Icon name="check" size={12} />
                                   </span>
@@ -6069,6 +6088,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                     )
                   }
                   if (key === 'trackers') {
+                    const trackerColors = ['blue', 'green', 'purple', 'orange', 'pink', 'red', 'teal', 'indigo']
                     return (
                       <div
                         key="trackers"
@@ -6082,6 +6102,14 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                             <Icon name={explorerPinnedTrackersOpen ? 'chevronDown' : 'chevronRight'} size={14} />
                           </button>
                           <div className="sbPinnedTitle">Trackers</div>
+                          <button
+                            className="sbSectionAction"
+                            onClick={() => openView('trackers')}
+                            title="Add new tracker"
+                            aria-label="Add new tracker">
+                            <Icon name="plus" size={12} />
+                          </button>
+                          <span className="sbShortcut">T</span>
                           <span className="sbDragHandle" title="Drag to reorder">
                             <Icon name="dots" size={12} />
                           </span>
@@ -6091,16 +6119,18 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                             {trackerDefs.length === 0 ? (
                               <div className="sbQuickEmpty">No trackers yet.</div>
                             ) : (
-                              trackerDefs.map((t) => (
+                              trackerDefs.map((t, idx) => (
                                 <div
                                   key={t.key}
                                   className="sbQuickRow"
+                                  data-color={trackerColors[idx % trackerColors.length]}
                                   draggable
                                   onDragStart={(e) => {
                                     const payload = { key: t.key, label: t.label, defaultValue: t.defaultValue ?? null }
                                     e.dataTransfer.setData(DND_TRACKER, JSON.stringify(payload))
                                     e.dataTransfer.setData('text/plain', t.label)
                                   }}>
+                                  <span className="sbQuickDot" />
                                   <span className="sbQuickIcon">
                                     <Icon name={t.icon ?? 'sparkle'} size={12} />
                                   </span>
