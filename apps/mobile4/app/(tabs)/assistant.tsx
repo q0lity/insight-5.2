@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
 
 import { Text } from '@/components/Themed'
 import { useTheme } from '@/src/state/theme'
@@ -26,11 +27,21 @@ import {
 
 type Hit = { id: string; label: string; meta: string; kind: 'capture' | 'event' | 'task' }
 
-const SUGGESTIONS = [
-  'What did I work on this week?',
-  'Summarize my tasks due soon.',
-  'Show mentions of #workout.',
+const SUGGESTIONS: { text: string; icon: 'calendar' | 'list-ul' | 'hashtag' }[] = [
+  { text: 'What did I work on this week?', icon: 'calendar' },
+  { text: 'Summarize my tasks due soon.', icon: 'list-ul' },
+  { text: 'Show mentions of #workout.', icon: 'hashtag' },
 ]
+
+function formatTime(ts: number) {
+  const d = new Date(ts)
+  const now = new Date()
+  const isToday = d.toDateString() === now.toDateString()
+  if (isToday) {
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  }
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
 
 function buildHitLabel(raw: string, fallback: string) {
   const line = (raw.split(/\r?\n/)[0] ?? '').trim()
@@ -40,7 +51,7 @@ function buildHitLabel(raw: string, fallback: string) {
 export default function AssistantScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { palette, sizes, isDark } = useTheme()
+  const { palette, sizes } = useTheme()
 
   const [chat, setChat] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -202,7 +213,7 @@ export default function AssistantScreen() {
                 },
               ]}
             >
-              <Text style={{ color: active ? '#FFFFFF' : palette.text }}>{mode.toUpperCase()}</Text>
+              <Text style={{ color: active ? '#FFFFFF' : palette.text, fontWeight: '600' }}>{mode.toUpperCase()}</Text>
             </TouchableOpacity>
           )
         })}
@@ -211,15 +222,27 @@ export default function AssistantScreen() {
       <ScrollView style={styles.chat} contentContainerStyle={{ paddingBottom: 24 }}>
         {chat.length === 0 ? (
           <View style={styles.empty}>
+            {/* Animated welcome icon */}
+            <View style={[styles.welcomeIcon, { backgroundColor: palette.tint }]}>
+              <FontAwesome name="magic" size={32} color="#FFFFFF" />
+            </View>
             <Text style={[styles.emptyTitle, { color: palette.text }]}>How can I help you today?</Text>
+            <Text style={[styles.emptySubtitle, { color: palette.textSecondary }]}>
+              Ask me anything about your week, patterns in your productivity, or insights from your data.
+            </Text>
+            {/* Suggestion chips with icons */}
             <View style={styles.suggestions}>
-              {SUGGESTIONS.map((s) => (
+              {SUGGESTIONS.map((suggestion) => (
                 <TouchableOpacity
-                  key={s}
-                  style={[styles.suggestionChip, { borderColor: palette.border }]}
-                  onPress={() => void onSend(s)}
+                  key={suggestion.text}
+                  style={[styles.suggestionChip, { borderColor: palette.border, backgroundColor: palette.surface }]}
+                  onPress={() => void onSend(suggestion.text)}
+                  activeOpacity={0.7}
                 >
-                  <Text style={{ color: palette.text }}>{s}</Text>
+                  <View style={[styles.suggestionIconWrap, { backgroundColor: palette.tintLight }]}>
+                    <FontAwesome name={suggestion.icon} size={12} color={palette.tint} />
+                  </View>
+                  <Text style={{ color: palette.text, fontWeight: '500', flex: 1 }}>{suggestion.text}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -231,15 +254,42 @@ export default function AssistantScreen() {
               style={[
                 styles.bubble,
                 m.role === 'user' ? styles.userBubble : styles.assistantBubble,
-                { borderColor: palette.border, backgroundColor: m.role === 'user' ? palette.tintLight : palette.surface },
+                { backgroundColor: m.role === 'user' ? palette.tint : palette.surface },
               ]}
             >
-              <Text style={[styles.bubbleRole, { color: palette.textSecondary }]}>
-                {m.role === 'user' ? 'You' : 'Insight'}
-              </Text>
-              <Text style={{ color: palette.text }}>{m.content}</Text>
+              {/* Message header with avatar and timestamp */}
+              <View style={[styles.bubbleHeader, m.role === 'user' && styles.bubbleHeaderUser]}>
+                <View style={[styles.avatar, { backgroundColor: m.role === 'user' ? 'rgba(255,255,255,0.2)' : palette.tintLight }]}>
+                  <FontAwesome name={m.role === 'user' ? 'user' : 'magic'} size={12} color={m.role === 'user' ? '#FFFFFF' : palette.tint} />
+                </View>
+                <Text style={[styles.bubbleRole, { color: m.role === 'user' ? 'rgba(255,255,255,0.8)' : palette.textSecondary }]}>
+                  {m.role === 'user' ? 'You' : 'Insight'}
+                </Text>
+                <Text style={[styles.bubbleTime, { color: m.role === 'user' ? 'rgba(255,255,255,0.6)' : palette.textSecondary }]}>
+                  {formatTime(m.createdAt)}
+                </Text>
+              </View>
+              <Text style={{ color: m.role === 'user' ? '#FFFFFF' : palette.text, lineHeight: 22 }}>{m.content}</Text>
             </View>
           ))
+        )}
+
+        {/* Typing indicator */}
+        {sending && (
+          <View style={[styles.bubble, styles.assistantBubble, { backgroundColor: palette.surface }]}>
+            <View style={styles.bubbleHeader}>
+              <View style={[styles.avatar, { backgroundColor: palette.tintLight }]}>
+                <FontAwesome name="magic" size={12} color={palette.tint} />
+              </View>
+              <Text style={[styles.bubbleRole, { color: palette.textSecondary }]}>Insight</Text>
+              <Text style={[styles.typingLabel, { color: palette.textSecondary }]}>typing...</Text>
+            </View>
+            <View style={styles.typingDots}>
+              <View style={[styles.dot, { backgroundColor: palette.tint }]} />
+              <View style={[styles.dot, { backgroundColor: palette.tint, opacity: 0.7 }]} />
+              <View style={[styles.dot, { backgroundColor: palette.tint, opacity: 0.4 }]} />
+            </View>
+          </View>
         )}
 
         {hitSummary ? (
@@ -253,14 +303,15 @@ export default function AssistantScreen() {
                     {section.rows.map((hit) => (
                       <TouchableOpacity
                         key={hit.id}
-                        style={[styles.hitRow, { borderColor: palette.border }]}
+                        style={[styles.hitRow, { borderColor: palette.border, backgroundColor: palette.background }]}
                         onPress={() => handleOpen(hit)}
+                        activeOpacity={0.7}
                       >
                         <View style={{ flex: 1 }}>
-                          <Text style={{ color: palette.text }}>{hit.label}</Text>
+                          <Text style={{ color: palette.text, fontWeight: '500' }}>{hit.label}</Text>
                           <Text style={{ color: palette.textSecondary, fontSize: 12 }}>{hit.meta}</Text>
                         </View>
-                        <Text style={{ color: palette.tint }}>Open</Text>
+                        <FontAwesome name="chevron-right" size={12} color={palette.tint} />
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -274,15 +325,25 @@ export default function AssistantScreen() {
         <TextInput
           value={input}
           onChangeText={setInput}
-          placeholder="Ask about your week, tasks, or notes..."
+          placeholder="Message Insight..."
           placeholderTextColor={palette.textSecondary}
-          style={[styles.input, { color: palette.text }]}
+          style={[styles.input, { color: palette.text, backgroundColor: palette.background }]}
           onSubmitEditing={() => void onSend()}
           returnKeyType="send"
+          multiline
         />
-        <Pressable style={[styles.send, { backgroundColor: palette.tint }]} onPress={() => void onSend()}>
-          <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{sending ? '...' : 'Send'}</Text>
-        </Pressable>
+        <View style={styles.composerButtons}>
+          <Pressable style={[styles.micButton, { backgroundColor: 'transparent' }]}>
+            <FontAwesome name="microphone" size={18} color={palette.textSecondary} />
+          </Pressable>
+          <Pressable
+            style={[styles.send, { backgroundColor: palette.tint, opacity: input.trim().length === 0 || sending ? 0.4 : 1 }]}
+            onPress={() => void onSend()}
+            disabled={input.trim().length === 0 || sending}
+          >
+            <FontAwesome name="send" size={14} color="#FFFFFF" />
+          </Pressable>
+        </View>
       </View>
     </View>
   )
@@ -297,47 +358,105 @@ const styles = StyleSheet.create({
   modeChip: {
     borderWidth: 1,
     borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   chat: { flex: 1, paddingHorizontal: 20 },
-  empty: { marginTop: 24, gap: 12 },
-  emptyTitle: { fontSize: 18, fontWeight: '700' },
-  suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  empty: { marginTop: 40, gap: 16, alignItems: 'center' },
+  welcomeIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  emptyTitle: { fontSize: 24, fontWeight: '800', textAlign: 'center' },
+  emptySubtitle: { fontSize: 14, textAlign: 'center', paddingHorizontal: 20, lineHeight: 20 },
+  suggestions: { flexDirection: 'column', gap: 10, width: '100%', marginTop: 8 },
   suggestionChip: {
     borderWidth: 1,
     borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  bubble: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
-  },
-  userBubble: { alignSelf: 'flex-end' },
-  assistantBubble: { alignSelf: 'flex-start' },
-  bubbleRole: { fontSize: 12, fontWeight: '700', marginBottom: 4 },
-  hitsPanel: { borderWidth: 1, borderRadius: 16, padding: 12, marginTop: 12, gap: 10 },
-  hitsTitle: { fontSize: 16, fontWeight: '700' },
-  hitGroup: { gap: 6 },
-  hitGroupLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-  hitRow: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
-  composer: {
-    borderTopWidth: 1,
+  suggestionIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bubble: {
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 12,
+    maxWidth: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  userBubble: { alignSelf: 'flex-end', borderBottomRightRadius: 6 },
+  assistantBubble: { alignSelf: 'flex-start', borderBottomLeftRadius: 6 },
+  bubbleHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  bubbleHeaderUser: { flexDirection: 'row-reverse' },
+  avatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bubbleRole: { fontSize: 12, fontWeight: '700' },
+  bubbleTime: { fontSize: 10 },
+  typingLabel: { fontSize: 10, fontStyle: 'italic' },
+  typingDots: { flexDirection: 'row', gap: 4, marginTop: 4 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  hitsPanel: { borderWidth: 1, borderRadius: 20, padding: 14, marginTop: 12, gap: 12 },
+  hitsTitle: { fontSize: 16, fontWeight: '800' },
+  hitGroup: { gap: 8 },
+  hitGroupLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  hitRow: {
+    borderWidth: 1,
+    borderRadius: 14,
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  input: { flex: 1, height: 44 },
-  send: { height: 44, borderRadius: 12, paddingHorizontal: 16, justifyContent: 'center' },
+  composer: {
+    borderTopWidth: 1,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  input: {
+    flex: 1,
+    minHeight: 44,
+    maxHeight: 120,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+  },
+  composerButtons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  micButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  send: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 })
