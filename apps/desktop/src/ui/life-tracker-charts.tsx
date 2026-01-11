@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useId } from 'react'
 
 export type SeriesPoint = { x: number; y: number }
 
@@ -45,7 +45,8 @@ export function LtLineAreaChart(props: { points: SeriesPoint[]; color?: string }
   const width = 560
   const height = 200
   const padding = 32
-  const stroke = props.color ?? '#D95D39'
+  const stroke = props.color ?? 'var(--accent)'
+  const gradientId = useId()
 
   if (props.points.length < 2) return <LtEmptyChart message="No data yet" />
 
@@ -55,24 +56,32 @@ export function LtLineAreaChart(props: { points: SeriesPoint[]; color?: string }
   return (
     <svg className="w-full h-auto overflow-visible" viewBox={`0 0 ${width} ${height}`} role="img">
       <defs>
-        <linearGradient id={`grad-${stroke}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={stroke} stopOpacity="0.3" />
-          <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+        <linearGradient id={`lt-area-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={stroke} stopOpacity="0.22" />
+          <stop offset="100%" stopColor={stroke} stopOpacity="0.02" />
         </linearGradient>
-        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-        </filter>
       </defs>
 
       {/* grid */}
       {Array.from({ length: 3 }).map((_, i) => {
         const y = padding + (i / 2) * (height - padding * 2)
-        return <line key={i} x1={padding} y1={y} x2={width - padding} y2={y} stroke="var(--border)" strokeWidth="1" />
+        return (
+          <line
+            key={i}
+            x1={padding}
+            y1={y}
+            x2={width - padding}
+            y2={y}
+            stroke="var(--border2)"
+            strokeWidth="1"
+            strokeDasharray="4 6"
+            opacity="0.7"
+          />
+        )
       })}
 
-      <path d={areaPath} fill={`url(#grad-${stroke})`} />
-      <path d={linePath} fill="none" stroke={stroke} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'url(#glow)' }} />
+      <path d={areaPath} fill={`url(#lt-area-${gradientId})`} />
+      <path d={linePath} fill="none" stroke={stroke} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
 
       {/* points */}
       {props.points.map((p, i) => {
@@ -85,7 +94,7 @@ export function LtLineAreaChart(props: { points: SeriesPoint[]; color?: string }
         const x = padding + ((p.x - minX) / (maxX - minX)) * (width - padding * 2)
         const t = (p.y - minY) / (maxY - minY || 1)
         const y = height - padding - t * (height - padding * 2)
-        return <circle key={i} cx={x} cy={y} r="5" fill="var(--panel)" stroke={stroke} strokeWidth="3" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }} />
+        return <circle key={i} cx={x} cy={y} r="3.5" fill="var(--panel)" stroke={stroke} strokeWidth="2" />
       })}
     </svg>
   )
@@ -95,7 +104,8 @@ export function LtBarChart(props: { values: number[]; color?: string }) {
   const width = 560
   const height = 200
   const padding = 32
-  const stroke = props.color ?? '#D95D39'
+  const stroke = props.color ?? 'var(--accent)'
+  const gradientId = useId()
   const values = props.values
 
   if (values.length === 0) return <LtEmptyChart message="No data yet" />
@@ -105,10 +115,28 @@ export function LtBarChart(props: { values: number[]; color?: string }) {
 
   return (
     <svg className="w-full h-auto overflow-visible" viewBox={`0 0 ${width} ${height}`} role="img">
+      <defs>
+        <linearGradient id={`lt-bar-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={stroke} stopOpacity="0.95" />
+          <stop offset="100%" stopColor={stroke} stopOpacity="0.55" />
+        </linearGradient>
+      </defs>
       {/* grid */}
       {Array.from({ length: 3 }).map((_, i) => {
         const y = padding + (i / 2) * (height - padding * 2)
-        return <line key={i} x1={padding} y1={y} x2={width - padding} y2={y} stroke="var(--border)" strokeWidth="1" />
+        return (
+          <line
+            key={i}
+            x1={padding}
+            y1={y}
+            x2={width - padding}
+            y2={y}
+            stroke="var(--border2)"
+            strokeWidth="1"
+            strokeDasharray="4 6"
+            opacity="0.7"
+          />
+        )
       })}
 
       {values.map((v, i) => {
@@ -122,10 +150,10 @@ export function LtBarChart(props: { values: number[]; color?: string }) {
             y={y}
             width={barW * 0.6}
             height={h}
-            rx="8"
-            fill={stroke}
+            rx="7"
+            fill={`url(#lt-bar-${gradientId})`}
             className="transition-all duration-700 cubic-bezier(0.4, 0, 0.2, 1)"
-            style={{ filter: v === max ? 'drop-shadow(0 4px 12px ' + stroke + '44)' : 'none' }}
+            style={{ filter: v === max ? 'drop-shadow(0 6px 14px rgba(0,0,0,0.12))' : 'none' }}
           />
         )
       })}
@@ -184,7 +212,10 @@ export function LtHeatmap(props: {
   function getOpacity(value: number): number {
     const t = clamp(value / max, 0, 1)
     if (t === 0) return 0
-    return t < 0.3 ? 0.25 : t < 0.7 ? 0.55 : 1
+    if (t < 0.2) return 0.18
+    if (t < 0.5) return 0.45
+    if (t < 0.8) return 0.72
+    return 0.95
   }
 
   const monthLabels = Array.from({ length: labelWeeks }).map((_, w) => {
@@ -242,9 +273,10 @@ export function LtHeatmap(props: {
                     style={{
                       width: cell,
                       height: cell,
-                      borderRadius: 3,
-                      backgroundColor: opacity === 0 ? 'var(--border)' : 'var(--accent)',
+                      borderRadius: 4,
+                      backgroundColor: opacity === 0 ? 'var(--panel)' : 'var(--accent)',
                       opacity: opacity === 0 ? 0.5 : opacity,
+                      boxShadow: opacity > 0 ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
                     }}
                   />
                 )

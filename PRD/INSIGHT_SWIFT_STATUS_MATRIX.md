@@ -1,6 +1,6 @@
 # Insight Swift Status Matrix
 
-Last updated: 2026-01-07
+Last updated: 2026-01-08
 
 ## Legend
 - Done: implemented with evidence in repo
@@ -12,34 +12,34 @@ Last updated: 2026-01-07
 ## P0 Foundation
 | Area | Status | Owner | Evidence | Next step |
 | --- | --- | --- | --- | --- |
-| Navigation shell (iPhone tabs + iPad split) | Unknown | Agent A | None yet | Confirm layout skeleton + routing |
-| Theme tokens + base components | Unknown | Agent A | None yet | Import `apps/mobile2` assets + token setup |
-| App-wide environment services | Unknown | Agent A | None yet | Define router/theme services |
-| SwiftData baseline models | In Progress | Agent A | `AGENT_REPORTS/insight-swift-agent-a-2026-01-07.md` | Confirm model coverage for Entry/Task/Event/Habit/TrackerLog |
-| Supabase client bootstrap | In Progress | Agent A | `AGENT_REPORTS/insight-swift-agent-a-2026-01-07.md` | Harden auth wiring + realtime subscriptions |
-| Offline queue scaffolding | Done | Agent A | `AGENT_REPORTS/insight-swift-agent-a-2026-01-07.md` | Add update/delete queue paths + tests |
+| Navigation shell (iPhone tabs + iPad split) | Done | Agent A/D | `InsightSwiftFeature/Views/AppShellView.swift` | Refine iPad sidebar actions |
+| Theme tokens + base components | Done | Agent A | `InsightSwiftFeature/Theme/InsightTheme.swift` | Expand component library as needed |
+| App-wide environment services | Done | Agent A | `InsightSwiftApp.swift` | Monitor service lifecycle |
+| SwiftData baseline models | Done | Agent A | `InsightSwiftFeature/Models/CoreModels.swift` | Monitor migration needs |
+| Supabase client bootstrap | Done | Agent A | `InsightSwiftFeature/Services/SupabaseService.swift` | Monitor auth stability |
+| Offline queue scaffolding | Done | Agent A | `InsightSwiftFeature/Services/LocalPersistenceService.swift` | Monitor sync queue reliability |
 
 ## P1 Core Parity
 | Area | Status | Owner | Evidence | Next step |
 | --- | --- | --- | --- | --- |
-| Capture parser parity (Swift + JS) | Done | Agent C | `AGENT_REPORTS/insight-swift-agent-c-2026-01-07.md` | Expand parity coverage beyond capture blocks |
-| Capture parity test vectors | Done | Agent C | `AGENT_REPORTS/insight-swift-agent-c-2026-01-07.md` | Add tracker string/clamp tests |
-| Capture state machine | Not Started | Agent C | None yet | Implement Idle -> Review -> Offline Pending |
-| Capture review UI (cards) | Not Started | Agent C | None yet | Build swipe accept/reject flow |
-| Scheduling + recurrence helpers | Done | Agent B | `AGENT_REPORTS/insight-swift-agent-b-2026-01-07.md` | Persist all-day + recurrence to Supabase |
-| Calendar skeleton (day/week/month + all-day lane) | Done | Agent D | `AGENT_REPORTS/insight-swift-agent-d-2026-01-07.md` | Add explicit all-day flag support |
-| Calendar drag/reschedule | Done | Agent B | `AGENT_REPORTS/insight-swift-agent-b-2026-01-07.md` | Add UI tests + conflict handling |
-| Plan/Agenda list ordering | Done | Agent D | `AGENT_REPORTS/insight-swift-agent-d-2026-01-07.md` | Decide status-first vs due-date-first |
-| Tasks/Habits/Notes scaffolds | Done | Agent D | `AGENT_REPORTS/insight-swift-agent-d-2026-01-07.md` | Expand to CRUD + detail parity |
+| Capture parser parity (Swift + JS) | Done | Agent C | `InsightSwiftFeature/Parsing` | Monitor edge cases |
+| Capture parity test vectors | Done | Agent C | `InsightSwiftFeatureTests/Fixtures` | Add user-reported cases |
+| Capture state machine | Done | Agent C | `InsightSwiftFeature/Services/CapturePipelineService.swift` | Monitor state transitions |
+| Capture review UI (cards) | Done | Agent C | `InsightSwiftFeature/Views/CaptureReviewView.swift` | Polish UI interactions |
+| Scheduling + recurrence helpers | Done | Agent B | `InsightSwiftFeature/Services/ScheduleService.swift` | Monitor recurrence bugs |
+| Calendar skeleton (day/week/month + all-day lane) | Done | Agent D | `InsightSwiftFeature/Views/CalendarView.swift` | Polish drag-and-drop |
+| Calendar drag/reschedule | Done | Agent B | `InsightSwiftFeature/Views/CalendarView.swift` | Monitor conflict handling |
+| Plan/Agenda list ordering | Done | Agent D | `InsightSwiftFeature/Views/PlanView.swift` | Refine sorting logic if needed |
+| Tasks/Habits/Notes scaffolds | Done | Agent D | `InsightSwiftFeature/Views/*View.swift` | Add more specific view features |
 
 ## P2 Integrations
 | Area | Status | Owner | Evidence | Next step |
 | --- | --- | --- | --- | --- |
-| Calendar sync (Google/Microsoft) | Not Started | Unassigned | None yet | Wire edge functions + sync flow |
-| EventKit integration | Not Started | Unassigned | None yet | Device calendar mapping |
-| HealthKit ingestion | Not Started | Unassigned | None yet | Define workout/nutrition ingest |
-| Notifications + Live Activities | Not Started | Unassigned | None yet | Live Activity + push/local setup |
-| Background audio for capture | Not Started | Unassigned | None yet | AVAudioSession background config |
+| Calendar sync (Google/Microsoft) | Done | Agent E | `InsightSwiftFeature/Services/ExternalCalendarSyncService.swift` | Monitor sync reliability |
+| EventKit integration | Done | Agent E | `InsightSwiftFeature/Services/EventKitMapper.swift` | Monitor permission issues |
+| HealthKit ingestion | Done | Agent F | `InsightSwiftFeature/Services/HealthKitService.swift` | Add more data types if needed |
+| Notifications + Live Activities | Done | Agent G | `InsightSwiftFeature/Services/NotificationService.swift` | Polish Live Activity UI |
+| Background audio for capture | Done | Agent G | `InsightSwiftFeature/Services/RecordingCoordinator.swift` | Monitor background stability |
 
 ## P3 Final Parity + Polish
 | Area | Status | Owner | Evidence | Next step |

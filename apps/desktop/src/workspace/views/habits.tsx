@@ -283,7 +283,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
-      <div className="px-10 pt-10 pb-6 bg-[var(--bg)]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8 max-w-7xl mx-auto w-full">
+      <div className="px-8 pt-8 pb-5 bg-[var(--bg)]/80 backdrop-blur-xl sticky top-0 z-10 space-y-6 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-3xl font-extrabold tracking-tight">Habits</h1>
@@ -291,8 +291,8 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
           </div>
           <div className="flex items-center gap-4">
             <div className="flex-1 max-w-md relative">
-              <input 
-                className="w-full h-11 bg-white/50 border border-black/5 rounded-2xl px-10 text-sm font-medium focus:bg-white focus:shadow-md transition-all outline-none"
+              <input
+                className="w-full h-10 bg-white/50 border border-black/5 rounded-2xl px-10 text-sm font-medium focus:bg-white focus:shadow-md transition-all outline-none"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Define a new habit..."
@@ -302,14 +302,14 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                 }}
               />
               <div className="absolute left-3.5 top-3.5 opacity-30">
-                  <Icon name="bolt" size={16} />
+                <Icon name="bolt" size={16} />
               </div>
             </div>
-            <button 
+            <button
               onClick={() => {
                 commitHabitDraft()
               }}
-              className="h-11 px-6 bg-[#D95D39] text-white rounded-2xl font-bold shadow-lg shadow-[#D95D39]/20 hover:scale-105 active:scale-95 transition-all"
+              className="h-10 px-6 bg-[#D95D39] text-white rounded-2xl font-bold shadow-lg shadow-[#D95D39]/20 hover:scale-105 active:scale-95 transition-all"
             >
               Add Habit
             </button>
@@ -317,10 +317,10 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
         </div>
       </div>
 
-        <div className="flex-1 overflow-hidden px-10 pb-32 max-w-7xl mx-auto w-full">
-        <div className="flex flex-col xl:flex-row gap-8 h-full">
+      <div className="flex-1 overflow-hidden px-8 pb-24 max-w-7xl mx-auto w-full">
+        <div className="flex flex-col xl:flex-row gap-6 h-full">
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               {defs.length === 0 && <div className="py-20 text-center opacity-30 font-bold uppercase text-xs tracking-widest">No habits defined</div>}
               {defs.map((h) => {
                 const isSelected = selectedId === h.id
@@ -330,6 +330,9 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                 const streak = calcStreak(values)
                 const points = pointsForMinutes(basePoints(h.importance, h.difficulty), h.estimateMinutes ?? 15).toFixed(1)
                 const lastAt = recent.get(h.id)
+                const targetLabel = typeof h.targetPerWeek === 'number' ? `${h.targetPerWeek}/wk` : '—'
+                const scheduleLabel = h.schedule?.trim() ? h.schedule : '—'
+                const estimateLabel = typeof h.estimateMinutes === 'number' ? `${h.estimateMinutes} min` : '—'
                 return (
                   <motion.div
                     key={h.id}
@@ -351,9 +354,11 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                         {h.subcategory ? <span>· {h.subcategory}</span> : null}
                         {lastAt ? <span>· Last {new Date(lastAt).toLocaleDateString()}</span> : null}
                       </div>
-                      <div className="habitRowParams">
-                        <span>Target: {h.targetPerWeek ? `${h.targetPerWeek}/wk` : '—'}</span>
-                        <span>Schedule: {h.schedule ?? '—'}</span>
+                      <div className="habitRowPills">
+                        <span className="habitRowPill">Target: {targetLabel}</span>
+                        <span className="habitRowPill">Schedule: {scheduleLabel}</span>
+                        <span className="habitRowPill">Estimate: {estimateLabel}</span>
+                        {h.isTimed ? <span className="habitRowPill accent">Timed</span> : null}
                       </div>
                       {h.tags.length > 0 ? (
                         <div className="habitRowChips">
@@ -368,26 +373,11 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                     </div>
 
                     <div className="habitRowChart">
+                      <div className="habitRowChartHeader">
+                        <span>Consistency</span>
+                        <span className="habitRowChartMeta">Past 12 months</span>
+                      </div>
                       <HabitHeatmap values={values} startDate={heatmapStart} maxAbs={heatmapMax} stretch />
-                    </div>
-
-                    <div className="habitRowStats">
-                      <div className="habitRowStat">
-                        <span>Done</span>
-                        <strong>{doneCount}</strong>
-                      </div>
-                      <div className="habitRowStat">
-                        <span>Missed</span>
-                        <strong>{missedCount}</strong>
-                      </div>
-                      <div className="habitRowStat">
-                        <span>Streak</span>
-                        <strong>{streak}</strong>
-                      </div>
-                      <div className="habitRowStat">
-                        <span>Points</span>
-                        <strong>{points}</strong>
-                      </div>
                       <div className="habitRowActions">
                         <button
                           className="habitRowBtn miss"
@@ -416,6 +406,25 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                         >
                           Analytics
                         </button>
+                      </div>
+                    </div>
+
+                    <div className="habitRowMetrics">
+                      <div className="habitRowMetric done">
+                        <span>Done</span>
+                        <strong>{doneCount}</strong>
+                      </div>
+                      <div className="habitRowMetric missed">
+                        <span>Missed</span>
+                        <strong>{missedCount}</strong>
+                      </div>
+                      <div className="habitRowMetric streak">
+                        <span>Streak</span>
+                        <strong>{streak}</strong>
+                      </div>
+                      <div className="habitRowMetric points">
+                        <span>Points</span>
+                        <strong>{points}</strong>
                       </div>
                     </div>
                   </motion.div>

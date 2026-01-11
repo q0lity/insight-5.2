@@ -166,7 +166,16 @@ function PieChart(props: { slices: Array<{ label: string; value: number }>; size
   const cx = r
   const cy = r
   const total = props.slices.reduce((a, s) => a + s.value, 0)
-  const colors = ['#D95D39', '#5B5F97', '#488B86', '#1C1C1E', '#8E8E93', '#CF423C', '#3D8856', '#FCECE8']
+  const colors = [
+    'var(--chart-1)',
+    'var(--chart-2)',
+    'var(--chart-3)',
+    'var(--chart-4)',
+    'var(--chart-5)',
+    'var(--accent)',
+    'var(--muted2)',
+    'var(--border2)',
+  ]
 
   if (total <= 0) return <div className="text-center py-10 font-bold text-xs" style={{ color: 'var(--muted)' }}>No data yet</div>
 
@@ -224,7 +233,7 @@ function RadarChart(props: { axes: string[]; values: number[]; compact?: boolean
           const p = polar(cx, cy, r, i * step)
           return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="var(--border)" strokeWidth="1" />
         })}
-        <path d={poly} fill="var(--accentSoft)" stroke="var(--indigo)" strokeWidth="2.5" strokeLinejoin="round" />
+        <path d={poly} fill="var(--accentSoft)" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" />
         {axes.map((a, i) => {
           const p = polar(cx, cy, r + labelOffset, i * step)
           return (
@@ -982,7 +991,7 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
     <div className="flex flex-col h-full font-['Figtree'] overflow-hidden" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
       <div className="px-10 pt-12 pb-8 backdrop-blur-xl sticky top-0 z-10 space-y-8" style={{ background: 'var(--bg)', opacity: 0.98 }}>
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-black tracking-tight uppercase" style={{ color: 'var(--muted)' }}>Strategic Lifecycle Insights</h1>
+          <h1 className="text-2xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Strategic Lifecycle Insights</h1>
           <div className="flex gap-3 items-center">
             <select
               value={viewMode}
@@ -995,12 +1004,12 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
             </select>
             <button
               onClick={() => setEdit((v) => !v)}
-              className="px-8 py-3 rounded-[20px] text-sm font-black uppercase tracking-widest transition-all shadow-sm hover:shadow-xl"
+              className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm"
               style={{
                 background: edit ? 'var(--text)' : 'var(--panel)',
                 color: edit ? 'var(--bg)' : 'var(--text)',
-                border: edit ? 'none' : '1px solid var(--border)',
-                transform: edit ? 'scale(1.05)' : 'scale(1)',
+                border: edit ? '1px solid transparent' : '1px solid var(--border)',
+                boxShadow: edit ? '0 10px 22px rgba(0,0,0,0.12)' : '0 6px 16px rgba(0,0,0,0.06)',
               }}
             >
               {edit ? 'Lock Layout' : 'Customize'}
@@ -1008,7 +1017,7 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
             {edit && (
               <button
                 onClick={resetLayout}
-                className="px-8 py-3 rounded-[20px] text-sm font-black uppercase tracking-widest shadow-sm hover:shadow-md transition-all"
+                className="px-6 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all"
                 style={{ background: 'var(--accentSoft)', color: 'var(--accent)' }}
               >
                 Reset
@@ -1023,12 +1032,11 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
               <button
                 key={k}
                 onClick={() => setView(k)}
-                className="px-10 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-[18px] transition-all"
+                className="px-8 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] rounded-[16px] transition-all"
                 style={{
                   background: view === k ? 'var(--panel)' : 'transparent',
                   color: view === k ? 'var(--text)' : 'var(--muted)',
-                  boxShadow: view === k ? '0 10px 25px -5px rgba(0,0,0,0.1)' : 'none',
-                  transform: view === k ? 'scale(1.02)' : 'scale(1)',
+                  boxShadow: view === k ? '0 8px 20px rgba(0,0,0,0.1)' : 'none',
                 }}
               >
                 {k}
@@ -1041,12 +1049,11 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
               <button
                 key={k}
                 onClick={() => setRange(k)}
-                className="px-6 py-3 text-[10px] font-black uppercase tracking-[0.15em] rounded-[18px] transition-all"
+                className="px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] rounded-[16px] transition-all"
                 style={{
                   background: range === k ? 'var(--accent)' : 'transparent',
                   color: range === k ? 'white' : 'var(--muted)',
-                  boxShadow: range === k ? '0 10px 25px -5px rgba(0,0,0,0.15)' : 'none',
-                  transform: range === k ? 'scale(1.02)' : 'scale(1)',
+                  boxShadow: range === k ? '0 8px 20px rgba(0,0,0,0.12)' : 'none',
                 }}
               >
                 {k === 'quarter' ? 'Q' : k === 'year' ? 'Y' : k}
@@ -1065,7 +1072,7 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
                   setFilterType(ft)
                   setSelectedFilters([])
                 }}
-                className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-all"
+                className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] rounded-lg transition-all"
                 style={{
                   background: filterType === ft ? 'var(--panel)' : 'transparent',
                   color: filterType === ft ? 'var(--text)' : 'var(--muted)',
@@ -1090,7 +1097,7 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
                         setSelectedFilters([...selectedFilters, opt])
                       }
                     }}
-                    className="px-3 py-1.5 text-[10px] font-bold rounded-full transition-all"
+                    className="px-3 py-1.5 text-[11px] font-semibold rounded-full transition-all"
                     style={{
                       background: isSelected ? 'var(--accent)' : 'var(--panel)',
                       color: isSelected ? 'white' : 'var(--text)',
@@ -1104,7 +1111,7 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
               {selectedFilters.length > 0 && (
                 <button
                   onClick={() => setSelectedFilters([])}
-                  className="px-3 py-1.5 text-[10px] font-bold rounded-full transition-all"
+                  className="px-3 py-1.5 text-[11px] font-semibold rounded-full transition-all"
                   style={{ background: 'var(--accentSoft)', color: 'var(--accent)' }}
                 >
                   Clear

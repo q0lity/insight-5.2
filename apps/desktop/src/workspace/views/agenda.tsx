@@ -359,8 +359,8 @@ function AgendaMonthView(props: {
                       onClick={() => props.onSelectEvent?.(ev.id)}
                       title={formatEventTitle(ev, titleMode)}
                       style={{
-                        borderColor: hexToRgba(accent.color, 0.35),
-                        background: hexToRgba(accent.color, 0.12),
+                        borderColor: hexToRgba(accent.color, 0.55),
+                        background: hexToRgba(accent.color, 0.40),
                         color: accent.color,
                       }}
                       draggable
@@ -759,8 +759,8 @@ function AgendaTimelineView(props: {
                         className={ev.active ? 'agAllDayPill active' : 'agAllDayPill'}
                         onClick={() => props.onSelectEvent(ev.id)}
                         style={{
-                          borderColor: hexToRgba(accent.color, 0.35),
-                          background: hexToRgba(accent.color, 0.12),
+                          borderColor: hexToRgba(accent.color, 0.55),
+                          background: hexToRgba(accent.color, 0.40),
                         }}
                         title={formatEventTitle(ev, titleMode)}
                       >
@@ -896,8 +896,8 @@ function AgendaTimelineView(props: {
                         height: `${Math.max(1.5, height)}%`,
                         left: `calc(${leftPct}% + 4px)`,
                         width: `calc(${widthPct}% - 8px)`,
-                        borderColor: hexToRgba(accent.color, 0.32),
-                        background: hexToRgba(accent.color, 0.16),
+                        borderColor: hexToRgba(accent.color, 0.55),
+                        background: hexToRgba(accent.color, 0.40),
                         cursor: isDragging ? 'grabbing' : 'grab',
                       }}
                       onMouseDown={(e) => {

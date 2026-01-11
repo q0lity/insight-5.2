@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { CalendarEvent } from '../../storage/calendar'
 import type { Task } from '../../storage/tasks'
 import { Icon } from '../../ui/icons'
@@ -189,6 +190,7 @@ export function EcosystemView(props: {
   events: CalendarEvent[]
   tasks: Task[]
   trackerDefs?: TrackerDef[]
+  inspectorPortalId?: string
   onOpenGoal?: (name: string) => void
   onOpenProject?: (name: string) => void
   onOpenTracker?: (key: string) => void
@@ -501,6 +503,356 @@ export function EcosystemView(props: {
     updateCategorySubcategories(category, uniqStrings([...subs, path]))
     setSubcategoryDrafts(['', '', ''])
   }
+
+  const inspectorPortalId = props.inspectorPortalId ?? ''
+  const shouldPortal = Boolean(inspectorPortalId)
+  const inspectorHost = typeof document !== 'undefined' && shouldPortal
+    ? document.getElementById(inspectorPortalId)
+    : null
+  const inspectorCard = (
+    <div className={`ecoSidebarCard${shouldPortal ? ' portal' : ''}`}>
+      <div className="ecoSidebarHeader">
+        <div>
+          <h3 className="ecoSidebarTitle">Inspector</h3>
+          <p className="ecoSidebarSubtitle">Edit links, chips, and defaults.</p>
+        </div>
+        {selection.kind !== 'none' ? (
+          <button className="ecoActionBtn" type="button" onClick={() => setSelection({ kind: 'none' })}>
+            Clear
+          </button>
+        ) : null}
+      </div>
+
+      {selection.kind === 'none' ? (
+        <div className="ecoEmptyState">
+          <Icon name="sparkle" size={28} />
+          <p>Select a card to edit details.</p>
+        </div>
+      ) : null}
+
+      {selection.kind === 'goal' && selectedGoal ? (
+        <div className="space-y-6">
+          <div className="ecoDetailHeader">
+            <div>
+              <div className="ecoDetailEyebrow">Goal</div>
+              <div className="ecoDetailTitle">{selectedGoal.name}</div>
+            </div>
+            <div className="ecoDetailActions">
+              <button className="ecoActionBtn" type="button" onClick={() => props.onOpenGoal?.(selectedGoal.name)}>
+                Open goal
+              </button>
+              <button className="ecoActionBtn danger" type="button" onClick={() => removeGoalDef(selection.key)}>
+                Remove
+              </button>
+            </div>
+          </div>
+          <div className="ecoDetailRow">
+            <span className="ecoDetailLabel">Multiplier</span>
+            <input
+              className="ecoMiniInput"
+              type="number"
+              min={0.1}
+              max={3}
+              step={0.1}
+              value={multipliers.goals[selection.key] ?? 1}
+              onChange={(e) => updateGoalMultiplier(selectedGoal.name, Number(e.target.value))}
+            />
+          </div>
+          <MetaEditor
+            value={selectedGoal.meta}
+            onChange={(meta) => updateGoalMeta(selection.key, meta)}
+            suggestions={{
+              tags: tagSuggestions,
+              contexts: contextSuggestions,
+              people: peopleSuggestions,
+              locations: locationSuggestions,
+              skills: skillSuggestions,
+              categories,
+              subcategories: selectedGoal.meta.category ? subcategoriesForCategory(selectedGoal.meta.category) : [],
+              goals: goalSuggestions,
+              projects: projectSuggestions,
+            }}
+          />
+        </div>
+      ) : null}
+
+      {selection.kind === 'project' && selectedProject ? (
+        <div className="space-y-6">
+          <div className="ecoDetailHeader">
+            <div>
+              <div className="ecoDetailEyebrow">Project</div>
+              <div className="ecoDetailTitle">{selectedProject.name}</div>
+            </div>
+            <div className="ecoDetailActions">
+              <button className="ecoActionBtn" type="button" onClick={() => props.onOpenProject?.(selectedProject.name)}>
+                Open project
+              </button>
+              <button className="ecoActionBtn danger" type="button" onClick={() => removeProjectDef(selection.key)}>
+                Remove
+              </button>
+            </div>
+          </div>
+          <div className="ecoDetailRow">
+            <span className="ecoDetailLabel">Multiplier</span>
+            <input
+              className="ecoMiniInput"
+              type="number"
+              min={0.1}
+              max={3}
+              step={0.1}
+              value={multipliers.projects[selection.key] ?? 1}
+              onChange={(e) => updateProjectMultiplier(selectedProject.name, Number(e.target.value))}
+            />
+          </div>
+          <MetaEditor
+            value={selectedProject.meta}
+            onChange={(meta) => updateProjectMeta(selection.key, meta)}
+            suggestions={{
+              tags: tagSuggestions,
+              contexts: contextSuggestions,
+              people: peopleSuggestions,
+              locations: locationSuggestions,
+              skills: skillSuggestions,
+              categories,
+              subcategories: selectedProject.meta.category ? subcategoriesForCategory(selectedProject.meta.category) : [],
+              goals: goalSuggestions,
+              projects: projectSuggestions,
+            }}
+          />
+        </div>
+      ) : null}
+
+      {selection.kind === 'habit' && selectedHabit ? (
+        <div className="space-y-6">
+          <div className="ecoDetailHeader">
+            <div>
+              <div className="ecoDetailEyebrow">Habit</div>
+              <input
+                className="detailSmall"
+                value={selectedHabit.name}
+                onChange={(e) => {
+                  const name = e.target.value
+                  const next = habitDefs.map((h) => (h.id === selectedHabit.id ? { ...h, name } : h))
+                  updateHabits(next)
+                }}
+              />
+            </div>
+            <div className="ecoDetailActions">
+              <button className="ecoActionBtn danger" type="button" onClick={() => removeHabitById(selectedHabit.id)}>
+                Remove
+              </button>
+            </div>
+          </div>
+          <div className="detailGrid">
+            <label>
+              Schedule
+              <input
+                className="detailSmall"
+                value={selectedHabit.schedule ?? ''}
+                onChange={(e) => updateHabitById(selectedHabit.id, { schedule: e.target.value })}
+                placeholder="Mon/Wed/Fri"
+              />
+            </label>
+            <label>
+              Target per week
+              <input
+                className="detailSmall"
+                value={selectedHabit.targetPerWeek ?? ''}
+                onChange={(e) => updateHabitById(selectedHabit.id, { targetPerWeek: numberOrNull(e.target.value) })}
+                placeholder="4"
+              />
+            </label>
+          </div>
+          <div className="detailGrid">
+            <div>
+              <div className="detailLabel">Timed habit</div>
+              <button
+                className={selectedHabit.isTimed ? 'detailToggle active' : 'detailToggle'}
+                type="button"
+                onClick={() => updateHabitById(selectedHabit.id, { isTimed: !selectedHabit.isTimed })}
+              >
+                {selectedHabit.isTimed ? 'Timed' : 'Untimed'}
+              </button>
+            </div>
+            <label>
+              Polarity
+              <select
+                className="detailSmall"
+                value={selectedHabit.polarity ?? 'both'}
+                onChange={(e) => updateHabitById(selectedHabit.id, { polarity: e.target.value as HabitDef['polarity'] })}
+              >
+                <option value="positive">positive</option>
+                <option value="negative">negative</option>
+                <option value="both">both</option>
+              </select>
+            </label>
+          </div>
+          <MetaEditor
+            value={habitMeta(selectedHabit)}
+            onChange={(meta) => {
+              const next = habitDefs.map((h) => (h.id === selectedHabit.id ? applyMetaToHabit(h, meta) : h))
+              updateHabits(next)
+            }}
+            suggestions={{
+              tags: tagSuggestions,
+              contexts: contextSuggestions,
+              people: peopleSuggestions,
+              locations: locationSuggestions,
+              skills: skillSuggestions,
+              categories,
+              subcategories: selectedHabit.category ? subcategoriesForCategory(selectedHabit.category) : [],
+              goals: goalSuggestions,
+              projects: projectSuggestions,
+            }}
+          />
+        </div>
+      ) : null}
+
+      {selection.kind === 'tracker' && selectedTracker ? (
+        <div className="space-y-6">
+          <div className="ecoDetailHeader">
+            <div>
+              <div className="ecoDetailEyebrow">Tracker</div>
+              <div className="ecoDetailTitle">{selectedTracker.label}</div>
+            </div>
+            <div className="ecoDetailActions">
+              <button className="ecoActionBtn" type="button" onClick={() => props.onOpenTracker?.(selectedTracker.key)}>
+                Open tracker
+              </button>
+              <button className="ecoActionBtn danger" type="button" onClick={() => removeTrackerByKey(selectedTracker.key)}>
+                Remove
+              </button>
+            </div>
+          </div>
+          <div className="detailGrid">
+            <label>
+              Label
+              <input
+                className="detailSmall"
+                value={selectedTracker.label}
+                onChange={(e) => {
+                  const next = trackerDefs.map((t) => (t.key === selectedTracker.key ? { ...t, label: e.target.value } : t))
+                  updateTrackers(next)
+                }}
+              />
+            </label>
+            <label>
+              Key
+              <input className="detailSmall" value={selectedTracker.key} readOnly />
+            </label>
+          </div>
+          <TrackerUnitEditor
+            unit={selectedTracker.unit}
+            onChange={(unit) => {
+              const next = trackerDefs.map((t) => (t.key === selectedTracker.key ? { ...t, unit } : t))
+              updateTrackers(next)
+            }}
+          />
+          <MetaEditor
+            value={selectedTracker.meta}
+            onChange={(meta) => {
+              const next = trackerDefs.map((t) => (t.key === selectedTracker.key ? { ...t, meta } : t))
+              updateTrackers(next)
+            }}
+            suggestions={{
+              tags: tagSuggestions,
+              contexts: contextSuggestions,
+              people: peopleSuggestions,
+              locations: locationSuggestions,
+              skills: skillSuggestions,
+              categories,
+              subcategories: selectedTracker.meta.category ? subcategoriesForCategory(selectedTracker.meta.category) : [],
+              goals: goalSuggestions,
+              projects: projectSuggestions,
+            }}
+          />
+        </div>
+      ) : null}
+
+      {selection.kind === 'category' && selectedCategory ? (
+        <div className="space-y-6">
+          <div className="ecoDetailHeader">
+            <div>
+              <div className="ecoDetailEyebrow">Category</div>
+              <div className="ecoDetailTitle">{selectedCategory}</div>
+            </div>
+          </div>
+          <div className="detailRow">
+            <div className="detailLabel">Subcategories</div>
+            <div className="detailChips">
+              {subcategoriesForCategory(selectedCategory).map((sub) => (
+                <button
+                  key={sub}
+                  className="detailChip"
+                  onClick={() =>
+                    updateCategorySubcategories(
+                      selectedCategory,
+                      subcategoriesForCategory(selectedCategory).filter((x) => x !== sub),
+                    )
+                  }
+                  type="button">
+                  {sub}
+                  <span className="detailChipRemove">×</span>
+                </button>
+              ))}
+              <div className="taxonomyPathInput">
+                <input
+                  className="taxonomyPathField"
+                  value={subcategoryDrafts[0] ?? ''}
+                  onChange={(e) => setSubcategoryDrafts([e.target.value, subcategoryDrafts[1] ?? '', subcategoryDrafts[2] ?? ''])}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return
+                    e.preventDefault()
+                    addSubcategoryPath(selectedCategory)
+                  }}
+                  placeholder="Level 1"
+                />
+                <span className="taxonomyPathDivider">/</span>
+                <input
+                  className="taxonomyPathField"
+                  value={subcategoryDrafts[1] ?? ''}
+                  onChange={(e) => setSubcategoryDrafts([subcategoryDrafts[0] ?? '', e.target.value, subcategoryDrafts[2] ?? ''])}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return
+                    e.preventDefault()
+                    addSubcategoryPath(selectedCategory)
+                  }}
+                  placeholder="Level 2"
+                />
+                <span className="taxonomyPathDivider">/</span>
+                <input
+                  className="taxonomyPathField"
+                  value={subcategoryDrafts[2] ?? ''}
+                  onChange={(e) => setSubcategoryDrafts([subcategoryDrafts[0] ?? '', subcategoryDrafts[1] ?? '', e.target.value])}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return
+                    e.preventDefault()
+                    addSubcategoryPath(selectedCategory)
+                  }}
+                  placeholder="Level 3"
+                />
+                <button
+                  className="taxonomyPathAdd"
+                  type="button"
+                  onClick={() => addSubcategoryPath(selectedCategory)}
+                >
+                  Add
+                </button>
+                <button
+                  className="taxonomyPathClear"
+                  type="button"
+                  onClick={() => setSubcategoryDrafts(['', '', ''])}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+            <div className="taxonomyPathHint">Example: Professional / Residency / Coding</div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
@@ -1034,350 +1386,11 @@ export function EcosystemView(props: {
             </div>
           </div>
 
-          <aside className="ecoSidebar">
-            <div className="ecoSidebarCard">
-              <div className="ecoSidebarHeader">
-                <div>
-                  <h3 className="ecoSidebarTitle">Inspector</h3>
-                  <p className="ecoSidebarSubtitle">Edit links, chips, and defaults.</p>
-                </div>
-                {selection.kind !== 'none' ? (
-                  <button className="ecoActionBtn" type="button" onClick={() => setSelection({ kind: 'none' })}>
-                    Clear
-                  </button>
-                ) : null}
-              </div>
-
-              {selection.kind === 'none' ? (
-                <div className="ecoEmptyState">
-                  <Icon name="sparkle" size={28} />
-                  <p>Select a card to edit details.</p>
-                </div>
-              ) : null}
-
-              {selection.kind === 'goal' && selectedGoal ? (
-                <div className="space-y-6">
-                  <div className="ecoDetailHeader">
-                    <div>
-                      <div className="ecoDetailEyebrow">Goal</div>
-                      <div className="ecoDetailTitle">{selectedGoal.name}</div>
-                    </div>
-                    <div className="ecoDetailActions">
-                      <button className="ecoActionBtn" type="button" onClick={() => props.onOpenGoal?.(selectedGoal.name)}>
-                        Open goal
-                      </button>
-                      <button className="ecoActionBtn danger" type="button" onClick={() => removeGoalDef(selection.key)}>
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                  <div className="ecoDetailRow">
-                    <span className="ecoDetailLabel">Multiplier</span>
-                    <input
-                      className="ecoMiniInput"
-                      type="number"
-                      min={0.1}
-                      max={3}
-                      step={0.1}
-                      value={multipliers.goals[selection.key] ?? 1}
-                      onChange={(e) => updateGoalMultiplier(selectedGoal.name, Number(e.target.value))}
-                    />
-                  </div>
-                  <MetaEditor
-                    value={selectedGoal.meta}
-                    onChange={(meta) => updateGoalMeta(selection.key, meta)}
-                    suggestions={{
-                      tags: tagSuggestions,
-                      contexts: contextSuggestions,
-                      people: peopleSuggestions,
-                      locations: locationSuggestions,
-                      skills: skillSuggestions,
-                      categories,
-                      subcategories: selectedGoal.meta.category ? subcategoriesForCategory(selectedGoal.meta.category) : [],
-                      goals: goalSuggestions,
-                      projects: projectSuggestions,
-                    }}
-                  />
-                </div>
-              ) : null}
-
-              {selection.kind === 'project' && selectedProject ? (
-                <div className="space-y-6">
-                  <div className="ecoDetailHeader">
-                    <div>
-                      <div className="ecoDetailEyebrow">Project</div>
-                      <div className="ecoDetailTitle">{selectedProject.name}</div>
-                    </div>
-                    <div className="ecoDetailActions">
-                      <button className="ecoActionBtn" type="button" onClick={() => props.onOpenProject?.(selectedProject.name)}>
-                        Open project
-                      </button>
-                      <button className="ecoActionBtn danger" type="button" onClick={() => removeProjectDef(selection.key)}>
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                  <div className="ecoDetailRow">
-                    <span className="ecoDetailLabel">Multiplier</span>
-                    <input
-                      className="ecoMiniInput"
-                      type="number"
-                      min={0.1}
-                      max={3}
-                      step={0.1}
-                      value={multipliers.projects[selection.key] ?? 1}
-                      onChange={(e) => updateProjectMultiplier(selectedProject.name, Number(e.target.value))}
-                    />
-                  </div>
-                  <MetaEditor
-                    value={selectedProject.meta}
-                    onChange={(meta) => updateProjectMeta(selection.key, meta)}
-                    suggestions={{
-                      tags: tagSuggestions,
-                      contexts: contextSuggestions,
-                      people: peopleSuggestions,
-                      locations: locationSuggestions,
-                      skills: skillSuggestions,
-                      categories,
-                      subcategories: selectedProject.meta.category ? subcategoriesForCategory(selectedProject.meta.category) : [],
-                      goals: goalSuggestions,
-                      projects: projectSuggestions,
-                    }}
-                  />
-                </div>
-              ) : null}
-
-              {selection.kind === 'habit' && selectedHabit ? (
-                <div className="space-y-6">
-                  <div className="ecoDetailHeader">
-                    <div>
-                      <div className="ecoDetailEyebrow">Habit</div>
-                      <input
-                        className="detailSmall"
-                        value={selectedHabit.name}
-                        onChange={(e) => {
-                          const name = e.target.value
-                          const next = habitDefs.map((h) => (h.id === selectedHabit.id ? { ...h, name } : h))
-                          updateHabits(next)
-                        }}
-                      />
-                    </div>
-                    <div className="ecoDetailActions">
-                      <button className="ecoActionBtn danger" type="button" onClick={() => removeHabitById(selectedHabit.id)}>
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                  <div className="detailGrid">
-                    <label>
-                      Schedule
-                      <input
-                        className="detailSmall"
-                        value={selectedHabit.schedule ?? ''}
-                        onChange={(e) => updateHabitById(selectedHabit.id, { schedule: e.target.value })}
-                        placeholder="Mon/Wed/Fri"
-                      />
-                    </label>
-                    <label>
-                      Target per week
-                      <input
-                        className="detailSmall"
-                        value={selectedHabit.targetPerWeek ?? ''}
-                        onChange={(e) => updateHabitById(selectedHabit.id, { targetPerWeek: numberOrNull(e.target.value) })}
-                        placeholder="4"
-                      />
-                    </label>
-                  </div>
-                  <div className="detailGrid">
-                    <div>
-                      <div className="detailLabel">Timed habit</div>
-                      <button
-                        className={selectedHabit.isTimed ? 'detailToggle active' : 'detailToggle'}
-                        type="button"
-                        onClick={() => updateHabitById(selectedHabit.id, { isTimed: !selectedHabit.isTimed })}
-                      >
-                        {selectedHabit.isTimed ? 'Timed' : 'Untimed'}
-                      </button>
-                    </div>
-                    <label>
-                      Polarity
-                      <select
-                        className="detailSmall"
-                        value={selectedHabit.polarity ?? 'both'}
-                        onChange={(e) => updateHabitById(selectedHabit.id, { polarity: e.target.value as HabitDef['polarity'] })}
-                      >
-                        <option value="positive">positive</option>
-                        <option value="negative">negative</option>
-                        <option value="both">both</option>
-                      </select>
-                    </label>
-                  </div>
-                  <MetaEditor
-                    value={habitMeta(selectedHabit)}
-                    onChange={(meta) => {
-                      const next = habitDefs.map((h) => (h.id === selectedHabit.id ? applyMetaToHabit(h, meta) : h))
-                      updateHabits(next)
-                    }}
-                    suggestions={{
-                      tags: tagSuggestions,
-                      contexts: contextSuggestions,
-                      people: peopleSuggestions,
-                      locations: locationSuggestions,
-                      skills: skillSuggestions,
-                      categories,
-                      subcategories: selectedHabit.category ? subcategoriesForCategory(selectedHabit.category) : [],
-                      goals: goalSuggestions,
-                      projects: projectSuggestions,
-                    }}
-                  />
-                </div>
-              ) : null}
-
-              {selection.kind === 'tracker' && selectedTracker ? (
-                <div className="space-y-6">
-                  <div className="ecoDetailHeader">
-                    <div>
-                      <div className="ecoDetailEyebrow">Tracker</div>
-                      <div className="ecoDetailTitle">{selectedTracker.label}</div>
-                    </div>
-                    <div className="ecoDetailActions">
-                      <button className="ecoActionBtn" type="button" onClick={() => props.onOpenTracker?.(selectedTracker.key)}>
-                        Open tracker
-                      </button>
-                      <button className="ecoActionBtn danger" type="button" onClick={() => removeTrackerByKey(selectedTracker.key)}>
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                  <div className="detailGrid">
-                    <label>
-                      Label
-                      <input
-                        className="detailSmall"
-                        value={selectedTracker.label}
-                        onChange={(e) => {
-                          const next = trackerDefs.map((t) => (t.key === selectedTracker.key ? { ...t, label: e.target.value } : t))
-                          updateTrackers(next)
-                        }}
-                      />
-                    </label>
-                    <label>
-                      Key
-                      <input className="detailSmall" value={selectedTracker.key} readOnly />
-                    </label>
-                  </div>
-                  <TrackerUnitEditor
-                    unit={selectedTracker.unit}
-                    onChange={(unit) => {
-                      const next = trackerDefs.map((t) => (t.key === selectedTracker.key ? { ...t, unit } : t))
-                      updateTrackers(next)
-                    }}
-                  />
-                  <MetaEditor
-                    value={selectedTracker.meta}
-                    onChange={(meta) => {
-                      const next = trackerDefs.map((t) => (t.key === selectedTracker.key ? { ...t, meta } : t))
-                      updateTrackers(next)
-                    }}
-                    suggestions={{
-                      tags: tagSuggestions,
-                      contexts: contextSuggestions,
-                      people: peopleSuggestions,
-                      locations: locationSuggestions,
-                      skills: skillSuggestions,
-                      categories,
-                      subcategories: selectedTracker.meta.category ? subcategoriesForCategory(selectedTracker.meta.category) : [],
-                      goals: goalSuggestions,
-                      projects: projectSuggestions,
-                    }}
-                  />
-                </div>
-              ) : null}
-
-              {selection.kind === 'category' && selectedCategory ? (
-                <div className="space-y-6">
-                  <div className="ecoDetailHeader">
-                    <div>
-                      <div className="ecoDetailEyebrow">Category</div>
-                      <div className="ecoDetailTitle">{selectedCategory}</div>
-                    </div>
-                  </div>
-                  <div className="detailRow">
-                    <div className="detailLabel">Subcategories</div>
-                    <div className="detailChips">
-                      {subcategoriesForCategory(selectedCategory).map((sub) => (
-                        <button
-                          key={sub}
-                          className="detailChip"
-                          onClick={() =>
-                            updateCategorySubcategories(
-                              selectedCategory,
-                              subcategoriesForCategory(selectedCategory).filter((x) => x !== sub),
-                            )
-                          }
-                          type="button">
-                          {sub}
-                          <span className="detailChipRemove">×</span>
-                        </button>
-                      ))}
-                      <div className="taxonomyPathInput">
-                        <input
-                          className="taxonomyPathField"
-                          value={subcategoryDrafts[0] ?? ''}
-                          onChange={(e) => setSubcategoryDrafts([e.target.value, subcategoryDrafts[1] ?? '', subcategoryDrafts[2] ?? ''])}
-                          onKeyDown={(e) => {
-                            if (e.key !== 'Enter') return
-                            e.preventDefault()
-                            addSubcategoryPath(selectedCategory)
-                          }}
-                          placeholder="Level 1"
-                        />
-                        <span className="taxonomyPathDivider">/</span>
-                        <input
-                          className="taxonomyPathField"
-                          value={subcategoryDrafts[1] ?? ''}
-                          onChange={(e) => setSubcategoryDrafts([subcategoryDrafts[0] ?? '', e.target.value, subcategoryDrafts[2] ?? ''])}
-                          onKeyDown={(e) => {
-                            if (e.key !== 'Enter') return
-                            e.preventDefault()
-                            addSubcategoryPath(selectedCategory)
-                          }}
-                          placeholder="Level 2"
-                        />
-                        <span className="taxonomyPathDivider">/</span>
-                        <input
-                          className="taxonomyPathField"
-                          value={subcategoryDrafts[2] ?? ''}
-                          onChange={(e) => setSubcategoryDrafts([subcategoryDrafts[0] ?? '', subcategoryDrafts[1] ?? '', e.target.value])}
-                          onKeyDown={(e) => {
-                            if (e.key !== 'Enter') return
-                            e.preventDefault()
-                            addSubcategoryPath(selectedCategory)
-                          }}
-                          placeholder="Level 3"
-                        />
-                        <button
-                          className="taxonomyPathAdd"
-                          type="button"
-                          onClick={() => addSubcategoryPath(selectedCategory)}
-                        >
-                          Add
-                        </button>
-                        <button
-                          className="taxonomyPathClear"
-                          type="button"
-                          onClick={() => setSubcategoryDrafts(['', '', ''])}
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    </div>
-                    <div className="taxonomyPathHint">Example: Professional / Residency / Coding</div>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </aside>
+          {shouldPortal ? (inspectorHost ? createPortal(inspectorCard, inspectorHost) : null) : (
+            <aside className="ecoSidebar">
+              {inspectorCard}
+            </aside>
+          )}
         </div>
       </div>
     </div>

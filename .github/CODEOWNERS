@@ -1,0 +1,32 @@
+# CODEOWNERS - Define who is responsible for code review
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything
+* @insight-team
+
+# Mobile app (React Native)
+apps/mobile/ @mobile-team
+
+# iOS Native app
+apps/insight_swift/ @ios-team
+
+# Desktop app
+apps/desktop/ @desktop-team
+
+# Shared packages
+packages/ @platform-team
+
+# Infrastructure and CI/CD
+.github/ @devops-team
+supabase/ @backend-team
+
+# Database schema changes require careful review
+DB/ @backend-team @platform-team
+
+# PRD and documentation
+PRD/ @product-team
+AGENTS/ @product-team
+
+# Critical configuration files
+package.json @platform-team
+tsconfig.json @platform-team

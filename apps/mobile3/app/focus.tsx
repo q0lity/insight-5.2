@@ -241,8 +241,6 @@ export default function FocusScreen() {
     });
   }, [active?.id, remainingBucket, remainingSeconds, active?.title, active?.trackerKey]);
 
-  const isDark = colorScheme === 'dark';
-
   return (
     <View style={[styles.container, { backgroundColor: palette.background }]}>
       <View style={[styles.header, { backgroundColor: 'transparent' }]}>

@@ -11,5 +11,9 @@
     "dev:mobile2": "npm run --prefix \"apps/mobile2\" start",
     "dev:mobile4": "npm run --prefix \"apps/mobile4\" start",
     "dev:desktop": "npm run --prefix \"apps/desktop\" dev"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "playwright": "^1.57.0"
   }
 }

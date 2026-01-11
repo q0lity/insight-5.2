@@ -176,6 +176,32 @@ function clamp01(n: number) {
   return Math.max(0, Math.min(1, n))
 }
 
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n))
+}
+
+const RIGHT_PANEL_WIDTH_KEY = 'insight5.ui.rightPanelWidth.v1'
+const RIGHT_PANEL_MIN = 320
+const RIGHT_PANEL_MAX = 920
+
+function loadRightPanelWidth() {
+  try {
+    const raw = localStorage.getItem(RIGHT_PANEL_WIDTH_KEY)
+    const n = raw ? Number(raw) : NaN
+    if (Number.isFinite(n)) return clamp(n, RIGHT_PANEL_MIN, RIGHT_PANEL_MAX)
+  } catch {
+    // ignore
+  }
+  try {
+    const css = getComputedStyle(document.documentElement).getPropertyValue('--right-panel-width')
+    const n = Number(css.replace('px', '').trim())
+    if (Number.isFinite(n)) return clamp(n, RIGHT_PANEL_MIN, RIGHT_PANEL_MAX)
+  } catch {
+    // ignore
+  }
+  return 360
+}
+
 function numberOrNull(v: string) {
   const n = Number(v)
   return Number.isFinite(n) ? n : null
@@ -1260,8 +1286,11 @@ function App() {
   const [rightCollapsed, setRightCollapsed] = useState(false)
   const [railLabelsOpen, setRailLabelsOpen] = useState(false)
   const [rightMode, setRightMode] = useState<'details' | 'ai'>('details')
+  const uiMainRef = useRef<HTMLElement | null>(null)
+  const [rightPanelWidth, setRightPanelWidth] = useState<number>(() => loadRightPanelWidth())
+  const [rightPanelResizing, setRightPanelResizing] = useState(false)
   const rightPanelHideViews = useMemo<Set<WorkspaceViewKey>>(
-    () => new Set(['ecosystem', 'habits', 'goals', 'goal-detail', 'notes']),
+    () => new Set(['habits', 'goals', 'goal-detail', 'notes']),
     [],
   )
   const [propsCollapsed, setPropsCollapsed] = useState(true)
@@ -1483,8 +1512,45 @@ function App() {
     const view = getActiveTab(workspace)?.view
     if (view && rightPanelHideViews.has(view)) {
       setRightCollapsed(true)
+      return
+    }
+    if (view === 'ecosystem') {
+      setRightCollapsed(false)
     }
   }, [rightPanelHideViews, workspace.activeTabId, workspace.tabs])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(RIGHT_PANEL_WIDTH_KEY, String(rightPanelWidth))
+    } catch {
+      // ignore
+    }
+  }, [rightPanelWidth])
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!rightPanelResizing) return
+      const root = uiMainRef.current
+      if (!root) return
+      const rect = root.getBoundingClientRect()
+      const next = clamp(rect.right - e.clientX, RIGHT_PANEL_MIN, RIGHT_PANEL_MAX)
+      setRightPanelWidth(next)
+    }
+
+    function onUp() {
+      if (!rightPanelResizing) return
+      setRightPanelResizing(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [rightPanelResizing])
 
   async function refreshAll() {
     const [c, t, e] = await Promise.all([listInboxCaptures(), listTasks(), listEvents()])
@@ -5108,6 +5174,7 @@ function App() {
             events={events}
             tasks={tasks}
             trackerDefs={trackerDefs}
+            inspectorPortalId="ecosystem-inspector-slot"
             onOpenGoal={openGoalDetail}
             onOpenProject={openProjectDetail}
             onOpenTracker={openTrackerDetail}
@@ -5151,6 +5218,7 @@ function App() {
   }
 
 	  const active = getActiveTab(workspace)
+    const isEcosystemView = active?.view === 'ecosystem'
 
   const selectedTask = selection.kind === 'task' ? tasks.find((t) => t.id === selection.id) ?? null : null
   const selectedEvent = selection.kind === 'event' ? events.find((e) => e.id === selection.id) ?? null : null
@@ -5556,6 +5624,7 @@ function App() {
           />
 
                   <main
+                    ref={uiMainRef}
 
                     className="uiMain"
 
@@ -5565,7 +5634,8 @@ function App() {
 
                       gap: '16px',
 
-                      padding: '16px'
+                      padding: '16px',
+                      ['--right-panel-width' as any]: `${rightPanelWidth}px`,
 
                     }}>             <aside
                       className={`rail${railLabelsOpen ? ' showLabels' : ''}`}
@@ -6004,7 +6074,7 @@ function App() {
                                     <Icon name="check" size={12} />
                                   </span>
                                   <div className="sbQuickTitle">{h.name}</div>
-                                  <div className="sbQuickMeta">{h.category ?? 'Habit'}</div>
+                                  <div className="sbQuickMeta">{h.category ?? ''}</div>
                                 </div>
                               ))
                             )}
@@ -6241,33 +6311,59 @@ function App() {
 	      <AnimatePresence>
 	      {rightCollapsed ? null : (
 	        <motion.aside
-	          className="details"
+	          className={rightPanelResizing ? 'details resizing' : 'details'}
 	          initial={{ x: 16, opacity: 0 }}
 	          animate={{ x: 0, opacity: 1 }}
 	          exit={{ x: 16, opacity: 0 }}
 	          transition={{ duration: 0.16, ease: 'easeOut' }}>
+          <div
+            className="rightResizeHandle"
+            role="separator"
+            aria-label="Resize details panel"
+            onMouseDown={(e) => {
+              if (e.button !== 0) return
+              e.preventDefault()
+              setRightPanelResizing(true)
+              document.body.style.cursor = 'col-resize'
+              document.body.style.userSelect = 'none'
+            }}
+          >
+            <span className="rightResizeGrip" aria-hidden="true" />
+          </div>
 	        <div className="detailsHeader">
 	          <div className="detailsHeaderRow">
 	            <div>
-	              <div className="detailsTitle">{rightMode === 'ai' ? 'AI' : 'Details'}</div>
-              <div className="detailsSub">{rightMode === 'ai' ? 'Chat with your notes and calendar.' : 'Edit fields like importance and difficulty/energy plus notes.'}</div>
+	              <div className="detailsTitle">
+                  {isEcosystemView ? 'Inspector' : rightMode === 'ai' ? 'AI' : 'Details'}
+                </div>
+              <div className="detailsSub">
+                {isEcosystemView
+                  ? 'Edit links, chips, and defaults.'
+                  : rightMode === 'ai'
+                    ? 'Chat with your notes and calendar.'
+                    : 'Edit fields like importance and difficulty/energy plus notes.'}
+              </div>
 	            </div>
 	            <div className="detailsHeaderActions">
-	              <button
-	                className={rightMode === 'ai' ? 'detailsIconBtn active' : 'detailsIconBtn'}
-	                onClick={() => setRightMode((m) => (m === 'ai' ? 'details' : 'ai'))}
-	                aria-label="Toggle AI">
-	                <Icon name="sparkle" size={16} />
-	              </button>
-	              <button
-	                className="detailsIconBtn"
-	                onClick={() => {
-	                  if (rightMode === 'ai') openView('assistant')
-	                  else setDocOpen(true)
-	                }}
-	                aria-label={rightMode === 'ai' ? 'Open full chat' : 'Open page'}>
-	                <Icon name="maximize" size={16} />
-	              </button>
+                {isEcosystemView ? null : (
+	                <>
+	                  <button
+	                    className={rightMode === 'ai' ? 'detailsIconBtn active' : 'detailsIconBtn'}
+	                    onClick={() => setRightMode((m) => (m === 'ai' ? 'details' : 'ai'))}
+	                    aria-label="Toggle AI">
+	                    <Icon name="sparkle" size={16} />
+	                  </button>
+	                  <button
+	                    className="detailsIconBtn"
+	                    onClick={() => {
+	                      if (rightMode === 'ai') openView('assistant')
+	                      else setDocOpen(true)
+	                    }}
+	                    aria-label={rightMode === 'ai' ? 'Open full chat' : 'Open page'}>
+	                    <Icon name="maximize" size={16} />
+	                  </button>
+	                </>
+                )}
 	              <button className="detailsIconBtn" onClick={() => setRightCollapsed(true)} aria-label="Collapse right panel">
 	                <Icon name="panelRight" size={16} />
 	              </button>
@@ -6275,7 +6371,11 @@ function App() {
 	          </div>
 	        </div>
 
-	        {rightMode === 'ai' ? (
+	        {isEcosystemView ? (
+            <div className="detailsBody">
+              <div id="ecosystem-inspector-slot" className="detailsPortalSlot" />
+            </div>
+          ) : rightMode === 'ai' ? (
 	          <div className="detailsBody">
 		            <AssistantView
 		              embedded
