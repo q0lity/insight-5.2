@@ -277,8 +277,111 @@ function parseTrackerValue(title: string) {
 }
 
 type FilterType = 'all' | 'category' | 'tag' | 'person' | 'place'
+type WidgetSize = 'default' | 'wide' | 'tall' | 'large'
 
-export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; trackerDefs?: TrackerDef[] }) {
+// Animated counter component
+function AnimatedCounter({ value, suffix = '' }: { value: number; suffix?: string }) {
+  const [displayed, setDisplayed] = useState(0)
+  useEffect(() => {
+    const duration = 600
+    const steps = 20
+    const increment = value / steps
+    let current = 0
+    const timer = setInterval(() => {
+      current += increment
+      if (current >= value) {
+        setDisplayed(value)
+        clearInterval(timer)
+      } else {
+        setDisplayed(Math.round(current))
+      }
+    }, duration / steps)
+    return () => clearInterval(timer)
+  }, [value])
+  return <span className="statValue" style={{ color: 'var(--text)' }}>{displayed.toLocaleString()}{suffix}</span>
+}
+
+// Sparkline chart component
+function Sparkline({ data, color = 'var(--accent)' }: { data: number[]; color?: string }) {
+  if (!data.length) return null
+  const max = Math.max(...data, 1)
+  const min = Math.min(...data, 0)
+  const range = max - min || 1
+  const w = 100
+  const h = 32
+  const points = data.map((v, i) => ({
+    x: (i / (data.length - 1 || 1)) * w,
+    y: h - ((v - min) / range) * h * 0.8 - h * 0.1,
+  }))
+  const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+  const area = `${line} L ${w} ${h} L 0 ${h} Z`
+  return (
+    <div className="sparkline">
+      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+        <path d={area} fill={`${color}20`} />
+        <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    </div>
+  )
+}
+
+// GitHub-style habit heatmap component
+function HabitHeatmapWidget({ events }: { events: CalendarEvent[] }) {
+  const now = Date.now()
+  const days = 91 // Last 3 months
+  const weeks = Math.ceil(days / 7)
+
+  // Calculate habit completions per day
+  const habitsByDay = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const e of events) {
+      if (e.kind !== 'log' || !e.trackerKey?.startsWith('habit:')) continue
+      const day = isoDate(e.startAt)
+      map.set(day, (map.get(day) ?? 0) + 1)
+    }
+    return map
+  }, [events])
+
+  // Build grid (7 rows for days of week, ~13 cols for weeks)
+  const grid: Array<{ date: string; level: number; count: number }[]> = Array.from({ length: 7 }, () => [])
+  const startMs = startOfDayMs(now) - (days - 1) * 24 * 60 * 60 * 1000
+
+  for (let d = 0; d < days; d++) {
+    const ms = startMs + d * 24 * 60 * 60 * 1000
+    const date = isoDate(ms)
+    const dayOfWeek = new Date(ms).getDay()
+    const count = habitsByDay.get(date) ?? 0
+    const level = count === 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : count <= 4 ? 3 : 4
+    grid[dayOfWeek]!.push({ date, level, count })
+  }
+
+  return (
+    <div className="habitHeatmap">
+      {grid.map((row, dayIdx) => (
+        <div key={dayIdx} className="habitHeatmapRow">
+          {row.map((cell) => (
+            <div
+              key={cell.date}
+              className={`habitHeatmapCell level-${cell.level}`}
+              title={`${cell.date}: ${cell.count} habit${cell.count !== 1 ? 's' : ''}`}
+            />
+          ))}
+        </div>
+      ))}
+      <div className="habitHeatmapLegend">
+        <span>Less</span>
+        <div className="cells">
+          {[0, 1, 2, 3, 4].map((l) => (
+            <div key={l} className={`habitHeatmapCell level-${l}`} style={{ cursor: 'default' }} />
+          ))}
+        </div>
+        <span>More</span>
+      </div>
+    </div>
+  )
+}
+
+export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; trackerDefs?: TrackerDef[]; onNewNote?: () => void; onNewTask?: () => void; onVoiceCapture?: () => void }) {
   const [range, setRange] = useState<'today' | 'week' | 'month' | 'quarter' | 'year'>('week')
   const [view, setView] = useState<DashView>('overview')
   const [edit, setEdit] = useState(false)
@@ -289,7 +392,15 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
   const [heatmapPeriods, setHeatmapPeriods] = useState(loadHeatmapPeriods)
   const [filterType, setFilterType] = useState<FilterType>('all')
   const [selectedFilters, setSelectedFilters] = useState<string[]>([])
+  const [fabOpen, setFabOpen] = useState(false)
+  const [currentTime, setCurrentTime] = useState(Date.now())
   const trackerDefs = useMemo(() => props.trackerDefs ?? loadTrackerDefs(), [props.trackerDefs])
+
+  // Update current time every minute for Today widget
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(Date.now()), 60000)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     saveViewMode(viewMode)
@@ -643,8 +754,188 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
     return sumByKey(rows).slice(0, 6)
   }, [inRangeEvents, rangeEnd, rangeStart])
 
+  // Today widget data
+  const todayData = useMemo(() => {
+    const todayStart = startOfDayMs(currentTime)
+    const todayEnd = todayStart + 24 * 60 * 60 * 1000
+
+    // Get today's events sorted by start time
+    const todayEvents = props.events
+      .filter((e) => e.kind !== 'log' && e.endAt > todayStart && e.startAt < todayEnd)
+      .sort((a, b) => a.startAt - b.startAt)
+
+    // Find current event (ongoing) and next event
+    const currentEvent = todayEvents.find((e) => e.startAt <= currentTime && e.endAt > currentTime)
+    const nextEvent = todayEvents.find((e) => e.startAt > currentTime)
+
+    // Calculate day progress (0-100%)
+    const dayProgress = Math.min(100, Math.max(0, ((currentTime - todayStart) / (todayEnd - todayStart)) * 100))
+
+    // Format current time
+    const now = new Date(currentTime)
+    const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+
+    return { currentEvent, nextEvent, dayProgress, timeString, todayEvents }
+  }, [currentTime, props.events])
+
+  // Stats data with trends
+  const statsData = useMemo(() => {
+    const todayStart = startOfDayMs(currentTime)
+    const yesterdayStart = todayStart - 24 * 60 * 60 * 1000
+    const weekAgoStart = todayStart - 7 * 24 * 60 * 60 * 1000
+
+    // Today's stats
+    const todayEvents = props.events.filter((e) => e.kind !== 'log' && e.endAt > todayStart)
+    const todayMins = todayEvents.reduce((sum, e) => {
+      const start = Math.max(e.startAt, todayStart)
+      const end = Math.min(e.endAt, currentTime)
+      return sum + Math.max(0, Math.round((end - start) / 60000))
+    }, 0)
+    const todayPoints = todayEvents.reduce((sum, e) => {
+      const start = Math.max(e.startAt, todayStart)
+      const end = Math.min(e.endAt, currentTime)
+      const mins = Math.max(0, Math.round((end - start) / 60000))
+      return sum + pointsForRange(e, mins)
+    }, 0)
+
+    // Yesterday's stats for comparison
+    const yesterdayEvents = props.events.filter((e) => e.kind !== 'log' && e.endAt > yesterdayStart && e.startAt < todayStart)
+    const yesterdayMins = yesterdayEvents.reduce((sum, e) => {
+      const start = Math.max(e.startAt, yesterdayStart)
+      const end = Math.min(e.endAt, todayStart)
+      return sum + Math.max(0, Math.round((end - start) / 60000))
+    }, 0)
+
+    // Calculate streak (consecutive days with activity)
+    let streak = 0
+    let checkDate = todayStart
+    while (true) {
+      const dayEvents = props.events.filter((e) => e.kind !== 'log' && e.endAt > checkDate && e.startAt < checkDate + 24 * 60 * 60 * 1000)
+      if (dayEvents.length === 0 && checkDate !== todayStart) break
+      if (dayEvents.length > 0) streak++
+      checkDate -= 24 * 60 * 60 * 1000
+      if (checkDate < todayStart - 365 * 24 * 60 * 60 * 1000) break
+    }
+
+    // Trend calculation
+    const timeTrend = yesterdayMins > 0 ? ((todayMins - yesterdayMins) / yesterdayMins) * 100 : 0
+
+    return {
+      todayMins,
+      todayPoints: Math.round(todayPoints),
+      streak,
+      timeTrend,
+      tasksCompleted: props.tasks.filter((t) => t.completedAt && t.completedAt > todayStart).length,
+      tasksPending: props.tasks.filter((t) => !t.completedAt).length,
+    }
+  }, [currentTime, props.events, props.tasks])
+
   const widgets = useMemo(
     () => [
+      // Today widget - hero position
+      {
+        id: 'today',
+        title: 'Today',
+        group: 'overview' as WidgetGroup,
+        size: 'wide' as WidgetSize,
+        accent: 'todayWidget',
+        element: (
+          <div>
+            <div className="todayTimeDisplay">{todayData.timeString}</div>
+            {todayData.currentEvent ? (
+              <div className="todayCurrentEvent mt-3">{todayData.currentEvent.title}</div>
+            ) : (
+              <div className="todayCurrentEvent mt-3 opacity-70">No current event</div>
+            )}
+            <div className="todayProgressBar">
+              <div className="todayProgressFill" style={{ width: `${todayData.dayProgress}%` }} />
+            </div>
+            {todayData.nextEvent && (
+              <div className="todayNextUp">
+                <span style={{ opacity: 0.7 }}>Next up:</span>{' '}
+                <span style={{ fontWeight: 600 }}>{todayData.nextEvent.title}</span>
+                <span style={{ opacity: 0.7, marginLeft: 8 }}>
+                  {new Date(todayData.nextEvent.startAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            )}
+          </div>
+        ),
+      },
+      // Stats widgets with animated counters
+      {
+        id: 'statsTime',
+        title: 'Time Today',
+        group: 'overview' as WidgetGroup,
+        element: (
+          <div>
+            <div className="flex items-baseline gap-3">
+              <AnimatedCounter value={statsData.todayMins} />
+              <span className="text-sm font-bold" style={{ color: 'var(--muted)' }}>min</span>
+              <span className={`statTrend ${statsData.timeTrend > 0 ? 'up' : statsData.timeTrend < 0 ? 'down' : 'neutral'}`}>
+                {statsData.timeTrend > 0 ? '↑' : statsData.timeTrend < 0 ? '↓' : '→'}
+                {Math.abs(Math.round(statsData.timeTrend))}%
+              </span>
+            </div>
+            <Sparkline data={timeSeries.slice(-7)} color="#D95D39" />
+          </div>
+        ),
+      },
+      {
+        id: 'statsPoints',
+        title: 'Points Today',
+        group: 'overview' as WidgetGroup,
+        element: (
+          <div>
+            <div className="flex items-baseline gap-3">
+              <AnimatedCounter value={statsData.todayPoints} />
+              <span className="text-sm font-bold" style={{ color: 'var(--muted)' }}>pts</span>
+            </div>
+            <Sparkline data={pointsSeries.slice(-7)} color="var(--indigo)" />
+          </div>
+        ),
+      },
+      {
+        id: 'statsStreak',
+        title: 'Current Streak',
+        group: 'overview' as WidgetGroup,
+        element: (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-baseline gap-3">
+              <AnimatedCounter value={statsData.streak} />
+              <span className="text-sm font-bold" style={{ color: 'var(--muted)' }}>days</span>
+            </div>
+            {statsData.streak >= 7 && (
+              <span className="streakBadge self-start">🔥 On Fire!</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: 'statsTasks',
+        title: 'Tasks',
+        group: 'overview' as WidgetGroup,
+        element: (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase" style={{ color: 'var(--muted)' }}>Completed</span>
+              <span className="text-lg font-black" style={{ color: '#10B981' }}>{statsData.tasksCompleted}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase" style={{ color: 'var(--muted)' }}>Pending</span>
+              <span className="text-lg font-black" style={{ color: 'var(--text)' }}>{statsData.tasksPending}</span>
+            </div>
+          </div>
+        ),
+      },
+      // GitHub-style habit heatmap
+      {
+        id: 'habitHeatmap',
+        title: 'Habit Streak',
+        group: 'overview' as WidgetGroup,
+        size: 'wide' as WidgetSize,
+        element: <HabitHeatmapWidget events={props.events} />,
+      },
       // Heatmaps at top (user requested) - full width
       {
         id: 'timeHeatmap',
@@ -946,6 +1237,9 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
       topPeople,
       topPlaces,
       trackerSummaryRows,
+      todayData,
+      statsData,
+      props.events,
     ],
   )
 
@@ -1125,16 +1419,18 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
       <div className={`flex-1 overflow-y-auto px-10 pb-32 dashboardContainer ${viewMode}`}>
         <div className={`dashboardGrid ${viewMode}`}>
           {visibleWidgets.map((id) => {
-            const widget = widgetById.get(id) as { id: string; title: string; group: WidgetGroup; element: React.ReactNode; fullWidth?: boolean } | undefined
+            const widget = widgetById.get(id) as { id: string; title: string; group: WidgetGroup; element: React.ReactNode; fullWidth?: boolean; size?: WidgetSize; accent?: string } | undefined
             if (!widget) return null
             if (view !== 'overview' && widget.group !== view) return null
             const isCollapsed = collapsed.has(id)
             const isDragging = dragging === id
             const isDragOver = dragOver === id
+            const sizeClass = widget.size ? `size-${widget.size}` : ''
+            const accentClass = widget.accent || ''
             return (
               <div
                 key={widget.id}
-                className={`dashWidget group relative ${isCollapsed ? 'collapsed' : ''} ${widget.fullWidth ? 'fullWidth' : ''} ${isDragging ? 'dragging' : ''} ${isDragOver ? 'dragOver' : ''}`}
+                className={`dashWidget group relative ${isCollapsed ? 'collapsed' : ''} ${widget.fullWidth ? 'fullWidth' : ''} ${sizeClass} ${accentClass} ${isDragging ? 'dragging' : ''} ${isDragOver ? 'dragOver' : ''}`}
                 draggable={true}
                 onDragStart={(e) => {
                   setDragging(id)
@@ -1222,6 +1518,49 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
             </div>
           </div>
         )}
+      </div>
+
+      {/* Quick Actions FAB */}
+      <div className="quickActionsFab">
+        <button
+          className={`quickActionsFabMain ${fabOpen ? 'open' : ''}`}
+          onClick={() => setFabOpen(!fabOpen)}
+          aria-label="Quick actions"
+        >
+          +
+        </button>
+        <div className={`quickActionsMenu ${fabOpen ? 'open' : ''}`}>
+          <button
+            className="quickActionBtn note"
+            onClick={() => {
+              setFabOpen(false)
+              props.onNewNote?.()
+            }}
+          >
+            <span className="icon">📝</span>
+            New Note
+          </button>
+          <button
+            className="quickActionBtn task"
+            onClick={() => {
+              setFabOpen(false)
+              props.onNewTask?.()
+            }}
+          >
+            <span className="icon">✓</span>
+            New Task
+          </button>
+          <button
+            className="quickActionBtn voice"
+            onClick={() => {
+              setFabOpen(false)
+              props.onVoiceCapture?.()
+            }}
+          >
+            <span className="icon">🎙️</span>
+            Voice Capture
+          </button>
+        </div>
       </div>
     </div>
   )
