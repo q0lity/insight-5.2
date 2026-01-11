@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Icon } from '../../ui/icons'
+import { Icon, type IconName } from '../../ui/icons'
 import type { InboxCapture } from '../../storage/inbox'
 import type { CalendarEvent } from '../../storage/calendar'
 import type { Task } from '../../storage/tasks'
@@ -23,6 +23,22 @@ import {
   type ChatMessage,
 } from '../../assistant/storage'
 import { callOpenAiText } from '../../openai'
+
+const SUGGESTIONS: { text: string; icon: IconName }[] = [
+  { text: 'What did I work on this week?', icon: 'calendar' },
+  { text: 'Show my productivity trends', icon: 'trending' },
+  { text: 'Summarize my tasks', icon: 'check' },
+]
+
+function formatTime(ts: number) {
+  const d = new Date(ts)
+  const now = new Date()
+  const isToday = d.toDateString() === now.toDateString()
+  if (isToday) {
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  }
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
 
 async function callOpenAiChat(opts: { apiKey: string; model: string; input: string; context: string }) {
   const content = await callOpenAiText({
@@ -168,27 +184,40 @@ export function AssistantView(props: {
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto px-6 py-8" ref={listRef}>
           {chat.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
-              <div className="w-24 h-24 bg-[var(--panel)] rounded-full flex items-center justify-center shadow-lg">
-                <Icon name="sparkle" size={40} className="text-[var(--accent)]" />
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-8">
+              {/* Animated welcome icon */}
+              <div className="relative">
+                <div className="absolute inset-0 bg-[var(--accent)] opacity-20 rounded-full blur-xl animate-pulse" />
+                <div className="relative w-28 h-28 bg-gradient-to-br from-[var(--accent)] to-[var(--accentSoft)] rounded-full flex items-center justify-center shadow-xl">
+                  <Icon name="wand" size={48} className="text-white" />
+                </div>
               </div>
-              <div className="space-y-2">
-                <h2 className="text-2xl font-bold">How can I help you today?</h2>
-                <p className="text-[var(--muted)] text-sm max-w-md">
+
+              {/* Welcome text */}
+              <div className="space-y-3">
+                <h2 className="text-3xl font-extrabold bg-gradient-to-r from-[var(--text)] to-[var(--muted)] bg-clip-text text-transparent">
+                  How can I help you today?
+                </h2>
+                <p className="text-[var(--muted)] text-base max-w-md leading-relaxed">
                   Ask me anything about your week, patterns in your productivity, or insights from your data.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2 justify-center mt-4">
-                {['What did I work on this week?', 'Show my productivity trends', 'Summarize my tasks'].map((suggestion) => (
+
+              {/* Suggestion chips with icons */}
+              <div className="flex flex-wrap gap-3 justify-center mt-2">
+                {SUGGESTIONS.map((suggestion) => (
                   <button
-                    key={suggestion}
+                    key={suggestion.text}
                     onClick={() => {
-                      setAssistantInput(suggestion)
-                      void send(suggestion)
+                      setAssistantInput(suggestion.text)
+                      void send(suggestion.text)
                     }}
-                    className="px-4 py-2 text-sm font-medium bg-[var(--panel)] hover:bg-[var(--accentSoft)] border border-[var(--border)] rounded-2xl transition-all"
+                    className="group flex items-center gap-2 px-5 py-3 text-sm font-semibold bg-[var(--panel)] hover:bg-[var(--accentSoft)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
                   >
-                    {suggestion}
+                    <div className="w-6 h-6 rounded-lg bg-[var(--accentSoft)] group-hover:bg-[var(--accent)] flex items-center justify-center transition-colors">
+                      <Icon name={suggestion.icon} size={14} className="text-[var(--accent)] group-hover:text-white transition-colors" />
+                    </div>
+                    <span>{suggestion.text}</span>
                   </button>
                 ))}
               </div>
@@ -198,17 +227,25 @@ export function AssistantView(props: {
               {chat.map((m) => (
                 <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] ${m.role === 'user' ? 'order-2' : 'order-1'}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center ${m.role === 'user' ? 'bg-[var(--accent)]' : 'bg-[var(--panel)] border border-[var(--border)]'}`}>
-                        <Icon name={m.role === 'user' ? 'users' : 'sparkle'} size={14} className={m.role === 'user' ? 'text-white' : 'text-[var(--accent)]'} />
+                    {/* Message header with avatar, name, and timestamp */}
+                    <div className={`flex items-center gap-2 mb-2 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-sm ${m.role === 'user' ? 'bg-gradient-to-br from-[var(--accent)] to-[var(--accentSoft)]' : 'bg-[var(--panel)] border border-[var(--border)]'}`}>
+                        <Icon name={m.role === 'user' ? 'users' : 'wand'} size={14} className={m.role === 'user' ? 'text-white' : 'text-[var(--accent)]'} />
                       </div>
-                      <span className="text-xs font-bold text-[var(--muted)]">
-                        {m.role === 'user' ? 'You' : 'Insight'}
-                      </span>
+                      <div className={`flex items-center gap-2 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                        <span className="text-xs font-bold text-[var(--text)]">
+                          {m.role === 'user' ? 'You' : 'Insight'}
+                        </span>
+                        <span className="text-[10px] text-[var(--muted)]">
+                          {formatTime(m.createdAt)}
+                        </span>
+                      </div>
                     </div>
-                    <div className={`px-5 py-4 rounded-2xl ${m.role === 'user' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--panel)] border border-[var(--border)]'}`}>
+
+                    {/* Message bubble */}
+                    <div className={`px-5 py-4 rounded-2xl shadow-sm ${m.role === 'user' ? 'bg-gradient-to-br from-[var(--accent)] to-[var(--accentSoft)] text-white rounded-tr-md' : 'bg-[var(--panel)] border border-[var(--border)] rounded-tl-md'}`}>
                       {m.role === 'assistant' ? (
-                        <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-bold prose-headings:text-[var(--text)] prose-p:text-[var(--text)] prose-code:bg-[var(--bg)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-[var(--accent)] prose-pre:bg-[var(--bg)] prose-pre:border prose-pre:border-[var(--border)] prose-pre:rounded-xl prose-ul:text-[var(--text)] prose-ol:text-[var(--text)] prose-li:text-[var(--text)] prose-strong:text-[var(--text)] prose-a:text-[var(--accent)]">
+                        <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-bold prose-headings:text-[var(--text)] prose-p:text-[var(--text)] prose-code:bg-[var(--bg)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-[var(--accent)] prose-code:font-mono prose-pre:bg-[var(--bg)] prose-pre:border prose-pre:border-[var(--border)] prose-pre:rounded-xl prose-ul:text-[var(--text)] prose-ol:text-[var(--text)] prose-li:text-[var(--text)] prose-strong:text-[var(--text)] prose-a:text-[var(--accent)] prose-a:no-underline prose-a:font-semibold hover:prose-a:underline">
                           <ReactMarkdown>{m.content}</ReactMarkdown>
                         </div>
                       ) : (
@@ -218,20 +255,23 @@ export function AssistantView(props: {
                   </div>
                 </div>
               ))}
+
+              {/* Typing indicator */}
               {sending && (
                 <div className="flex justify-start">
                   <div className="max-w-[85%]">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center bg-[var(--panel)] border border-[var(--border)]">
-                        <Icon name="sparkle" size={14} className="text-[var(--accent)] animate-spin" />
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-[var(--panel)] border border-[var(--border)] shadow-sm">
+                        <Icon name="wand" size={14} className="text-[var(--accent)]" />
                       </div>
-                      <span className="text-xs font-bold text-[var(--muted)]">Insight</span>
+                      <span className="text-xs font-bold text-[var(--text)]">Insight</span>
+                      <span className="text-[10px] text-[var(--muted)] italic">typing...</span>
                     </div>
-                    <div className="px-5 py-4 rounded-2xl bg-[var(--panel)] border border-[var(--border)]">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-[var(--muted)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-2 h-2 bg-[var(--muted)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-2 h-2 bg-[var(--muted)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="px-5 py-4 rounded-2xl rounded-tl-md bg-[var(--panel)] border border-[var(--border)] shadow-sm">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 bg-[var(--accent)] opacity-60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-2.5 h-2.5 bg-[var(--accent)] opacity-60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-2.5 h-2.5 bg-[var(--accent)] opacity-60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
                     </div>
                   </div>
@@ -242,10 +282,10 @@ export function AssistantView(props: {
         </div>
 
         {/* Input area - fixed at bottom */}
-        <div className="p-4 border-t border-[var(--border)] bg-[var(--bg)]">
+        <div className="p-4 border-t border-[var(--border)] bg-[var(--bg)]/80 backdrop-blur-sm">
           <div className="relative max-w-3xl mx-auto">
             <textarea
-              className="w-full bg-[var(--panel)] border border-[var(--border)] rounded-2xl pl-5 pr-14 py-4 text-base font-medium outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accentSoft)] transition-all resize-none"
+              className="w-full bg-[var(--panel)] border-2 border-[var(--border)] rounded-2xl pl-5 pr-28 py-4 text-base font-medium outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accentSoft)] transition-all resize-none"
               value={assistantInput}
               onChange={(e) => {
                 setAssistantInput(e.target.value)
@@ -260,18 +300,28 @@ export function AssistantView(props: {
               }}
               placeholder="Message Insight..."
               rows={1}
-              style={{ minHeight: '52px', maxHeight: '200px' }}
+              style={{ minHeight: '56px', maxHeight: '200px' }}
             />
-            <button
-              onClick={() => void send(assistantInput)}
-              disabled={assistantInput.trim().length === 0 || sending}
-              className="absolute right-2 bottom-2 w-10 h-10 bg-[var(--accent)] text-white rounded-xl flex items-center justify-center hover:opacity-90 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <Icon name="sparkle" size={18} className={sending ? 'animate-spin' : ''} />
-            </button>
+            <div className="absolute right-2 bottom-2 flex items-center gap-2">
+              {/* Voice input button */}
+              <button
+                className="w-10 h-10 text-[var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accentSoft)] rounded-xl flex items-center justify-center transition-all"
+                title="Voice input (coming soon)"
+              >
+                <Icon name="mic" size={18} />
+              </button>
+              {/* Send button */}
+              <button
+                onClick={() => void send(assistantInput)}
+                disabled={assistantInput.trim().length === 0 || sending}
+                className="w-10 h-10 bg-gradient-to-br from-[var(--accent)] to-[var(--accentSoft)] text-white rounded-xl flex items-center justify-center hover:opacity-90 hover:shadow-md active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                <Icon name="send" size={16} className={sending ? 'animate-pulse' : ''} />
+              </button>
+            </div>
           </div>
-          <div className="text-center mt-2">
-            <span className="text-[10px] text-[var(--muted)]">
+          <div className="text-center mt-3">
+            <span className="text-[11px] text-[var(--muted)] font-medium">
               Insight uses local search and optional LLM for answers
             </span>
           </div>

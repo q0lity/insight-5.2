@@ -46,6 +46,10 @@ export type IconName =
   | 'grip'
   | 'palette'
   | 'monitor'
+  | 'send'
+  | 'trending'
+  | 'clock'
+  | 'wand'
 
 export function Icon(
   props: Props & {
@@ -576,6 +580,34 @@ export function Icon(
           <circle cx="4" cy="6" r="1" fill="currentColor" />
           <circle cx="4" cy="12" r="1" fill="currentColor" />
           <circle cx="4" cy="18" r="1" fill="currentColor" />
+        </svg>
+      )
+    case 'send':
+      return (
+        <svg {...common} className={props.className}>
+          <path d="M22 2L11 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )
+    case 'trending':
+      return (
+        <svg {...common} className={props.className}>
+          <path d="M23 6L13.5 15.5L8.5 10.5L1 18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M17 6H23V12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )
+    case 'clock':
+      return (
+        <svg {...common} className={props.className}>
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" fill="none" />
+          <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      )
+    case 'wand':
+      return (
+        <svg {...common} className={props.className}>
+          <path d="M15 4V2M15 16V14M8 9H10M20 9H22M17.8 11.8L19 13M17.8 6.2L19 5M12.2 11.8L11 13M12.2 6.2L11 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M15 9L3 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
       )
   }
