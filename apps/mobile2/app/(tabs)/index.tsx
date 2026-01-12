@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Modal, Pressable, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -108,6 +108,8 @@ export default function TodayScreen() {
   const [dailyStats, setDailyStats] = useState<{ totalPoints: number; totalMinutes: number; activeDays: number; streak: number } | null>(null);
   const [heatmapRange, setHeatmapRange] = useState<HeatmapRange>('month');
   const [upcomingTasks, setUpcomingTasks] = useState<MobileTask[]>([]);
+  const [quickStartOpen, setQuickStartOpen] = useState(false);
+  const [quickStartTitle, setQuickStartTitle] = useState('');
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -210,6 +212,20 @@ export default function TodayScreen() {
       skills: [],
       character: [],
     });
+    router.push('/focus');
+  };
+
+  const startQuickSession = async () => {
+    const title = quickStartTitle.trim();
+    if (!title) return;
+    await startSession({
+      title,
+      kind: 'event',
+      startedAt: Date.now(),
+      estimatedMinutes: null,
+    });
+    setQuickStartTitle('');
+    setQuickStartOpen(false);
     router.push('/focus');
   };
 
@@ -398,12 +414,51 @@ export default function TodayScreen() {
         ) : (
           <TouchableOpacity
             style={[styles.startBtn, { backgroundColor: palette.tint, borderRadius: sizes.borderRadiusSmall }]}
-            onPress={() => router.push('/plan')}
+            onPress={() => setQuickStartOpen(true)}
           >
             <Text style={[styles.startBtnText, { fontSize: sizes.bodyText }]}>Start Session</Text>
           </TouchableOpacity>
         )}
       </View>
+
+      <Modal transparent visible={quickStartOpen} animationType="fade" onRequestClose={() => setQuickStartOpen(false)}>
+        <View style={styles.modalBackdrop}>
+          <Pressable style={styles.modalBackdropPress} onPress={() => setQuickStartOpen(false)} />
+          <View style={[styles.modalCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <Text style={[styles.modalTitle, { color: palette.text }]}>Start a new event</Text>
+            <Text style={[styles.modalSubtitle, { color: palette.textSecondary }]}>
+              Give it a title to kick off a focus session.
+            </Text>
+            <TextInput
+              value={quickStartTitle}
+              onChangeText={setQuickStartTitle}
+              placeholder="e.g., Code the app"
+              placeholderTextColor={palette.textSecondary}
+              style={[
+                styles.modalInput,
+                { color: palette.text, borderColor: palette.border, backgroundColor: palette.surfaceAlt },
+              ]}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={() => void startQuickSession()}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, { borderColor: palette.border }]}
+                onPress={() => setQuickStartOpen(false)}
+              >
+                <Text style={[styles.modalButtonText, { color: palette.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: palette.tint }]}
+                onPress={() => void startQuickSession()}
+              >
+                <Text style={[styles.modalButtonTextLight, { color: '#FFFFFF' }]}>Start</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {upcomingSuggestion ? (
         <View
@@ -921,6 +976,64 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 15,
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  modalBackdropPress: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modalCard: {
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    fontFamily: 'Figtree',
+  },
+  modalSubtitle: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: 'Figtree',
+  },
+  modalInput: {
+    marginTop: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: 'Figtree',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Figtree',
+  },
+  modalButtonTextLight: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Figtree',
   },
   suggestionCard: {
     marginHorizontal: 24,

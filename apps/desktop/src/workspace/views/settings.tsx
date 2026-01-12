@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { ASSISTANT_SETTINGS_CHANGED_EVENT, loadSettings, saveSettings, type AssistantMode, AI_MODELS, type WeightUnit, type DistanceUnit } from '../../assistant/storage'
 import { applyTheme, loadThemePreference, resolveTheme, saveThemePreference, THEME_CHANGED_EVENT, THEME_LABELS, THEME_PREVIEWS, type ThemePreference, type ResolvedTheme } from '../../ui/theme'
-import { DISPLAY_SETTINGS_CHANGED_EVENT, loadDisplaySettings, saveDisplaySettings, type EventTitleDetail } from '../../ui/display-settings'
+import { DISPLAY_SETTINGS_CHANGED_EVENT, loadDisplaySettings, saveDisplaySettings, type DisplayDensity, type EventTitleDetail } from '../../ui/display-settings'
 import { parseCaptureWithLlm } from '../../nlp/llm-parse'
 import { callOpenAiText, openAiApiUrl } from '../../openai'
 import { Icon } from '../../ui/icons'
@@ -66,6 +66,7 @@ export function SettingsView() {
   const [themePref, setThemePref] = useState<ThemePreference>(() => loadThemePreference())
   const [displaySettings, setDisplaySettings] = useState(() => loadDisplaySettings())
   const [eventTitleDetail, setEventTitleDetail] = useState<EventTitleDetail>(() => loadDisplaySettings().eventTitleDetail)
+  const [displayDensity, setDisplayDensity] = useState<DisplayDensity>(() => loadDisplaySettings().density)
 
   const [draftKey, setDraftKey] = useState(initial.openAiKey ?? '')
   const [draftMode, setDraftMode] = useState<AssistantMode>(initial.mode ?? 'hybrid')
@@ -106,6 +107,13 @@ export function SettingsView() {
     saveDisplaySettings(updated)
   }
 
+  function onDensityChange(next: DisplayDensity) {
+    const updated = { ...displaySettings, density: next }
+    setDisplaySettings(updated)
+    setDisplayDensity(next)
+    saveDisplaySettings(updated)
+  }
+
   const dirty =
     draftMode !== (saved.mode ?? 'hybrid') ||
     (draftKey ?? '') !== (saved.openAiKey ?? '') ||
@@ -136,6 +144,7 @@ export function SettingsView() {
       const next = loadDisplaySettings()
       setDisplaySettings(next)
       setEventTitleDetail(next.eventTitleDetail)
+      setDisplayDensity(next.density)
     }
     window.addEventListener(DISPLAY_SETTINGS_CHANGED_EVENT, onDisplayChange)
     return () => window.removeEventListener(DISPLAY_SETTINGS_CHANGED_EVENT, onDisplayChange)
@@ -520,6 +529,21 @@ export function SettingsView() {
               />
             </label>
           </div>
+
+          {/* Display density */}
+          <label style={{ display: 'grid', gap: 6, fontSize: 12, color: 'var(--muted)', fontWeight: 800, marginBottom: 4 }}>
+            Display density
+            <div className="segmented" style={{ justifySelf: 'start' }}>
+              {(['large', 'compact'] as const).map((k) => (
+                <button key={k} className={displayDensity === k ? 'segBtn active' : 'segBtn'} onClick={() => onDensityChange(k)}>
+                  {k === 'large' ? 'Large' : 'Impact'}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>
+              Large keeps the current spacing. Impact stacks UI with ultra-tight padding.
+            </div>
+          </label>
 
           {/* Event titles */}
           <label style={{ display: 'grid', gap: 6, fontSize: 12, color: 'var(--muted)', fontWeight: 800 }}>

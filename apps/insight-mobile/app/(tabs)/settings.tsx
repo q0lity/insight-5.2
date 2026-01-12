@@ -38,7 +38,7 @@ function SettingRow({ icon, label, value, onPress, danger }: SettingRowProps) {
 }
 
 export default function SettingsScreen() {
-  const { palette, themeMode, setThemeMode } = useTheme();
+  const { palette, themeMode, setThemeMode, displayMode, setDisplayMode } = useTheme();
   const { session, signOut, forceReauthenticate } = useAuth();
   const insets = useSafeAreaInsets();
 
@@ -47,6 +47,10 @@ export default function SettingsScreen() {
     const currentIndex = modes.indexOf(themeMode);
     const nextIndex = (currentIndex + 1) % modes.length;
     setThemeMode(modes[nextIndex]);
+  };
+
+  const handleDensityChange = () => {
+    setDisplayMode(displayMode === 'compact' ? 'big' : 'compact');
   };
 
   const handleSignOut = () => {
@@ -72,6 +76,7 @@ export default function SettingsScreen() {
   };
 
   const themeLabel = themeMode === 'system' ? 'System' : themeMode === 'dark' ? 'Dark' : 'Light';
+  const densityLabel = displayMode === 'compact' ? 'Impact' : 'Large';
 
   return (
     <ScrollView
@@ -98,6 +103,12 @@ export default function SettingsScreen() {
           label="Theme"
           value={themeLabel}
           onPress={handleThemeChange}
+        />
+        <SettingRow
+          icon="compress"
+          label="Density"
+          value={densityLabel}
+          onPress={handleDensityChange}
         />
       </View>
 

@@ -31,8 +31,8 @@ const THEME_OPTIONS: { key: ThemeMode; label: string }[] = [
 ];
 
 const DISPLAY_OPTIONS: { key: DisplayMode; label: string; description: string }[] = [
-  { key: 'big', label: 'Big', description: 'Larger text & spacing' },
-  { key: 'compact', label: 'Compact', description: 'More info on screen' },
+  { key: 'big', label: 'Large', description: 'Current spacing' },
+  { key: 'compact', label: 'Impact', description: 'Ultra-compact, stacked layout' },
 ];
 
 const CALENDAR_ROWS = [

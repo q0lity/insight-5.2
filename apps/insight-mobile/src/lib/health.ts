@@ -23,6 +23,32 @@ export type Exercise = {
   muscleGroups?: string[];
 };
 
+export function formatDuration(minutes?: number | null) {
+  if (!minutes || !Number.isFinite(minutes)) return '-';
+  if (minutes < 60) return `${Math.round(minutes)}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+}
+
+export function resolveWorkoutMinutes(workout: WorkoutEntry) {
+  if (workout.totalDuration != null) return workout.totalDuration;
+  const seconds = workout.exercises
+    .flatMap((ex) => ex.sets)
+    .reduce((sum, set) => sum + (set.duration ?? 0), 0);
+  return seconds ? Math.round(seconds / 60) : null;
+}
+
+export function formatSetSummary(set: ExerciseSet) {
+  const parts: string[] = [];
+  if (set.reps != null) parts.push(`${set.reps} reps`);
+  if (set.weight != null) parts.push(`${set.weight} ${set.weightUnit ?? 'lb'}`);
+  if (set.distance != null) parts.push(`${set.distance} ${set.distanceUnit ?? 'mi'}`);
+  if (set.duration != null) parts.push(`${Math.round(set.duration / 60)}m`);
+  if (set.rpe != null) parts.push(`RPE ${set.rpe}`);
+  return parts.join(' - ');
+}
+
 export type WorkoutEntry = {
   id: string;
   title: string;

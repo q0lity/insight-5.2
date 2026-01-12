@@ -23,6 +23,7 @@ import {
 } from '@expo-google-fonts/space-grotesk';
 
 import { AuthProvider, useAuth } from '@/src/state/auth';
+import { SessionProvider } from '@/src/state/session';
 import { ThemeProvider, useTheme } from '@/src/state/theme';
 import { processSyncQueue } from '@/src/storage/sync';
 
@@ -92,16 +93,21 @@ function RootLayoutNav() {
 
   return (
     <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        {session ? (
-          <>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-          </>
-        ) : (
-          <Stack.Screen name="auth" />
-        )}
-      </Stack>
+      <SessionProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          {session ? (
+            <>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="capture" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+              <Stack.Screen name="voice" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+              <Stack.Screen name="focus" />
+            </>
+          ) : (
+            <Stack.Screen name="auth" />
+          )}
+        </Stack>
+      </SessionProvider>
     </NavigationThemeProvider>
   );
 }

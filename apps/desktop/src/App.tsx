@@ -21,7 +21,7 @@ import { migrateLocalDataToSupabase, pullSupabaseToLocal } from './supabase/sync
 
 import { Icon, type IconName } from './ui/icons'
 import { EVENT_COLOR_PRESETS, eventAccent } from './ui/event-visual'
-import { DISPLAY_SETTINGS_CHANGED_EVENT, loadDisplaySettings, type EventTitleDetail } from './ui/display-settings'
+import { DISPLAY_SETTINGS_CHANGED_EVENT, loadDisplaySettings, type DisplayDensity, type EventTitleDetail } from './ui/display-settings'
 import { applyTheme, loadThemePreference, resolveTheme, saveThemePreference, THEME_CHANGED_EVENT, type ThemePreference } from './ui/theme'
 import { parseChecklistMarkdown, toggleChecklistLine } from './ui/checklist'
 import { MarkdownEditor } from './ui/markdown-editor'
@@ -1267,20 +1267,31 @@ function App() {
     eventsRef.current = events
   }, [events])
 
-  useEffect(() => {
-    if (authSession) {
-      setAuthDismissed(false)
-    }
-  }, [authSession])
+const [selection, setSelection] = useState<Selection>({ kind: 'none' })
+const selectedEventId = selection.kind === 'event' ? selection.id : null
+const [selectedGoal, setSelectedGoal] = useState<string | null>(null)
+const [selectedProject, setSelectedProject] = useState<string | null>(null)
+const [selectedTrackerKey, setSelectedTrackerKey] = useState<string | null>(null)
+const [detailNotesFilter, setDetailNotesFilter] = useState<'event' | 'task' | 'note' | 'habit' | 'tracker'>('event')
 
-  const [agendaDate, setAgendaDate] = useState<Date>(() => new Date())
-  const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
+useEffect(() => {
+  if (!selectedEventId) return
+  const ev = events.find((e) => e.id === selectedEventId)
+  if (!ev) return
+  setDetailNotesFilter((prev) => {
+    if (prev === 'note' || prev === 'habit' || prev === 'tracker') return prev
+    return ev.kind === 'task' ? 'task' : 'event'
+  })
+}, [selectedEventId, events])
 
-  const [selection, setSelection] = useState<Selection>({ kind: 'none' })
-  const selectedEventId = selection.kind === 'event' ? selection.id : null
-  const [selectedGoal, setSelectedGoal] = useState<string | null>(null)
-  const [selectedProject, setSelectedProject] = useState<string | null>(null)
-  const [selectedTrackerKey, setSelectedTrackerKey] = useState<string | null>(null)
+useEffect(() => {
+  if (authSession) {
+    setAuthDismissed(false)
+  }
+}, [authSession])
+
+const [agendaDate, setAgendaDate] = useState<Date>(() => new Date())
+const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
 
   const [leftCollapsed, setLeftCollapsed] = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
@@ -1299,6 +1310,7 @@ function App() {
   const [docTranscriptFocus, setDocTranscriptFocus] = useState<string | null>(null)
   const [themePref, setThemePref] = useState<ThemePreference>(() => loadThemePreference())
   const [eventTitleDetail, setEventTitleDetail] = useState<EventTitleDetail>(() => loadDisplaySettings().eventTitleDetail)
+  const [displayDensity, setDisplayDensity] = useState<DisplayDensity>(() => loadDisplaySettings().density)
 
   const [tagDraft, setTagDraft] = useState('')
   const [peopleDraft, setPeopleDraft] = useState('')
@@ -1370,6 +1382,10 @@ function App() {
   }, [themePref])
 
   useEffect(() => {
+    document.documentElement.dataset.density = displayDensity
+  }, [displayDensity])
+
+  useEffect(() => {
     function onThemeChanged() {
       setThemePref(loadThemePreference())
     }
@@ -1379,7 +1395,9 @@ function App() {
 
   useEffect(() => {
     function onDisplayChanged() {
-      setEventTitleDetail(loadDisplaySettings().eventTitleDetail)
+      const next = loadDisplaySettings()
+      setEventTitleDetail(next.eventTitleDetail)
+      setDisplayDensity(next.density)
     }
     window.addEventListener(DISPLAY_SETTINGS_CHANGED_EVENT, onDisplayChanged)
     return () => window.removeEventListener(DISPLAY_SETTINGS_CHANGED_EVENT, onDisplayChanged)
@@ -5607,6 +5625,11 @@ function App() {
     }
   }
 
+  const isCompactDensity = displayDensity === 'compact'
+  const shellGap = isCompactDensity ? '10px' : '16px'
+  const railWidth = isCompactDensity ? 64 : 72
+  const leftPanelWidth = isCompactDensity ? 230 : 260
+
       return (
 
         <div className="uiShell">
@@ -5625,18 +5648,12 @@ function App() {
 
                   <main
                     ref={uiMainRef}
-
                     className="uiMain"
-
                     style={{
-
-                      gridTemplateColumns: `72px ${leftCollapsed ? 0 : 260}px 1fr ${rightCollapsed ? '0px' : 'var(--right-panel-width)'}`,
-
-                      gap: '16px',
-
-                      padding: '16px',
+                      gridTemplateColumns: `${railWidth}px ${leftCollapsed ? 0 : leftPanelWidth}px 1fr ${rightCollapsed ? '0px' : 'var(--right-panel-width)'}`,
+                      gap: shellGap,
+                      padding: shellGap,
                       ['--right-panel-width' as any]: `${rightPanelWidth}px`,
-
                     }}>             <aside
                       className={`rail${railLabelsOpen ? ' showLabels' : ''}`}
                       onMouseLeave={() => setRailLabelsOpen(false)}>
@@ -6778,6 +6795,66 @@ function App() {
                   />
                 </div>
               ) : null}
+              <div className="detailTopRow">
+                <div className="detailKindSelect" role="tablist" aria-label="Entry type">
+                  {(['event', 'task', 'note', 'habit', 'tracker'] as const).map((kind) => {
+                    const active = detailNotesFilter === kind
+                    return (
+                      <button
+                        key={kind}
+                        type="button"
+                        className={active ? 'detailKindBtn active' : 'detailKindBtn'}
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => {
+                          setDetailNotesFilter(kind)
+                          if (kind === 'event' || kind === 'task') {
+                            commitEvent({ ...selectedEvent, kind })
+                          }
+                        }}
+                      >
+                        {kind}
+                      </button>
+                    )
+                  })}
+                </div>
+                {selectedEvent.kind !== 'log' ? (
+                  <div className="detailQuickActions">
+                    <button
+                      className="secondaryButton detailQuickBtn"
+                      onClick={() => {
+                        const now = Date.now()
+                        const dur = Math.max(5 * 60 * 1000, selectedEvent.endAt - selectedEvent.startAt)
+                        commitEvent({ ...selectedEvent, startAt: now, endAt: now + dur, active: true })
+                      }}
+                    >
+                      Start now
+                    </button>
+                    {selectedEvent.kind !== 'task' ? (
+                      <button
+                        className="secondaryButton detailQuickBtn"
+                        onClick={() => {
+                          setCaptureDraft('')
+                          setCaptureInterim('')
+                          openCapture({ attachEventId: selectedEvent.id })
+                        }}
+                      >
+                        Take note
+                      </button>
+                    ) : null}
+                    <button
+                      className="secondaryButton detailQuickBtn"
+                      onClick={() => {
+                        const now = Date.now()
+                        commitEvent({ ...selectedEvent, endAt: Math.max(now, selectedEvent.startAt + 5 * 60 * 1000), active: false })
+                      }}
+                      disabled={!selectedEvent.active}
+                    >
+                      Stop now
+                    </button>
+                  </div>
+                ) : null}
+              </div>
               <div className={selectedEvent.kind === 'task' ? 'detailBadgeRow detailBadgeRowSplit' : 'detailBadgeRow'}>
                 <div className="detailBadgeGroup">
                   <span className="detailBadge">{selectedEvent.kind ?? 'event'}</span>
@@ -6834,39 +6911,6 @@ function App() {
                   </button>
                 ) : null}
               </div>
-              {selectedEvent.kind !== 'log' ? (
-                <div className={selectedEvent.kind === 'task' ? 'detailActions compact' : 'detailActions'}>
-                  <button
-                    className="secondaryButton"
-                    onClick={() => {
-                      const now = Date.now()
-                      const dur = Math.max(5 * 60 * 1000, selectedEvent.endAt - selectedEvent.startAt)
-                      commitEvent({ ...selectedEvent, startAt: now, endAt: now + dur, active: true })
-                    }}>
-                    Start now
-                  </button>
-                  {selectedEvent.kind !== 'task' ? (
-                    <button
-                      className="secondaryButton"
-                      onClick={() => {
-                        setCaptureDraft('')
-                        setCaptureInterim('')
-                        openCapture({ attachEventId: selectedEvent.id })
-                      }}>
-                      Take note
-                    </button>
-                  ) : null}
-                  <button
-                    className="secondaryButton"
-                    onClick={() => {
-                      const now = Date.now()
-                      commitEvent({ ...selectedEvent, endAt: Math.max(now, selectedEvent.startAt + 5 * 60 * 1000), active: false })
-                    }}
-                    disabled={!selectedEvent.active}>
-                    Stop now
-                  </button>
-                </div>
-              ) : null}
               <input
                 className="detailInput detailTitleInput"
                 value={selectedEvent.title}
@@ -6895,22 +6939,6 @@ function App() {
               ) : null}
 
               <div className="detailRow detailNotesSection" style={{ marginTop: 12 }}>
-                <div className="detailLabelRow">
-                  <div className="detailLabel">Notes</div>
-                  <div className="detailLabelActions">
-                    <button
-                      className="detailInlineBtn"
-                      onClick={() => {
-                        setCaptureDraft('')
-                        setCaptureInterim('')
-                        openCapture({ attachEventId: selectedEvent.id })
-                      }}
-                      type="button">
-                      <Icon name="mic" size={12} />
-                      Transcribe
-                    </button>
-                  </div>
-                </div>
                 <MarkdownEditor
                   value={selectedEvent.notes ?? ''}
                   onChange={(next) => commitEvent({ ...selectedEvent, notes: next })}
@@ -6926,6 +6954,23 @@ function App() {
                   nowMs={nowTick}
                   placeholder="Write notes…"
                   ariaLabel="Event notes"
+                  previewMode="table"
+                  tableFilter={detailNotesFilter}
+                  habitNames={habitDefs.map((h) => h.name).filter(Boolean)}
+                  headerLabel="Notes"
+                  headerActions={
+                    <button
+                      className="detailInlineBtn"
+                      onClick={() => {
+                        setCaptureDraft('')
+                        setCaptureInterim('')
+                        openCapture({ attachEventId: selectedEvent.id })
+                      }}
+                      type="button">
+                      <Icon name="mic" size={12} />
+                      Transcribe
+                    </button>
+                  }
                 />
                 <button
                   className="secondaryButton detailSegmentBtn"
@@ -8051,22 +8096,6 @@ function App() {
                         Magic
                       </button>
                     </div>
-                    <div className="docTabsRow">
-                      <div className="docTabs">
-                        <button
-                          className={docTab === 'notes' ? 'docTab active' : 'docTab'}
-                          type="button"
-                          onClick={() => setDocTab('notes')}>
-                          Notes
-                        </button>
-                        <button
-                          className={docTab === 'transcript' ? 'docTab active' : 'docTab'}
-                          type="button"
-                          onClick={() => setDocTab('transcript')}>
-                          Transcript
-                        </button>
-                      </div>
-                    </div>
                     {docTab === 'notes' ? (
                       <MarkdownEditor
                         value={selectedTask.notes ?? ''}
@@ -8074,34 +8103,69 @@ function App() {
                         onToggleChecklist={(lineIndex) => onToggleTaskChecklistItem(selectedTask.id, lineIndex)}
                         placeholder="Write markdown notes…"
                         ariaLabel="Task notes (markdown)"
+                        previewMode="table"
+                        headerLeading={
+                          <div className="docTabs" role="tablist" aria-label="Document tabs">
+                            <button
+                              className={docTab === 'notes' ? 'docTab active' : 'docTab'}
+                              type="button"
+                              onClick={() => setDocTab('notes')}>
+                              Raw Notes
+                            </button>
+                            <button
+                              className={docTab === 'transcript' ? 'docTab active' : 'docTab'}
+                              type="button"
+                              onClick={() => setDocTab('transcript')}>
+                              Transcript
+                            </button>
+                          </div>
+                        }
                       />
                     ) : (
-                      <div className="docTranscriptPanel">
-                        <div className="docTranscriptChips">
-                          {docTranscriptLines.length ? (
-                            docTranscriptLines.map((line, index) => (
-                              <button
-                                key={`${line.time}-${index}`}
-                                className={docTranscriptFocus === line.time ? 'docTranscriptChip active' : 'docTranscriptChip'}
-                                type="button"
-                                onClick={() => setDocTranscriptFocus(line.time)}
-                                title={line.text}>
-                                {line.time}
-                              </button>
-                            ))
-                          ) : (
-                            <div className="docTranscriptEmpty">No timestamped lines yet.</div>
-                          )}
+                      <>
+                        <div className="docTabsRow">
+                          <div className="docTabs" role="tablist" aria-label="Document tabs">
+                            <button
+                              className={docTab === 'notes' ? 'docTab active' : 'docTab'}
+                              type="button"
+                              onClick={() => setDocTab('notes')}>
+                              Raw Notes
+                            </button>
+                            <button
+                              className={docTab === 'transcript' ? 'docTab active' : 'docTab'}
+                              type="button"
+                              onClick={() => setDocTab('transcript')}>
+                              Transcript
+                            </button>
+                          </div>
                         </div>
-                        <div className="docTranscriptBox">
-                          <textarea
-                            className="docTranscriptTextarea"
-                            value={selectedTask.notes ?? ''}
-                            onChange={(e) => commitTask({ ...selectedTask, notes: e.target.value })}
-                            placeholder="Paste raw transcript with [HH:MM] timestamps…"
-                          />
+                        <div className="docTranscriptPanel">
+                          <div className="docTranscriptChips">
+                            {docTranscriptLines.length ? (
+                              docTranscriptLines.map((line, index) => (
+                                <button
+                                  key={`${line.time}-${index}`}
+                                  className={docTranscriptFocus === line.time ? 'docTranscriptChip active' : 'docTranscriptChip'}
+                                  type="button"
+                                  onClick={() => setDocTranscriptFocus(line.time)}
+                                  title={line.text}>
+                                  {line.time}
+                                </button>
+                              ))
+                            ) : (
+                              <div className="docTranscriptEmpty">No timestamped lines yet.</div>
+                            )}
+                          </div>
+                          <div className="docTranscriptBox">
+                            <textarea
+                              className="docTranscriptTextarea"
+                              value={selectedTask.notes ?? ''}
+                              onChange={(e) => commitTask({ ...selectedTask, notes: e.target.value })}
+                              placeholder="Paste raw transcript with [HH:MM] timestamps…"
+                            />
+                          </div>
                         </div>
-                      </div>
+                      </>
                     )}
                   </>
                 ) : selection.kind === 'event' && selectedEvent ? (
@@ -8116,22 +8180,6 @@ function App() {
                         <Icon name="sparkle" size={14} />
                         Magic
                       </button>
-                    </div>
-                    <div className="docTabsRow">
-                      <div className="docTabs">
-                        <button
-                          className={docTab === 'notes' ? 'docTab active' : 'docTab'}
-                          type="button"
-                          onClick={() => setDocTab('notes')}>
-                          Notes
-                        </button>
-                        <button
-                          className={docTab === 'transcript' ? 'docTab active' : 'docTab'}
-                          type="button"
-                          onClick={() => setDocTab('transcript')}>
-                          Transcript
-                        </button>
-                      </div>
                     </div>
                     {docTab === 'notes' ? (
                       <MarkdownEditor
@@ -8149,34 +8197,69 @@ function App() {
                         nowMs={nowTick}
                         placeholder="Write markdown notes…"
                         ariaLabel="Event notes (markdown)"
+                        previewMode="table"
+                        headerLeading={
+                          <div className="docTabs" role="tablist" aria-label="Document tabs">
+                            <button
+                              className={docTab === 'notes' ? 'docTab active' : 'docTab'}
+                              type="button"
+                              onClick={() => setDocTab('notes')}>
+                              Raw Notes
+                            </button>
+                            <button
+                              className={docTab === 'transcript' ? 'docTab active' : 'docTab'}
+                              type="button"
+                              onClick={() => setDocTab('transcript')}>
+                              Transcript
+                            </button>
+                          </div>
+                        }
                       />
                     ) : (
-                      <div className="docTranscriptPanel">
-                        <div className="docTranscriptChips">
-                          {docTranscriptLines.length ? (
-                            docTranscriptLines.map((line, index) => (
-                              <button
-                                key={`${line.time}-${index}`}
-                                className={docTranscriptFocus === line.time ? 'docTranscriptChip active' : 'docTranscriptChip'}
-                                type="button"
-                                onClick={() => setDocTranscriptFocus(line.time)}
-                                title={line.text}>
-                                {line.time}
-                              </button>
-                            ))
-                          ) : (
-                            <div className="docTranscriptEmpty">No timestamped lines yet.</div>
-                          )}
+                      <>
+                        <div className="docTabsRow">
+                          <div className="docTabs" role="tablist" aria-label="Document tabs">
+                            <button
+                              className={docTab === 'notes' ? 'docTab active' : 'docTab'}
+                              type="button"
+                              onClick={() => setDocTab('notes')}>
+                              Raw Notes
+                            </button>
+                            <button
+                              className={docTab === 'transcript' ? 'docTab active' : 'docTab'}
+                              type="button"
+                              onClick={() => setDocTab('transcript')}>
+                              Transcript
+                            </button>
+                          </div>
                         </div>
-                        <div className="docTranscriptBox">
-                          <textarea
-                            className="docTranscriptTextarea"
-                            value={selectedEvent.notes ?? ''}
-                            onChange={(e) => commitEvent({ ...selectedEvent, notes: e.target.value })}
-                            placeholder="Paste raw transcript with [HH:MM] timestamps…"
-                          />
+                        <div className="docTranscriptPanel">
+                          <div className="docTranscriptChips">
+                            {docTranscriptLines.length ? (
+                              docTranscriptLines.map((line, index) => (
+                                <button
+                                  key={`${line.time}-${index}`}
+                                  className={docTranscriptFocus === line.time ? 'docTranscriptChip active' : 'docTranscriptChip'}
+                                  type="button"
+                                  onClick={() => setDocTranscriptFocus(line.time)}
+                                  title={line.text}>
+                                  {line.time}
+                                </button>
+                              ))
+                            ) : (
+                              <div className="docTranscriptEmpty">No timestamped lines yet.</div>
+                            )}
+                          </div>
+                          <div className="docTranscriptBox">
+                            <textarea
+                              className="docTranscriptTextarea"
+                              value={selectedEvent.notes ?? ''}
+                              onChange={(e) => commitEvent({ ...selectedEvent, notes: e.target.value })}
+                              placeholder="Paste raw transcript with [HH:MM] timestamps…"
+                            />
+                          </div>
                         </div>
-                      </div>
+                      </>
                     )}
                   </>
                 ) : selection.kind === 'capture' && selectedCapture ? (

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Audio } from 'expo-av';
+type Recording = import('expo-av').Audio.Recording;
 
 import { Text, View } from '@/components/Themed';
 import { useTheme } from '@/src/state/theme';
@@ -35,6 +35,18 @@ function formatTimeMarker(date = new Date()) {
 
 const TIMESTAMP_LINE_RE = /^\[\d{2}:\d{2}(?::\d{2})?\]\s*$/;
 
+let cachedAudio: typeof import('expo-av') | null = null;
+
+function getAudioModule() {
+  if (cachedAudio) return cachedAudio;
+  try {
+    cachedAudio = require('expo-av');
+    return cachedAudio;
+  } catch {
+    return null;
+  }
+}
+
 function hasSemanticContent(text?: string | null) {
   if (!text || typeof text !== 'string') return false;
   return text.split('\n').some((line) => {
@@ -51,11 +63,11 @@ export default function VoiceCaptureScreen() {
   const appendEventId = Array.isArray(eventIdParam) ? eventIdParam[0] : eventIdParam;
   const { palette, sizes, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const recordingRef = useRef<Audio.Recording | null>(null);
+  const recordingRef = useRef<Recording | null>(null);
   const startTokenRef = useRef(0);
   const isStartingRef = useRef(false);
   const fullTranscriptRef = useRef('');
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recording, setRecording] = useState<Recording | null>(null);
   const [recordingState, setRecordingState] = useState<'starting' | 'recording' | 'processing'>('starting');
   const [displayText, setDisplayText] = useState('');
   const [initError, setInitError] = useState<string | null>(null);
@@ -78,6 +90,7 @@ export default function VoiceCaptureScreen() {
     const token = ++startTokenRef.current;
     setInitError(null);
     setRecordingState('starting');
+    const Audio = getAudioModule()?.Audio;
     if (!Audio?.requestPermissionsAsync || !Audio?.Recording) {
       setInitError('Audio recording is not available in this build.');
       isStartingRef.current = false;

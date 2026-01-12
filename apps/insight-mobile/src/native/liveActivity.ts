@@ -24,3 +24,7 @@ export async function endLiveActivity(id: string): Promise<void> {
 export async function endAllLiveActivities(): Promise<void> {
   console.log('[Live Activity] End all');
 }
+
+export async function consumePendingAction(): Promise<{ action: 'start' | 'stop'; title?: string } | null> {
+  return null;
+}

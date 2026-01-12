@@ -6,11 +6,15 @@ import { useTheme } from '@/src/state/theme';
 
 export type HeatmapProps = {
   /** Array of values, one per day (most recent last) */
-  values: number[];
+  values?: number[];
+  /** Optional keyed data map (YYYY-MM-DD) */
+  data?: Record<string, number>;
   /** Start date for the heatmap */
   startDate?: Date;
   /** Number of days to display (defaults to values.length) */
   days?: number;
+  /** Number of weeks to display (overrides days when provided) */
+  weeks?: number;
   /** Show day/month labels */
   showLabels?: boolean;
   /** Maximum value for color scaling (auto-calculated if not provided) */
@@ -19,6 +23,10 @@ export type HeatmapProps = {
   positiveColor?: string;
   /** Negative color (red tones) for negative values */
   negativeColor?: string;
+  /** Shortcut color for positive values */
+  color?: string;
+  /** Fixed cell size override */
+  cellSize?: number;
   /** Label for the heatmap */
   label?: string;
 };
@@ -34,18 +42,22 @@ function startOfDay(date: Date): Date {
 
 export function Heatmap({
   values,
+  data,
   startDate,
   days,
+  weeks,
   showLabels = false,
   maxValue,
   positiveColor = '#34D399',
   negativeColor = '#F87171',
+  color,
+  cellSize: cellSizeOverride,
   label,
 }: HeatmapProps) {
   const { palette, isDark } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
 
-  const totalDays = days ?? values.length;
+  const totalDays = days ?? (weeks ? weeks * 7 : values?.length ?? 0);
   const start = startDate ? startOfDay(startDate) : (() => {
     const d = new Date();
     d.setDate(d.getDate() - (totalDays - 1));
@@ -53,26 +65,47 @@ export function Heatmap({
     return d;
   })();
 
-  const startDow = (start.getDay() + 6) % 7; // Monday = 0
-  const weeks = Math.ceil((startDow + totalDays) / 7);
+  const formatKey = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
-  const maxAbs = maxValue ?? Math.max(1, ...values.map((v) => Math.abs(v)));
+  const resolvedValues = useMemo(() => {
+    if (Array.isArray(values) && values.length) return values;
+    if (!data || totalDays <= 0) return [];
+    const out: number[] = [];
+    for (let i = 0; i < totalDays; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      out.push(data[formatKey(d)] ?? 0);
+    }
+    return out;
+  }, [data, start, totalDays, values]);
+
+  const startDow = (start.getDay() + 6) % 7; // Monday = 0
+  const weeksCount = Math.ceil((startDow + totalDays) / 7);
+
+  const maxAbs = maxValue ?? Math.max(1, ...resolvedValues.map((v) => Math.abs(v)));
 
   // Calculate cell size based on available width
   const labelWidth = showLabels ? 32 : 0;
   const padding = 32;
   const availableWidth = screenWidth - padding - labelWidth;
   const gap = 3;
-  const cellSize = Math.max(6, Math.min(14, Math.floor((availableWidth - (weeks - 1) * gap) / weeks)));
+  const cellSize =
+    cellSizeOverride ??
+    Math.max(6, Math.min(14, Math.floor((availableWidth - (weeksCount - 1) * gap) / weeksCount)));
 
-  const svgWidth = weeks * cellSize + (weeks - 1) * gap;
+  const svgWidth = weeksCount * cellSize + (weeksCount - 1) * gap;
   const svgHeight = 7 * cellSize + 6 * gap;
 
   const colorFor = (value: number): string => {
     if (value === 0) return isDark ? 'rgba(148,163,184,0.15)' : '#F2F0ED';
 
     const t = Math.max(0, Math.min(1, Math.abs(value) / maxAbs));
-    const base = value > 0 ? positiveColor : negativeColor;
+    const base = value > 0 ? (color ?? positiveColor) : negativeColor;
 
     // Parse hex color for opacity adjustment
     const hex = base.replace('#', '');
@@ -90,7 +123,7 @@ export function Heatmap({
     let lastMonth = -1;
     const dayMs = 24 * 60 * 60 * 1000;
 
-    for (let w = 0; w < weeks; w++) {
+    for (let w = 0; w < weeksCount; w++) {
       const idx = w * 7 - startDow;
       if (idx < 0 || idx >= totalDays) continue;
 
@@ -102,20 +135,20 @@ export function Heatmap({
       }
     }
     return labels;
-  }, [start, startDow, totalDays, weeks]);
+  }, [start, startDow, totalDays, weeksCount]);
 
   // Build cells
   const cells = useMemo(() => {
     const result: { x: number; y: number; color: string; key: string }[] = [];
 
-    for (let w = 0; w < weeks; w++) {
+    for (let w = 0; w < weeksCount; w++) {
       for (let d = 0; d < 7; d++) {
         const cellIdx = w * 7 + d;
         const dataIdx = cellIdx - startDow;
 
         if (dataIdx < 0 || dataIdx >= totalDays) continue;
 
-        const value = values[dataIdx] ?? 0;
+        const value = resolvedValues[dataIdx] ?? 0;
         result.push({
           x: w * (cellSize + gap),
           y: d * (cellSize + gap),
@@ -125,7 +158,7 @@ export function Heatmap({
       }
     }
     return result;
-  }, [weeks, startDow, totalDays, values, cellSize, gap, colorFor]);
+  }, [weeksCount, startDow, totalDays, resolvedValues, cellSize, gap, colorFor]);
 
   return (
     <View style={styles.container}>

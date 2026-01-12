@@ -1,33 +1,44 @@
-import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import React, { useMemo, useRef } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-import { useTheme } from '@/src/state/theme';
 import { Text } from '@/components/Themed';
+import { InsightIcon, type InsightIconName } from '@/src/components/InsightIcon';
+import { useTheme } from '@/src/state/theme';
 
 type TabItem = {
   name: string;
   label: string;
-  icon: keyof typeof FontAwesome.glyphMap;
+  icon: InsightIconName | 'node';
 };
 
 const TAB_ITEMS: TabItem[] = [
-  { name: 'index', label: 'Home', icon: 'home' },
-  { name: 'tasks', label: 'Tasks', icon: 'check-square-o' },
+  { name: 'index', label: 'Dashboard', icon: 'node' },
   { name: 'calendar', label: 'Calendar', icon: 'calendar' },
-  { name: 'settings', label: 'Settings', icon: 'cog' },
+  { name: 'tasks', label: 'Tasks', icon: 'check' },
+  { name: 'habits', label: 'Habits', icon: 'target' },
+  { name: 'more', label: 'More', icon: 'dots' },
 ];
 
 function InsightTabBar({ state, navigation }: BottomTabBarProps) {
-  const { palette, isDark } = useTheme();
+  const router = useRouter();
+  const { palette, sizes, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const currentRoute = state.routes[state.index]?.name;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
+  const [leftTabs, rightTabs] = useMemo(
+    () => [TAB_ITEMS.slice(0, 2), TAB_ITEMS.slice(2)],
+    []
+  );
   const barBackground = isDark ? 'rgba(15,19,32,0.95)' : 'rgba(255,255,255,0.94)';
   const barBorder = palette.border;
+  const rotation = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '90deg'],
+  });
 
   const renderTab = (tab: TabItem) => {
     const route = state.routes.find((r) => r.name === tab.name);
@@ -47,9 +58,21 @@ function InsightTabBar({ state, navigation }: BottomTabBarProps) {
 
     const color = isFocused ? palette.tint : palette.textSecondary;
     return (
-      <Pressable key={tab.name} onPress={onPress} style={styles.tabItem}>
-        <FontAwesome name={tab.icon} size={20} color={color} />
-        <Text style={[styles.tabLabel, { color }]}>{tab.label}</Text>
+      <Pressable key={tab.name} onPress={onPress} style={styles.tabItem} accessibilityLabel={tab.label}>
+        {tab.icon === 'node' ? (
+          <View
+            style={[
+              styles.nodeBadge,
+              {
+                borderColor: isFocused ? palette.tint : palette.border,
+                backgroundColor: isFocused ? palette.tintLight : palette.borderLight,
+              },
+            ]}>
+            <Text style={[styles.nodeBadgeText, { color, fontSize: sizes.smallText }]}>1</Text>
+          </View>
+        ) : (
+          <InsightIcon name={tab.icon} size={sizes.iconSizeSmall} color={color} />
+        )}
       </Pressable>
     );
   };
@@ -61,11 +84,45 @@ function InsightTabBar({ state, navigation }: BottomTabBarProps) {
         {
           backgroundColor: barBackground,
           borderColor: barBorder,
-          paddingBottom: insets.bottom || 8,
+          bottom: insets.bottom + 8,
         },
-      ]}
-    >
-      <View style={styles.tabRow}>{TAB_ITEMS.map(renderTab)}</View>
+      ]}>
+      <View style={styles.tabRow}>
+        <View style={styles.tabGroup}>{leftTabs.map(renderTab)}</View>
+        <Pressable
+          onPress={() => router.push('/voice')}
+          onPressIn={() =>
+            Animated.timing(rotateAnim, {
+              toValue: 1,
+              duration: 180,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }).start()
+          }
+          onPressOut={() =>
+            Animated.timing(rotateAnim, {
+              toValue: 0,
+              duration: 180,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }).start()
+          }
+          style={({ pressed }) => [styles.captureButton, pressed && styles.captureButtonPressed]}
+          accessibilityLabel="Capture">
+          <Animated.View
+            style={[
+              styles.captureButtonInner,
+              {
+                backgroundColor: palette.tint,
+                borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.08)',
+                transform: [{ rotate: rotation }],
+              },
+            ]}>
+            <InsightIcon name="plus" size={sizes.iconSize} color="#FFFFFF" />
+          </Animated.View>
+        </Pressable>
+        <View style={styles.tabGroup}>{rightTabs.map(renderTab)}</View>
+      </View>
     </View>
   );
 }
@@ -76,12 +133,14 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
       }}
-      tabBar={(props) => <InsightTabBar {...props} />}
-    >
+      tabBar={(props) => <InsightTabBar {...props} />}>
       <Tabs.Screen name="index" options={{ title: 'Dashboard' }} />
-      <Tabs.Screen name="tasks" options={{ title: 'Tasks' }} />
       <Tabs.Screen name="calendar" options={{ title: 'Calendar' }} />
-      <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
+      <Tabs.Screen name="tasks" options={{ title: 'Tasks' }} />
+      <Tabs.Screen name="habits" options={{ title: 'Habits' }} />
+      <Tabs.Screen name="more" options={{ title: 'More' }} />
+      <Tabs.Screen name="assistant" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }
@@ -89,23 +148,72 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     borderTopWidth: 1,
-    paddingTop: 8,
+    paddingHorizontal: 8,
+    height: 44,
+    borderRadius: 16,
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 16,
+    elevation: 8,
+    overflow: 'visible',
+    justifyContent: 'center',
   },
   tabRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+  },
+  tabGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
     justifyContent: 'space-around',
   },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
-    minWidth: 60,
+    minWidth: 34,
+    height: 32,
   },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 4,
-    fontFamily: 'Figtree',
+  nodeBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  nodeBadgeText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  captureButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 14,
+    elevation: 7,
+  },
+  captureButtonInner: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  captureButtonPressed: {
+    transform: [{ scale: 0.98 }],
   },
 });

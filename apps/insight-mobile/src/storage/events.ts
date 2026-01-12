@@ -71,6 +71,37 @@ function normalizeTagForMobile(tag: string) {
   return trimmed.startsWith('#') ? trimmed.slice(1) : trimmed;
 }
 
+function normalizeEventTitle(title: string) {
+  return title.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function eventSignature(event: MobileEvent) {
+  const startBucket = Math.floor(event.startAt / 60000);
+  const endBucket = event.endAt ? Math.floor(event.endAt / 60000) : 'open';
+  const titleKey = normalizeEventTitle(event.title || '');
+  const kindKey = event.kind ?? 'event';
+  const categoryKey = (event.category ?? '').trim().toLowerCase();
+  const subcategoryKey = (event.subcategory ?? '').trim().toLowerCase();
+  return `${kindKey}|${titleKey}|${startBucket}|${endBucket}|${categoryKey}|${subcategoryKey}`;
+}
+
+function dedupeEvents(events: MobileEvent[]) {
+  const seenIds = new Set<string>();
+  const seenKeys = new Set<string>();
+  const out: MobileEvent[] = [];
+
+  for (const event of events) {
+    if (seenIds.has(event.id)) continue;
+    const signature = eventSignature(event);
+    if (seenKeys.has(signature)) continue;
+    seenIds.add(event.id);
+    seenKeys.add(signature);
+    out.push(event);
+  }
+
+  return out;
+}
+
 function entryToMobileEvent(row: any): MobileEvent {
   const fm = (row.frontmatter ?? {}) as Record<string, any>;
   const tags = Array.isArray(row.tags) ? uniqStrings(row.tags.map(normalizeTagForMobile)) : [];
@@ -175,7 +206,7 @@ export async function listEvents() {
   const session = await getSupabaseSessionUser();
   if (!session) {
     const events = await loadEventsLocal();
-    return events.sort((a, b) => b.startAt - a.startAt);
+    return dedupeEvents(events.sort((a, b) => b.startAt - a.startAt));
   }
   const { supabase, user } = session;
   const { data, error } = await supabase
@@ -189,9 +220,9 @@ export async function listEvents() {
 
   if (error || !data) {
     const events = await loadEventsLocal();
-    return events.sort((a, b) => b.startAt - a.startAt);
+    return dedupeEvents(events.sort((a, b) => b.startAt - a.startAt));
   }
-  return data.map(entryToMobileEvent);
+  return dedupeEvents(data.map(entryToMobileEvent)).sort((a, b) => b.startAt - a.startAt);
 }
 
 export async function getEvent(id: string) {

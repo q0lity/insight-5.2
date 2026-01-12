@@ -15,10 +15,10 @@ type TabItem = {
 
 const TAB_ITEMS: TabItem[] = [
   { name: 'index', label: 'Dashboard', icon: 'node' },
-  { name: 'habits', label: 'Habits', icon: 'smile' },
   { name: 'calendar', label: 'Calendar', icon: 'calendar' },
   { name: 'plan', label: 'Tasks', icon: 'check' },
   { name: 'more', label: 'More', icon: 'dots' },
+  { name: 'settings', label: 'Settings', icon: 'settings' },
 ];
 
 function InsightTabBar({ state, navigation }: BottomTabBarProps) {
@@ -135,10 +135,10 @@ export default function TabLayout() {
       }}
       tabBar={(props) => <InsightTabBar {...props} />}>
       <Tabs.Screen name="index" options={{ title: 'Dashboard' }} />
-      <Tabs.Screen name="habits" options={{ title: 'Habits' }} />
       <Tabs.Screen name="calendar" options={{ title: 'Calendar' }} />
       <Tabs.Screen name="plan" options={{ title: 'Tasks' }} />
       <Tabs.Screen name="more" options={{ title: 'More' }} />
+      <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
       <Tabs.Screen name="explore" options={{ href: null }} />
       <Tabs.Screen name="event/[id]" options={{ href: null }} />
       <Tabs.Screen
