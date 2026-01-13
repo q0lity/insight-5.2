@@ -6837,7 +6837,7 @@ function App() {
                         <Icon name="sparkle" size={14} />
                         Magic
                       </button>
-                      <button className="secondaryButton" onClick={() => autoFillEventFromText(selectedEvent)}>
+                      <button className="secondaryButton" onClick={async () => autoFillEventFromText(selectedEvent)}>
                         Auto-fill
                       </button>
                       <button className="secondaryButton" onClick={() => requestDeleteSelection()}>
@@ -7579,7 +7579,7 @@ function App() {
                   <Icon name="mic" size={14} />
                   Magic
                 </button>
-                <button className="secondaryButton" onClick={() => autoFillComposerFromText()}>
+                <button className="secondaryButton" onClick={async () => autoFillComposerFromText()}>
                   Auto-fill
                 </button>
                 <button className="modalClose" onClick={() => setEventComposerOpen(false)} aria-label="Close">
