@@ -805,6 +805,8 @@ function formatMinutesSpan(totalMinutes: number) {
 }
 
 const PINNED_GROUP_ORDER_KEY = 'insight5.explorer.pinnedGroupOrder.v1'
+const EXPLORER_ACTIVITIES_OPEN_KEY = 'insight5.explorer.activitiesOpen.v1'
+const EXPLORER_ACTIVITIES_COLLAPSED_KEY = 'insight5.explorer.activitiesCollapsed.v1'
 const DEFAULT_PINNED_GROUP_ORDER = ['tasks', 'habits', 'trackers', 'shortcuts'] as const
 
 function loadPinnedGroupOrder() {
@@ -825,6 +827,44 @@ function loadPinnedGroupOrder() {
 function savePinnedGroupOrder(order: string[]) {
   try {
     localStorage.setItem(PINNED_GROUP_ORDER_KEY, JSON.stringify(order))
+  } catch {
+    // ignore
+  }
+}
+
+function loadExplorerActivitiesOpen(): boolean {
+  try {
+    const raw = localStorage.getItem(EXPLORER_ACTIVITIES_OPEN_KEY)
+    if (raw === null) return true
+    return raw === 'true'
+  } catch {
+    return true
+  }
+}
+
+function saveExplorerActivitiesOpen(open: boolean) {
+  try {
+    localStorage.setItem(EXPLORER_ACTIVITIES_OPEN_KEY, String(open))
+  } catch {
+    // ignore
+  }
+}
+
+function loadExplorerActivitiesCollapsed(): Set<string> {
+  try {
+    const raw = localStorage.getItem(EXPLORER_ACTIVITIES_COLLAPSED_KEY)
+    if (!raw) return new Set()
+    const parsed = JSON.parse(raw) as string[]
+    if (!Array.isArray(parsed)) return new Set()
+    return new Set(parsed)
+  } catch {
+    return new Set()
+  }
+}
+
+function saveExplorerActivitiesCollapsed(collapsed: Set<string>) {
+  try {
+    localStorage.setItem(EXPLORER_ACTIVITIES_COLLAPSED_KEY, JSON.stringify([...collapsed]))
   } catch {
     // ignore
   }
@@ -1318,6 +1358,19 @@ function App() {
   useEffect(() => {
     savePinnedGroupOrder(pinnedGroupOrder)
   }, [pinnedGroupOrder])
+
+  // Activity Explorer state with localStorage persistence
+  const [explorerActivitiesOpen, setExplorerActivitiesOpen] = useState(() => loadExplorerActivitiesOpen())
+  const [explorerActivitiesCollapsed, setExplorerActivitiesCollapsed] = useState<Set<string>>(() => loadExplorerActivitiesCollapsed())
+
+  useEffect(() => {
+    saveExplorerActivitiesOpen(explorerActivitiesOpen)
+  }, [explorerActivitiesOpen])
+
+  useEffect(() => {
+    saveExplorerActivitiesCollapsed(explorerActivitiesCollapsed)
+  }, [explorerActivitiesCollapsed])
+
   const [explorerRecentOpen, setExplorerRecentOpen] = useState(true)
   const [explorerPomoOpen, setExplorerPomoOpen] = useState(true)
   const [explorerTaskQuery, setExplorerTaskQuery] = useState('')
