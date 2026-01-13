@@ -549,30 +549,43 @@ select:focus-visible {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
-  border: none;
+  padding: 6px 8px;
+  border: 1px solid transparent;
   background: transparent;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   text-align: left;
   width: 100%;
+  box-shadow: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  color: var(--text);
 }
 
 .sbActivityCategoryHead:hover {
   background: var(--panelAlpha);
 }
 
+.sbActivityCategoryHead:focus-visible {
+  outline: none;
+  border-color: var(--accentBorder);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
 .sbActivityCategoryTitle {
   flex: 1;
-  font-weight: 500;
+  font-weight: 600;
   font-size: 13px;
-  color: var(--fg);
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sbActivityCategoryCount {
   font-size: 11px;
   color: var(--muted);
-  padding: 1px 6px;
+  font-weight: 600;
+  padding: 2px 6px;
   background: var(--panelAlpha);
   border-radius: 10px;
 }
@@ -580,13 +593,16 @@ select:focus-visible {
 .sbActivitySubcategories {
   display: flex;
   flex-direction: column;
-  padding-left: 20px;
+  padding-left: 22px;
   margin-top: 2px;
+  gap: 1px;
 }
 
 .sbActivitySubcategory {
-  padding: 3px 8px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
 .sbActivitySubcategory:hover {
@@ -596,6 +612,9 @@ select:focus-visible {
 .sbActivitySubcategoryTitle {
   font-size: 12px;
   color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sbTasks {
