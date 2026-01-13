@@ -49,6 +49,7 @@ import { categoriesFromStarter, subcategoriesFromStarter, STARTER_TAXONOMY } fro
 import { loadTaxonomyRules, TAXONOMY_RULES_CHANGED_EVENT, type TaxonomyRule } from './taxonomy/rules'
 import { collectMarkdownTokens, extractInlineTokens, toTokenCollections } from './markdown/schema'
 import { parseNoteItemMeta, type NoteItemKind } from './markdown/note-items'
+import { enrichEvent } from './learning/enricher'
 
 type PaneState = {
   tabs: WorkspaceTab[]
@@ -1805,7 +1806,7 @@ function App() {
     return pointsForMinutes(base, minutes, mult)
   }
 
-  function autoFillEventFromText(ev: CalendarEvent) {
+  async function autoFillEventFromText(ev: CalendarEvent) {
     const base = `${ev.title ?? ''}\n${ev.notes ?? ''}`.trim()
     if (!base) return
     const detectedTags = extractTagTokens(base).map((t) => normalizeHashTag(t))
@@ -1817,13 +1818,25 @@ function App() {
     const inferred = inferCategorySubcategoryLoose(base, mergedTags)
     const nextImportance = ev.importance ?? inferImportanceFromText(base) ?? 5
     const nextDifficulty = ev.difficulty ?? inferDifficultyFromText(base) ?? 5
+
+    // Enrich with learned patterns
+    const { enriched } = await enrichEvent(ev, base)
+
+    // Merge enriched values with inferred values (enriched takes precedence)
+    const nextCategory = ev.category ?? enriched.category ?? inferred.category ?? null
+    const nextSubcategory = ev.subcategory ?? enriched.subcategory ?? inferred.subcategory ?? null
+    const nextSkills = (ev.skills && ev.skills.length > 0) ? ev.skills : (enriched.skills ?? ev.skills ?? null)
+    const nextGoal = ev.goal ?? enriched.goal ?? null
+
     commitEvent({
       ...ev,
       tags: mergedTags,
       people: nextPeople,
       estimateMinutes: nextEstimate,
-      category: ev.category ?? inferred.category ?? null,
-      subcategory: ev.subcategory ?? inferred.subcategory ?? null,
+      category: nextCategory,
+      subcategory: nextSubcategory,
+      skills: nextSkills,
+      goal: nextGoal,
       importance: nextImportance,
       difficulty: nextDifficulty,
     })

@@ -1,0 +1,39 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  },
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read(./**)",
+      "Write(./**)",
+      "Edit(./**)",
+      "Glob(./**)",
+      "Grep(./**)",
+      "Read(/Users/dg/Desktop/insight-5.2/.auto-claude/worktrees/tasks/006-you-to-add-like-a-file-explorer-here-that-is-like-/**)",
+      "Write(/Users/dg/Desktop/insight-5.2/.auto-claude/worktrees/tasks/006-you-to-add-like-a-file-explorer-here-that-is-like-/**)",
+      "Edit(/Users/dg/Desktop/insight-5.2/.auto-claude/worktrees/tasks/006-you-to-add-like-a-file-explorer-here-that-is-like-/**)",
+      "Glob(/Users/dg/Desktop/insight-5.2/.auto-claude/worktrees/tasks/006-you-to-add-like-a-file-explorer-here-that-is-like-/**)",
+      "Grep(/Users/dg/Desktop/insight-5.2/.auto-claude/worktrees/tasks/006-you-to-add-like-a-file-explorer-here-that-is-like-/**)",
+      "Read(/Users/dg/Desktop/insight-5.2/.auto-claude/worktrees/tasks/006-you-to-add-like-a-file-explorer-here-that-is-like-/.auto-claude/specs/006-you-to-add-like-a-file-explorer-here-that-is-like-/**)",
+      "Write(/Users/dg/Desktop/insight-5.2/.auto-claude/worktrees/tasks/006-you-to-add-like-a-file-explorer-here-that-is-like-/.auto-claude/specs/006-you-to-add-like-a-file-explorer-here-that-is-like-/**)",
+      "Edit(/Users/dg/Desktop/insight-5.2/.auto-claude/worktrees/tasks/006-you-to-add-like-a-file-explorer-here-that-is-like-/.auto-claude/specs/006-you-to-add-like-a-file-explorer-here-that-is-like-/**)",
+      "Read(/Users/dg/Desktop/insight-5.2/.auto-claude/**)",
+      "Write(/Users/dg/Desktop/insight-5.2/.auto-claude/**)",
+      "Edit(/Users/dg/Desktop/insight-5.2/.auto-claude/**)",
+      "Glob(/Users/dg/Desktop/insight-5.2/.auto-claude/**)",
+      "Grep(/Users/dg/Desktop/insight-5.2/.auto-claude/**)",
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "mcp__context7__resolve-library-id(*)",
+      "mcp__context7__get-library-docs(*)",
+      "mcp__graphiti-memory__search_nodes(*)",
+      "mcp__graphiti-memory__search_facts(*)",
+      "mcp__graphiti-memory__add_episode(*)",
+      "mcp__graphiti-memory__get_episodes(*)",
+      "mcp__graphiti-memory__get_entity_edge(*)"
+    ]
+  }
+}
