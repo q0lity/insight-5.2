@@ -1,0 +1,25 @@
+{
+  "active": true,
+  "spec": "006-you-to-add-like-a-file-explorer-here-that-is-like-",
+  "state": "building",
+  "subtasks": {
+    "completed": 5,
+    "total": 8,
+    "in_progress": 1,
+    "failed": 0
+  },
+  "phase": {
+    "current": "Enhanced Autofill with Learning Patterns",
+    "id": null,
+    "total": 3
+  },
+  "workers": {
+    "active": 0,
+    "max": 1
+  },
+  "session": {
+    "number": 6,
+    "started_at": "2026-01-13T12:03:49.805778"
+  },
+  "last_update": "2026-01-13T12:17:58.293223"
+}

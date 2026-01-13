@@ -45,10 +45,11 @@ import { TrackersView } from './workspace/views/trackers'
 import { HabitsView } from './workspace/views/habits'
 import { basePoints, multiplierFor, pointsForMinutes } from './scoring/points'
 import { loadCustomTaxonomy, saveCustomTaxonomy } from './taxonomy/custom'
-import { categoriesFromStarter, subcategoriesFromStarter } from './taxonomy/starter'
+import { categoriesFromStarter, subcategoriesFromStarter, STARTER_TAXONOMY } from './taxonomy/starter'
 import { loadTaxonomyRules, TAXONOMY_RULES_CHANGED_EVENT, type TaxonomyRule } from './taxonomy/rules'
 import { collectMarkdownTokens, extractInlineTokens, toTokenCollections } from './markdown/schema'
 import { parseNoteItemMeta, type NoteItemKind } from './markdown/note-items'
+import { enrichEvent } from './learning/enricher'
 
 type PaneState = {
   tabs: WorkspaceTab[]
@@ -831,6 +832,8 @@ function formatMinutesSpan(totalMinutes: number) {
 }
 
 const PINNED_GROUP_ORDER_KEY = 'insight5.explorer.pinnedGroupOrder.v1'
+const EXPLORER_ACTIVITIES_OPEN_KEY = 'insight5.explorer.activitiesOpen.v1'
+const EXPLORER_ACTIVITIES_COLLAPSED_KEY = 'insight5.explorer.activitiesCollapsed.v1'
 const DEFAULT_PINNED_GROUP_ORDER = ['tasks', 'habits', 'trackers', 'shortcuts'] as const
 
 function loadPinnedGroupOrder() {
@@ -851,6 +854,44 @@ function loadPinnedGroupOrder() {
 function savePinnedGroupOrder(order: string[]) {
   try {
     localStorage.setItem(PINNED_GROUP_ORDER_KEY, JSON.stringify(order))
+  } catch {
+    // ignore
+  }
+}
+
+function loadExplorerActivitiesOpen(): boolean {
+  try {
+    const raw = localStorage.getItem(EXPLORER_ACTIVITIES_OPEN_KEY)
+    if (raw === null) return true
+    return raw === 'true'
+  } catch {
+    return true
+  }
+}
+
+function saveExplorerActivitiesOpen(open: boolean) {
+  try {
+    localStorage.setItem(EXPLORER_ACTIVITIES_OPEN_KEY, String(open))
+  } catch {
+    // ignore
+  }
+}
+
+function loadExplorerActivitiesCollapsed(): Set<string> {
+  try {
+    const raw = localStorage.getItem(EXPLORER_ACTIVITIES_COLLAPSED_KEY)
+    if (!raw) return new Set()
+    const parsed = JSON.parse(raw) as string[]
+    if (!Array.isArray(parsed)) return new Set()
+    return new Set(parsed)
+  } catch {
+    return new Set()
+  }
+}
+
+function saveExplorerActivitiesCollapsed(collapsed: Set<string>) {
+  try {
+    localStorage.setItem(EXPLORER_ACTIVITIES_COLLAPSED_KEY, JSON.stringify([...collapsed]))
   } catch {
     // ignore
   }
@@ -1359,6 +1400,19 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
   useEffect(() => {
     savePinnedGroupOrder(pinnedGroupOrder)
   }, [pinnedGroupOrder])
+
+  // Activity Explorer state with localStorage persistence
+  const [explorerActivitiesOpen, setExplorerActivitiesOpen] = useState(() => loadExplorerActivitiesOpen())
+  const [explorerActivitiesCollapsed, setExplorerActivitiesCollapsed] = useState<Set<string>>(() => loadExplorerActivitiesCollapsed())
+
+  useEffect(() => {
+    saveExplorerActivitiesOpen(explorerActivitiesOpen)
+  }, [explorerActivitiesOpen])
+
+  useEffect(() => {
+    saveExplorerActivitiesCollapsed(explorerActivitiesCollapsed)
+  }, [explorerActivitiesCollapsed])
+
   const [explorerRecentOpen, setExplorerRecentOpen] = useState(true)
   const [explorerPomoOpen, setExplorerPomoOpen] = useState(true)
   const [explorerTaskQuery, setExplorerTaskQuery] = useState('')
@@ -1836,7 +1890,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     return pointsForMinutes(base, minutes, mult)
   }
 
-  function autoFillEventFromText(ev: CalendarEvent) {
+  async function autoFillEventFromText(ev: CalendarEvent) {
     const base = `${ev.title ?? ''}\n${ev.notes ?? ''}`.trim()
     if (!base) return
     const detectedTags = extractTagTokens(base).map((t) => normalizeHashTag(t))
@@ -1848,19 +1902,31 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     const inferred = inferCategorySubcategoryLoose(base, mergedTags)
     const nextImportance = ev.importance ?? inferImportanceFromText(base) ?? 5
     const nextDifficulty = ev.difficulty ?? inferDifficultyFromText(base) ?? 5
+
+    // Enrich with learned patterns
+    const { enriched } = await enrichEvent(ev, base)
+
+    // Merge enriched values with inferred values (enriched takes precedence)
+    const nextCategory = ev.category ?? enriched.category ?? inferred.category ?? null
+    const nextSubcategory = ev.subcategory ?? enriched.subcategory ?? inferred.subcategory ?? null
+    const nextSkills = (ev.skills && ev.skills.length > 0) ? ev.skills : (enriched.skills ?? ev.skills ?? null)
+    const nextGoal = ev.goal ?? enriched.goal ?? null
+
     commitEvent({
       ...ev,
       tags: mergedTags,
       people: nextPeople,
       estimateMinutes: nextEstimate,
-      category: ev.category ?? inferred.category ?? null,
-      subcategory: ev.subcategory ?? inferred.subcategory ?? null,
+      category: nextCategory,
+      subcategory: nextSubcategory,
+      skills: nextSkills,
+      goal: nextGoal,
       importance: nextImportance,
       difficulty: nextDifficulty,
     })
   }
 
-  function autoFillComposerFromText() {
+  async function autoFillComposerFromText() {
     const base = `${eventComposer.title ?? ''}\n${eventComposer.notes ?? ''}`.trim()
     if (!base) return
     const detectedTags = extractTagTokens(base).map((t) => normalizeHashTag(t))
@@ -1871,13 +1937,27 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     const inferred = inferCategorySubcategoryLoose(base, mergedTags)
     const nextImportance = eventComposer.importance ?? inferImportanceFromText(base) ?? 5
     const nextDifficulty = eventComposer.difficulty ?? inferDifficultyFromText(base) ?? 5
+
+    // Use pattern-based enrichment for category, subcategory, and skills
+    const { enriched } = await enrichEvent(
+      {
+        title: eventComposer.title,
+        notes: eventComposer.notes,
+        category: eventComposer.category || undefined,
+        subcategory: eventComposer.subcategory || undefined,
+        skills: eventComposer.skillsRaw ? eventComposer.skillsRaw.split(/\s+/).filter(Boolean) : undefined,
+      },
+      base
+    )
+
     setEventComposer((prev) => ({
       ...prev,
       tagsRaw: mergedTags.join(' '),
       peopleRaw: nextPeople.join(', '),
       estimateMinutesRaw: prev.estimateMinutesRaw || (duration ? String(duration) : prev.estimateMinutesRaw),
-      category: prev.category || inferred.category || '',
-      subcategory: prev.subcategory || inferred.subcategory || '',
+      category: prev.category || enriched.category || inferred.category || '',
+      subcategory: prev.subcategory || enriched.subcategory || inferred.subcategory || '',
+      skillsRaw: prev.skillsRaw || (enriched.skills && enriched.skills.length > 0 ? enriched.skills.join(' ') : prev.skillsRaw),
       importance: nextImportance,
       difficulty: nextDifficulty,
     }))
@@ -6190,6 +6270,49 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
           </div>
           <div className="sbSection">
             <div className="sbSectionHead">
+              <button className="sbSectionToggle" onClick={() => setExplorerActivitiesOpen((v) => !v)} aria-label="Toggle activities">
+                <Icon name={explorerActivitiesOpen ? 'chevronDown' : 'chevronRight'} size={16} />
+              </button>
+              <div className="sbSectionTitleInline">Activities</div>
+            </div>
+            {explorerActivitiesOpen ? (
+              <div className="sbTree">
+                {STARTER_TAXONOMY.map((cat) => {
+                  const isExpanded = !explorerActivitiesCollapsed.has(cat.category)
+                  return (
+                    <div key={cat.category} className="sbActivityCategory">
+                      <button
+                        className="sbActivityCategoryHead"
+                        onClick={() => {
+                          setExplorerActivitiesCollapsed((prev) => {
+                            const next = new Set(prev)
+                            if (next.has(cat.category)) next.delete(cat.category)
+                            else next.add(cat.category)
+                            return next
+                          })
+                        }}
+                        aria-label={`Toggle ${cat.category}`}>
+                        <Icon name={isExpanded ? 'chevronDown' : 'chevronRight'} size={12} />
+                        <span className="sbActivityCategoryTitle">{cat.category}</span>
+                        <span className="sbActivityCategoryCount">{cat.subcategories.length}</span>
+                      </button>
+                      {isExpanded ? (
+                        <div className="sbActivitySubcategories">
+                          {cat.subcategories.map((sub) => (
+                            <div key={sub} className="sbActivitySubcategory">
+                              <span className="sbActivitySubcategoryTitle">{sub}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : null}
+          </div>
+          <div className="sbSection">
+            <div className="sbSectionHead">
               <button className="sbSectionToggle" onClick={() => setExplorerRecentOpen((v) => !v)} aria-label="Toggle recent notes">
                 <Icon name={explorerRecentOpen ? 'chevronDown' : 'chevronRight'} size={16} />
               </button>
@@ -6891,7 +7014,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                         <Icon name="sparkle" size={14} />
                         Magic
                       </button>
-                      <button className="secondaryButton" onClick={() => autoFillEventFromText(selectedEvent)}>
+                      <button className="secondaryButton" onClick={async () => autoFillEventFromText(selectedEvent)}>
                         Auto-fill
                       </button>
                       <button className="secondaryButton" onClick={() => requestDeleteSelection()}>
@@ -7601,7 +7724,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                   <Icon name="mic" size={14} />
                   Magic
                 </button>
-                <button className="secondaryButton" onClick={() => autoFillComposerFromText()}>
+                <button className="secondaryButton" onClick={async () => autoFillComposerFromText()}>
                   Auto-fill
                 </button>
                 <button className="modalClose" onClick={() => setEventComposerOpen(false)} aria-label="Close">

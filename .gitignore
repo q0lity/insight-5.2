@@ -40,3 +40,6 @@ yarn-error.log*
 
 # Supabase local
 supabase/.temp/
+
+# Auto Claude data directory
+.auto-claude/
