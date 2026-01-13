@@ -45,7 +45,7 @@ import { TrackersView } from './workspace/views/trackers'
 import { HabitsView } from './workspace/views/habits'
 import { basePoints, multiplierFor, pointsForMinutes } from './scoring/points'
 import { loadCustomTaxonomy, saveCustomTaxonomy } from './taxonomy/custom'
-import { categoriesFromStarter, subcategoriesFromStarter } from './taxonomy/starter'
+import { categoriesFromStarter, subcategoriesFromStarter, STARTER_TAXONOMY } from './taxonomy/starter'
 import { loadTaxonomyRules, TAXONOMY_RULES_CHANGED_EVENT, type TaxonomyRule } from './taxonomy/rules'
 import { collectMarkdownTokens, extractInlineTokens, toTokenCollections } from './markdown/schema'
 import { parseNoteItemMeta, type NoteItemKind } from './markdown/note-items'
@@ -6150,6 +6150,49 @@ function App() {
                     )
                   }
                   return null
+                })}
+              </div>
+            ) : null}
+          </div>
+          <div className="sbSection">
+            <div className="sbSectionHead">
+              <button className="sbSectionToggle" onClick={() => setExplorerActivitiesOpen((v) => !v)} aria-label="Toggle activities">
+                <Icon name={explorerActivitiesOpen ? 'chevronDown' : 'chevronRight'} size={16} />
+              </button>
+              <div className="sbSectionTitleInline">Activities</div>
+            </div>
+            {explorerActivitiesOpen ? (
+              <div className="sbTree">
+                {STARTER_TAXONOMY.map((cat) => {
+                  const isExpanded = !explorerActivitiesCollapsed.has(cat.category)
+                  return (
+                    <div key={cat.category} className="sbActivityCategory">
+                      <button
+                        className="sbActivityCategoryHead"
+                        onClick={() => {
+                          setExplorerActivitiesCollapsed((prev) => {
+                            const next = new Set(prev)
+                            if (next.has(cat.category)) next.delete(cat.category)
+                            else next.add(cat.category)
+                            return next
+                          })
+                        }}
+                        aria-label={`Toggle ${cat.category}`}>
+                        <Icon name={isExpanded ? 'chevronDown' : 'chevronRight'} size={12} />
+                        <span className="sbActivityCategoryTitle">{cat.category}</span>
+                        <span className="sbActivityCategoryCount">{cat.subcategories.length}</span>
+                      </button>
+                      {isExpanded ? (
+                        <div className="sbActivitySubcategories">
+                          {cat.subcategories.map((sub) => (
+                            <div key={sub} className="sbActivitySubcategory">
+                              <span className="sbActivitySubcategoryTitle">{sub}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  )
                 })}
               </div>
             ) : null}
