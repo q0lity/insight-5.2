@@ -1842,7 +1842,7 @@ function App() {
     })
   }
 
-  function autoFillComposerFromText() {
+  async function autoFillComposerFromText() {
     const base = `${eventComposer.title ?? ''}\n${eventComposer.notes ?? ''}`.trim()
     if (!base) return
     const detectedTags = extractTagTokens(base).map((t) => normalizeHashTag(t))
@@ -1853,13 +1853,27 @@ function App() {
     const inferred = inferCategorySubcategoryLoose(base, mergedTags)
     const nextImportance = eventComposer.importance ?? inferImportanceFromText(base) ?? 5
     const nextDifficulty = eventComposer.difficulty ?? inferDifficultyFromText(base) ?? 5
+
+    // Use pattern-based enrichment for category, subcategory, and skills
+    const { enriched } = await enrichEvent(
+      {
+        title: eventComposer.title,
+        notes: eventComposer.notes,
+        category: eventComposer.category || undefined,
+        subcategory: eventComposer.subcategory || undefined,
+        skills: eventComposer.skillsRaw ? eventComposer.skillsRaw.split(/\s+/).filter(Boolean) : undefined,
+      },
+      base
+    )
+
     setEventComposer((prev) => ({
       ...prev,
       tagsRaw: mergedTags.join(' '),
       peopleRaw: nextPeople.join(', '),
       estimateMinutesRaw: prev.estimateMinutesRaw || (duration ? String(duration) : prev.estimateMinutesRaw),
-      category: prev.category || inferred.category || '',
-      subcategory: prev.subcategory || inferred.subcategory || '',
+      category: prev.category || enriched.category || inferred.category || '',
+      subcategory: prev.subcategory || enriched.subcategory || inferred.subcategory || '',
+      skillsRaw: prev.skillsRaw || (enriched.skills && enriched.skills.length > 0 ? enriched.skills.join(' ') : prev.skillsRaw),
       importance: nextImportance,
       difficulty: nextDifficulty,
     }))
