@@ -6,6 +6,7 @@ import { parseCaptureWithBlocks } from '../nlp/natural'
 type NotesTableFilter = 'all' | 'event' | 'task' | 'note' | 'habit' | 'tracker'
 type NotesPreviewMode = 'markdown' | 'table'
 type NotesEditorMode = 'edit' | NotesPreviewMode
+type NotesOutlineVariant = 'default' | 'structured'
 
 type NotesTableRow = {
   timeLabel: string
@@ -38,49 +39,67 @@ export function MarkdownEditor(props: {
   headerLabel?: string
   headerLeading?: ReactNode
   headerActions?: ReactNode
+  mode?: NotesEditorMode
+  onModeChange?: (mode: NotesEditorMode) => void
+  hideModeTabs?: boolean
+  outlineVariant?: NotesOutlineVariant
+  hideOutlineParagraphs?: boolean
 }) {
-  const [mode, setMode] = useState<NotesEditorMode>(props.previewMode ?? 'markdown')
-  const trimmed = props.value?.trim() ?? ''
-  const preview = useMemo(() => (trimmed ? trimmed : ''), [trimmed])
+  const [internalMode, setInternalMode] = useState<NotesEditorMode>(props.previewMode ?? 'markdown')
+  const mode = props.mode ?? internalMode
+  const setMode = props.onModeChange ?? setInternalMode
+  const preview = useMemo(() => props.value ?? '', [props.value])
+  const hasPreview = Boolean(preview.trim())
+  const showTop =
+    Boolean(props.headerLeading) ||
+    Boolean(props.headerLabel) ||
+    Boolean(props.headerActions) ||
+    !props.hideModeTabs
 
   return (
     <div className="mdEditor">
-      <div className="mdEditorTop">
-        {props.headerLeading ? (
-          <div className="mdEditorLeading">{props.headerLeading}</div>
-        ) : props.headerLabel ? (
-          <div className="mdEditorLabel">{props.headerLabel}</div>
-        ) : (
-          <div />
-        )}
-        <div className="mdEditorTabs" role="tablist" aria-label="Notes mode">
-          <button
-            type="button"
-            className={mode === 'edit' ? 'mdTab active' : 'mdTab'}
-            onClick={() => setMode('edit')}
-            role="tab"
-            aria-selected={mode === 'edit'}>
-            Edit
-          </button>
-          <button
-            type="button"
-            className={mode === 'markdown' ? 'mdTab active' : 'mdTab'}
-            onClick={() => setMode('markdown')}
-            role="tab"
-            aria-selected={mode === 'markdown'}>
-            Outline
-          </button>
-          <button
-            type="button"
-            className={mode === 'table' ? 'mdTab active' : 'mdTab'}
-            onClick={() => setMode('table')}
-            role="tab"
-            aria-selected={mode === 'table'}>
-            Table
-          </button>
+      {showTop ? (
+        <div className="mdEditorTop">
+          {props.headerLeading ? (
+            <div className="mdEditorLeading">{props.headerLeading}</div>
+          ) : props.headerLabel ? (
+            <div className="mdEditorLabel">{props.headerLabel}</div>
+          ) : (
+            <div />
+          )}
+          {!props.hideModeTabs ? (
+            <div className="mdEditorTabs" role="tablist" aria-label="Notes mode">
+              <button
+                type="button"
+                className={mode === 'edit' ? 'mdTab active' : 'mdTab'}
+                onClick={() => setMode('edit')}
+                role="tab"
+                aria-selected={mode === 'edit'}>
+                Edit
+              </button>
+              <button
+                type="button"
+                className={mode === 'markdown' ? 'mdTab active' : 'mdTab'}
+                onClick={() => setMode('markdown')}
+                role="tab"
+                aria-selected={mode === 'markdown'}>
+                Outline
+              </button>
+              <button
+                type="button"
+                className={mode === 'table' ? 'mdTab active' : 'mdTab'}
+                onClick={() => setMode('table')}
+                role="tab"
+                aria-selected={mode === 'table'}>
+                Table
+              </button>
+            </div>
+          ) : (
+            <div />
+          )}
+          {props.headerActions ? <div className="mdEditorActions">{props.headerActions}</div> : <div />}
         </div>
-        {props.headerActions ? <div className="mdEditorActions">{props.headerActions}</div> : <div />}
-      </div>
+      ) : null}
 
       {mode === 'edit' ? (
         <textarea
@@ -94,13 +113,15 @@ export function MarkdownEditor(props: {
         <NotesTablePreview text={preview} filter={props.tableFilter ?? 'all'} habitNames={props.habitNames} />
       ) : (
         <div className="mdPreviewPane" aria-label="Markdown preview">
-          {preview ? (
+          {hasPreview ? (
             <MarkdownView
               markdown={preview}
               onToggleChecklist={props.onToggleChecklist}
               onStartTask={props.onStartTask}
               taskStateByToken={props.taskStateByToken}
               nowMs={props.nowMs}
+              outlineVariant={props.outlineVariant}
+              hideParagraphs={props.hideOutlineParagraphs}
             />
           ) : (
             <div className="mdEmpty">Nothing to preview yet.</div>
@@ -224,27 +245,46 @@ function buildRowTokens(block: ReturnType<typeof parseCaptureWithBlocks>['blocks
 
 function buildTableRows(text: string, filter: NotesTableFilter, habitNames?: string[]): NotesTableRow[] {
   if (!text.trim()) return []
-  const parsed = parseCaptureWithBlocks(text)
-  return parsed.blocks
-    .filter((block) => {
-      if (filter === 'all') return true
-      const { hasEvents, hasTasks, hasTrackers, hasHabits } = deriveBlockKinds(block, habitNames)
-      if (filter === 'event') return hasEvents
-      if (filter === 'task') return hasTasks
-      if (filter === 'tracker') return hasTrackers
-      if (filter === 'habit') return hasHabits
-      return !hasEvents && !hasTasks && !hasTrackers && !hasHabits
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0)
+  const rows: NotesTableRow[] = []
+  const nowMs = Date.now()
+
+  for (const rawLine of lines) {
+    const parsed = parseCaptureWithBlocks(rawLine, nowMs)
+    const block = parsed.blocks[0] ?? {
+      id: rawLine,
+      blockIndex: 0,
+      rawText: rawLine,
+      tasks: parsed.tasks ?? [],
+      events: parsed.events ?? [],
+      trackers: [],
+      people: [],
+      tags: [],
+      contexts: [],
+      locations: [],
+    }
+    const { hasEvents, hasTasks, hasTrackers, hasHabits } = deriveBlockKinds(block, habitNames)
+    if (filter !== 'all') {
+      if (filter === 'event' && !hasEvents) continue
+      if (filter === 'task' && !hasTasks) continue
+      if (filter === 'tracker' && !hasTrackers) continue
+      if (filter === 'habit' && !hasHabits) continue
+      if (filter === 'note' && (hasEvents || hasTasks || hasTrackers || hasHabits)) continue
+    }
+    const note = stripTokensForTable(rawLine)
+    rows.push({
+      timeLabel: extractTimeLabel(block),
+      title: deriveRowTitle(block, habitNames),
+      note,
+      tokens: buildRowTokens(block, habitNames),
+      kind: primaryKindForBlock(block, habitNames),
     })
-    .map((block) => {
-      const note = stripTokensForTable(block.rawText)
-      return {
-        timeLabel: extractTimeLabel(block),
-        title: deriveRowTitle(block, habitNames),
-        note,
-        tokens: buildRowTokens(block, habitNames),
-        kind: primaryKindForBlock(block, habitNames),
-      }
-    })
+  }
+
+  return rows
 }
 
 function NotesTablePreview(props: { text: string; filter: NotesTableFilter; habitNames?: string[] }) {

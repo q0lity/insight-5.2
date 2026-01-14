@@ -141,7 +141,7 @@ function layoutColumns(dayEvents: CalendarEvent[]) {
 }
 
 function formatTime(ms: number) {
-  return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
 export function TiimoDayView(props: {

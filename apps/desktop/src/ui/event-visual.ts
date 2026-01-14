@@ -16,18 +16,65 @@ export const EVENT_COLOR_PRESETS: Array<{ name: string; hex: string }> = [
 
 export type EventTitleMode = 'compact' | 'detailed' | 'focus'
 
+function escapeRegExp(input: string) {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function stripLeadingPhrases(title: string) {
+  return title.replace(/^\s*(i(?:'|\u2019)?m|i am|im)\s+/i, '').trim()
+}
+
+function stripPeopleFromTitle(title: string, people: string[] | null | undefined) {
+  let cleaned = title
+  const names = (people ?? []).map((p) => p.trim()).filter(Boolean)
+  for (const name of names) {
+    const escaped = escapeRegExp(name)
+    const withPattern = new RegExp(`(?:,?\\s*(?:with|w\\/|w)\\s+${escaped})\\s*$`, 'i')
+    cleaned = cleaned.replace(withPattern, '').trim()
+  }
+  cleaned = cleaned.replace(/\s*(,|and)\s*$/i, '').trim()
+  return cleaned
+}
+
+function wrapInQuotes(title: string) {
+  const trimmed = title.trim()
+  if (!trimmed) return ''
+  if (/^["'].*["']$/.test(trimmed)) return trimmed
+  return `"${trimmed}"`
+}
+
+function inferDisplaySubcategory(ev: CalendarEvent) {
+  const text = `${ev.title} ${(ev.tags ?? []).join(' ')}`.toLowerCase()
+  if (/\b(watch|watching|movie|film|show|series|episode|netflix|hulu|prime|stream|tv|youtube)\b/.test(text)) {
+    return 'Entertainment'
+  }
+  return null
+}
+
+function formatDisplayTitle(ev: CalendarEvent) {
+  const stripped = stripLeadingPhrases(stripPeopleFromTitle(ev.title ?? '', ev.people))
+  return stripped || ev.title
+}
+
 export function formatEventTitle(ev: CalendarEvent, mode: EventTitleMode) {
   const category = (ev.category ?? '').trim()
-  const subcategory = (ev.subcategory ?? '').trim()
+  let subcategory = (ev.subcategory ?? '').trim()
   const location = (ev.location ?? '').trim()
-  if (mode === 'focus') {
-    return location || subcategory || category || ev.title
+  if (!subcategory || subcategory.toLowerCase() === 'general') {
+    const inferred = inferDisplaySubcategory(ev)
+    if (inferred) subcategory = inferred
   }
+  const titleText = formatDisplayTitle(ev)
+  const titleLabel = titleText !== ev.title ? wrapInQuotes(titleText) : titleText
+  if (mode === 'focus') {
+    return titleLabel || location || subcategory || category || ev.title
+  }
+  const categoryLabel = [category, subcategory].filter(Boolean).join(' / ')
   const parts: string[] = []
-  if (category) parts.push(category)
-  if (subcategory) parts.push(subcategory)
+  if (categoryLabel) parts.push(categoryLabel)
+  if (titleLabel) parts.push(titleLabel)
   if (mode === 'detailed' && location) parts.push(location)
-  return parts.length ? parts.join(' | ') : ev.title
+  return parts.length ? parts.join(' - ') : ev.title
 }
 
 export function hexToRgba(hex: string, alpha: number) {

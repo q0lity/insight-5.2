@@ -147,28 +147,29 @@ export function NotesView(props: {
     <div className="notesViewRoot">
       <header className="notesHeader">
         <div className="notesHeaderTop">
-          <div>
+          <div className="notesHeaderTitle">
             <h1>Notes Explorer</h1>
             <p>{props.captures.length} captures</p>
           </div>
-          <div className="notesHeaderActions">
-            <button className="notesNewBtn" onClick={props.onOpenCapture}>
-              <Icon name="plus" size={16} />
-              New
-            </button>
+          <div className="notesHeaderControls">
+            <div className="notesSearchRow">
+              <div className="notesSearchInput">
+                <Icon name="search" size={14} />
+                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search notes..." />
+              </div>
+              <select className="notesSortSelect" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
+                <option value="recent">Recent</option>
+                <option value="oldest">Oldest</option>
+                <option value="title">A-Z</option>
+              </select>
+            </div>
+            <div className="notesHeaderActions">
+              <button className="notesNewBtn" onClick={props.onOpenCapture}>
+                <Icon name="plus" size={16} />
+                New
+              </button>
+            </div>
           </div>
-        </div>
-
-        <div className="notesSearchRow">
-          <div className="notesSearchInput">
-            <Icon name="search" size={14} />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search notes..." />
-          </div>
-          <select className="notesSortSelect" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
-            <option value="recent">Recent</option>
-            <option value="oldest">Oldest</option>
-            <option value="title">A-Z</option>
-          </select>
         </div>
 
         <div className="notesFilterRow">

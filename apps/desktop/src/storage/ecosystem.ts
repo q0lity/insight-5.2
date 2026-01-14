@@ -52,10 +52,23 @@ export type TrackerDef = {
   meta: SharedMeta
 }
 
+export type EcosystemHidden = {
+  goals: string[]
+  projects: string[]
+  trackers: string[]
+  habits: string[]
+  tags: string[]
+  people: string[]
+  contexts: string[]
+  skills: string[]
+  locations: string[]
+}
+
 const GOALS_KEY_V2 = 'insight5.goals.defs.v2'
 const GOALS_KEY_V1 = 'insight5.goals.defs.v1'
 const PROJECTS_KEY = 'insight5.projects.defs.v1'
 const TRACKERS_KEY = 'insight5.trackers.defs.v1'
+const ECOSYSTEM_HIDDEN_KEY = 'insight5.ecosystem.hidden.v1'
 
 function sanitizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
@@ -73,6 +86,61 @@ function normalizeOptionalString(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
   return trimmed.length ? trimmed : null
+}
+
+function normalizeHiddenList(value: unknown): string[] {
+  return sanitizeStringArray(value)
+}
+
+export function loadEcosystemHidden(): EcosystemHidden {
+  try {
+    const raw = localStorage.getItem(ECOSYSTEM_HIDDEN_KEY)
+    if (!raw) {
+      return {
+        goals: [],
+        projects: [],
+        trackers: [],
+        habits: [],
+        tags: [],
+        people: [],
+        contexts: [],
+        skills: [],
+        locations: [],
+      }
+    }
+    const parsed = JSON.parse(raw) as Partial<EcosystemHidden>
+    return {
+      goals: normalizeHiddenList(parsed.goals),
+      projects: normalizeHiddenList(parsed.projects),
+      trackers: normalizeHiddenList(parsed.trackers),
+      habits: normalizeHiddenList(parsed.habits),
+      tags: normalizeHiddenList(parsed.tags),
+      people: normalizeHiddenList(parsed.people),
+      contexts: normalizeHiddenList(parsed.contexts),
+      skills: normalizeHiddenList(parsed.skills),
+      locations: normalizeHiddenList(parsed.locations),
+    }
+  } catch {
+    return {
+      goals: [],
+      projects: [],
+      trackers: [],
+      habits: [],
+      tags: [],
+      people: [],
+      contexts: [],
+      skills: [],
+      locations: [],
+    }
+  }
+}
+
+export function saveEcosystemHidden(next: EcosystemHidden) {
+  try {
+    localStorage.setItem(ECOSYSTEM_HIDDEN_KEY, JSON.stringify(next))
+  } catch {
+    // ignore
+  }
 }
 
 export function emptySharedMeta(): SharedMeta {
