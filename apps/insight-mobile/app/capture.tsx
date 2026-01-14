@@ -14,7 +14,7 @@ import { getEvent, startEvent, stopEvent, updateEvent } from '@/src/storage/even
 import { autoCategorize, detectIntent, formatSegmentsPreview, parseCapture } from '@/src/lib/schema';
 import { parseCaptureNatural, type ParsedEvent } from '@/src/lib/nlp/natural';
 import { estimateWorkoutCalories, parseMealFromText, parseWorkoutFromText } from '@/src/lib/health';
-import { RECORDING_OPTIONS } from '@/src/lib/audio';
+import { getRecordingOptions } from '@/src/lib/audio';
 import { invokeCaptureParse } from '@/src/supabase/functions';
 import { upsertTranscriptSegment } from '@/src/supabase/segments';
 import { uploadCaptureAudio } from '@/src/supabase/storage';
@@ -1500,7 +1500,8 @@ export default function CaptureScreen() {
   const toggleRecording = async () => {
     if (recordingState === 'processing' || isRecordingStartingRef.current) return;
     const Audio = getAudioModule()?.Audio;
-    if (!Audio?.requestPermissionsAsync || !Audio?.Recording) {
+    const recordingOptions = getRecordingOptions();
+    if (!Audio?.requestPermissionsAsync || !Audio?.Recording || !recordingOptions) {
       Alert.alert('Recording unavailable', 'Audio recording is not available in this build.');
       return;
     }
@@ -1530,7 +1531,7 @@ export default function CaptureScreen() {
       }
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
       const next = new Audio.Recording();
-      await next.prepareToRecordAsync(RECORDING_OPTIONS);
+      await next.prepareToRecordAsync(recordingOptions);
       await next.startAsync();
       setRecording(next);
       setRecordingState('recording');

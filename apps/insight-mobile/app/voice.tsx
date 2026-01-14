@@ -17,7 +17,7 @@ import { uploadCaptureAudio } from '@/src/supabase/storage';
 import { uniqStrings } from '@/src/supabase/helpers';
 import { saveMeal } from '@/src/storage/nutrition';
 import { saveWorkout } from '@/src/storage/workouts';
-import { RECORDING_OPTIONS } from '@/src/lib/audio';
+import { getRecordingOptions } from '@/src/lib/audio';
 
 function normalizeCaptureText(rawText: string) {
   return rawText
@@ -91,7 +91,8 @@ export default function VoiceCaptureScreen() {
     setInitError(null);
     setRecordingState('starting');
     const Audio = getAudioModule()?.Audio;
-    if (!Audio?.requestPermissionsAsync || !Audio?.Recording) {
+    const recordingOptions = getRecordingOptions();
+    if (!Audio?.requestPermissionsAsync || !Audio?.Recording || !recordingOptions) {
       setInitError('Audio recording is not available in this build.');
       isStartingRef.current = false;
       return;
@@ -114,7 +115,7 @@ export default function VoiceCaptureScreen() {
       }
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
       const next = new Audio.Recording();
-      await next.prepareToRecordAsync(RECORDING_OPTIONS);
+      await next.prepareToRecordAsync(recordingOptions);
       await next.startAsync();
       if (token !== startTokenRef.current) {
         await next.stopAndUnloadAsync().catch(() => {});
