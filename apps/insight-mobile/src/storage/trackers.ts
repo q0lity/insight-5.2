@@ -360,6 +360,38 @@ export async function listTrackerLogs(options?: {
   });
 }
 
+export async function listUniqueTrackers(): Promise<string[]> {
+  const local = await loadLocalLogs();
+  const localKeys = new Set<string>();
+  local.forEach((log) => {
+    if (log.trackerKey) localKeys.add(log.trackerKey);
+  });
+
+  const session = await getSupabaseSessionUser();
+  if (!session) {
+    return Array.from(localKeys).sort();
+  }
+
+  const { supabase, user } = session;
+  const { data, error } = await supabase
+    .from('tracker_definitions')
+    .select('key')
+    .eq('user_id', user.id)
+    .order('key', { ascending: true });
+
+  if (error || !data) {
+    return Array.from(localKeys).sort();
+  }
+
+  const merged = new Set(localKeys);
+  data.forEach((row: any) => {
+    const key = normalizeTrackerKey(String(row?.key ?? ''));
+    if (key) merged.add(key);
+  });
+
+  return Array.from(merged).sort();
+}
+
 export async function updateTrackerLog(
   id: string,
   patch: {
