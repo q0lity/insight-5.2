@@ -2,7 +2,8 @@ import { Children, isValidElement, useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { parseChecklistMarkdown } from './checklist'
-import { parseNoteItemMeta, type NoteItemKind } from '../markdown/note-items'
+import { parseNoteItemMeta, type NoteItemKind, type NoteItemMeta } from '../markdown/note-items'
+import { extractInlineTokens as extractSchemaTokens } from '../markdown/schema'
 import { Icon } from './icons'
 
 type NoteItemAction = {
@@ -20,7 +21,47 @@ type NoteTaskState = {
   startedAt?: number | null
 }
 
+type OutlineVariant = 'default' | 'structured'
+
 const TOKEN_META_RE = /\{(?:task|note|seg|event|meal|workout|tracker|habit):[^}]+\}/g
+const TRACKER_PAREN_RE = /#([a-zA-Z][\w/-]*)\s*\(\s*([-+]?\d*\.?\d+)\s*\)/g
+const TRACKER_COLON_RE = /#([a-zA-Z][\w/-]*)\s*:\s*([-+]?\d*\.?\d+)/g
+
+function extractTrackerTokens(text: string) {
+  const tokens: string[] = []
+  for (const match of text.matchAll(TRACKER_PAREN_RE)) {
+    tokens.push(`#${match[1]}(${match[2]})`)
+  }
+  for (const match of text.matchAll(TRACKER_COLON_RE)) {
+    tokens.push(`#${match[1]}:${match[2]}`)
+  }
+  return tokens
+}
+
+function buildOutlineTokens(raw: string) {
+  const cleaned = raw.replace(TOKEN_META_RE, '')
+  const tokens = new Map<string, string>()
+  for (const token of extractSchemaTokens(cleaned)) {
+    const label = token.raw.trim()
+    if (!label) continue
+    tokens.set(label.toLowerCase(), label)
+  }
+  for (const token of extractTrackerTokens(cleaned)) {
+    tokens.set(token.toLowerCase(), token)
+  }
+  return Array.from(tokens.values()).filter((token) => {
+    const normalized = token.toLowerCase()
+    return normalized !== '#task' && normalized !== '#habit' && normalized !== '#event' && normalized !== '#tracker'
+  })
+}
+
+function detectLineKind(raw: string, taskMeta: NoteItemMeta | null, trackerTokens: string[]) {
+  if (taskMeta?.kind === 'habit') return 'habit'
+  if (taskMeta?.kind === 'task') return 'task'
+  if (trackerTokens.length > 0 || /\{tracker:[^}]+\}/i.test(raw)) return 'tracker'
+  if (/\{event:[^}]+\}/i.test(raw) || /\[event\]/i.test(raw) || /\b#event\b/i.test(raw)) return 'event'
+  return 'note'
+}
 
 function extractPlainText(node: any): string {
   if (!node) return ''
@@ -102,11 +143,27 @@ export function MarkdownView(props: {
   onStartTask?: (task: NoteItemAction) => void
   taskStateByToken?: Record<string, NoteTaskState>
   nowMs?: number
+  outlineVariant?: OutlineVariant
+  hideParagraphs?: boolean
 }) {
   const markdown = props.markdown ?? ''
   const checklistItems = useMemo(() => parseChecklistMarkdown(markdown), [markdown])
   let checklistCursor = 0
   const [collapsedById, setCollapsedById] = useState<Record<string, boolean>>({})
+  const primaryRunningTokenId = useMemo(() => {
+    if (!props.taskStateByToken) return null
+    let latestToken: string | null = null
+    let latestStart = -Infinity
+    for (const [tokenId, state] of Object.entries(props.taskStateByToken)) {
+      if (state.status !== 'in_progress' || !state.startedAt) continue
+      if (state.startedAt > latestStart) {
+        latestStart = state.startedAt
+        latestToken = tokenId
+      }
+    }
+    return latestToken
+  }, [props.taskStateByToken])
+  const outlineVariant = props.outlineVariant ?? 'default'
 
   function renderWithChips(children: any) {
     return Children.map(children, (child) => {
@@ -130,10 +187,11 @@ export function MarkdownView(props: {
     const collapsed = Boolean(collapsedById[lineId])
     const running = taskMeta ? props.taskStateByToken?.[taskMeta.tokenId] ?? null : null
     const isRunning = Boolean(running && running.status === 'in_progress' && running.startedAt)
-    const elapsedMs = isRunning ? (props.nowMs ?? Date.now()) - (running?.startedAt ?? 0) : 0
+    const isPrimaryRunning = isRunning && (!primaryRunningTokenId || primaryRunningTokenId === taskMeta?.tokenId)
+    const elapsedMs = isPrimaryRunning ? (props.nowMs ?? Date.now()) - (running?.startedAt ?? 0) : 0
     const estimateMs = taskMeta?.estimateMinutes != null ? taskMeta.estimateMinutes * 60 * 1000 : null
     const remainingMs = estimateMs != null ? estimateMs - elapsedMs : null
-    const timerLabel = isRunning
+    const timerLabel = isPrimaryRunning
       ? estimateMs != null
         ? remainingMs != null && remainingMs >= 0
           ? `Left ${formatElapsed(remainingMs)}`
@@ -157,7 +215,10 @@ export function MarkdownView(props: {
           }
         : null
     const displayText = deriveLineTitle(rawText)
-    const inlineChips = extractInlineChips(rawText)
+    const outlineTokens = outlineVariant === 'structured' ? buildOutlineTokens(rawText) : []
+    const trackerTokens = outlineVariant === 'structured' ? extractTrackerTokens(rawText) : []
+    const lineKind = outlineVariant === 'structured' ? detectLineKind(rawText, taskMeta, trackerTokens) : null
+    const inlineChips = outlineVariant === 'structured' ? [] : extractInlineChips(rawText)
 
     return (
       <li {...rest} className={isChecklistItem ? 'mdLi mdLiChecklist' : 'mdLi'}>
@@ -194,20 +255,20 @@ export function MarkdownView(props: {
           ) : null}
           <div className="mdLiContent">
             <span className="mdLiText">{displayText}</span>
-            {actionMeta && props.onStartTask && (!isChecked || isRunning) ? (
+            {actionMeta && props.onStartTask && (!isChecked || isPrimaryRunning) ? (
               <button
                 className={
-                  isRunning && remainingMs != null && remainingMs < 0
+                  isPrimaryRunning && remainingMs != null && remainingMs < 0
                     ? 'mdTaskStart running over'
-                    : isRunning
+                    : isPrimaryRunning
                       ? 'mdTaskStart running'
                       : 'mdTaskStart'
                 }
                 type="button"
-                title={isRunning ? timerLabel : 'Start timer'}
-                aria-label={isRunning ? timerLabel : 'Start timer'}
+                title={isPrimaryRunning ? timerLabel : 'Start timer'}
+                aria-label={isPrimaryRunning ? timerLabel : 'Start timer'}
                 onClick={() => {
-                  if (isRunning) return
+                  if (isPrimaryRunning) return
                   props.onStartTask?.({
                     tokenId: actionMeta.tokenId,
                     title: actionMeta.title,
@@ -221,8 +282,38 @@ export function MarkdownView(props: {
                 <Icon name="plus" size={12} />
               </button>
             ) : null}
-            {inlineChips.length > 0 ? <span className="mdLiChips">{inlineChips}</span> : null}
+            {outlineVariant !== 'structured' && inlineChips.length > 0 ? (
+              <span className="mdLiChips">{inlineChips}</span>
+            ) : null}
           </div>
+          {outlineVariant === 'structured' ? (
+            <div className="mdLiMeta">
+              {lineKind ? (
+                <span className={`mdChip mdChip-kind mdChip-kind-${lineKind}`}>{lineKind}</span>
+              ) : null}
+              {outlineTokens.map((token) => {
+                const trimmed = token.trim()
+                if (!trimmed) return null
+                const lower = trimmed.toLowerCase()
+                const isTracker = /^#[a-zA-Z][\w/-]*\s*(?:\(|:)/.test(trimmed)
+                const className =
+                  lower.startsWith('@')
+                    ? 'mdChip mdChip-person'
+                    : lower.startsWith('!') 
+                      ? 'mdChip mdChip-loc'
+                      : lower.startsWith('+') || lower.startsWith('*')
+                        ? 'mdChip mdChip-ctx'
+                        : isTracker
+                          ? 'mdChip mdChip-tracker'
+                          : 'mdChip mdChip-tag'
+                return (
+                  <span key={`${trimmed}-${lineId}`} className={className}>
+                    {trimmed}
+                  </span>
+                )
+              })}
+            </div>
+          ) : null}
         </div>
         {hasNested && !collapsed ? <div className="mdLiChildren">{nested}</div> : null}
       </li>
@@ -234,7 +325,7 @@ export function MarkdownView(props: {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children, ...rest }) => <p {...rest}>{renderWithChips(children)}</p>,
+          p: ({ children, ...rest }) => (props.hideParagraphs ? null : <p {...rest}>{renderWithChips(children)}</p>),
           li: ListItem,
           a: ({ href, children, ...rest }) => (
             <a href={href} target="_blank" rel="noreferrer" {...rest}>

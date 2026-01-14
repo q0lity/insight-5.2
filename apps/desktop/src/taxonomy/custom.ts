@@ -37,3 +37,12 @@ export function upsertCategory(category: string, subcategories: string[]) {
   }
   saveCustomTaxonomy(list)
 }
+
+export function removeCategory(category: string) {
+  const name = normalizeCategoryName(category)
+  if (!name) return
+  const list = loadCustomTaxonomy()
+  const next = list.filter((c) => c.category.toLowerCase() !== name.toLowerCase())
+  if (next.length === list.length) return
+  saveCustomTaxonomy(next)
+}

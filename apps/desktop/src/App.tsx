@@ -10,7 +10,7 @@ import { createEvent, deleteEvent, findActiveByTrackerKey, findActiveEpisode, fi
 import { ensureEntity } from './storage/entities'
 import { estimateCalories, parseWorkoutFromText, saveWorkout } from './storage/workouts'
 import { estimateFoodNutrition, parseMealFromText, saveMeal } from './storage/nutrition'
-import { emptySharedMeta, loadTrackerDefs, saveTrackerDefs, upsertTrackerDef, type TrackerDef } from './storage/ecosystem'
+import { emptySharedMeta, loadEcosystemHidden, loadTrackerDefs, saveTrackerDefs, upsertTrackerDef, type TrackerDef } from './storage/ecosystem'
 import { parseCaptureNatural, type ParsedEvent } from './nlp/natural'
 import { parseCaptureWithBlocksLlm, type LlmParsedEvent } from './nlp/llm-parse'
 import { estimateNutritionWithLlm } from './nlp/nutrition-estimate'
@@ -1348,6 +1348,8 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
   const [propsCollapsed, setPropsCollapsed] = useState(true)
   const [docOpen, setDocOpen] = useState(false)
   const [docTab, setDocTab] = useState<'notes' | 'transcript'>('notes')
+  const [docMode, setDocMode] = useState<'edit' | 'outline' | 'table'>('outline')
+  const [docAutoBlocks, setDocAutoBlocks] = useState(false)
   const [docTranscriptFocus, setDocTranscriptFocus] = useState<string | null>(null)
   const [themePref, setThemePref] = useState<ThemePreference>(() => loadThemePreference())
   const [eventTitleDetail, setEventTitleDetail] = useState<EventTitleDetail>(() => loadDisplaySettings().eventTitleDetail)
@@ -1519,7 +1521,9 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
   }, [])
 
   useEffect(() => {
-    const stored = loadTrackerDefs()
+    const hidden = loadEcosystemHidden()
+    const hiddenTrackers = new Set(hidden.trackers.map((key) => key.trim().toLowerCase()).filter(Boolean))
+    const stored = loadTrackerDefs().filter((def) => !hiddenTrackers.has(def.key))
     const byKey = new Map<string, TrackerDef>()
     for (const def of stored) byKey.set(def.key, def)
 
@@ -1528,13 +1532,14 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
       if (e.kind !== 'log') continue
       if (e.trackerKey?.startsWith('habit:')) continue
       const key = (e.trackerKey ?? '').trim().toLowerCase()
-      if (key && !byKey.has(key)) {
+      if (key && !hiddenTrackers.has(key) && !byKey.has(key)) {
         byKey.set(key, buildTrackerDef({ key }))
         changed = true
       }
       for (const tag of e.tags ?? []) {
         const clean = tag.replace(/^#/, '').trim().toLowerCase()
         if (!clean || clean === 'habit') continue
+        if (hiddenTrackers.has(clean)) continue
         if (!byKey.has(clean)) {
           byKey.set(clean, buildTrackerDef({ key: clean }))
           changed = true
@@ -1542,7 +1547,9 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
       }
     }
 
-    const next = Array.from(byKey.values()).slice(0, 24)
+    const next = Array.from(byKey.values())
+      .filter((def) => !hiddenTrackers.has(def.key))
+      .slice(0, 24)
     if (changed) saveTrackerDefs(next)
     setTrackerDefs(next)
   }, [events])
@@ -1803,6 +1810,32 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
   function extractLineTokenCollections(rawLine: string) {
     const cleaned = rawLine.replace(/\{(?:task|note|seg|event|meal|workout|tracker|habit):[^}]+\}/g, '')
     return toTokenCollections(extractInlineTokens(cleaned))
+  }
+
+  function stripOutlineTokens(raw: string) {
+    const tokenPattern = /\{(?:task|note|seg|event|meal|workout|tracker|habit|tag|person|ctx|loc|goal|project|skill):[^}]+\}/g
+    const inlineTokenPattern = /(^|[ \t(])[#@+!*^$~][A-Za-z][\w'’./-]*(?:[ \t]+[A-Za-z][\w'’./-]*){0,3}/g
+    const inlineTokenWithMetaPattern = /[#@!*^$~][A-Za-z][\w'’./-]*(?:[ \t]+[A-Za-z][\w'’./-]*){0,3}\{[a-z]+:[^}]+\}/g
+    const inlineParenTokens = /#([a-zA-Z][\w/-]*)\s*(?:\([^)]*\)|:\s*\d+(?:\.\d+)?)/g
+
+    return raw
+      .split(/\r?\n/)
+      .map((line) => {
+        const match = line.match(/^\s*/u)
+        const indent = match ? match[0] : ''
+        const content = line.slice(indent.length)
+        const cleaned = content
+          .replace(inlineTokenWithMetaPattern, ' ')
+          .replace(tokenPattern, ' ')
+          .replace(inlineParenTokens, ' ')
+          .replace(inlineTokenPattern, ' ')
+          .replace(/[ \t]+/g, ' ')
+          .trimEnd()
+        return cleaned ? `${indent}${cleaned}` : ''
+      })
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
   }
 
   function appendMarkdownBlock(existing: string | null | undefined, block: string) {
@@ -5321,16 +5354,27 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
   const selectedTask = selection.kind === 'task' ? tasks.find((t) => t.id === selection.id) ?? null : null
   const selectedEvent = selection.kind === 'event' ? events.find((e) => e.id === selection.id) ?? null : null
   const selectedCapture = selection.kind === 'capture' ? captures.find((c) => c.id === selection.id) ?? null : null
+  const selectedTaskSourceCapture = useMemo(
+    () => (selectedTask?.sourceNoteId ? captures.find((c) => c.id === selectedTask.sourceNoteId) ?? null : null),
+    [captures, selectedTask?.sourceNoteId],
+  )
+  const selectedEventSourceCapture = useMemo(
+    () => (selectedEvent?.sourceNoteId ? captures.find((c) => c.id === selectedEvent.sourceNoteId) ?? null : null),
+    [captures, selectedEvent?.sourceNoteId],
+  )
   const selectionKey = selection.kind === 'none' ? 'none' : `${selection.kind}:${selection.id}`
+  const docNotesText =
+    selection.kind === 'event' ? selectedEvent?.notes ?? '' : selection.kind === 'task' ? selectedTask?.notes ?? '' : ''
   const docTranscriptText =
     selection.kind === 'capture'
       ? selectedCapture?.rawText ?? ''
       : selection.kind === 'event'
-        ? selectedEvent?.notes ?? ''
+        ? selectedEventSourceCapture?.rawText ?? selectedEvent?.notes ?? ''
         : selection.kind === 'task'
-          ? selectedTask?.notes ?? ''
+          ? selectedTaskSourceCapture?.rawText ?? selectedTask?.notes ?? ''
           : ''
   const docTranscriptLines = useMemo(() => parseTimestampedTranscript(docTranscriptText), [docTranscriptText])
+  const docOutlineExport = useMemo(() => stripOutlineTokens(docNotesText), [docNotesText])
   const selectedTaskTags = selectedTask?.tags ?? []
   const selectedTaskContexts = selectedTask?.contexts ?? []
   const selectedTaskPeople = selectedTask?.people ?? []
@@ -5358,9 +5402,60 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
 
   useEffect(() => {
     if (!docOpen) return
-    setDocTab(selection.kind === 'capture' ? 'transcript' : 'notes')
+    const isTranscriptDefault = selection.kind === 'capture'
+    setDocTab(isTranscriptDefault ? 'transcript' : 'notes')
+    setDocMode(isTranscriptDefault ? 'edit' : 'outline')
     setDocTranscriptFocus(null)
   }, [docOpen, selectionKey])
+
+  const handleExportOutline = useCallback(async () => {
+    const payload = docOutlineExport.trim()
+    if (!payload) {
+      toast.info('No outline to export.', { duration: 1500 })
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(payload)
+      toast.success('Outline copied to clipboard.', { duration: 1500 })
+    } catch (err) {
+      window.prompt('Copy outline', payload)
+    }
+  }, [docOutlineExport])
+
+  const handleTranscriptChange = useCallback(
+    (next: string) => {
+      if (selection.kind === 'capture' && selectedCapture) {
+        void onUpdateCapture(selectedCapture.id, next)
+        return
+      }
+      if (selection.kind === 'event' && selectedEvent) {
+        if (selectedEventSourceCapture) {
+          void onUpdateCapture(selectedEventSourceCapture.id, next)
+          return
+        }
+        commitEvent({ ...selectedEvent, notes: next })
+        return
+      }
+      if (selection.kind === 'task' && selectedTask) {
+        if (selectedTaskSourceCapture) {
+          void onUpdateCapture(selectedTaskSourceCapture.id, next)
+          return
+        }
+        commitTask({ ...selectedTask, notes: next })
+      }
+    },
+    [
+      commitEvent,
+      commitTask,
+      onUpdateCapture,
+      selection.kind,
+      selectedCapture,
+      selectedEvent,
+      selectedEventSourceCapture,
+      selectedTask,
+      selectedTaskSourceCapture,
+    ],
+  )
 
 	  const selectedEventLogs = useMemo(() => {
 	    if (!selectedEvent) return []
@@ -5707,7 +5802,9 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
 
   const isCompactDensity = displayDensity === 'compact'
   const shellGap = isCompactDensity ? '10px' : '16px'
-  const railWidth = isCompactDensity ? 64 : 72
+  const railBaseWidth = isCompactDensity ? 64 : 72
+  const railExpandedWidth = isCompactDensity ? 160 : 180
+  const railWidth = railLabelsOpen ? railExpandedWidth : railBaseWidth
   const leftPanelWidth = isCompactDensity ? 230 : 260
 
       return (
@@ -5743,8 +5840,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                       onMouseEnter={() => setRailLabelsOpen(true)}>
 
                       <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-black/5">
-
-                          <Icon name="sparkle" className="text-[#D95D39]" />
+                          <Icon name="sparkle" size={16} className="text-[#D95D39]" />
 
                       </div>
 
@@ -8208,60 +8304,96 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
               <div className="docBody">
                 {selection.kind === 'task' && selectedTask ? (
                   <>
-                    <div className="docTitleRow">
-                      <input
-                        className="docTitleInput"
-                        value={selectedTask.title}
-                        onChange={(e) => commitTask({ ...selectedTask, title: e.target.value })}
-                      />
-                      <button className="docMagicBtn" type="button">
-                        <Icon name="sparkle" size={14} />
-                        Magic
-                      </button>
+                    <div className="docHeader">
+                      <div className="docTitleSlot">
+                        <input
+                          className="docTitleInput"
+                          value={selectedTask.title}
+                          onChange={(e) => commitTask({ ...selectedTask, title: e.target.value })}
+                        />
+                      </div>
+                      <div className="docHeaderControls">
+                        <div className="docHeaderGroup" role="tablist" aria-label="Document content">
+                          <button
+                            className={docTab === 'notes' ? 'docTab active' : 'docTab'}
+                            type="button"
+                            onClick={() => setDocTab('notes')}>
+                            Notes
+                          </button>
+                          <button
+                            className={docTab === 'transcript' ? 'docTab active' : 'docTab'}
+                            type="button"
+                            onClick={() => {
+                              setDocTab('transcript')
+                              setDocMode('edit')
+                            }}>
+                            Transcript
+                          </button>
+                        </div>
+                        <div className="docHeaderGroup" role="tablist" aria-label="Document modes">
+                          <button
+                            className={docMode === 'edit' ? 'docTab active' : 'docTab'}
+                            type="button"
+                            onClick={() => {
+                              setDocTab('notes')
+                              setDocMode('edit')
+                            }}>
+                            Edit
+                          </button>
+                          <button
+                            className={docMode === 'outline' ? 'docTab active' : 'docTab'}
+                            type="button"
+                            onClick={() => {
+                              setDocTab('notes')
+                              setDocMode('outline')
+                            }}>
+                            Outline
+                          </button>
+                          <button
+                            className={docMode === 'table' ? 'docTab active' : 'docTab'}
+                            type="button"
+                            onClick={() => {
+                              setDocTab('notes')
+                              setDocMode('table')
+                            }}>
+                            Table
+                          </button>
+                        </div>
+                        <button
+                          className={docAutoBlocks ? 'docPill active' : 'docPill'}
+                          type="button"
+                          onClick={() => setDocAutoBlocks((prev) => !prev)}>
+                          Auto Blocks
+                        </button>
+                        {docTab === 'notes' && docMode === 'outline' ? (
+                          <button className="docExportBtn" type="button" onClick={handleExportOutline}>
+                            Export
+                          </button>
+                        ) : null}
+                        <button className="docMagicBtn" type="button">
+                          <Icon name="sparkle" size={14} />
+                          Magic
+                        </button>
+                      </div>
                     </div>
                     {docTab === 'notes' ? (
                       <MarkdownEditor
-                        value={selectedTask.notes ?? ''}
+                        value={docNotesText}
                         onChange={(next) => commitTask({ ...selectedTask, notes: next })}
                         onToggleChecklist={(lineIndex) => onToggleTaskChecklistItem(selectedTask.id, lineIndex)}
                         placeholder="Write markdown notes…"
                         ariaLabel="Task notes (markdown)"
-                        previewMode="table"
-                        headerLeading={
-                          <div className="docTabs" role="tablist" aria-label="Document tabs">
-                            <button
-                              className={docTab === 'notes' ? 'docTab active' : 'docTab'}
-                              type="button"
-                              onClick={() => setDocTab('notes')}>
-                              Raw Notes
-                            </button>
-                            <button
-                              className={docTab === 'transcript' ? 'docTab active' : 'docTab'}
-                              type="button"
-                              onClick={() => setDocTab('transcript')}>
-                              Transcript
-                            </button>
-                          </div>
-                        }
+                        mode={docMode}
+                        onModeChange={(next) => {
+                          setDocTab('notes')
+                          setDocMode(next)
+                        }}
+                        hideModeTabs
+                        outlineVariant="structured"
+                        hideOutlineParagraphs
                       />
                     ) : (
                       <>
-                        <div className="docTabsRow">
-                          <div className="docTabs" role="tablist" aria-label="Document tabs">
-                            <button
-                              className={docTab === 'notes' ? 'docTab active' : 'docTab'}
-                              type="button"
-                              onClick={() => setDocTab('notes')}>
-                              Raw Notes
-                            </button>
-                            <button
-                              className={docTab === 'transcript' ? 'docTab active' : 'docTab'}
-                              type="button"
-                              onClick={() => setDocTab('transcript')}>
-                              Transcript
-                            </button>
-                          </div>
-                        </div>
                         <div className="docTranscriptPanel">
                           <div className="docTranscriptChips">
                             {docTranscriptLines.length ? (
@@ -8282,8 +8414,8 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                           <div className="docTranscriptBox">
                             <textarea
                               className="docTranscriptTextarea"
-                              value={selectedTask.notes ?? ''}
-                              onChange={(e) => commitTask({ ...selectedTask, notes: e.target.value })}
+                              value={docTranscriptText}
+                              onChange={(e) => handleTranscriptChange(e.target.value)}
                               placeholder="Paste raw transcript with [HH:MM] timestamps…"
                             />
                           </div>
@@ -8293,20 +8425,81 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                   </>
                 ) : selection.kind === 'event' && selectedEvent ? (
                   <>
-                    <div className="docTitleRow">
-                      <input
-                        className="docTitleInput"
-                        value={selectedEvent.title}
-                        onChange={(e) => commitEvent({ ...selectedEvent, title: e.target.value })}
-                      />
-                      <button className="docMagicBtn" type="button">
-                        <Icon name="sparkle" size={14} />
-                        Magic
-                      </button>
+                    <div className="docHeader">
+                      <div className="docTitleSlot">
+                        <input
+                          className="docTitleInput"
+                          value={selectedEvent.title}
+                          onChange={(e) => commitEvent({ ...selectedEvent, title: e.target.value })}
+                        />
+                      </div>
+                      <div className="docHeaderControls">
+                        <div className="docHeaderGroup" role="tablist" aria-label="Document content">
+                          <button
+                            className={docTab === 'notes' ? 'docTab active' : 'docTab'}
+                            type="button"
+                            onClick={() => setDocTab('notes')}>
+                            Notes
+                          </button>
+                          <button
+                            className={docTab === 'transcript' ? 'docTab active' : 'docTab'}
+                            type="button"
+                            onClick={() => {
+                              setDocTab('transcript')
+                              setDocMode('edit')
+                            }}>
+                            Transcript
+                          </button>
+                        </div>
+                        <div className="docHeaderGroup" role="tablist" aria-label="Document modes">
+                          <button
+                            className={docMode === 'edit' ? 'docTab active' : 'docTab'}
+                            type="button"
+                            onClick={() => {
+                              setDocTab('notes')
+                              setDocMode('edit')
+                            }}>
+                            Edit
+                          </button>
+                          <button
+                            className={docMode === 'outline' ? 'docTab active' : 'docTab'}
+                            type="button"
+                            onClick={() => {
+                              setDocTab('notes')
+                              setDocMode('outline')
+                            }}>
+                            Outline
+                          </button>
+                          <button
+                            className={docMode === 'table' ? 'docTab active' : 'docTab'}
+                            type="button"
+                            onClick={() => {
+                              setDocTab('notes')
+                              setDocMode('table')
+                            }}>
+                            Table
+                          </button>
+                        </div>
+                        <button
+                          className={docAutoBlocks ? 'docPill active' : 'docPill'}
+                          type="button"
+                          onClick={() => setDocAutoBlocks((prev) => !prev)}>
+                          Auto Blocks
+                        </button>
+                        {docTab === 'notes' && docMode === 'outline' ? (
+                          <button className="docExportBtn" type="button" onClick={handleExportOutline}>
+                            Export
+                          </button>
+                        ) : null}
+                        <button className="docMagicBtn" type="button">
+                          <Icon name="sparkle" size={14} />
+                          Magic
+                        </button>
+                      </div>
                     </div>
                     {docTab === 'notes' ? (
                       <MarkdownEditor
-                        value={selectedEvent.notes ?? ''}
+                        value={docNotesText}
                         onChange={(next) => commitEvent({ ...selectedEvent, notes: next })}
                         onToggleChecklist={(lineIndex) => {
                           if (selectedEvent.kind === 'task' && selectedEvent.taskId) {
@@ -8320,42 +8513,17 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                         nowMs={nowTick}
                         placeholder="Write markdown notes…"
                         ariaLabel="Event notes (markdown)"
-                        previewMode="table"
-                        headerLeading={
-                          <div className="docTabs" role="tablist" aria-label="Document tabs">
-                            <button
-                              className={docTab === 'notes' ? 'docTab active' : 'docTab'}
-                              type="button"
-                              onClick={() => setDocTab('notes')}>
-                              Raw Notes
-                            </button>
-                            <button
-                              className={docTab === 'transcript' ? 'docTab active' : 'docTab'}
-                              type="button"
-                              onClick={() => setDocTab('transcript')}>
-                              Transcript
-                            </button>
-                          </div>
-                        }
+                        mode={docMode}
+                        onModeChange={(next) => {
+                          setDocTab('notes')
+                          setDocMode(next)
+                        }}
+                        hideModeTabs
+                        outlineVariant="structured"
+                        hideOutlineParagraphs
                       />
                     ) : (
                       <>
-                        <div className="docTabsRow">
-                          <div className="docTabs" role="tablist" aria-label="Document tabs">
-                            <button
-                              className={docTab === 'notes' ? 'docTab active' : 'docTab'}
-                              type="button"
-                              onClick={() => setDocTab('notes')}>
-                              Raw Notes
-                            </button>
-                            <button
-                              className={docTab === 'transcript' ? 'docTab active' : 'docTab'}
-                              type="button"
-                              onClick={() => setDocTab('transcript')}>
-                              Transcript
-                            </button>
-                          </div>
-                        </div>
                         <div className="docTranscriptPanel">
                           <div className="docTranscriptChips">
                             {docTranscriptLines.length ? (
@@ -8376,8 +8544,8 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                           <div className="docTranscriptBox">
                             <textarea
                               className="docTranscriptTextarea"
-                              value={selectedEvent.notes ?? ''}
-                              onChange={(e) => commitEvent({ ...selectedEvent, notes: e.target.value })}
+                              value={docTranscriptText}
+                              onChange={(e) => handleTranscriptChange(e.target.value)}
                               placeholder="Paste raw transcript with [HH:MM] timestamps…"
                             />
                           </div>
@@ -8387,17 +8555,19 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                   </>
                 ) : selection.kind === 'capture' && selectedCapture ? (
                   <>
-                    <div className="docTitleRow">
-                      <input className="docTitleInput" value="Inbox note" readOnly />
-                      <button className="docMagicBtn" type="button">
-                        <Icon name="sparkle" size={14} />
-                        Magic
-                      </button>
-                    </div>
-                    <div className="docTabsRow">
-                      <div className="docTabs">
-                        <button className="docTab active" type="button">
-                          Transcript
+                    <div className="docHeader">
+                      <div className="docTitleSlot">
+                        <input className="docTitleInput" value="Inbox note" readOnly />
+                      </div>
+                      <div className="docHeaderControls">
+                        <div className="docHeaderGroup" role="tablist" aria-label="Document content">
+                          <button className="docTab active" type="button">
+                            Transcript
+                          </button>
+                        </div>
+                        <button className="docMagicBtn" type="button">
+                          <Icon name="sparkle" size={14} />
+                          Magic
                         </button>
                       </div>
                     </div>
@@ -8421,10 +8591,8 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                       <div className="docTranscriptBox">
                         <textarea
                           className="docTranscriptTextarea"
-                          value={selectedCapture.rawText}
-                          onChange={(e) => {
-                            void onUpdateCapture(selectedCapture.id, e.target.value)
-                          }}
+                          value={docTranscriptText}
+                          onChange={(e) => handleTranscriptChange(e.target.value)}
                           placeholder="Paste raw transcript with [HH:MM] timestamps…"
                         />
                       </div>

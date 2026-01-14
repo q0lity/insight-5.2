@@ -7,18 +7,21 @@ import { MetaEditor } from '../../ui/MetaEditor'
 import { TrackerUnitEditor } from '../../ui/TrackerUnitEditor'
 import { parseCommaList } from '../../ui/ChipInput'
 import { loadMultipliers, saveMultipliers } from '../../storage/multipliers'
-import { loadCustomTaxonomy, upsertCategory } from '../../taxonomy/custom'
+import { loadCustomTaxonomy, removeCategory, upsertCategory } from '../../taxonomy/custom'
 import { categoriesFromStarter, subcategoriesFromStarter } from '../../taxonomy/starter'
 import {
   emptySharedMeta,
+  loadEcosystemHidden,
   loadGoalDefs,
   loadProjectDefs,
   loadTrackerDefs,
+  saveEcosystemHidden,
   saveGoalDefs,
   saveProjectDefs,
   saveTrackerDefs,
   type GoalDef,
   type ProjectDef,
+  type EcosystemHidden,
   type SharedMeta,
   type TrackerDef,
   type CharacterTrait,
@@ -202,6 +205,7 @@ export function EcosystemView(props: {
   const [habitDefs, setHabitDefs] = useState<HabitDef[]>(() => loadHabits())
   const [trackerDefs, setTrackerDefs] = useState<TrackerDef[]>(() => props.trackerDefs ?? loadTrackerDefs())
   const [customTaxonomy, setCustomTaxonomy] = useState(() => loadCustomTaxonomy())
+  const [hidden, setHidden] = useState<EcosystemHidden>(() => loadEcosystemHidden())
   const [selection, setSelection] = useState<Selection>({ kind: 'none' })
 
   const [goalDraft, setGoalDraft] = useState('')
@@ -260,8 +264,9 @@ export function EcosystemView(props: {
         def: goalDefs.find((d) => normalizeKey(d.name) === key) ?? null,
         multiplier: multipliers.goals[key] ?? 1,
       }))
+      .filter((row) => !hiddenGoals.has(row.key))
       .sort((a, b) => a.name.localeCompare(b.name))
-  }, [goalDefs, goalNames, multipliers.goals])
+  }, [goalDefs, goalNames, multipliers.goals, hiddenGoals])
 
   const projectRows = useMemo(() => {
     return Array.from(projectNames.entries())
@@ -271,14 +276,37 @@ export function EcosystemView(props: {
         def: projectDefs.find((d) => normalizeKey(d.name) === key) ?? null,
         multiplier: multipliers.projects[key] ?? 1,
       }))
+      .filter((row) => !hiddenProjects.has(row.key))
       .sort((a, b) => a.name.localeCompare(b.name))
-  }, [projectDefs, projectNames, multipliers.projects])
+  }, [projectDefs, projectNames, multipliers.projects, hiddenProjects])
 
   const categories = useMemo(() => {
     const starter = categoriesFromStarter()
     const custom = customTaxonomy.map((c) => c.category)
     const set = new Set([...starter, ...custom])
     return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [customTaxonomy])
+
+  const hiddenGoals = useMemo(() => new Set(hidden.goals.map((g) => normalizeHiddenValue('goals', g)).filter(Boolean)), [hidden.goals])
+  const hiddenProjects = useMemo(() => new Set(hidden.projects.map((p) => normalizeHiddenValue('projects', p)).filter(Boolean)), [hidden.projects])
+  const hiddenTrackers = useMemo(() => new Set(hidden.trackers.map((t) => normalizeHiddenValue('trackers', t)).filter(Boolean)), [hidden.trackers])
+  const hiddenHabits = useMemo(() => new Set(hidden.habits.map((h) => normalizeHiddenValue('habits', h)).filter(Boolean)), [hidden.habits])
+  const hiddenTags = useMemo(() => new Set(hidden.tags.map((t) => normalizeHiddenValue('tags', t)).filter(Boolean)), [hidden.tags])
+  const hiddenPeople = useMemo(() => new Set(hidden.people.map((p) => normalizeHiddenValue('people', p)).filter(Boolean)), [hidden.people])
+  const hiddenContexts = useMemo(() => new Set(hidden.contexts.map((c) => normalizeHiddenValue('contexts', c)).filter(Boolean)), [hidden.contexts])
+  const hiddenSkills = useMemo(() => new Set(hidden.skills.map((s) => normalizeHiddenValue('skills', s)).filter(Boolean)), [hidden.skills])
+  const hiddenLocations = useMemo(() => new Set(hidden.locations.map((l) => normalizeHiddenValue('locations', l)).filter(Boolean)), [hidden.locations])
+
+  const visibleHabitDefs = useMemo(() => habitDefs.filter((h) => !hiddenHabits.has(h.id)), [habitDefs, hiddenHabits])
+  const visibleTrackerDefs = useMemo(() => trackerDefs.filter((t) => !hiddenTrackers.has(t.key)), [trackerDefs, hiddenTrackers])
+
+  const customCategoryLookup = useMemo(() => {
+    const lookup = new Set<string>()
+    for (const entry of customTaxonomy) {
+      const name = entry.category.trim().toLowerCase()
+      if (name) lookup.add(name)
+    }
+    return lookup
   }, [customTaxonomy])
 
   const tagSuggestions = useMemo(() => {
@@ -289,8 +317,10 @@ export function EcosystemView(props: {
     for (const g of goalDefs) tags.push(...(g.meta.tags ?? []))
     for (const p of projectDefs) tags.push(...(p.meta.tags ?? []))
     for (const tr of trackerDefs) tags.push(...(tr.meta.tags ?? []))
-    return uniqStrings(tags.map((t) => normalizeTag(String(t))).filter(Boolean)).sort()
-  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs])
+    return uniqStrings(tags.map((t) => normalizeTag(String(t))).filter(Boolean))
+      .filter((tag) => !hiddenTags.has(normalizeHiddenValue('tags', tag)))
+      .sort()
+  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs, hiddenTags])
 
   const contextSuggestions = useMemo(() => {
     const contexts: string[] = []
@@ -300,8 +330,10 @@ export function EcosystemView(props: {
     for (const g of goalDefs) contexts.push(...(g.meta.contexts ?? []))
     for (const p of projectDefs) contexts.push(...(p.meta.contexts ?? []))
     for (const tr of trackerDefs) contexts.push(...(tr.meta.contexts ?? []))
-    return uniqStrings(contexts).sort()
-  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs])
+    return uniqStrings(contexts)
+      .filter((context) => !hiddenContexts.has(normalizeHiddenValue('contexts', context)))
+      .sort()
+  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs, hiddenContexts])
 
   const peopleSuggestions = useMemo(() => {
     const people: string[] = []
@@ -311,8 +343,10 @@ export function EcosystemView(props: {
     for (const g of goalDefs) people.push(...(g.meta.people ?? []))
     for (const p of projectDefs) people.push(...(p.meta.people ?? []))
     for (const tr of trackerDefs) people.push(...(tr.meta.people ?? []))
-    return uniqStrings(people).sort()
-  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs])
+    return uniqStrings(people)
+      .filter((person) => !hiddenPeople.has(normalizeHiddenValue('people', person)))
+      .sort()
+  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs, hiddenPeople])
 
   const locationSuggestions = useMemo(() => {
     const locations: string[] = []
@@ -322,8 +356,10 @@ export function EcosystemView(props: {
     for (const g of goalDefs) if (g.meta.location) locations.push(...parseCommaList(g.meta.location))
     for (const p of projectDefs) if (p.meta.location) locations.push(...parseCommaList(p.meta.location))
     for (const tr of trackerDefs) if (tr.meta.location) locations.push(...parseCommaList(tr.meta.location))
-    return uniqStrings(locations).sort()
-  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs])
+    return uniqStrings(locations)
+      .filter((location) => !hiddenLocations.has(normalizeHiddenValue('locations', location)))
+      .sort()
+  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs, hiddenLocations])
 
   const skillSuggestions = useMemo(() => {
     const skills: string[] = []
@@ -333,11 +369,134 @@ export function EcosystemView(props: {
     for (const g of goalDefs) skills.push(...(g.meta.skills ?? []))
     for (const p of projectDefs) skills.push(...(p.meta.skills ?? []))
     for (const tr of trackerDefs) skills.push(...(tr.meta.skills ?? []))
-    return uniqStrings(skills).sort()
-  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs])
+    return uniqStrings(skills)
+      .filter((skill) => !hiddenSkills.has(normalizeHiddenValue('skills', skill)))
+      .sort()
+  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs, hiddenSkills])
 
-  const goalSuggestions = useMemo(() => Array.from(goalNames.values()).sort((a, b) => a.localeCompare(b)), [goalNames])
-  const projectSuggestions = useMemo(() => Array.from(projectNames.values()).sort((a, b) => a.localeCompare(b)), [projectNames])
+  const tagStats = useMemo(() => {
+    const map = new Map<string, { tag: string; count: number }>()
+    const add = (raw: string) => {
+      const tag = normalizeTag(String(raw))
+      if (!tag) return
+      const key = tag.toLowerCase()
+      const row = map.get(key) ?? { tag, count: 0 }
+      row.count += 1
+      map.set(key, row)
+    }
+    for (const e of props.events) (e.tags ?? []).forEach(add)
+    for (const t of props.tasks) (t.tags ?? []).forEach(add)
+    for (const h of habitDefs) (h.tags ?? []).forEach(add)
+    for (const g of goalDefs) (g.meta.tags ?? []).forEach(add)
+    for (const p of projectDefs) (p.meta.tags ?? []).forEach(add)
+    for (const tr of trackerDefs) (tr.meta.tags ?? []).forEach(add)
+    return Array.from(map.values())
+      .filter((row) => !hiddenTags.has(normalizeHiddenValue('tags', row.tag)))
+      .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
+  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs, hiddenTags])
+
+  const peopleStats = useMemo(() => {
+    const map = new Map<string, { name: string; count: number }>()
+    const add = (raw: string) => {
+      const name = String(raw).trim()
+      if (!name) return
+      const key = name.toLowerCase()
+      const row = map.get(key) ?? { name, count: 0 }
+      row.count += 1
+      map.set(key, row)
+    }
+    for (const e of props.events) (e.people ?? []).forEach(add)
+    for (const t of props.tasks) (t.people ?? []).forEach(add)
+    for (const h of habitDefs) (h.people ?? []).forEach(add)
+    for (const g of goalDefs) (g.meta.people ?? []).forEach(add)
+    for (const p of projectDefs) (p.meta.people ?? []).forEach(add)
+    for (const tr of trackerDefs) (tr.meta.people ?? []).forEach(add)
+    return Array.from(map.values())
+      .filter((row) => !hiddenPeople.has(normalizeHiddenValue('people', row.name)))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs, hiddenPeople])
+
+  const contextStats = useMemo(() => {
+    const map = new Map<string, { name: string; count: number }>()
+    const add = (raw: string) => {
+      const name = String(raw).trim()
+      if (!name) return
+      const key = name.toLowerCase()
+      const row = map.get(key) ?? { name, count: 0 }
+      row.count += 1
+      map.set(key, row)
+    }
+    for (const e of props.events) (e.contexts ?? []).forEach(add)
+    for (const t of props.tasks) (t.contexts ?? []).forEach(add)
+    for (const h of habitDefs) (h.contexts ?? []).forEach(add)
+    for (const g of goalDefs) (g.meta.contexts ?? []).forEach(add)
+    for (const p of projectDefs) (p.meta.contexts ?? []).forEach(add)
+    for (const tr of trackerDefs) (tr.meta.contexts ?? []).forEach(add)
+    return Array.from(map.values())
+      .filter((row) => !hiddenContexts.has(normalizeHiddenValue('contexts', row.name)))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs, hiddenContexts])
+
+  const skillStats = useMemo(() => {
+    const map = new Map<string, { name: string; count: number }>()
+    const add = (raw: string) => {
+      const name = String(raw).trim()
+      if (!name) return
+      const key = name.toLowerCase()
+      const row = map.get(key) ?? { name, count: 0 }
+      row.count += 1
+      map.set(key, row)
+    }
+    for (const e of props.events) (e.skills ?? []).forEach(add)
+    for (const t of props.tasks) (t.skills ?? []).forEach(add)
+    for (const h of habitDefs) (h.skills ?? []).forEach(add)
+    for (const g of goalDefs) (g.meta.skills ?? []).forEach(add)
+    for (const p of projectDefs) (p.meta.skills ?? []).forEach(add)
+    for (const tr of trackerDefs) (tr.meta.skills ?? []).forEach(add)
+    return Array.from(map.values())
+      .filter((row) => !hiddenSkills.has(normalizeHiddenValue('skills', row.name)))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs, hiddenSkills])
+
+  const locationStats = useMemo(() => {
+    const map = new Map<string, { name: string; count: number }>()
+    const add = (raw: string) => {
+      if (!raw) return
+      const locations = parseCommaList(String(raw))
+      for (const item of locations) {
+        const name = item.trim()
+        if (!name) continue
+        const key = name.toLowerCase()
+        const row = map.get(key) ?? { name, count: 0 }
+        row.count += 1
+        map.set(key, row)
+      }
+    }
+    for (const e of props.events) add(e.location ?? '')
+    for (const t of props.tasks) add(t.location ?? '')
+    for (const h of habitDefs) add(h.location ?? '')
+    for (const g of goalDefs) add(g.meta.location ?? '')
+    for (const p of projectDefs) add(p.meta.location ?? '')
+    for (const tr of trackerDefs) add(tr.meta.location ?? '')
+    return Array.from(map.values())
+      .filter((row) => !hiddenLocations.has(normalizeHiddenValue('locations', row.name)))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+  }, [goalDefs, habitDefs, projectDefs, props.events, props.tasks, trackerDefs, hiddenLocations])
+
+  const goalSuggestions = useMemo(
+    () =>
+      Array.from(goalNames.values())
+        .filter((name) => !hiddenGoals.has(normalizeKey(name)))
+        .sort((a, b) => a.localeCompare(b)),
+    [goalNames, hiddenGoals],
+  )
+  const projectSuggestions = useMemo(
+    () =>
+      Array.from(projectNames.values())
+        .filter((name) => !hiddenProjects.has(normalizeKey(name)))
+        .sort((a, b) => a.localeCompare(b)),
+    [projectNames, hiddenProjects],
+  )
 
   function updateMultipliers(next: typeof multipliers) {
     setMultipliers(next)
@@ -412,6 +571,60 @@ export function EcosystemView(props: {
     props.onTrackerDefsChange?.(next)
   }
 
+  type HiddenKind = keyof EcosystemHidden
+
+  function updateHidden(updater: (prev: EcosystemHidden) => EcosystemHidden) {
+    setHidden((prev) => {
+      const next = updater(prev)
+      saveEcosystemHidden(next)
+      return next
+    })
+  }
+
+  function normalizeHiddenValue(kind: HiddenKind, value: string) {
+    const trimmed = value.trim()
+    if (!trimmed) return ''
+    switch (kind) {
+      case 'goals':
+      case 'projects':
+      case 'trackers':
+        return normalizeKey(trimmed)
+      case 'tags': {
+        const tag = normalizeTag(trimmed)
+        return tag ? tag.toLowerCase() : ''
+      }
+      case 'people':
+      case 'contexts':
+      case 'skills':
+      case 'locations':
+        return trimmed.toLowerCase()
+      case 'habits':
+        return trimmed
+      default:
+        return trimmed.toLowerCase()
+    }
+  }
+
+  function hideValue(kind: HiddenKind, value: string) {
+    const normalized = normalizeHiddenValue(kind, value)
+    if (!normalized) return
+    updateHidden((prev) => {
+      const list = prev[kind]
+      if (list.includes(normalized)) return prev
+      return { ...prev, [kind]: [...list, normalized] } as EcosystemHidden
+    })
+  }
+
+  function unhideValue(kind: HiddenKind, value: string) {
+    const normalized = normalizeHiddenValue(kind, value)
+    if (!normalized) return
+    updateHidden((prev) => {
+      const list = prev[kind]
+      if (!list.includes(normalized)) return prev
+      return { ...prev, [kind]: list.filter((item) => item !== normalized) } as EcosystemHidden
+    })
+  }
+
   function updateHabitById(id: string, patch: Partial<HabitDef>) {
     const next = habitDefs.map((h) => (h.id === id ? { ...h, ...patch } : h))
     updateHabits(next)
@@ -428,6 +641,7 @@ export function EcosystemView(props: {
   }
 
   function removeGoalDef(key: string) {
+    hideValue('goals', key)
     const nextDefs = goalDefs.filter((g) => normalizeKey(g.name) !== key)
     if (nextDefs.length !== goalDefs.length) {
       setGoalDefs(nextDefs)
@@ -441,6 +655,7 @@ export function EcosystemView(props: {
   }
 
   function removeProjectDef(key: string) {
+    hideValue('projects', key)
     const nextDefs = projectDefs.filter((p) => normalizeKey(p.name) !== key)
     if (nextDefs.length !== projectDefs.length) {
       setProjectDefs(nextDefs)
@@ -454,12 +669,14 @@ export function EcosystemView(props: {
   }
 
   function removeHabitById(id: string) {
+    hideValue('habits', id)
     const nextDefs = habitDefs.filter((h) => h.id !== id)
     if (nextDefs.length !== habitDefs.length) updateHabits(nextDefs)
     if (selection.kind === 'habit' && selection.id === id) setSelection({ kind: 'none' })
   }
 
   function removeTrackerByKey(key: string) {
+    hideValue('trackers', key)
     const nextDefs = trackerDefs.filter((t) => t.key !== key)
     if (nextDefs.length !== trackerDefs.length) updateTrackers(nextDefs)
     if (selection.kind === 'tracker' && selection.key === key) setSelection({ kind: 'none' })
@@ -472,6 +689,19 @@ export function EcosystemView(props: {
     setCustomTaxonomy(loadCustomTaxonomy())
     setCategoryDraft('')
     setSelection({ kind: 'category', category })
+  }
+
+  function isCustomCategory(category: string) {
+    return customCategoryLookup.has(category.trim().toLowerCase())
+  }
+
+  function removeCategoryEntry(category: string) {
+    if (!isCustomCategory(category)) return
+    removeCategory(category)
+    setCustomTaxonomy(loadCustomTaxonomy())
+    if (selection.kind === 'category' && selection.category.toLowerCase() === category.toLowerCase()) {
+      setSelection({ kind: 'none' })
+    }
   }
 
   function subcategoriesForCategory(category: string) {
@@ -776,6 +1006,17 @@ export function EcosystemView(props: {
               <div className="ecoDetailEyebrow">Category</div>
               <div className="ecoDetailTitle">{selectedCategory}</div>
             </div>
+            {isCustomCategory(selectedCategory) ? (
+              <div className="ecoDetailActions">
+                <button
+                  className="ecoActionBtn danger"
+                  type="button"
+                  onClick={() => removeCategoryEntry(selectedCategory)}
+                >
+                  Remove
+                </button>
+              </div>
+            ) : null}
           </div>
           <div className="detailRow">
             <div className="detailLabel">Subcategories</div>
@@ -910,18 +1151,16 @@ export function EcosystemView(props: {
                               >
                                 Open
                               </button>
-                              {row.def ? (
-                                <button
-                                  className="ecoActionBtn danger"
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    removeGoalDef(row.key)
-                                  }}
-                                >
-                                  Remove
-                                </button>
-                              ) : null}
+                              <button
+                                className="ecoActionBtn danger"
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  removeGoalDef(row.key)
+                                }}
+                              >
+                                Remove
+                              </button>
                             </div>
                           </div>
                           <div className="ecoCardMeta">
@@ -975,6 +1214,7 @@ export function EcosystemView(props: {
                       if (!name) return
                       const def = ensureGoalDef(name)
                       updateGoalMultiplier(name, 1)
+                      unhideValue('goals', name)
                       setGoalDraft('')
                       if (def) setSelection({ kind: 'goal', key: normalizeKey(def.name) })
                     }}
@@ -1025,18 +1265,16 @@ export function EcosystemView(props: {
                               >
                                 Open
                               </button>
-                              {row.def ? (
-                                <button
-                                  className="ecoActionBtn danger"
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    removeProjectDef(row.key)
-                                  }}
-                                >
-                                  Remove
-                                </button>
-                              ) : null}
+                              <button
+                                className="ecoActionBtn danger"
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  removeProjectDef(row.key)
+                                }}
+                              >
+                                Remove
+                              </button>
                             </div>
                           </div>
                           <div className="ecoCardMeta">
@@ -1090,6 +1328,7 @@ export function EcosystemView(props: {
                       if (!name) return
                       const def = ensureProjectDef(name)
                       updateProjectMultiplier(name, 1)
+                      unhideValue('projects', name)
                       setProjectDraft('')
                       if (def) setSelection({ kind: 'project', key: normalizeKey(def.name) })
                     }}
@@ -1108,13 +1347,13 @@ export function EcosystemView(props: {
                       <p className="ecoSectionSubtitle">Default settings for habit tracking.</p>
                     </div>
                   </div>
-                  <div className="ecoSectionMeta">{habitDefs.length} habits</div>
+                  <div className="ecoSectionMeta">{visibleHabitDefs.length} habits</div>
                 </div>
                 <div className="ecoCardGrid">
-                  {habitDefs.length === 0 ? (
+                  {visibleHabitDefs.length === 0 ? (
                     <div className="ecoEmpty">No habits yet</div>
                   ) : (
-                    habitDefs.map((habit) => {
+                    visibleHabitDefs.map((habit) => {
                       const tags = habit.tags ?? []
                       const { visible, remaining } = splitChips(tags, 3)
                       const active = selection.kind === 'habit' && selection.id === habit.id
@@ -1203,6 +1442,7 @@ export function EcosystemView(props: {
                       }
                       const nextDefs = [next, ...habitDefs]
                       updateHabits(nextDefs)
+                      unhideValue('habits', next.id)
                       setHabitDraft('')
                       setSelection({ kind: 'habit', id: next.id })
                     }}
@@ -1221,13 +1461,13 @@ export function EcosystemView(props: {
                       <p className="ecoSectionSubtitle">Units, ranges, and presets.</p>
                     </div>
                   </div>
-                  <div className="ecoSectionMeta">{trackerDefs.length} trackers</div>
+                  <div className="ecoSectionMeta">{visibleTrackerDefs.length} trackers</div>
                 </div>
                 <div className="ecoCardGrid">
-                  {trackerDefs.length === 0 ? (
+                  {visibleTrackerDefs.length === 0 ? (
                     <div className="ecoEmpty">No trackers yet</div>
                   ) : (
-                    trackerDefs.map((tracker) => {
+                    visibleTrackerDefs.map((tracker) => {
                       const tags = tracker.meta.tags ?? []
                       const { visible, remaining } = splitChips(tags, 3)
                       const active = selection.kind === 'tracker' && selection.key === tracker.key
@@ -1307,6 +1547,7 @@ export function EcosystemView(props: {
                       if (!key) return
                       const existing = trackerDefs.find((t) => t.key === key)
                       if (existing) {
+                        unhideValue('trackers', key)
                         setSelection({ kind: 'tracker', key })
                         setTrackerDraft('')
                         return
@@ -1321,6 +1562,7 @@ export function EcosystemView(props: {
                       }
                       const nextDefs = [next, ...trackerDefs]
                       updateTrackers(nextDefs)
+                      unhideValue('trackers', key)
                       setTrackerDraft('')
                       setSelection({ kind: 'tracker', key })
                     }}
@@ -1357,6 +1599,20 @@ export function EcosystemView(props: {
                         >
                           <div className="ecoCardTop">
                             <div className="ecoCardTitle">{cat}</div>
+                            {isCustomCategory(cat) ? (
+                              <div className="ecoCardActions">
+                                <button
+                                  className="ecoActionBtn danger"
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    removeCategoryEntry(cat)
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ) : null}
                           </div>
                           <div className="ecoCardChips">
                             {visible.map((sub) => (
@@ -1381,6 +1637,226 @@ export function EcosystemView(props: {
                   <button className="ecoAddButton" onClick={addCustomCategory}>
                     Add category
                   </button>
+                </div>
+              </section>
+
+              <section className="ecoSection">
+                <div className="ecoSectionHeader">
+                  <div className="ecoSectionTitle">
+                    <Icon name="tag" size={18} className="text-[var(--accent)]" />
+                    <div>
+                      <h2 className="ecoSectionTitleText">Tags</h2>
+                      <p className="ecoSectionSubtitle">Labels used across tasks and events.</p>
+                    </div>
+                  </div>
+                  <div className="ecoSectionMeta">{tagStats.length} tags</div>
+                </div>
+                <div className="ecoCardGrid">
+                  {tagStats.length === 0 ? (
+                    <div className="ecoEmpty">No tags yet</div>
+                  ) : (
+                    tagStats.map((row) => (
+                      <div key={row.tag} className="ecoCard">
+                        <div className="ecoCardTop">
+                          <div className="ecoCardTitle">{row.tag}</div>
+                          <div className="ecoCardActions">
+                            <button
+                              className="ecoActionBtn danger"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                hideValue('tags', row.tag)
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                        <div className="ecoCardMeta">
+                          <div className="ecoMetaRow">
+                            <span>Used</span>
+                            <span>{row.count}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+
+              <section className="ecoSection">
+                <div className="ecoSectionHeader">
+                  <div className="ecoSectionTitle">
+                    <Icon name="users" size={18} className="text-[var(--accent)]" />
+                    <div>
+                      <h2 className="ecoSectionTitleText">People</h2>
+                      <p className="ecoSectionSubtitle">Contacts and collaborators.</p>
+                    </div>
+                  </div>
+                  <div className="ecoSectionMeta">{peopleStats.length} people</div>
+                </div>
+                <div className="ecoCardGrid">
+                  {peopleStats.length === 0 ? (
+                    <div className="ecoEmpty">No people yet</div>
+                  ) : (
+                    peopleStats.map((row) => (
+                      <div key={row.name} className="ecoCard">
+                        <div className="ecoCardTop">
+                          <div className="ecoCardTitle">{row.name}</div>
+                          <div className="ecoCardActions">
+                            <button
+                              className="ecoActionBtn danger"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                hideValue('people', row.name)
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                        <div className="ecoCardMeta">
+                          <div className="ecoMetaRow">
+                            <span>Used</span>
+                            <span>{row.count}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+
+              <section className="ecoSection">
+                <div className="ecoSectionHeader">
+                  <div className="ecoSectionTitle">
+                    <Icon name="folder" size={18} className="text-[var(--accent)]" />
+                    <div>
+                      <h2 className="ecoSectionTitleText">Contexts</h2>
+                      <p className="ecoSectionSubtitle">Focus lanes and environments.</p>
+                    </div>
+                  </div>
+                  <div className="ecoSectionMeta">{contextStats.length} contexts</div>
+                </div>
+                <div className="ecoCardGrid">
+                  {contextStats.length === 0 ? (
+                    <div className="ecoEmpty">No contexts yet</div>
+                  ) : (
+                    contextStats.map((row) => (
+                      <div key={row.name} className="ecoCard">
+                        <div className="ecoCardTop">
+                          <div className="ecoCardTitle">{row.name}</div>
+                          <div className="ecoCardActions">
+                            <button
+                              className="ecoActionBtn danger"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                hideValue('contexts', row.name)
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                        <div className="ecoCardMeta">
+                          <div className="ecoMetaRow">
+                            <span>Used</span>
+                            <span>{row.count}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+
+              <section className="ecoSection">
+                <div className="ecoSectionHeader">
+                  <div className="ecoSectionTitle">
+                    <Icon name="book" size={18} className="text-[var(--accent)]" />
+                    <div>
+                      <h2 className="ecoSectionTitleText">Skills</h2>
+                      <p className="ecoSectionSubtitle">Capabilities you are building.</p>
+                    </div>
+                  </div>
+                  <div className="ecoSectionMeta">{skillStats.length} skills</div>
+                </div>
+                <div className="ecoCardGrid">
+                  {skillStats.length === 0 ? (
+                    <div className="ecoEmpty">No skills yet</div>
+                  ) : (
+                    skillStats.map((row) => (
+                      <div key={row.name} className="ecoCard">
+                        <div className="ecoCardTop">
+                          <div className="ecoCardTitle">{row.name}</div>
+                          <div className="ecoCardActions">
+                            <button
+                              className="ecoActionBtn danger"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                hideValue('skills', row.name)
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                        <div className="ecoCardMeta">
+                          <div className="ecoMetaRow">
+                            <span>Used</span>
+                            <span>{row.count}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+
+              <section className="ecoSection">
+                <div className="ecoSectionHeader">
+                  <div className="ecoSectionTitle">
+                    <Icon name="pin" size={18} className="text-[var(--accent)]" />
+                    <div>
+                      <h2 className="ecoSectionTitleText">Places</h2>
+                      <p className="ecoSectionSubtitle">Locations tied to your work.</p>
+                    </div>
+                  </div>
+                  <div className="ecoSectionMeta">{locationStats.length} places</div>
+                </div>
+                <div className="ecoCardGrid">
+                  {locationStats.length === 0 ? (
+                    <div className="ecoEmpty">No places yet</div>
+                  ) : (
+                    locationStats.map((row) => (
+                      <div key={row.name} className="ecoCard">
+                        <div className="ecoCardTop">
+                          <div className="ecoCardTitle">{row.name}</div>
+                          <div className="ecoCardActions">
+                            <button
+                              className="ecoActionBtn danger"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                hideValue('locations', row.name)
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                        <div className="ecoCardMeta">
+                          <div className="ecoMetaRow">
+                            <span>Used</span>
+                            <span>{row.count}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </section>
             </div>

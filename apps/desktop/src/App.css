@@ -153,9 +153,11 @@ select:focus-visible {
 .rail {
   background: transparent;
   border: none;
+  border-right: 1px solid var(--border);
   box-shadow: none;
   display: flex;
   flex-direction: column;
+  align-items: center;
   padding: 12px 8px;
   gap: 12px;
   overflow: hidden;
@@ -166,8 +168,8 @@ select:focus-visible {
 }
 
 .railBtn {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border-radius: 16px;
   display: grid;
@@ -180,9 +182,14 @@ select:focus-visible {
   position: relative;
 }
 
+.railBtn svg {
+  width: 16px;
+  height: 16px;
+}
+
 .railLabel {
   position: absolute;
-  left: 56px;
+  left: 52px;
   top: 50%;
   transform: translateY(-50%) translateX(-4px);
   background: var(--panel);
@@ -195,11 +202,14 @@ select:focus-visible {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   opacity: 0;
   pointer-events: none;
   box-shadow: 0 12px 20px rgba(0, 0, 0, 0.08);
   transition: opacity 160ms ease, transform 160ms ease;
-  z-index: 2;
+  z-index: 5;
 }
 
 .rail.showLabels .railLabel {
@@ -2339,6 +2349,20 @@ select:focus-visible {
   flex-wrap: wrap;
 }
 
+.mdLiMeta {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-width: 45%;
+}
+
+.mdLiMeta .mdChip {
+  margin: 0;
+}
+
 .mdLiText {
   display: inline-flex;
   align-items: center;
@@ -2454,6 +2478,45 @@ select:focus-visible {
   padding: 0 6px;
   margin: 0 4px 2px 0;
   white-space: nowrap;
+}
+
+.mdChip-kind {
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 10px;
+  background: rgba(15, 23, 42, 0.08);
+  border-color: rgba(15, 23, 42, 0.18);
+  color: rgba(15, 23, 42, 0.65);
+}
+
+.mdChip-kind-note {
+  background: rgba(148, 163, 184, 0.18);
+  border-color: rgba(148, 163, 184, 0.3);
+  color: rgba(71, 85, 105, 0.9);
+}
+
+.mdChip-kind-task {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.26);
+  color: rgba(29, 78, 216, 0.9);
+}
+
+.mdChip-kind-habit {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.26);
+  color: rgba(6, 95, 70, 0.9);
+}
+
+.mdChip-kind-event {
+  background: rgba(234, 179, 8, 0.12);
+  border-color: rgba(234, 179, 8, 0.26);
+  color: rgba(161, 98, 7, 0.9);
+}
+
+.mdChip-kind-tracker {
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.26);
+  color: rgba(91, 33, 182, 0.9);
 }
 
 .mdChip-tag {
@@ -3843,6 +3906,36 @@ select:focus-visible {
   background: var(--panel);
 }
 
+.docHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.docTitleSlot {
+  width: 100%;
+  max-width: 50%;
+  min-width: 220px;
+}
+
+.docHeaderControls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.docHeaderGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .docTitleRow {
   display: flex;
   align-items: center;
@@ -3850,7 +3943,8 @@ select:focus-visible {
 }
 
 .docTitleInput {
-  flex: 1;
+  width: 100%;
+  min-width: 0;
   height: 44px;
   border-radius: 12px;
   border: 1px solid var(--border);
@@ -3871,6 +3965,34 @@ select:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.docPill {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  font-weight: 800;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.docPill.active {
+  border-color: var(--accentBorder);
+  background: var(--accentSoft);
+  color: var(--text);
+}
+
+.docExportBtn {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--accentBorder);
+  background: rgba(15, 23, 42, 0.05);
+  font-weight: 900;
+  color: var(--text);
+  cursor: pointer;
 }
 
 .docTabsRow {
@@ -8164,17 +8286,31 @@ select:focus-visible {
   gap: 16px;
 }
 
+.notesHeaderTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
 .notesHeaderTop h1 {
   font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.02em;
+  margin: 0;
 }
 
 .notesHeaderTop p {
   font-size: 11px;
   color: var(--muted);
   font-weight: 600;
-  margin-top: 2px;
+  margin: 0;
+}
+
+.notesHeaderControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
 }
 
 .notesHeaderActions {
