@@ -58,10 +58,13 @@ function getDaysArray(endDate: Date, count: number): Date[] {
 type TrackerHeatMapProps = {
   logs: TrackerLogEntry[];
   days?: number;
+  compact?: boolean;
+  maxCategories?: number;
 };
 
-export function TrackerHeatMap({ logs, days = 7 }: TrackerHeatMapProps) {
-  const { palette, sizes, isDark } = useTheme();
+export function TrackerHeatMap({ logs, days = 7, compact = false, maxCategories }: TrackerHeatMapProps) {
+  const { palette, isDark } = useTheme();
+  const maxCategoryCount = maxCategories ?? (compact ? 2 : undefined);
 
   const daysArray = useMemo(() => getDaysArray(new Date(), days), [days]);
 
@@ -92,12 +95,22 @@ export function TrackerHeatMap({ logs, days = 7 }: TrackerHeatMapProps) {
     return byCategory;
   }, [logs]);
 
+  const categoryTotals = useMemo(() => {
+    return Object.entries(categoryData).map(([key, dates]) => {
+      const total = Object.values(dates).reduce((sum, entry) => sum + entry.count, 0);
+      return { key, total };
+    });
+  }, [categoryData]);
+
   // Find categories with data
   const activeCategories = useMemo(() => {
-    return Object.entries(categoryData)
-      .filter(([_, dates]) => Object.keys(dates).length > 0)
-      .map(([cat]) => cat);
-  }, [categoryData]);
+    const sorted = categoryTotals
+      .filter((item) => item.total > 0)
+      .sort((a, b) => b.total - a.total)
+      .map((item) => item.key);
+    if (maxCategoryCount != null) return sorted.slice(0, maxCategoryCount);
+    return sorted;
+  }, [categoryTotals, maxCategoryCount]);
 
   const getColorForValue = (category: string, value: number, maxValue: number) => {
     const baseColor = CATEGORY_COLORS[category] ?? CATEGORY_COLORS.other;
@@ -136,10 +149,10 @@ export function TrackerHeatMap({ logs, days = 7 }: TrackerHeatMapProps) {
     <View style={styles.container}>
       {/* Day labels header */}
       <View style={styles.headerRow}>
-        <View style={styles.categoryLabelCol} />
+        <View style={[styles.categoryLabelCol, { width: compact ? 56 : 72 }]} />
         {daysArray.map((date, idx) => (
           <View key={idx} style={styles.dayLabelCell}>
-            <Text style={[styles.dayLabel, { color: palette.tabIconDefault }]}>
+            <Text style={[styles.dayLabel, { color: palette.tabIconDefault, fontSize: compact ? 9 : 10 }]}>
               {date.toLocaleDateString([], { weekday: 'narrow' })}
             </Text>
           </View>
@@ -159,9 +172,11 @@ export function TrackerHeatMap({ logs, days = 7 }: TrackerHeatMapProps) {
 
         return (
           <View key={category} style={styles.categoryRow}>
-            <View style={styles.categoryLabelCol}>
+            <View style={[styles.categoryLabelCol, { width: compact ? 56 : 72 }]}>
               <View style={[styles.categoryDot, { backgroundColor: CATEGORY_COLORS[category] }]} />
-              <Text style={[styles.categoryLabel, { color: palette.text }]} numberOfLines={1}>
+              <Text
+                style={[styles.categoryLabel, { color: palette.text, fontSize: compact ? 11 : 12 }]}
+                numberOfLines={1}>
                 {CATEGORY_LABELS[category]}
               </Text>
             </View>
@@ -172,10 +187,14 @@ export function TrackerHeatMap({ logs, days = 7 }: TrackerHeatMapProps) {
               const color = getColorForValue(category, avg, maxValue);
 
               return (
-                <View key={idx} style={styles.cellWrapper}>
-                  <View style={[styles.cell, { backgroundColor: color }]}>
+                <View key={idx} style={[styles.cellWrapper, { padding: compact ? 1 : 2 }]}>
+                  <View style={[styles.cell, { backgroundColor: color, borderRadius: compact ? 4 : 6 }]}>
                     {avg > 0 && (
-                      <Text style={[styles.cellValue, { color: avg > maxValue * 0.5 ? '#FFFFFF' : palette.tabIconDefault }]}>
+                      <Text
+                        style={[
+                          styles.cellValue,
+                          { color: avg > maxValue * 0.5 ? '#FFFFFF' : palette.tabIconDefault, fontSize: compact ? 9 : 10 },
+                        ]}>
                         {Math.round(avg)}
                       </Text>
                     )}
@@ -188,11 +207,11 @@ export function TrackerHeatMap({ logs, days = 7 }: TrackerHeatMapProps) {
       })}
 
       {/* Legend */}
-      <View style={styles.legendRow}>
+      <View style={[styles.legendRow, { marginTop: compact ? 4 : 8 }]}>
         {activeCategories.map((category) => (
           <View key={category} style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: CATEGORY_COLORS[category] }]} />
-            <Text style={[styles.legendText, { color: palette.tabIconDefault }]}>
+            <View style={[styles.legendDot, { backgroundColor: CATEGORY_COLORS[category], width: compact ? 6 : 8, height: compact ? 6 : 8 }]} />
+            <Text style={[styles.legendText, { color: palette.tabIconDefault, fontSize: compact ? 10 : 11 }]}>
               {CATEGORY_LABELS[category]}
             </Text>
           </View>

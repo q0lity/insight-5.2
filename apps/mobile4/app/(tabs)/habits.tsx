@@ -18,7 +18,7 @@ import { startEvent } from '@/src/storage/events';
 export default function HabitsScreen() {
   const { palette, sizes, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { active, startSession } = useSession();
+  const { active, startSession, stopSession } = useSession();
 
   const [habits, setHabits] = useState<HabitWithStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -273,19 +273,23 @@ export default function HabitsScreen() {
             </View>
           ) : (
             <View style={[styles.habitsList, { gap: sizes.rowGap }]}>
-              {habits.map((habit) => (
-                <HabitCard
-                  key={habit.id}
-                  habit={habit}
-                  streak={habit.streak}
-                  heatmapData={habit.heatmapData}
-                  todayLogs={habit.todayLogs}
-                  onPlus={() => handleQuickLog(habit, true)}
-                  onMinus={() => handleQuickLog(habit, false)}
-                  onStartTimed={habit.isTimed ? () => handleStartTimed(habit) : undefined}
-                  onPress={() => handleHabitPress(habit)}
-                />
-              ))}
+              {habits.map((habit) => {
+                const isActiveHabit = active?.trackerKey === `habit:${habit.id}`;
+                return (
+                  <HabitCard
+                    key={habit.id}
+                    habit={habit}
+                    streak={habit.streak}
+                    heatmapData={habit.heatmapData}
+                    todayLogs={habit.todayLogs}
+                    onPlus={() => handleQuickLog(habit, true)}
+                    onMinus={() => handleQuickLog(habit, false)}
+                    onStartTimed={habit.isTimed ? () => handleStartTimed(habit) : undefined}
+                    onStopTimed={habit.isTimed && isActiveHabit ? () => stopSession() : undefined}
+                    onPress={() => handleHabitPress(habit)}
+                  />
+                );
+              })}
             </View>
           )}
         </View>

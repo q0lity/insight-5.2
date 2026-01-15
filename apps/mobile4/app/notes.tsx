@@ -189,7 +189,7 @@ export default function NotesScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}
-            onPress={() => router.push(`/note/${item.id}`)}
+            onPress={() => router.push({ pathname: '/note/[id]', params: { id: item.id } })}
           >
             <View style={styles.cardHeader}>
               <Text style={[styles.cardTitle, { color: palette.text }]}>{firstLine(item.rawText)}</Text>

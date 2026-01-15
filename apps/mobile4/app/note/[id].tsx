@@ -12,24 +12,30 @@ import { extractTags, extractPeople, extractPlaces, wordCount, formatRelativeDat
 export default function NoteDetailScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { id } = useLocalSearchParams<{ id: string }>()
+  const { id: idParam } = useLocalSearchParams<{ id?: string | string[] }>()
+  const noteId = Array.isArray(idParam) ? idParam[0] : idParam
   const { palette } = useTheme()
 
   const [capture, setCapture] = useState<InboxCapture | null>(null)
   const [text, setText] = useState('')
 
   useEffect(() => {
+    if (!noteId) {
+      setCapture(null)
+      setText('')
+      return
+    }
     let mounted = true
     listInboxCaptures().then((rows) => {
       if (!mounted) return
-      const found = rows.find((row) => row.id === id) ?? null
+      const found = rows.find((row) => row.id === noteId) ?? null
       setCapture(found)
       setText(found?.rawText ?? '')
     })
     return () => {
       mounted = false
     }
-  }, [id])
+  }, [noteId])
 
   useEffect(() => {
     if (!capture) return
@@ -59,7 +65,7 @@ export default function NoteDetailScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={[styles.metaCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <Text style={{ color: palette.textSecondary }}>
-            {capture ? formatRelativeDate(capture.createdAt) : 'Loading...'}
+            {capture ? formatRelativeDate(capture.createdAt) : noteId ? 'Loading...' : 'Note not found'}
           </Text>
           <Text style={{ color: palette.textSecondary }}>{words} words</Text>
         </View>

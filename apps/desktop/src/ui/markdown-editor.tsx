@@ -20,6 +20,7 @@ export function MarkdownEditor(props: {
   value: string
   onChange: (next: string) => void
   previewValue?: string
+  tableValue?: string
   onToggleChecklist?: (lineIndex: number) => void
   onStartTask?: (task: {
     tokenId: string
@@ -50,6 +51,7 @@ export function MarkdownEditor(props: {
   const mode = props.mode ?? internalMode
   const setMode = props.onModeChange ?? setInternalMode
   const preview = useMemo(() => props.previewValue ?? props.value ?? '', [props.previewValue, props.value])
+  const tableText = useMemo(() => props.tableValue ?? preview, [props.tableValue, preview])
   const hasPreview = Boolean(preview.trim())
   const showTop =
     Boolean(props.headerLeading) ||
@@ -111,7 +113,7 @@ export function MarkdownEditor(props: {
           aria-label={props.ariaLabel ?? 'Notes (markdown)'}
         />
       ) : mode === 'table' ? (
-        <NotesTablePreview text={preview} filter={props.tableFilter ?? 'all'} habitNames={props.habitNames} />
+        <NotesTablePreview text={tableText} filter={props.tableFilter ?? 'all'} habitNames={props.habitNames} />
       ) : (
         <div className="mdPreviewPane" aria-label="Markdown preview">
           {hasPreview ? (
@@ -160,6 +162,8 @@ function normalizeTitle(raw: string) {
   if (!raw) return ''
   let cleaned = stripTokensForPreview(raw)
   cleaned = cleaned.replace(/^#+\s*/, '')
+  cleaned = cleaned.replace(/^⏱\s*/u, '')
+  cleaned = cleaned.replace(/^\d{1,2}:\d{2}(?:\s*[ap]m)?\s*(?:[-–—]\s*)?/i, '')
   cleaned = cleaned.replace(/^[-*+]\s*(?:\[[ xX]\]\s*)?/, '')
   cleaned = cleaned.replace(/^\[event\]\s*/i, '')
   cleaned = cleaned.replace(/^(event|task|note|habit|tracker)\s*[-:]\s*/i, '')
@@ -171,7 +175,12 @@ function stripTokensForPreview(raw: string) {
   return raw
     .replace(/\{(?:task|note|seg|event|meal|workout|tracker|habit|tag|person|ctx|loc|goal|project|skill):[^}]+\}/g, ' ')
     .replace(/#([a-zA-Z][\w/-]*)\(([^)]+)\)/g, ' ')
+    .replace(/#([a-zA-Z][\w/-]*)\s*\[[^\]]+\]/g, ' ')
     .replace(/(^|[\s(])[#@+!*^$~][A-Za-z][\w'’./-]*(?:\s+[A-Za-z][\w'’./-]*){0,3}/g, ' ')
+    .replace(/(^|[\s(])@@([A-Za-z][\w/-]*)/g, ' ')
+    .replace(/\{(\d+(?:\.\d+)?)(m|h)\}/gi, ' ')
+    .replace(/\[timer[:=][^\]]+\]/gi, ' ')
+    .replace(/▶/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -179,8 +188,12 @@ function stripTokensForPreview(raw: string) {
 function stripTokensForTable(raw: string) {
   const tokenPattern = /\{(?:task|note|seg|event|meal|workout|tracker|habit|tag|person|ctx|loc|goal|project|skill):[^}]+\}/g
   const inlineTokenPattern = /#([a-zA-Z][\w/-]*)\(([^)]+)\)/g
+  const bracketTokenPattern = /#([a-zA-Z][\w/-]*)\s*\[[^\]]+\]/g
   const inlineTokenWithMetaPattern = /[#@!*^$~][A-Za-z][\w'’./-]*(?:[ \t]+[A-Za-z][\w'’./-]*){0,3}\{[a-z]+:[^}]+\}/g
   const prefixTokenPattern = /(^|[ \t(])[#@+!^$~][A-Za-z][\w'’./-]*(?:[ \t]+[A-Za-z][\w'’./-]*){0,3}/g
+  const doubleAtPattern = /(^|[ \t(])@@[A-Za-z][\w'’./-]*/g
+  const timerMetaPattern = /\{(\d+(?:\.\d+)?)(m|h)\}/gi
+  const timerTokenPattern = /\[timer[:=][^\]]+\]/gi
 
   return raw
     .split('\n')
@@ -192,7 +205,12 @@ function stripTokensForTable(raw: string) {
         .replace(inlineTokenWithMetaPattern, ' ')
         .replace(tokenPattern, ' ')
         .replace(inlineTokenPattern, ' ')
+        .replace(bracketTokenPattern, ' ')
+        .replace(doubleAtPattern, ' ')
         .replace(prefixTokenPattern, ' ')
+        .replace(timerMetaPattern, ' ')
+        .replace(timerTokenPattern, ' ')
+        .replace(/▶/g, ' ')
         .replace(/[ \t]+/g, ' ')
         .trimEnd()
       return cleaned ? `${indent}${cleaned}` : ''
@@ -227,6 +245,8 @@ function extractInlineTokens(raw: string) {
   const tokens: string[] = []
   const inlineTokenRegex = /([#@!*^$~])([A-Za-z][\w'’./-]*(?:\s+[A-Za-z][\w'’./-]*){0,3})\{([a-z]+):([^}]+)\}/g
   const bareTagTokenRegex = /(^|[ \t(])([A-Za-z][\w'’./-]*(?:[ \t]+[A-Za-z][\w'’./-]*){0,3})\s*\{tag:([^}]+)\}/g
+  const bracketTrackerRegex = /#([a-zA-Z][\w/-]*)\s*\[([^\]]+)\]/g
+  const doubleAtRegex = /(^|[\s(])@@([A-Za-z][\w'’./-]*)/g
 
   for (const match of raw.matchAll(inlineTokenRegex)) {
     tokens.push(`${match[1]}${match[2]}`)
@@ -234,6 +254,15 @@ function extractInlineTokens(raw: string) {
   for (const match of raw.matchAll(bareTagTokenRegex)) {
     const label = match[2].trim()
     if (label) tokens.push(`#${label}`)
+  }
+  for (const match of raw.matchAll(bracketTrackerRegex)) {
+    const label = match[1]?.trim()
+    const value = (match[2] ?? '').trim()
+    if (label) tokens.push(`#${label}[${value}]`)
+  }
+  for (const match of raw.matchAll(doubleAtRegex)) {
+    const label = match[2]?.trim()
+    if (label) tokens.push(`@@${label}`)
   }
 
   return tokens
@@ -246,13 +275,23 @@ function buildRowTokens(block: ReturnType<typeof parseCaptureWithBlocks>['blocks
     if (!tokens.has(key)) tokens.set(key, token)
   }
 
+  const inlineTokens = extractInlineTokens(block.rawText)
+  const inlineTrackerKeys = new Set(
+    inlineTokens
+      .filter((token) => token.startsWith('#') && token.includes('['))
+      .map((token) => token.slice(1, token.indexOf('[')).toLowerCase()),
+  )
+
   block.tags.forEach((t) => addToken(`#${t}`))
   block.people.forEach((p) => addToken(`@${p}`))
   block.contexts.forEach((c) => addToken(`+${c}`))
-  block.locations.forEach((l) => addToken(`!${l}`))
-  block.trackers.forEach((t) => addToken(`#${t.key}(${t.value})`))
+  block.locations.forEach((l) => addToken(`@@${l}`))
+  block.trackers.forEach((t) => {
+    if (inlineTrackerKeys.has(t.key.toLowerCase())) return
+    addToken(`#${t.key}[${t.value}]`)
+  })
   detectHabits(block.rawText, habitNames).forEach((h) => addToken(`#habit:${h}`))
-  extractInlineTokens(block.rawText).forEach((token) => addToken(token))
+  inlineTokens.forEach((token) => addToken(token))
 
   return Array.from(tokens.values())
 }

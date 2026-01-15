@@ -40,6 +40,7 @@ function categorizeTracker(key: string): string {
 type TrackerPieChartProps = {
   logs: TrackerLogEntry[];
   size?: number;
+  compact?: boolean;
 };
 
 function polarToCartesian(centerX: number, centerY: number, radius: number, angleInDegrees: number) {
@@ -63,8 +64,8 @@ function describeArc(x: number, y: number, radius: number, startAngle: number, e
   ].join(' ');
 }
 
-export function TrackerPieChart({ logs, size = 120 }: TrackerPieChartProps) {
-  const { palette, sizes, isDark } = useTheme();
+export function TrackerPieChart({ logs, size = 120, compact = false }: TrackerPieChartProps) {
+  const { palette, isDark } = useTheme();
 
   // Count logs by category
   const categoryStats = useMemo(() => {
@@ -119,9 +120,11 @@ export function TrackerPieChart({ logs, size = 120 }: TrackerPieChartProps) {
     };
   });
 
+  const legendEntries = compact ? categoryStats.entries.slice(0, 3) : categoryStats.entries.slice(0, 4);
+
   return (
     <View style={styles.container}>
-      <View style={styles.chartRow}>
+      <View style={[styles.chartRow, compact && { gap: 12 }]}>
         <Svg width={size} height={size}>
           <G>
             {slices.map((slice, idx) => (
@@ -138,14 +141,14 @@ export function TrackerPieChart({ logs, size = 120 }: TrackerPieChartProps) {
 
         {/* Legend */}
         <View style={styles.legendContainer}>
-          {categoryStats.entries.slice(0, 4).map((entry) => (
+          {legendEntries.map((entry) => (
             <View key={entry.category} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: entry.color }]} />
+              <View style={[styles.legendDot, { backgroundColor: entry.color, width: compact ? 8 : 10, height: compact ? 8 : 10 }]} />
               <View style={styles.legendTextCol}>
-                <Text style={[styles.legendLabel, { color: palette.text }]} numberOfLines={1}>
+                <Text style={[styles.legendLabel, { color: palette.text, fontSize: compact ? 11 : 13 }]} numberOfLines={1}>
                   {entry.label}
                 </Text>
-                <Text style={[styles.legendValue, { color: palette.textSecondary }]}>
+                <Text style={[styles.legendValue, { color: palette.textSecondary, fontSize: compact ? 10 : 11 }]}>
                   {entry.count} ({Math.round(entry.percentage)}%)
                 </Text>
               </View>
@@ -156,8 +159,8 @@ export function TrackerPieChart({ logs, size = 120 }: TrackerPieChartProps) {
 
       {/* Total count */}
       <View style={styles.totalRow}>
-        <Text style={[styles.totalLabel, { color: palette.textSecondary }]}>Total Logs</Text>
-        <Text style={[styles.totalValue, { color: palette.text }]}>{categoryStats.total}</Text>
+        <Text style={[styles.totalLabel, { color: palette.textSecondary, fontSize: compact ? 10 : 12 }]}>Total Logs</Text>
+        <Text style={[styles.totalValue, { color: palette.text, fontSize: compact ? 16 : 18 }]}>{categoryStats.total}</Text>
       </View>
     </View>
   );

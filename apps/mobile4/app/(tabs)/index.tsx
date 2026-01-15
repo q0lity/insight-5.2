@@ -648,13 +648,13 @@ export default function TodayScreen() {
           {/* Heat Map visualization */}
           <View style={[styles.trackerHeatmapSection, { gap: sizes.rowGap }]}>
             <Text style={[styles.trackerSectionLabel, { color: palette.textSecondary, fontSize: sizes.tinyText }]}>7-Day Overview</Text>
-            <TrackerHeatMap logs={trackerLogs} days={7} />
+            <TrackerHeatMap logs={trackerLogs} days={7} compact />
           </View>
 
           {/* Pie Chart visualization */}
           <View style={[styles.trackerPieSection, { gap: sizes.rowGap, borderTopColor: palette.borderLight }]}>
             <Text style={[styles.trackerSectionLabel, { color: palette.textSecondary, fontSize: sizes.tinyText }]}>By Category</Text>
-            <TrackerPieChart logs={trackerLogs} size={100} />
+            <TrackerPieChart logs={trackerLogs} size={84} compact />
           </View>
 
           {/* Quick tracker chips - recent values */}
@@ -1081,26 +1081,26 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.16)',
-    padding: 20,
-    gap: 20,
+    padding: 16,
+    gap: 14,
   },
   trackerHeatmapSection: {
-    gap: 12,
+    gap: 10,
   },
   trackerPieSection: {
-    gap: 12,
-    paddingTop: 8,
+    gap: 10,
+    paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: 'rgba(148, 163, 184, 0.08)',
   },
   trackerQuickSection: {
-    gap: 10,
-    paddingTop: 8,
+    gap: 8,
+    paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: 'rgba(148, 163, 184, 0.08)',
   },
   trackerSectionLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
     letterSpacing: 1,
     textTransform: 'uppercase',
@@ -1108,21 +1108,21 @@ const styles = StyleSheet.create({
   trackerChipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   trackerChip: {
     borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     gap: 2,
   },
   trackerChipLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
   },
   trackerChipValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   overviewSection: {

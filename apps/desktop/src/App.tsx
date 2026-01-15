@@ -1787,13 +1787,101 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
   function stripTranscriptLines(raw: string) {
     const source = raw ?? ''
     if (!source.trim()) return ''
-    const transcriptLine = /^\s*(?:[-*]\s*)?(?:\*\*)?\d{1,2}:\d{2}(?:\s*[ap]m)?(?:\*\*)?\s*-\s+\S+/i
+    const transcriptLine = /^\s*(?:[-*]\s*)?\*\*\d{1,2}:\d{2}(?:\s*[ap]m)?\*\*\s*-\s+\S+/i
     const bracketLine = /^\s*(?:[-*]\s*)?\[\d{1,2}:\d{2}\]\s+\S+/i
     return source
       .split(/\r?\n/)
       .filter((line) => !(transcriptLine.test(line) || bracketLine.test(line)))
       .join('\n')
       .trimEnd()
+  }
+
+  function formatDocDate(ms?: number | null) {
+    if (!ms) return null
+    return new Date(ms).toISOString().slice(0, 10)
+  }
+
+  function formatDocTime(ms?: number | null) {
+    if (!ms) return null
+    return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  function formatTokenValue(raw: string) {
+    return raw.trim().toLowerCase().replace(/[^a-z0-9/-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$|\/$/g, '')
+  }
+
+  function formatTokenList(tokens: string[], prefix: string) {
+    if (!tokens.length) return ''
+    return tokens
+      .map((token) => {
+        const trimmed = token.trim()
+        if (!trimmed) return ''
+        return trimmed.startsWith(prefix) ? trimmed : `${prefix}${trimmed}`
+      })
+      .filter(Boolean)
+      .join(' ')
+  }
+
+  function buildDocMetaBlock(meta: {
+    title?: string | null
+    date?: number | null
+    start?: number | null
+    end?: number | null
+    status?: string | null
+    tags?: string[]
+    contexts?: string[]
+    people?: string[]
+    locations?: string[]
+    project?: string | null
+    goal?: string | null
+    category?: string | null
+    subcategory?: string | null
+    estimateMinutes?: number | null
+    importance?: number | null
+    urgency?: number | null
+    difficulty?: number | null
+    trackerLabel?: string | null
+  }) {
+    const lines: string[] = ['## Properties']
+    const date = formatDocDate(meta.date)
+    const start = formatDocTime(meta.start)
+    const end = formatDocTime(meta.end)
+    if (date) lines.push(`- Date: ${date}`)
+    if (start || end) lines.push(`- Time: ${start ?? '—'}${end ? `–${end}` : ''}`)
+    if (meta.status) lines.push(`- Status: #status/${formatTokenValue(meta.status)}`)
+    if (meta.trackerLabel) lines.push(`- Active tracker: ${meta.trackerLabel}`)
+    if (meta.project) lines.push(`- Project: #project/${formatTokenValue(meta.project)}`)
+    if (meta.goal) lines.push(`- Goal: #goal/${formatTokenValue(meta.goal)}`)
+    if (meta.category) {
+      const tokens = [`#category/${formatTokenValue(meta.category)}`]
+      if (meta.subcategory) tokens.push(`#subcategory/${formatTokenValue(meta.subcategory)}`)
+      lines.push(`- Category: ${tokens.join(' ')}`)
+    }
+    const tagTokens = formatTokenList(meta.tags ?? [], '#')
+    if (tagTokens) lines.push(`- Tags: ${tagTokens}`)
+    const contextTokens = formatTokenList(meta.contexts ?? [], '+')
+    if (contextTokens) lines.push(`- Context: ${contextTokens}`)
+    const peopleTokens = formatTokenList(meta.people ?? [], '@')
+    if (peopleTokens) lines.push(`- People: ${peopleTokens}`)
+    if (meta.locations?.length) {
+      const locTokens = meta.locations.map((loc) => `@@${formatTokenValue(loc)}`).join(' ')
+      lines.push(`- Location: ${locTokens}`)
+    }
+    if (meta.estimateMinutes != null) lines.push(`- Estimate: ${meta.estimateMinutes}m`)
+    if (meta.importance != null || meta.urgency != null || meta.difficulty != null) {
+      lines.push(
+        `- Impact: ${meta.importance ?? '—'} | Urgency: ${meta.urgency ?? '—'} | Difficulty: ${meta.difficulty ?? '—'}`,
+      )
+    }
+    return lines.length > 1 ? lines.join('\n') : ''
+  }
+
+  function buildDocPreview(base: string, title: string | null | undefined, metaBlock: string) {
+    const trimmed = base.trim()
+    const hasTitle = /^\s*#\s+/.test(trimmed)
+    const header = title && !hasTitle ? `# ${title}\n\n` : ''
+    const meta = metaBlock ? `\n\n---\n\n${metaBlock}` : ''
+    return `${header}${trimmed}${meta}`.trim()
   }
 
   function appendMarkdownBlock(existing: string | null | undefined, block: string) {
@@ -5309,7 +5397,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
           : ''
   const docTranscriptLines = useMemo(() => parseTimestampedTranscript(docTranscriptText), [docTranscriptText])
   const docNotesPreview = useMemo(() => stripTranscriptLines(docNotesText), [docNotesText])
-  const docOutlineExport = useMemo(() => stripOutlineTokens(docNotesText), [docNotesText])
+  const docTokenCollections = useMemo(() => toTokenCollections(extractInlineTokens(docNotesPreview)), [docNotesPreview])
   const selectedTaskTags = selectedTask?.tags ?? []
   const selectedTaskContexts = selectedTask?.contexts ?? []
   const selectedTaskPeople = selectedTask?.people ?? []
@@ -5333,6 +5421,81 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     const def = trackerDefs.find((t) => t.key === raw) ?? null
     return { key: raw, label: def?.label ?? raw }
   }, [habitDefs, selectedEvent?.trackerKey, trackerDefs])
+  const docMetaBlock = useMemo(() => {
+    const mergedTags = uniqStrings([
+      ...selectedTaskTags.map((tag) => tag.replace(/^#/, '')),
+      ...selectedEventTags.map((tag) => tag.replace(/^#/, '')),
+      ...docTokenCollections.tags,
+    ])
+    const mergedContexts = uniqStrings([...selectedTaskContexts, ...selectedEventContexts, ...docTokenCollections.contexts])
+    const mergedPeople = uniqStrings([...selectedTaskPeople, ...selectedEventPeople, ...docTokenCollections.people])
+    const mergedLocations = uniqStrings([...selectedTaskLocations, ...selectedEventLocations, ...docTokenCollections.places])
+
+    if (selection.kind === 'task' && selectedTask) {
+      return buildDocMetaBlock({
+        title: selectedTask.title,
+        date: selectedTask.dueAt ?? selectedTask.scheduledAt ?? selectedTask.createdAt,
+        status: selectedTask.status,
+        tags: mergedTags,
+        contexts: mergedContexts,
+        people: mergedPeople,
+        locations: mergedLocations,
+        project: selectedTask.project ?? null,
+        goal: selectedTask.goal ?? null,
+        category: selectedTask.category ?? null,
+        subcategory: selectedTask.subcategory ?? null,
+        estimateMinutes: selectedTask.estimateMinutes ?? null,
+        importance: selectedTask.importance ?? null,
+        urgency: selectedTask.urgency ?? null,
+        difficulty: selectedTask.difficulty ?? null,
+      })
+    }
+    if (selection.kind === 'event' && selectedEvent) {
+      return buildDocMetaBlock({
+        title: selectedEvent.title,
+        date: selectedEvent.startAt,
+        start: selectedEvent.startAt,
+        end: selectedEvent.endAt,
+        status: selectedEvent.active ? 'active' : selectedEvent.completedAt ? 'done' : 'inactive',
+        tags: mergedTags,
+        contexts: mergedContexts,
+        people: mergedPeople,
+        locations: mergedLocations,
+        project: selectedEvent.project ?? null,
+        goal: selectedEvent.goal ?? null,
+        category: selectedEvent.category ?? null,
+        subcategory: selectedEvent.subcategory ?? null,
+        estimateMinutes: selectedEvent.estimateMinutes ?? null,
+        importance: selectedEvent.importance ?? null,
+        urgency: selectedEvent.urgency ?? null,
+        difficulty: selectedEvent.difficulty ?? null,
+        trackerLabel: selectedEventTracker?.label ?? null,
+      })
+    }
+    return ''
+  }, [
+    docTokenCollections.contexts,
+    docTokenCollections.people,
+    docTokenCollections.places,
+    docTokenCollections.tags,
+    selection.kind,
+    selectedEvent,
+    selectedEventContexts,
+    selectedEventLocations,
+    selectedEventPeople,
+    selectedEventTags,
+    selectedEventTracker?.label,
+    selectedTask,
+    selectedTaskContexts,
+    selectedTaskLocations,
+    selectedTaskPeople,
+    selectedTaskTags,
+  ])
+  const docNotesDisplay = useMemo(() => {
+    const title = selection.kind === 'task' ? selectedTask?.title : selection.kind === 'event' ? selectedEvent?.title : null
+    return buildDocPreview(docNotesPreview, title, docMetaBlock)
+  }, [docMetaBlock, docNotesPreview, selectedEvent?.title, selectedTask?.title, selection.kind])
+  const docPageExport = useMemo(() => docNotesDisplay.trim(), [docNotesDisplay])
   const [nowTick, setNowTick] = useState(() => Date.now())
 
   useEffect(() => {
@@ -5344,18 +5507,18 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
   }, [docOpen, selectionKey])
 
   const handleExportOutline = useCallback(async () => {
-    const payload = docOutlineExport.trim()
+    const payload = docPageExport.trim()
     if (!payload) {
-      toast.info('No outline to export.', { duration: 1500 })
+      toast.info('No page to export.', { duration: 1500 })
       return
     }
     try {
       await navigator.clipboard.writeText(payload)
-      toast.success('Outline copied to clipboard.', { duration: 1500 })
+      toast.success('Page copied to clipboard.', { duration: 1500 })
     } catch (err) {
-      window.prompt('Copy outline', payload)
+      window.prompt('Copy page', payload)
     }
-  }, [docOutlineExport])
+  }, [docPageExport])
 
   const handleTranscriptChange = useCallback(
     (next: string) => {
@@ -8153,7 +8316,8 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                     {docTab === 'notes' ? (
                       <MarkdownEditor
                         value={docNotesText}
-                        previewValue={docNotesPreview}
+                        previewValue={docNotesDisplay}
+                        tableValue={docNotesPreview}
                         onChange={(next) => commitTask({ ...selectedTask, notes: next })}
                         onToggleChecklist={(lineIndex) => onToggleTaskChecklistItem(selectedTask.id, lineIndex)}
                         placeholder="Write markdown notes…"
@@ -8274,7 +8438,8 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                     {docTab === 'notes' ? (
                       <MarkdownEditor
                         value={docNotesText}
-                        previewValue={docNotesPreview}
+                        previewValue={docNotesDisplay}
+                        tableValue={docNotesPreview}
                         onChange={(next) => commitEvent({ ...selectedEvent, notes: next })}
                         onToggleChecklist={(lineIndex) => {
                           if (selectedEvent.kind === 'task' && selectedEvent.taskId) {

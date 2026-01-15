@@ -40,6 +40,7 @@ export function HabitCard({
   const showPlusButton = habit.polarity === 'positive' || habit.polarity === 'both';
   const showMinusButton = habit.polarity === 'negative' || habit.polarity === 'both';
   const showTimedButtons = habit.isTimed;
+  const showStopButton = Boolean(onStopTimed);
 
   const accentColor = habit.color || '#22C55E';
 
@@ -215,24 +216,26 @@ export function HabitCard({
                 <InsightIcon name="play" size={sizes.iconSizeTiny} color="#FFFFFF" />
                 <Text style={[styles.timedButtonTextWhite, { fontSize: sizes.smallText }]}>Start</Text>
               </Pressable>
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation();
-                  handleStopPress();
-                }}
-                style={[
-                  styles.timedButton,
-                  {
-                    backgroundColor: palette.borderLight,
-                    paddingHorizontal: sizes.cardPadding,
-                    paddingVertical: sizes.spacingSmall,
-                    borderRadius: sizes.borderRadiusSmall,
-                    gap: sizes.spacingSmall / 2,
-                  }
-                ]}>
-                <View style={[styles.stopIcon, { backgroundColor: palette.textSecondary, width: sizes.iconSizeTiny - 4, height: sizes.iconSizeTiny - 4 }]} />
-                <Text style={[styles.timedButtonText, { color: palette.text, fontSize: sizes.smallText }]}>Stop</Text>
-              </Pressable>
+              {showStopButton && (
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleStopPress();
+                  }}
+                  style={[
+                    styles.timedButton,
+                    {
+                      backgroundColor: palette.borderLight,
+                      paddingHorizontal: sizes.cardPadding,
+                      paddingVertical: sizes.spacingSmall,
+                      borderRadius: sizes.borderRadiusSmall,
+                      gap: sizes.spacingSmall / 2,
+                    }
+                  ]}>
+                  <View style={[styles.stopIcon, { backgroundColor: palette.textSecondary, width: sizes.iconSizeTiny - 4, height: sizes.iconSizeTiny - 4 }]} />
+                  <Text style={[styles.timedButtonText, { color: palette.text, fontSize: sizes.smallText }]}>Stop</Text>
+                </Pressable>
+              )}
             </View>
           )}
         </View>

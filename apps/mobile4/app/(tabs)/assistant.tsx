@@ -173,7 +173,7 @@ export default function AssistantScreen() {
   }
 
   const handleOpen = (hit: Hit) => {
-    if (hit.kind === 'capture') router.push(`/note/${hit.id}`)
+    if (hit.kind === 'capture') router.push({ pathname: '/note/[id]', params: { id: hit.id } })
     if (hit.kind === 'event') router.push(`/event/${hit.id}`)
     if (hit.kind === 'task') router.push(`/task/${hit.id}`)
   }

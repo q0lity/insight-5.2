@@ -10,16 +10,8 @@ import { createTask, listTasks, updateTask, type MobileTask } from '@/src/storag
 import { computeXp, formatXp } from '@/src/utils/points'
 
 type TaskFilterKey = 'inbox' | 'today' | 'next7' | 'all' | 'done'
-type LayoutMode = 'list' | 'kanban'
 
 const FILTERS: TaskFilterKey[] = ['inbox', 'today', 'next7', 'all', 'done']
-const STATUSES: Array<{ key: MobileTask['status']; label: string }> = [
-  { key: 'todo', label: 'Todo' },
-  { key: 'in_progress', label: 'In Progress' },
-  { key: 'done', label: 'Done' },
-  { key: 'canceled', label: 'Canceled' },
-]
-
 function startOfDayMs(d: Date) {
   const x = new Date(d)
   x.setHours(0, 0, 0, 0)
@@ -55,7 +47,6 @@ export default function TasksScreen() {
 
   const [tasks, setTasks] = useState<MobileTask[]>([])
   const [filter, setFilter] = useState<TaskFilterKey>('inbox')
-  const [layout, setLayout] = useState<LayoutMode>('list')
   const [q, setQ] = useState('')
   const [draft, setDraft] = useState('')
 
@@ -188,22 +179,10 @@ export default function TasksScreen() {
     )
   }
 
-  const kanbanColumns = useMemo(() => {
-    return STATUSES.map((status) => ({
-      ...status,
-      items: tasks.filter((t) => t.status === status.key),
-    }))
-  }, [tasks])
-
   return (
     <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: palette.text }]}>Tasks</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => setLayout(layout === 'list' ? 'kanban' : 'list')} style={styles.headerChip}>
-            <Text style={{ color: palette.text }}>{layout === 'list' ? 'Kanban' : 'List'}</Text>
-          </TouchableOpacity>
-        </View>
       </View>
 
       <View style={styles.inputRow}>
@@ -247,39 +226,9 @@ export default function TasksScreen() {
         />
       </View>
 
-      {layout === 'list' ? (
-        <ScrollView contentContainerStyle={styles.listContent}>
-          {filtered.map((task) => renderTaskCard(task))}
-        </ScrollView>
-      ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kanbanRow}>
-          {kanbanColumns.map((col) => (
-            <View key={col.key} style={[styles.kanbanCol, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-              <Text style={[styles.kanbanTitle, { color: palette.text }]}>{col.label}</Text>
-              {col.items.map((task) => (
-                <View key={task.id} style={[styles.kanbanCard, { borderColor: palette.border }]}>
-                  <Text style={{ color: palette.text }}>{task.title}</Text>
-                  <Text style={{ color: palette.textSecondary, fontSize: 12 }}>
-                    {task.dueAt ? formatShortDate(task.dueAt) : 'No due date'}
-                  </Text>
-                  <View style={styles.kanbanActions}>
-                    {task.status !== 'done' ? (
-                      <TouchableOpacity onPress={() => toggleDone(task)}>
-                        <Text style={{ color: palette.tint }}>Done</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                    {task.status !== 'in_progress' ? (
-                      <TouchableOpacity onPress={() => moveTask(task, 'in_progress')}>
-                        <Text style={{ color: palette.textSecondary }}>Start</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                </View>
-              ))}
-            </View>
-          ))}
-        </ScrollView>
-      )}
+      <ScrollView contentContainerStyle={styles.listContent}>
+        {filtered.map((task) => renderTaskCard(task))}
+      </ScrollView>
     </View>
   )
 }
@@ -288,8 +237,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
   headerTitle: { fontSize: 22, fontWeight: '900', fontFamily: 'Figtree' },
-  headerActions: { flexDirection: 'row', gap: 8 },
-  headerChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14 },
   inputRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingBottom: 8 },
   input: { flex: 1, height: 44, borderRadius: 14, borderWidth: 1, paddingHorizontal: 12, fontFamily: 'Figtree' },
   addButton: { width: 64, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
@@ -304,9 +251,4 @@ const styles = StyleSheet.create({
   taskMetaRow: { flexDirection: 'row', justifyContent: 'space-between' },
   taskActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   taskAction: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 },
-  kanbanRow: { padding: 16, gap: 12 },
-  kanbanCol: { width: 240, borderWidth: 1, borderRadius: 16, padding: 12, gap: 10 },
-  kanbanTitle: { fontWeight: '700', marginBottom: 4 },
-  kanbanCard: { borderWidth: 1, borderRadius: 12, padding: 10, gap: 6 },
-  kanbanActions: { flexDirection: 'row', gap: 8 },
 })

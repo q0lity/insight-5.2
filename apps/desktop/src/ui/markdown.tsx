@@ -117,6 +117,14 @@ function deriveLineTitle(raw: string) {
   return cleaned.replace(/^[-*+]\s*(?:\[[ xX]\]\s*)?/, '').trim()
 }
 
+function deriveStructuredLineTitle(raw: string) {
+  const cleaned = stripInlineTokens(raw)
+    .replace(/(^|[\s(])[#@+!*^$~][A-Za-z][\w'’./-]*(?:\s+[A-Za-z][\w'’./-]*){0,3}/g, ' ')
+    .replace(/(^|[\s(])@@[A-Za-z][\w'’./-]*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return cleaned.replace(/^[-*+]\s*(?:\[[ xX]\]\s*)?/, '').trim()
+}
 function renderTextWithChips(raw: string) {
   const text = raw.replace(TOKEN_META_RE, '')
   const parts: Array<string | JSX.Element> = []
@@ -258,7 +266,7 @@ export function MarkdownView(props: {
               lineIndex,
             }
         : null
-    const displayText = deriveLineTitle(rawText)
+    const displayText = outlineVariant === 'structured' ? deriveStructuredLineTitle(rawText) : deriveLineTitle(rawText)
     const outlineTokens = outlineVariant === 'structured' ? buildOutlineTokens(rawText) : []
     const trackerTokens = outlineVariant === 'structured' ? extractTrackerTokens(rawText) : []
     const lineKind = outlineVariant === 'structured' ? detectLineKind(rawText, taskMeta, trackerTokens) : null
@@ -339,11 +347,11 @@ export function MarkdownView(props: {
                 const trimmed = token.trim()
                 if (!trimmed) return null
                 const lower = trimmed.toLowerCase()
-                const isTracker = /^#[a-zA-Z][\w/-]*\s*(?:\(|:)/.test(trimmed)
+                const isTracker = /^#[a-zA-Z][\w/-]*\s*(?:\(|:|\[)/.test(trimmed)
                 const className =
                   lower.startsWith('@')
                     ? 'mdChip mdChip-person'
-                    : lower.startsWith('!') 
+                    : lower.startsWith('!') || lower.startsWith('@@')
                       ? 'mdChip mdChip-loc'
                       : lower.startsWith('+') || lower.startsWith('*')
                         ? 'mdChip mdChip-ctx'
@@ -371,12 +379,17 @@ export function MarkdownView(props: {
         rehypePlugins={[[rehypeHighlight, { ignoreMissing: true }]]}
         components={{
           p: ({ children, ...rest }) => (props.hideParagraphs ? null : <p {...rest}>{renderWithChips(children)}</p>),
+          h1: ({ children, ...rest }) => <h1 {...rest}>{renderWithChips(children)}</h1>,
+          h2: ({ children, ...rest }) => <h2 {...rest}>{renderWithChips(children)}</h2>,
+          h3: ({ children, ...rest }) => <h3 {...rest}>{renderWithChips(children)}</h3>,
           li: ListItem,
           a: ({ href, children, ...rest }) => (
             <a href={href} target="_blank" rel="noreferrer" {...rest}>
               {children}
             </a>
           ),
+          td: ({ children, ...rest }) => <td {...rest}>{renderWithChips(children)}</td>,
+          th: ({ children, ...rest }) => <th {...rest}>{renderWithChips(children)}</th>,
           input: ({ type }) => {
             if (type !== 'checkbox') return null
             return null

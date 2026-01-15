@@ -338,6 +338,11 @@ export async function listWorkouts(): Promise<WorkoutEntry[]> {
   return workouts.sort((a, b) => (b.startAt ?? 0) - (a.startAt ?? 0));
 }
 
+export async function getWorkout(id: string): Promise<WorkoutEntry | null> {
+  const workouts = await listWorkouts();
+  return workouts.find((entry) => entry.id === id) ?? null;
+}
+
 export async function saveWorkout(entry: WorkoutEntry): Promise<WorkoutEntry> {
   const existing = await loadWorkoutsLocal();
   const next = [entry, ...existing];

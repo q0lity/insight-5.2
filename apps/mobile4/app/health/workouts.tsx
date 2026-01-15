@@ -88,7 +88,10 @@ export default function WorkoutsScreen() {
           </View>
         ) : (
           sorted.map((workout) => (
-            <View key={workout.id} style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <TouchableOpacity
+              key={workout.id}
+              onPress={() => router.push({ pathname: '/health/workout/[id]', params: { id: workout.id } })}
+              style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <View style={styles.cardHeader}>
                 <View>
                   <Text style={[styles.cardTitle, { color: palette.text }]}>{workout.title}</Text>
@@ -124,7 +127,7 @@ export default function WorkoutsScreen() {
                   )}
                 </View>
               ))}
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>

@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, PanResponder, Pressable, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text, View } from '@/components/Themed';
 import { useTheme } from '@/src/state/theme';
-import { listEvents, type MobileEvent } from '@/src/storage/events';
+import { listEvents, startEvent, type MobileEvent } from '@/src/storage/events';
 import { useSession } from '@/src/state/session';
 import { InsightIcon } from '@/src/components/InsightIcon';
 import { syncConnectedCalendars, type CalendarSyncOutcome } from '@/src/services/calendarSync';
@@ -115,6 +115,9 @@ export default function CalendarScreen() {
   const [events, setEvents] = useState<MobileEvent[]>([]);
   const [segment, setSegment] = useState('Day');
   const [syncing, setSyncing] = useState(false);
+  const [dragMode, setDragMode] = useState(false);
+  const [draftEvent, setDraftEvent] = useState<null | { startAt: number; endAt: number; top: number; height: number }>(null);
+  const dragStartMinutesRef = useRef<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -126,6 +129,20 @@ export default function CalendarScreen() {
       mounted = false;
     };
   }, [active?.id]);
+
+  useEffect(() => {
+    if (segment !== 'Day') {
+      setDragMode(false);
+      setDraftEvent(null);
+      dragStartMinutesRef.current = null;
+    }
+  }, [segment]);
+
+  const dayStartMs = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return start.getTime();
+  }, []);
 
   const syncCalendar = async () => {
     if (syncing) return;
@@ -193,6 +210,93 @@ export default function CalendarScreen() {
 
   const hourHeight = 80;
   const weekDayWidth = 44; // Width per day column in week view
+  const dragEnabled = segment === 'Day' && dragMode;
+  const SNAP_MINUTES = 15;
+  const MIN_DURATION_MINUTES = 30;
+  const totalMinutes = 24 * 60;
+
+  const minutesFromLocation = useCallback(
+    (y: number) => {
+      const clampedY = Math.max(0, Math.min(y, hourHeight * 24));
+      const minutes = (clampedY / hourHeight) * 60;
+      const snapped = Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
+      return Math.max(0, Math.min(totalMinutes, snapped));
+    },
+    [hourHeight]
+  );
+
+  const updateDraftFromMinutes = useCallback(
+    (anchorMinutes: number, currentMinutes: number) => {
+      let startMinutes = Math.min(anchorMinutes, currentMinutes);
+      let endMinutes = Math.max(anchorMinutes, currentMinutes);
+
+      if (endMinutes - startMinutes < MIN_DURATION_MINUTES) {
+        if (currentMinutes >= anchorMinutes) {
+          endMinutes = Math.min(totalMinutes, startMinutes + MIN_DURATION_MINUTES);
+        } else {
+          startMinutes = Math.max(0, endMinutes - MIN_DURATION_MINUTES);
+        }
+      }
+
+      const startAt = dayStartMs + startMinutes * 60 * 1000;
+      const endAt = dayStartMs + endMinutes * 60 * 1000;
+      const top = (startMinutes / 60) * hourHeight;
+      const height = Math.max((endMinutes - startMinutes) / 60, MIN_DURATION_MINUTES / 60) * hourHeight;
+
+      setDraftEvent({ startAt, endAt, top, height });
+    },
+    [dayStartMs, hourHeight]
+  );
+
+  const finalizeDraft = useCallback(async () => {
+    if (!draftEvent) {
+      dragStartMinutesRef.current = null;
+      return;
+    }
+    try {
+      const created = await startEvent({
+        title: 'New Event',
+        kind: 'event',
+        startAt: draftEvent.startAt,
+        endAt: draftEvent.endAt,
+      });
+      setEvents((prev) => [created, ...prev]);
+      router.push(`/event/${created.id}`);
+    } catch (err) {
+      Alert.alert('Create event failed', err instanceof Error ? err.message : 'Unable to create event.');
+    } finally {
+      setDraftEvent(null);
+      dragStartMinutesRef.current = null;
+    }
+  }, [draftEvent, router]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => dragEnabled,
+        onMoveShouldSetPanResponder: () => dragEnabled,
+        onPanResponderGrant: (evt) => {
+          if (!dragEnabled) return;
+          const startMinutes = minutesFromLocation(evt.nativeEvent.locationY);
+          dragStartMinutesRef.current = startMinutes;
+          updateDraftFromMinutes(startMinutes, startMinutes);
+        },
+        onPanResponderMove: (evt) => {
+          if (!dragEnabled || dragStartMinutesRef.current == null) return;
+          const currentMinutes = minutesFromLocation(evt.nativeEvent.locationY);
+          updateDraftFromMinutes(dragStartMinutesRef.current, currentMinutes);
+        },
+        onPanResponderRelease: () => {
+          if (!dragEnabled) return;
+          void finalizeDraft();
+        },
+        onPanResponderTerminate: () => {
+          setDraftEvent(null);
+          dragStartMinutesRef.current = null;
+        },
+      }),
+    [dragEnabled, finalizeDraft, minutesFromLocation, updateDraftFromMinutes]
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top + sizes.spacingSmall }]}>
@@ -319,7 +423,28 @@ export default function CalendarScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      {segment === 'Day' && (
+        <View style={[styles.dragRow, { paddingHorizontal: sizes.spacing + 4, marginBottom: sizes.spacingSmall }]}>
+          <TouchableOpacity
+            onPress={() => setDragMode((prev) => !prev)}
+            style={[
+              styles.dragChip,
+              {
+                backgroundColor: dragMode ? palette.tint : palette.surface,
+                borderColor: dragMode ? palette.tint : palette.border,
+                borderRadius: sizes.borderRadiusSmall,
+              },
+            ]}>
+            <InsightIcon name={dragMode ? 'check' : 'plus'} size={sizes.iconSizeTiny} color={dragMode ? '#FFFFFF' : palette.text} />
+            <Text style={[styles.dragChipText, { color: dragMode ? '#FFFFFF' : palette.text }]}>Drag to add</Text>
+          </TouchableOpacity>
+          {dragMode && (
+            <Text style={[styles.dragHint, { color: palette.textSecondary }]}>Drag on the timeline to create an event.</Text>
+          )}
+        </View>
+      )}
+
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} scrollEnabled={!dragEnabled}>
         {segment === 'Month' ? (
           <View style={[styles.monthContainer, { paddingHorizontal: sizes.cardPadding }]}>
             {/* Month header with day labels */}
@@ -491,7 +616,7 @@ export default function CalendarScreen() {
             </View>
           </View>
         ) : (
-          <View style={styles.timelineGrid}>
+          <View style={styles.timelineGrid} {...(dragEnabled ? panResponder.panHandlers : {})}>
             {HOURS.map((h) => (
               <View key={h} style={[styles.hourRow, { height: hourHeight }]}>
                 <View style={styles.hourLabelCol}>
@@ -545,6 +670,27 @@ export default function CalendarScreen() {
                 </Pressable>
               );
             })}
+
+            {draftEvent && (
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.draftEventBlock,
+                  {
+                    top: draftEvent.top,
+                    height: draftEvent.height,
+                    borderColor: palette.tint,
+                    backgroundColor: isDark ? 'rgba(217,93,57,0.18)' : 'rgba(217,93,57,0.12)',
+                  },
+                ]}>
+                <Text style={[styles.draftEventTitle, { color: palette.text }]} numberOfLines={1}>
+                  New event
+                </Text>
+                <Text style={[styles.draftEventTime, { color: palette.textSecondary }]}>
+                  {formatTime(draftEvent.startAt)} - {formatTime(draftEvent.endAt)}
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -709,6 +855,27 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  dragRow: {
+    gap: 10,
+  },
+  dragChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  dragChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: 'Figtree',
+  },
+  dragHint: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
   timelineGrid: {
     flex: 1,
     paddingRight: 16,
@@ -740,6 +907,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 10,
     overflow: 'hidden',
+  },
+  draftEventBlock: {
+    position: 'absolute',
+    left: 70,
+    right: 0,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    padding: 10,
+    gap: 2,
+  },
+  draftEventTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    fontFamily: 'Figtree',
+  },
+  draftEventTime: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   eventStripe: {
     position: 'absolute',

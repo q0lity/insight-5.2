@@ -163,6 +163,9 @@ export function extractInlineTokens(text: string): MarkdownToken[] {
   for (const m of text.matchAll(/(^|[\s(])!([a-zA-Z][\w/-]*)/g)) {
     add('place', `!${m[2]}`, m[2], m.index ?? 0)
   }
+  for (const m of text.matchAll(/(^|[\s(])@@([a-zA-Z][\w/-]*)/g)) {
+    add('place', `@@${m[2]}`, m[2], m.index ?? 0)
+  }
   for (const m of text.matchAll(/(^|[\s(])\+([a-zA-Z][\w/-]*)/g)) {
     add('context', `+${m[2]}`, m[2], m.index ?? 0)
   }
@@ -194,6 +197,7 @@ export function toTokenCollections(tokens: MarkdownToken[]): MarkdownTokenCollec
 function stripTokens(raw: string) {
   return raw
     .replace(/(^|[\s(])[#@!*+][a-zA-Z][\w/'’-]*(?:\s+[A-Za-z][\w'’-]*){0,3}/g, ' ')
+    .replace(/(^|[\s(])@@[a-zA-Z][\w/'’-]*/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 }

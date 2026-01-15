@@ -885,6 +885,20 @@ function extractTrackers(text: string): Array<{ key: string; value: number }> {
   const trackers: Array<{ key: string; value: number }> = []
   const tokenPattern = String.raw`(?:\d{1,2}|${NUMBER_WORD_PATTERN})`
 
+  // #tracker[value] pattern (supports numeric or numeric at end)
+  const bracketPattern = /#([a-zA-Z][\w/-]*)\s*\[([^\]]+)\]/g
+  for (const m of text.matchAll(bracketPattern)) {
+    const key = m[1]!.toLowerCase()
+    if (key === 'sleep') continue
+    const rawValue = (m[2] ?? '').trim()
+    const numberMatch = rawValue.match(/[-+]?\d*\.?\d+/)
+    if (!numberMatch?.[0]) continue
+    const value = parseFloat(numberMatch[0])
+    if (Number.isFinite(value) && !trackers.some((t) => t.key === key)) {
+      trackers.push({ key, value })
+    }
+  }
+
   // #tracker(value) pattern
   const parenPattern = /#([a-zA-Z][\w/-]*)\s*\(\s*([-+]?\d*\.?\d+)\s*\)/g
   for (const m of text.matchAll(parenPattern)) {
@@ -992,6 +1006,11 @@ function extractLocations(text: string): string[] {
 
   // !location pattern (simple word)
   for (const m of text.matchAll(/(^|\s)!([a-zA-Z][\w-]*)/g)) {
+    locations.add(m[2]!.toLowerCase())
+  }
+
+  // @@location pattern (simple word)
+  for (const m of text.matchAll(/(^|\s)@@([a-zA-Z][\w-]*)/g)) {
     locations.add(m[2]!.toLowerCase())
   }
 
