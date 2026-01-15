@@ -35,6 +35,17 @@ function formatTimeMarker(date = new Date()) {
 
 const TIMESTAMP_LINE_RE = /^\[\d{2}:\d{2}(?::\d{2})?\]\s*$/;
 
+async function createRecording() {
+  if (typeof Audio?.Recording?.createAsync === 'function') {
+    const result = await Audio.Recording.createAsync(RECORDING_OPTIONS);
+    return result.recording;
+  }
+  const next = new Audio.Recording();
+  await next.prepareToRecordAsync(RECORDING_OPTIONS);
+  await next.startAsync();
+  return next;
+}
+
 function hasSemanticContent(text?: string | null) {
   if (!text || typeof text !== 'string') return false;
   return text.split('\n').some((line) => {
@@ -86,7 +97,10 @@ export default function VoiceCaptureScreen() {
     try {
       if (recordingRef.current) {
         try {
-          await recordingRef.current.stopAndUnloadAsync();
+          const status = await recordingRef.current.getStatusAsync();
+          if (status.isLoaded) {
+            await recordingRef.current.stopAndUnloadAsync();
+          }
         } catch {
           // ignore stop failures
         }
@@ -99,10 +113,10 @@ export default function VoiceCaptureScreen() {
         setInitError('Microphone permission denied.');
         return;
       }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const next = new Audio.Recording();
-      await next.prepareToRecordAsync(RECORDING_OPTIONS);
-      await next.startAsync();
+      if (typeof Audio.setAudioModeAsync === 'function') {
+        await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      }
+      const next = await createRecording();
       if (token !== startTokenRef.current) {
         await next.stopAndUnloadAsync().catch(() => {});
         return;
@@ -234,125 +248,131 @@ export default function VoiceCaptureScreen() {
 
   const finishCapture = useCallback(
     async (rawTranscript: string, attachment?: CaptureAttachment | null) => {
-      const trimmed = rawTranscript.trim();
-      const normalized = hasSemanticContent(trimmed) ? normalizeCaptureText(trimmed) : '';
-      const captureText = normalized || '[Audio capture pending transcription]';
-      const saved = await addInboxCapture(captureText, attachment ? [attachment] : []);
-      let transcriptForAppend = normalized;
-      if (!normalized && attachment?.uri) {
-        transcriptForAppend = await transcribeVoiceAttachment(saved.id, attachment);
-      }
-
-      const healthText = transcriptForAppend || normalized;
-      if (healthText) {
-        const parsedWorkout = parseWorkoutFromText(healthText);
-        if (parsedWorkout) {
-          const derivedDuration = Math.round(
-            parsedWorkout.exercises.flatMap((ex) => ex.sets).reduce((sum, set) => sum + (set.duration ?? 0), 0) / 60,
-          );
-          const durationMinutes = parsedWorkout.totalDuration ?? (derivedDuration ? derivedDuration : undefined);
-          const startAt = saved.createdAt ?? Date.now();
-          const endAt = durationMinutes ? startAt + durationMinutes * 60 * 1000 : startAt;
-          const typeLabel = parsedWorkout.type ?? 'mixed';
-          const defaultTitle =
-            typeLabel === 'cardio'
-              ? 'Cardio'
-              : typeLabel === 'strength'
-                ? 'Strength'
-                : typeLabel === 'mobility'
-                  ? 'Mobility'
-                  : typeLabel === 'recovery'
-                    ? 'Recovery'
-                    : 'Workout';
-          const title =
-            parsedWorkout.exercises.length === 1
-              ? parsedWorkout.exercises[0].name
-              : `${defaultTitle} Workout`;
-          const estimatedCalories = estimateWorkoutCalories({
-            type: parsedWorkout.type ?? 'mixed',
-            exercises: parsedWorkout.exercises,
-            overallRpe: parsedWorkout.overallRpe,
-          });
-
-          await saveWorkout({
-            id: `wrk_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-            title,
-            type: parsedWorkout.type ?? 'mixed',
-            exercises: parsedWorkout.exercises,
-            startAt,
-            endAt,
-            totalDuration: durationMinutes,
-            estimatedCalories: estimatedCalories || undefined,
-            overallRpe: parsedWorkout.overallRpe,
-            sourceCaptureId: saved.id,
-          });
+      try {
+        const trimmed = rawTranscript.trim();
+        const normalized = hasSemanticContent(trimmed) ? normalizeCaptureText(trimmed) : '';
+        const captureText = normalized || '[Audio capture pending transcription]';
+        const saved = await addInboxCapture(captureText, attachment ? [attachment] : []);
+        let transcriptForAppend = normalized;
+        if (!normalized && attachment?.uri) {
+          transcriptForAppend = await transcribeVoiceAttachment(saved.id, attachment);
         }
 
-        const parsedMeal = parseMealFromText(healthText, { nowMs: saved.createdAt ?? Date.now() });
-        if (parsedMeal) {
-          const now = saved.createdAt ?? Date.now();
-          const mealTitle =
-            parsedMeal.items.length === 1
-              ? parsedMeal.items[0].name
-              : parsedMeal.type === 'breakfast'
-                ? 'Breakfast'
-                : parsedMeal.type === 'lunch'
-                  ? 'Lunch'
-                  : parsedMeal.type === 'dinner'
-                    ? 'Dinner'
-                    : parsedMeal.type === 'drink'
-                      ? 'Drink'
-                      : 'Snack';
-          await saveMeal({
-            id: `meal_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-            title: mealTitle,
-            type: parsedMeal.type,
-            items: parsedMeal.items,
-            totalCalories: Math.round(parsedMeal.totalCalories ?? 0),
-            macros: {
-              protein: Math.round(parsedMeal.macros.protein ?? 0),
-              carbs: Math.round(parsedMeal.macros.carbs ?? 0),
-              fat: Math.round(parsedMeal.macros.fat ?? 0),
-              fiber: parsedMeal.macros.fiber ? Math.round(parsedMeal.macros.fiber) : undefined,
-              saturatedFat: parsedMeal.macros.saturatedFat ? Math.round(parsedMeal.macros.saturatedFat) : undefined,
-              transFat: parsedMeal.macros.transFat ? Math.round(parsedMeal.macros.transFat) : undefined,
-              sugar: parsedMeal.macros.sugar ? Math.round(parsedMeal.macros.sugar) : undefined,
-              sodium: parsedMeal.macros.sodium ? Math.round(parsedMeal.macros.sodium) : undefined,
-              potassium: parsedMeal.macros.potassium ? Math.round(parsedMeal.macros.potassium) : undefined,
-              cholesterol: parsedMeal.macros.cholesterol ? Math.round(parsedMeal.macros.cholesterol) : undefined,
-            },
-            eatenAt: now,
-            createdAt: now,
-            updatedAt: now,
-            sourceCaptureId: saved.id,
-          });
+        const healthText = transcriptForAppend || normalized;
+        if (healthText) {
+          const parsedWorkout = parseWorkoutFromText(healthText);
+          if (parsedWorkout) {
+            const derivedDuration = Math.round(
+              parsedWorkout.exercises.flatMap((ex) => ex.sets).reduce((sum, set) => sum + (set.duration ?? 0), 0) / 60,
+            );
+            const durationMinutes = parsedWorkout.totalDuration ?? (derivedDuration ? derivedDuration : undefined);
+            const startAt = saved.createdAt ?? Date.now();
+            const endAt = durationMinutes ? startAt + durationMinutes * 60 * 1000 : startAt;
+            const typeLabel = parsedWorkout.type ?? 'mixed';
+            const defaultTitle =
+              typeLabel === 'cardio'
+                ? 'Cardio'
+                : typeLabel === 'strength'
+                  ? 'Strength'
+                  : typeLabel === 'mobility'
+                    ? 'Mobility'
+                    : typeLabel === 'recovery'
+                      ? 'Recovery'
+                      : 'Workout';
+            const title =
+              parsedWorkout.exercises.length === 1
+                ? parsedWorkout.exercises[0].name
+                : `${defaultTitle} Workout`;
+            const estimatedCalories = estimateWorkoutCalories({
+              type: parsedWorkout.type ?? 'mixed',
+              exercises: parsedWorkout.exercises,
+              overallRpe: parsedWorkout.overallRpe,
+            });
+
+            await saveWorkout({
+              id: `wrk_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+              title,
+              type: parsedWorkout.type ?? 'mixed',
+              exercises: parsedWorkout.exercises,
+              startAt,
+              endAt,
+              totalDuration: durationMinutes,
+              estimatedCalories: estimatedCalories || undefined,
+              overallRpe: parsedWorkout.overallRpe,
+              sourceCaptureId: saved.id,
+            });
+          }
+
+          const parsedMeal = parseMealFromText(healthText, { nowMs: saved.createdAt ?? Date.now() });
+          if (parsedMeal) {
+            const now = saved.createdAt ?? Date.now();
+            const mealTitle =
+              parsedMeal.items.length === 1
+                ? parsedMeal.items[0].name
+                : parsedMeal.type === 'breakfast'
+                  ? 'Breakfast'
+                  : parsedMeal.type === 'lunch'
+                    ? 'Lunch'
+                    : parsedMeal.type === 'dinner'
+                      ? 'Dinner'
+                      : parsedMeal.type === 'drink'
+                        ? 'Drink'
+                        : 'Snack';
+            await saveMeal({
+              id: `meal_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+              title: mealTitle,
+              type: parsedMeal.type,
+              items: parsedMeal.items,
+              totalCalories: Math.round(parsedMeal.totalCalories ?? 0),
+              macros: {
+                protein: Math.round(parsedMeal.macros.protein ?? 0),
+                carbs: Math.round(parsedMeal.macros.carbs ?? 0),
+                fat: Math.round(parsedMeal.macros.fat ?? 0),
+                fiber: parsedMeal.macros.fiber ? Math.round(parsedMeal.macros.fiber) : undefined,
+                saturatedFat: parsedMeal.macros.saturatedFat ? Math.round(parsedMeal.macros.saturatedFat) : undefined,
+                transFat: parsedMeal.macros.transFat ? Math.round(parsedMeal.macros.transFat) : undefined,
+                sugar: parsedMeal.macros.sugar ? Math.round(parsedMeal.macros.sugar) : undefined,
+                sodium: parsedMeal.macros.sodium ? Math.round(parsedMeal.macros.sodium) : undefined,
+                potassium: parsedMeal.macros.potassium ? Math.round(parsedMeal.macros.potassium) : undefined,
+                cholesterol: parsedMeal.macros.cholesterol ? Math.round(parsedMeal.macros.cholesterol) : undefined,
+              },
+              eatenAt: now,
+              createdAt: now,
+              updatedAt: now,
+              sourceCaptureId: saved.id,
+            });
+          }
         }
-      }
-      if (!appendEventId && (transcriptForAppend || normalized)) {
-        try {
-          const rawText = transcriptForAppend || normalized;
-          const processed = await processInboxCapture({ ...saved, rawText });
-          if (processed.primaryEventId) {
-            router.replace(`/event/${encodeURIComponent(processed.primaryEventId)}`);
+        if (!appendEventId && (transcriptForAppend || normalized)) {
+          try {
+            const rawText = transcriptForAppend || normalized;
+            const processed = await processInboxCapture({ ...saved, rawText });
+            if (processed.primaryEventId) {
+              router.replace(`/event/${encodeURIComponent(processed.primaryEventId)}`);
+              return;
+            }
+          } catch (err) {
+            console.warn('Voice auto-parse failed', err);
+          }
+        }
+        if (appendEventId) {
+          const existing = await getEvent(appendEventId);
+          const mergedNotes = [existing?.notes, transcriptForAppend || captureText].filter(Boolean).join('\n\n');
+          const updated = await updateEvent(appendEventId, { notes: mergedNotes });
+          if (updated) {
+            router.replace(`/event/${encodeURIComponent(appendEventId)}`);
             return;
           }
-        } catch (err) {
-          console.warn('Voice auto-parse failed', err);
-        }
-      }
-      if (appendEventId) {
-        const existing = await getEvent(appendEventId);
-        const mergedNotes = [existing?.notes, transcriptForAppend || captureText].filter(Boolean).join('\n\n');
-        const updated = await updateEvent(appendEventId, { notes: mergedNotes });
-        if (updated) {
-          router.replace(`/event/${encodeURIComponent(appendEventId)}`);
+          Alert.alert('Append failed', 'Saved to your inbox, but could not append to this event.');
+          router.back();
           return;
         }
-        Alert.alert('Append failed', 'Saved to your inbox, but could not append to this event.');
         router.back();
-        return;
+      } catch (err) {
+        console.error('Voice capture failed', err);
+        Alert.alert('Capture failed', err instanceof Error ? err.message : 'Unable to save this capture.');
+        router.back();
       }
-      router.back();
     },
     [appendEventId]
   );
@@ -365,7 +385,10 @@ export default function VoiceCaptureScreen() {
     }
     setRecordingState('processing');
     try {
-      await recording.stopAndUnloadAsync();
+      const status = await recording.getStatusAsync();
+      if (status.isLoaded) {
+        await recording.stopAndUnloadAsync();
+      }
       recordingRef.current = null;
       const uri = recording.getURI();
       const attachment = uri
@@ -381,8 +404,9 @@ export default function VoiceCaptureScreen() {
           } satisfies CaptureAttachment)
         : null;
       await finishCapture(fullTranscriptRef.current.trim(), attachment);
-    } catch {
-      Alert.alert('Recording failed', 'Unable to stop the recording.');
+    } catch (err) {
+      console.error('Recording stop failed', err);
+      Alert.alert('Recording failed', err instanceof Error ? err.message : 'Unable to stop the recording.');
       setRecordingState('recording');
     } finally {
       setRecording(null);
@@ -392,7 +416,10 @@ export default function VoiceCaptureScreen() {
   const cancelRecording = useCallback(async () => {
     if (recordingRef.current) {
       try {
-        await recordingRef.current.stopAndUnloadAsync();
+        const status = await recordingRef.current.getStatusAsync();
+        if (status.isLoaded) {
+          await recordingRef.current.stopAndUnloadAsync();
+        }
       } catch {
         // ignore stop failures
       }

@@ -23,6 +23,7 @@ import type { AssistantMode } from '@/src/assistant/storage';
 
 const THEME_OPTIONS: { key: ThemeMode; label: string }[] = [
   { key: 'dark', label: 'Dark' },
+  { key: 'midnight', label: 'Midnight' },
   { key: 'light', label: 'Light' },
   { key: 'warm', label: 'Warm' },
   { key: 'olive', label: 'Olive' },

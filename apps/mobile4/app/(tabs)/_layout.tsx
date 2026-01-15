@@ -14,9 +14,9 @@ type TabItem = {
 }
 
 const TAB_ITEMS: TabItem[] = [
+  { name: 'assistant', label: 'Assistant', icon: 'sparkle' },
   { name: 'index', label: 'Dashboard', icon: 'node' },
   { name: 'habits', label: 'Habits', icon: 'smile' },
-  { name: 'assistant', label: 'Assistant', icon: 'sparkle' },
   { name: 'calendar', label: 'Calendar', icon: 'calendar' },
   { name: 'tasks', label: 'Tasks', icon: 'check' },
   { name: 'explore', label: 'Explore', icon: 'barChart' },

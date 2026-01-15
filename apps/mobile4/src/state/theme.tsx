@@ -2,9 +2,9 @@ import React, { createContext, useContext, useState, useEffect, useMemo, ReactNo
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme as useSystemColorScheme } from 'react-native';
 
-export type ThemeMode = 'dark' | 'light' | 'warm' | 'olive' | 'oliveOrange' | 'roseGold' | 'system';
+export type ThemeMode = 'dark' | 'midnight' | 'light' | 'warm' | 'olive' | 'oliveOrange' | 'roseGold' | 'system';
 export type DisplayMode = 'big' | 'compact';
-export type ResolvedTheme = 'dark' | 'light' | 'warm' | 'olive' | 'oliveOrange' | 'roseGold';
+export type ResolvedTheme = 'dark' | 'midnight' | 'light' | 'warm' | 'olive' | 'oliveOrange' | 'roseGold';
 export type ThemePalette = typeof ThemePalettes.dark;
 
 // Theme palettes - 4 color schemes
@@ -22,6 +22,20 @@ export const ThemePalettes = {
     success: '#22C55E',
     error: '#EF4444',
     warning: '#F97316',
+  },
+  midnight: {
+    background: '#0A0A0B',
+    surface: '#121316',
+    surfaceAlt: 'rgba(18,19,22,0.96)',
+    text: '#E6E7EB',
+    textSecondary: 'rgba(148,163,184,0.62)',
+    tint: '#D8E000',
+    tintLight: 'rgba(216,224,0,0.18)',
+    border: 'rgba(148,163,184,0.18)',
+    borderLight: 'rgba(148,163,184,0.08)',
+    success: '#7CCD7C',
+    error: '#F87171',
+    warning: '#FACC15',
   },
   light: {
     background: '#FFFFFF',
