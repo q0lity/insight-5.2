@@ -13,8 +13,10 @@ config.resolver.nodeModulesPaths = [
 ];
 config.resolver.disableHierarchicalLookup = true;
 
-module.exports = withNativeWind(config, { input: "./global.css" });
-
+module.exports = withNativeWind(config, {
+  input: path.join(projectRoot, "global.css"),
+  configPath: path.join(projectRoot, "tailwind.config.js"),
+});
 
 
 
