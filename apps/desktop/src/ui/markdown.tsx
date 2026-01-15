@@ -29,7 +29,6 @@ const TOKEN_META_RE = /\{(?:task|note|seg|event|meal|workout|tracker|habit):[^}]
 const TRACKER_PAREN_RE = /#([a-zA-Z][\w/-]*)\s*\(\s*([-+]?\d*\.?\d+)\s*\)/g
 const TRACKER_COLON_RE = /#([a-zA-Z][\w/-]*)\s*:\s*([-+]?\d*\.?\d+)/g
 const TRACKER_BRACKET_RE = /#([a-zA-Z][\w/-]*)\s*\[([^\]]+)\]/g
-const TIMER_META_RE = /\{(\d+(?:\.\d+)?)(m|h)\}|\[timer[:=]([^\]]+)\]/gi
 
 function extractTrackerTokens(text: string) {
   const tokens: string[] = []
