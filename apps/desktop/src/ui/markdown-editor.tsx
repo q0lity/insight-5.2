@@ -19,6 +19,7 @@ type NotesTableRow = {
 export function MarkdownEditor(props: {
   value: string
   onChange: (next: string) => void
+  previewValue?: string
   onToggleChecklist?: (lineIndex: number) => void
   onStartTask?: (task: {
     tokenId: string
@@ -48,7 +49,7 @@ export function MarkdownEditor(props: {
   const [internalMode, setInternalMode] = useState<NotesEditorMode>(props.previewMode ?? 'markdown')
   const mode = props.mode ?? internalMode
   const setMode = props.onModeChange ?? setInternalMode
-  const preview = useMemo(() => props.value ?? '', [props.value])
+  const preview = useMemo(() => props.previewValue ?? props.value ?? '', [props.previewValue, props.value])
   const hasPreview = Boolean(preview.trim())
   const showTop =
     Boolean(props.headerLeading) ||
@@ -155,6 +156,17 @@ function primaryKindForBlock(block: ReturnType<typeof parseCaptureWithBlocks>['b
   return 'note'
 }
 
+function normalizeTitle(raw: string) {
+  if (!raw) return ''
+  let cleaned = stripTokensForPreview(raw)
+  cleaned = cleaned.replace(/^#+\s*/, '')
+  cleaned = cleaned.replace(/^[-*+]\s*(?:\[[ xX]\]\s*)?/, '')
+  cleaned = cleaned.replace(/^\[event\]\s*/i, '')
+  cleaned = cleaned.replace(/^(event|task|note|habit|tracker)\s*[-:]\s*/i, '')
+  cleaned = cleaned.replace(/^\*{0,2}\s*\d{1,2}:\d{2}(?:\s*[ap]m)?\s*\*{0,2}[\s-:]*/i, '')
+  return cleaned.trim()
+}
+
 function stripTokensForPreview(raw: string) {
   return raw
     .replace(/\{(?:task|note|seg|event|meal|workout|tracker|habit|tag|person|ctx|loc|goal|project|skill):[^}]+\}/g, ' ')
@@ -199,14 +211,16 @@ function extractTimeLabel(block: ReturnType<typeof parseCaptureWithBlocks>['bloc
   return match?.[1] ?? '—'
 }
 
-function deriveRowTitle(block: ReturnType<typeof parseCaptureWithBlocks>['blocks'][number], habitNames?: string[]) {
-  const kind = primaryKindForBlock(block, habitNames)
-  const kindLabel = kind.charAt(0).toUpperCase() + kind.slice(1)
-  const eventTitle = block.events[0]?.title?.trim()
-  const taskTitle = block.tasks[0]?.title?.trim()
-  const rawTitle = eventTitle || taskTitle || stripTokensForPreview(block.rawText).split(/[.!?\n]/)[0]?.trim()
-  if (!rawTitle) return kindLabel
-  return `${kindLabel} · ${rawTitle}`
+function deriveBlockTitle(block: ReturnType<typeof parseCaptureWithBlocks>['blocks'][number]) {
+  const lines = block.rawText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+  const firstLine = lines[0] ?? ''
+  const candidates = [
+    normalizeTitle(firstLine),
+    normalizeTitle(block.events[0]?.title ?? ''),
+    normalizeTitle(block.tasks[0]?.title ?? ''),
+    normalizeTitle(stripTokensForPreview(block.rawText).split(/[.!?\n]/)[0] ?? ''),
+  ]
+  return candidates.find((value) => value.length > 0) ?? 'Untitled'
 }
 
 function extractInlineTokens(raw: string) {
@@ -245,27 +259,11 @@ function buildRowTokens(block: ReturnType<typeof parseCaptureWithBlocks>['blocks
 
 function buildTableRows(text: string, filter: NotesTableFilter, habitNames?: string[]): NotesTableRow[] {
   if (!text.trim()) return []
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trimEnd())
-    .filter((line) => line.trim().length > 0)
   const rows: NotesTableRow[] = []
   const nowMs = Date.now()
+  const parsed = parseCaptureWithBlocks(text, nowMs)
 
-  for (const rawLine of lines) {
-    const parsed = parseCaptureWithBlocks(rawLine, nowMs)
-    const block = parsed.blocks[0] ?? {
-      id: rawLine,
-      blockIndex: 0,
-      rawText: rawLine,
-      tasks: parsed.tasks ?? [],
-      events: parsed.events ?? [],
-      trackers: [],
-      people: [],
-      tags: [],
-      contexts: [],
-      locations: [],
-    }
+  for (const block of parsed.blocks) {
     const { hasEvents, hasTasks, hasTrackers, hasHabits } = deriveBlockKinds(block, habitNames)
     if (filter !== 'all') {
       if (filter === 'event' && !hasEvents) continue
@@ -274,10 +272,10 @@ function buildTableRows(text: string, filter: NotesTableFilter, habitNames?: str
       if (filter === 'habit' && !hasHabits) continue
       if (filter === 'note' && (hasEvents || hasTasks || hasTrackers || hasHabits)) continue
     }
-    const note = stripTokensForTable(rawLine)
+    const note = stripTokensForTable(block.rawText)
     rows.push({
       timeLabel: extractTimeLabel(block),
-      title: deriveRowTitle(block, habitNames),
+      title: deriveBlockTitle(block),
       note,
       tokens: buildRowTokens(block, habitNames),
       kind: primaryKindForBlock(block, habitNames),

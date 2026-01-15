@@ -1784,6 +1784,18 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
       .trim()
   }
 
+  function stripTranscriptLines(raw: string) {
+    const source = raw ?? ''
+    if (!source.trim()) return ''
+    const transcriptLine = /^\s*(?:[-*]\s*)?(?:\*\*)?\d{1,2}:\d{2}(?:\s*[ap]m)?(?:\*\*)?\s*-\s+\S+/i
+    const bracketLine = /^\s*(?:[-*]\s*)?\[\d{1,2}:\d{2}\]\s+\S+/i
+    return source
+      .split(/\r?\n/)
+      .filter((line) => !(transcriptLine.test(line) || bracketLine.test(line)))
+      .join('\n')
+      .trimEnd()
+  }
+
   function appendMarkdownBlock(existing: string | null | undefined, block: string) {
     const trimmed = block.trim()
     if (!trimmed) return (existing ?? '').trimEnd()
@@ -5116,14 +5128,16 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
         return renderNotes('all')
       case 'reflections':
         return renderNotes('all')
-          case 'tasks':
-            return (          <TickTickTasksView
+      case 'tasks':
+        return (
+          <TickTickTasksView
             tasks={tasks}
             selectedTaskId={selection.kind === 'task' ? selection.id : null}
             onSelectTask={(id) => setSelection({ kind: 'task', id })}
             onCreateTask={onCreateTaskFromInput}
             onToggleComplete={onToggleTaskComplete}
             onMoveTask={onMoveTaskStatus}
+            onUpdateTask={commitTask}
           />
         )
       case 'calendar':
@@ -5294,6 +5308,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
           ? selectedTaskSourceCapture?.rawText ?? selectedTask?.notes ?? ''
           : ''
   const docTranscriptLines = useMemo(() => parseTimestampedTranscript(docTranscriptText), [docTranscriptText])
+  const docNotesPreview = useMemo(() => stripTranscriptLines(docNotesText), [docNotesText])
   const docOutlineExport = useMemo(() => stripOutlineTokens(docNotesText), [docNotesText])
   const selectedTaskTags = selectedTask?.tags ?? []
   const selectedTaskContexts = selectedTask?.contexts ?? []
@@ -5751,270 +5766,148 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                       gap: shellGap,
                       padding: shellGap,
                       ['--right-panel-width' as any]: `${rightPanelWidth}px`,
-                    }}>             <aside
-                      className={`rail${railLabelsOpen ? ' showLabels' : ''}`}
-                      onMouseLeave={() => setRailLabelsOpen(false)}>
+                    }}>
+
+        <aside
+          className={`rail${railLabelsOpen ? ' showLabels' : ''}`}
+          aria-label="Primary navigation"
+          onMouseLeave={() => setRailLabelsOpen(false)}>
+          <div className="flex flex-col items-center py-4 mb-4" onMouseEnter={() => setRailLabelsOpen(true)}>
+            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-black/5">
+              <Icon name="sparkle" size={16} className="text-[#D95D39]" />
+            </div>
+          </div>
+
+          <button
+            className={`railBtn ${getActiveTab(workspace).view === 'dashboard' ? 'active' : ''}`}
+            aria-label="Dashboard"
+            title="Dashboard"
+            onClick={() => openView('dashboard')}>
+            <Icon name="home" />
+            <span className="railLabel" aria-hidden="true">Dashboard</span>
+          </button>
+
+          <button
+            className="railBtn railPrimary group"
+            aria-label="Capture"
+            title="Capture"
+            onClick={() => openCapture()}>
+            <Icon name="plus" className="group-hover:rotate-90 transition-transform duration-500" />
+            <span className="railLabel" aria-hidden="true">Capture</span>
+          </button>
+
+          <button
+            className={`railBtn ${getActiveTab(workspace).view === 'calendar' ? 'active' : ''}`}
+            aria-label="Calendar"
+            title="Calendar"
+            onClick={() => openView('calendar')}>
+            <Icon name="calendar" />
+            <span className="railLabel" aria-hidden="true">Calendar</span>
+          </button>
+
+          <button
+            className={`railBtn ${getActiveTab(workspace).view === 'tasks' ? 'active' : ''}`}
+            aria-label="Tasks"
+            title="Tasks"
+            onClick={() => openView('tasks')}>
+            <Icon name="check" />
+            <span className="railLabel" aria-hidden="true">Tasks</span>
+          </button>
+
+          <button
+            className={`railBtn ${getActiveTab(workspace).view === 'notes' ? 'active' : ''}`}
+            aria-label="Notes"
+            title="Notes"
+            onClick={() => openView('notes')}>
+            <Icon name="file" />
+            <span className="railLabel" aria-hidden="true">Notes</span>
+          </button>
+
+          <button
+            className={`railBtn ${getActiveTab(workspace).view === 'reflections' ? 'active' : ''}`}
+            aria-label="Reflections"
+            title="Reflections"
+            onClick={() => openView('reflections')}>
+            <Icon name="sparkle" />
+            <span className="railLabel" aria-hidden="true">Reflections</span>
+          </button>
+
+          <button
+            className={`railBtn ${getActiveTab(workspace).view === 'assistant' ? 'active' : ''}`}
+            aria-label="Chat"
+            title="Chat"
+            onClick={() => openView('assistant')}>
+            <Icon name="mic" />
+            <span className="railLabel" aria-hidden="true">Chat</span>
+          </button>
+
+          <div className="railSep opacity-20" />
+
+          <button
+            className={`railBtn ${getActiveTab(workspace).view === 'habits' ? 'active' : ''}`}
+            aria-label="Habits"
+            title="Habits"
+            onClick={() => openView('habits')}>
+            <Icon name="smile" />
+            <span className="railLabel" aria-hidden="true">Habits</span>
+          </button>
+
+          <button
+            className={`railBtn ${getActiveTab(workspace).view === 'goals' || getActiveTab(workspace).view === 'goal-detail' ? 'active' : ''}`}
+            aria-label="Goals"
+            title="Goals"
+            onClick={() => openView('goals')}>
+            <Icon name="target" />
+            <span className="railLabel" aria-hidden="true">Goals</span>
+          </button>
+
+          <button
+            className={`railBtn ${getActiveTab(workspace).view === 'projects' ? 'active' : ''}`}
+            aria-label="Projects"
+            title="Projects"
+            onClick={() => openView('projects')}>
+            <Icon name="briefcase" />
+            <span className="railLabel" aria-hidden="true">Projects</span>
+          </button>
+
+          <button
+            className={`railBtn ${getActiveTab(workspace).view === 'ecosystem' ? 'active' : ''}`}
+            aria-label="Ecosystem"
+            title="Ecosystem"
+            onClick={() => openView('ecosystem')}>
+            <Icon name="monitor" />
+            <span className="railLabel" aria-hidden="true">Ecosystem</span>
+          </button>
+
+          <button
+            className={`railBtn ${getActiveTab(workspace).view === 'trackers' ? 'active' : ''}`}
+            aria-label="Trackers"
+            title="Trackers"
+            onClick={() => openView('trackers')}>
+            <Icon name="droplet" />
+            <span className="railLabel" aria-hidden="true">Trackers</span>
+          </button>
+
+          <button
+            className={`railBtn ${getActiveTab(workspace).view === 'rewards' ? 'active' : ''}`}
+            aria-label="Rewards"
+            title="Rewards"
+            onClick={() => openView('rewards')}>
+            <Icon name="trophy" />
+            <span className="railLabel" aria-hidden="true">Rewards</span>
+          </button>
+
+          <button
+            className={`railBtn ${getActiveTab(workspace).view === 'health' ? 'active' : ''}`}
+            aria-label="Workout & Nutrition"
+            title="Workout & Nutrition"
+            onClick={() => openView('health')}>
+            <Icon name="dumbbell" />
+            <span className="railLabel" aria-hidden="true">Workout + Nutrition</span>
+          </button>
 
-                    <div
-                      className="flex flex-col items-center py-4 mb-4"
-                      onMouseEnter={() => setRailLabelsOpen(true)}>
-
-                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-black/5">
-                          <Icon name="sparkle" size={16} className="text-[#D95D39]" />
-
-                      </div>
-
-                    </div>
-
-                    <button 
-
-                className={`railBtn ${getActiveTab(workspace).view === 'dashboard' ? 'active' : ''}`} 
-
-                aria-label="Dashboard" title="Dashboard" onClick={() => openView('dashboard')}
-
-              >
-
-  	            <Icon name="home" />
-                <span className="railLabel" aria-hidden="true">Dashboard</span>
-
-  	          </button>
-
-  	          <button
-
-                className="railBtn railPrimary group"
-
-                aria-label="Capture"
-
-                title="Capture"
-
-                          onClick={() => {
-
-                            openCapture()
-
-                          }}>
-
-  	                        <Icon name="plus" className="group-hover:rotate-90 transition-transform duration-500" />
-                          <span className="railLabel" aria-hidden="true">Capture</span>
-
-  	                      </button>
-
-  	          <button 
-
-                className={`railBtn ${getActiveTab(workspace).view === 'calendar' ? 'active' : ''}`} 
-
-                aria-label="Calendar" title="Calendar" onClick={() => openView('calendar')}
-
-              >
-
-                <Icon name="calendar" />
-                <span className="railLabel" aria-hidden="true">Calendar</span>
-
-  	          </button>
-
-              <button 
-
-                className={`railBtn ${getActiveTab(workspace).view === 'tasks' ? 'active' : ''}`} 
-
-                aria-label="Tasks" title="Tasks" onClick={() => openView('tasks')}
-
-              >
-
-                <Icon name="check" />
-                <span className="railLabel" aria-hidden="true">Tasks</span>
-
-              </button>
-
-            <button 
-
-              className={`railBtn ${getActiveTab(workspace).view === 'notes' ? 'active' : ''}`} 
-
-              aria-label="Notes" title="Notes" onClick={() => openView('notes')}
-
-            >
-
-              <Icon name="file" />
-              <span className="railLabel" aria-hidden="true">Notes</span>
-
-            </button>
-
-            <button 
-
-              className={`railBtn ${getActiveTab(workspace).view === 'reflections' ? 'active' : ''}`} 
-
-              aria-label="Reflections" title="Reflections" onClick={() => openView('reflections')}
-
-            >
-
-              <Icon name="sparkle" />
-              <span className="railLabel" aria-hidden="true">Reflections</span>
-
-            </button>
-
-            <button 
-
-              className={`railBtn ${getActiveTab(workspace).view === 'assistant' ? 'active' : ''}`} 
-
-              aria-label="Chat" title="Chat" onClick={() => openView('assistant')}
-
-            >
-
-              <Icon name="mic" />
-              <span className="railLabel" aria-hidden="true">Chat</span>
-
-            </button>
-
-            <div className="railSep opacity-20" />
-
-            <button 
-
-              className={`railBtn ${getActiveTab(workspace).view === 'habits' ? 'active' : ''}`} 
-
-              aria-label="Habits" title="Habits" onClick={() => openView('habits')}
-
-            >
-
-              <Icon name="smile" />
-              <span className="railLabel" aria-hidden="true">Habits</span>
-
-            </button>
-
-            <button 
-
-              className={`railBtn ${getActiveTab(workspace).view === 'goals' || getActiveTab(workspace).view === 'goal-detail' ? 'active' : ''}`} 
-
-              aria-label="Goals" title="Goals" onClick={() => openView('goals')}
-
-            >
-
-              <Icon name="target" />
-              <span className="railLabel" aria-hidden="true">Goals</span>
-
-            </button>
-
-            <button 
-
-              className={`railBtn ${getActiveTab(workspace).view === 'projects' ? 'active' : ''}`} 
-
-              aria-label="Projects" title="Projects" onClick={() => openView('projects')}
-
-            >
-
-              <Icon name="briefcase" />
-              <span className="railLabel" aria-hidden="true">Projects</span>
-
-            </button>
-
-            <button
-              className={`railBtn ${getActiveTab(workspace).view === 'ecosystem' ? 'active' : ''}`}
-              aria-label="Ecosystem"
-              title="Ecosystem"
-              onClick={() => openView('ecosystem')}
-            >
-              <Icon name="monitor" />
-              <span className="railLabel" aria-hidden="true">Ecosystem</span>
-            </button>
-
-            <button
-              className={`railBtn ${getActiveTab(workspace).view === 'trackers' ? 'active' : ''}`}
-              aria-label="Trackers"
-              title="Trackers"
-              onClick={() => openView('trackers')}
-            >
-              <Icon name="droplet" />
-              <span className="railLabel" aria-hidden="true">Trackers</span>
-            </button>
-
-            <button 
-
-              className={`railBtn ${getActiveTab(workspace).view === 'rewards' ? 'active' : ''}`} 
-
-              aria-label="Rewards" title="Rewards" onClick={() => openView('rewards')}
-
-            >
-
-              <Icon name="trophy" />
-              <span className="railLabel" aria-hidden="true">Rewards</span>
-
-            </button>
-
-            <button 
-
-              className={`railBtn ${getActiveTab(workspace).view === 'reports' ? 'active' : ''}`} 
-
-              aria-label="Reports" title="Reports" onClick={() => openView('reports')}
-
-            >
-
-              <Icon name="file" />
-              <span className="railLabel" aria-hidden="true">Reports</span>
-
-            </button>
-
-            <button 
-
-              className={`railBtn ${getActiveTab(workspace).view === 'health' ? 'active' : ''}`} 
-
-              aria-label="Workout & Nutrition" title="Workout & Nutrition" onClick={() => openView('health')}
-
-            >
-
-              <Icon name="dumbbell" />
-              <span className="railLabel" aria-hidden="true">Workout + Nutrition</span>
-
-            </button>
-
-            <button 
-
-              className={`railBtn ${getActiveTab(workspace).view === 'people' ? 'active' : ''}`} 
-
-              aria-label="People" title="People" onClick={() => openView('people')}
-
-            >
-
-              <Icon name="users" />
-              <span className="railLabel" aria-hidden="true">People</span>
-
-            </button>
-
-            <button 
-
-              className={`railBtn ${getActiveTab(workspace).view === 'places' ? 'active' : ''}`} 
-
-              aria-label="Places" title="Places" onClick={() => openView('places')}
-
-            >
-
-              <Icon name="pin" />
-              <span className="railLabel" aria-hidden="true">Places</span>
-
-            </button>
-
-            <button 
-
-              className={`railBtn ${getActiveTab(workspace).view === 'tags' ? 'active' : ''}`} 
-
-              aria-label="Tags" title="Tags" onClick={() => openView('tags')}
-
-            >
-
-              <Icon name="tag" />
-              <span className="railLabel" aria-hidden="true">Tags</span>
-
-            </button>
-
-            <button 
-
-              className={`railBtn ${getActiveTab(workspace).view === 'timeline' ? 'active' : ''}`} 
-
-              aria-label="Timeline" title="Timeline" onClick={() => openView('timeline')}
-
-            >
-
-              <Icon name="bolt" />
-              <span className="railLabel" aria-hidden="true">Timeline</span>
-
-            </button>
           <div className="railGrow" />
+
           <button className="railBtn" aria-label="Refresh" title="Refresh" onClick={refreshAll}>
             <Icon name="bolt" />
             <span className="railLabel" aria-hidden="true">Refresh</span>
@@ -6027,7 +5920,11 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
             <Icon name={resolveTheme(themePref) === 'dark' ? 'sun' : 'moon'} />
             <span className="railLabel" aria-hidden="true">Theme</span>
           </button>
-          <button className="railBtn" aria-label="Toggle explorer" title="Toggle explorer" onClick={() => setLeftCollapsed((v) => !v)}>
+          <button
+            className="railBtn"
+            aria-label="Toggle explorer"
+            title="Toggle explorer"
+            onClick={() => setLeftCollapsed((v) => !v)}>
             <Icon name="panelLeft" />
             <span className="railLabel" aria-hidden="true">Explorer</span>
           </button>
@@ -8256,6 +8153,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                     {docTab === 'notes' ? (
                       <MarkdownEditor
                         value={docNotesText}
+                        previewValue={docNotesPreview}
                         onChange={(next) => commitTask({ ...selectedTask, notes: next })}
                         onToggleChecklist={(lineIndex) => onToggleTaskChecklistItem(selectedTask.id, lineIndex)}
                         placeholder="Write markdown notes…"
@@ -8267,7 +8165,6 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                         }}
                         hideModeTabs
                         outlineVariant="structured"
-                        hideOutlineParagraphs
                       />
                     ) : (
                       <>
@@ -8377,6 +8274,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                     {docTab === 'notes' ? (
                       <MarkdownEditor
                         value={docNotesText}
+                        previewValue={docNotesPreview}
                         onChange={(next) => commitEvent({ ...selectedEvent, notes: next })}
                         onToggleChecklist={(lineIndex) => {
                           if (selectedEvent.kind === 'task' && selectedEvent.taskId) {
@@ -8397,7 +8295,6 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                         }}
                         hideModeTabs
                         outlineVariant="structured"
-                        hideOutlineParagraphs
                       />
                     ) : (
                       <>

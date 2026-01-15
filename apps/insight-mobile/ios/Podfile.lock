@@ -4,6 +4,9 @@ PODS:
     - ReactCommon/turbomodule/core
   - EXConstants (18.0.12):
     - ExpoModulesCore
+  - EXImageLoader (6.0.0):
+    - ExpoModulesCore
+    - React-Core
   - Expo (54.0.30):
     - ExpoModulesCore
     - hermes-engine
@@ -38,9 +41,13 @@ PODS:
   - ExpoHead (6.0.21):
     - ExpoModulesCore
     - RNScreens
+  - ExpoImagePicker (17.0.10):
+    - ExpoModulesCore
   - ExpoKeepAwake (15.0.8):
     - ExpoModulesCore
   - ExpoLinking (8.0.11):
+    - ExpoModulesCore
+  - ExpoLocation (19.0.8):
     - ExpoModulesCore
   - ExpoModulesCore (3.0.29):
     - hermes-engine
@@ -1936,6 +1943,51 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RNSVG (15.12.1):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - RNSVG/common (= 15.12.1)
+    - Yoga
+  - RNSVG/common (15.12.1):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - RNWorklets (0.5.1):
     - hermes-engine
     - RCTRequired
@@ -2012,13 +2064,16 @@ PODS:
 DEPENDENCIES:
   - EXAV (from `../../../node_modules/expo-av/ios`)
   - EXConstants (from `../../../node_modules/expo-constants/ios`)
+  - EXImageLoader (from `../../../node_modules/expo-image-loader/ios`)
   - Expo (from `../../../node_modules/expo`)
   - ExpoAsset (from `../../../node_modules/expo-asset/ios`)
   - ExpoFileSystem (from `../../../node_modules/expo-file-system/ios`)
   - ExpoFont (from `../../../node_modules/expo-font/ios`)
   - ExpoHead (from `../../../node_modules/expo-router/ios`)
+  - ExpoImagePicker (from `../../../node_modules/expo-image-picker/ios`)
   - ExpoKeepAwake (from `../../../node_modules/expo-keep-awake/ios`)
   - ExpoLinking (from `../../../node_modules/expo-linking/ios`)
+  - ExpoLocation (from `../../../node_modules/expo-location/ios`)
   - ExpoModulesCore (from `../../../node_modules/expo-modules-core`)
   - ExpoSplashScreen (from `../../../node_modules/expo-splash-screen/ios`)
   - ExpoWebBrowser (from `../../../node_modules/expo-web-browser/ios`)
@@ -2094,6 +2149,7 @@ DEPENDENCIES:
   - "RNCAsyncStorage (from `../../../node_modules/@react-native-async-storage/async-storage`)"
   - RNReanimated (from `../../../node_modules/react-native-reanimated`)
   - RNScreens (from `../../../node_modules/react-native-screens`)
+  - RNSVG (from `../../../node_modules/react-native-svg`)
   - RNWorklets (from `../../../node_modules/react-native-worklets`)
   - Yoga (from `../../../node_modules/react-native/ReactCommon/yoga`)
 
@@ -2102,6 +2158,8 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/expo-av/ios"
   EXConstants:
     :path: "../../../node_modules/expo-constants/ios"
+  EXImageLoader:
+    :path: "../../../node_modules/expo-image-loader/ios"
   Expo:
     :path: "../../../node_modules/expo"
   ExpoAsset:
@@ -2112,10 +2170,14 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/expo-font/ios"
   ExpoHead:
     :path: "../../../node_modules/expo-router/ios"
+  ExpoImagePicker:
+    :path: "../../../node_modules/expo-image-picker/ios"
   ExpoKeepAwake:
     :path: "../../../node_modules/expo-keep-awake/ios"
   ExpoLinking:
     :path: "../../../node_modules/expo-linking/ios"
+  ExpoLocation:
+    :path: "../../../node_modules/expo-location/ios"
   ExpoModulesCore:
     :path: "../../../node_modules/expo-modules-core"
   ExpoSplashScreen:
@@ -2265,6 +2327,8 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/react-native-reanimated"
   RNScreens:
     :path: "../../../node_modules/react-native-screens"
+  RNSVG:
+    :path: "../../../node_modules/react-native-svg"
   RNWorklets:
     :path: "../../../node_modules/react-native-worklets"
   Yoga:
@@ -2273,13 +2337,16 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   EXAV: b60fcf142fae6684d295bc28cd7cfcb3335570ea
   EXConstants: 805f35b1b295c542ca6acce836f21a1f9ee104d5
+  EXImageLoader: 189e3476581efe3ad4d1d3fb4735b7179eb26f05
   Expo: 60c21ba34593688a2a6e8445c1f8b44abb0e3fae
   ExpoAsset: f867e55ceb428aab99e1e8c082b5aee7c159ea18
   ExpoFileSystem: 858a44267a3e6e9057e0888ad7c7cfbf55d52063
   ExpoFont: 35ac6191ed86bbf56b3ebd2d9154eda9fad5b509
   ExpoHead: 9719a74953454fac328e90f34eea55ebbb3bbbf9
+  ExpoImagePicker: 1af3e4e31512d2f34c95c2a3018a3edc40aee748
   ExpoKeepAwake: 55f75eca6499bb9e4231ebad6f3e9cb8f99c0296
   ExpoLinking: 8f0aaf69aa56f832913030503b6263dc6f647f37
+  ExpoLocation: d5b61cb4970fa982e39ca94246a206a0c3b812ca
   ExpoModulesCore: f3da4f1ab5a8375d0beafab763739dbee8446583
   ExpoSplashScreen: bc3cffefca2716e5f22350ca109badd7e50ec14d
   ExpoWebBrowser: 17b064c621789e41d4816c95c93f429b84971f52
@@ -2354,6 +2421,7 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: 3a4f5e2777dae1688b781a487923a08569e27fe4
   RNReanimated: 9aa370001444fd7e301a58993067c31cefef4457
   RNScreens: d8d6f1792f6e7ac12b0190d33d8d390efc0c1845
+  RNSVG: 31d6639663c249b7d5abc9728dde2041eb2a3c34
   RNWorklets: 28c00d83c8869fe000d9995c8caa2ff02ba30b81
   Yoga: 5934998fbeaef7845dbf698f698518695ab4cd1a
 

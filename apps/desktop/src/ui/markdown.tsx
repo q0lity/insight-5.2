@@ -1,6 +1,8 @@
 import { Children, isValidElement, useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
+import rehypeHighlight from 'rehype-highlight'
 import { parseChecklistMarkdown } from './checklist'
 import { parseNoteItemMeta, type NoteItemKind, type NoteItemMeta } from '../markdown/note-items'
 import { extractInlineTokens as extractSchemaTokens } from '../markdown/schema'
@@ -26,9 +28,15 @@ type OutlineVariant = 'default' | 'structured'
 const TOKEN_META_RE = /\{(?:task|note|seg|event|meal|workout|tracker|habit):[^}]+\}/g
 const TRACKER_PAREN_RE = /#([a-zA-Z][\w/-]*)\s*\(\s*([-+]?\d*\.?\d+)\s*\)/g
 const TRACKER_COLON_RE = /#([a-zA-Z][\w/-]*)\s*:\s*([-+]?\d*\.?\d+)/g
+const TRACKER_BRACKET_RE = /#([a-zA-Z][\w/-]*)\s*\[([^\]]+)\]/g
+const TIMER_META_RE = /\{(\d+(?:\.\d+)?)(m|h)\}|\[timer[:=]([^\]]+)\]/gi
 
 function extractTrackerTokens(text: string) {
   const tokens: string[] = []
+  for (const match of text.matchAll(TRACKER_BRACKET_RE)) {
+    const value = (match[2] ?? '').trim()
+    tokens.push(`#${match[1]}[${value}]`)
+  }
   for (const match of text.matchAll(TRACKER_PAREN_RE)) {
     tokens.push(`#${match[1]}(${match[2]})`)
   }
@@ -76,8 +84,33 @@ function detectInlineItemKind(raw: string): NoteItemKind | null {
   return null
 }
 
+function parseTimerMinutes(raw: string) {
+  let match = raw.match(/\{(\d+(?:\.\d+)?)(m|h)\}/i)
+  if (match) {
+    const value = Number(match[1])
+    if (!Number.isFinite(value)) return null
+    return match[2].toLowerCase() === 'h' ? value * 60 : value
+  }
+  match = raw.match(/\[timer[:=]([^\]]+)\]/i)
+  if (match?.[1]) {
+    const inner = match[1].trim()
+    const numMatch = inner.match(/(\d+(?:\.\d+)?)(m|h)?/i)
+    if (!numMatch?.[1]) return null
+    const value = Number(numMatch[1])
+    if (!Number.isFinite(value)) return null
+    return numMatch[2]?.toLowerCase() === 'h' ? value * 60 : value
+  }
+  return null
+}
+
 function stripInlineTokens(raw: string) {
-  return raw.replace(/[#@!*^$~][^\s{]+\{[^}]+\}/g, '').replace(TOKEN_META_RE, '')
+  return raw
+    .replace(/[#@!*^$~][^\s{]+\{[^}]+\}/g, '')
+    .replace(TRACKER_BRACKET_RE, '')
+    .replace(/\{(\d+(?:\.\d+)?)(m|h)\}/gi, '')
+    .replace(/\[timer[:=][^\]]+\]/gi, '')
+    .replace(/▶/g, '')
+    .replace(TOKEN_META_RE, '')
 }
 
 function deriveLineTitle(raw: string) {
@@ -201,6 +234,8 @@ export function MarkdownView(props: {
     const isChecklistItem = isTask || Boolean(inlineKind)
     const isChecked = typeof node?.checked === 'boolean' ? node.checked : /\[[xX]\]/.test(rawText)
     const isInteractive = isChecklistItem && typeof lineIndex === 'number' && Boolean(props.onToggleChecklist)
+    const timerMinutes = parseTimerMinutes(rawText)
+    const hasTimerToken = /▶/.test(rawText) || timerMinutes != null
     const actionMeta = taskMeta
       ? taskMeta
       : inlineKind
@@ -213,6 +248,16 @@ export function MarkdownView(props: {
             rawText,
             lineIndex,
           }
+        : isChecklistItem && hasTimerToken
+          ? {
+              tokenId: '',
+              title: deriveLineTitle(rawText),
+              estimateMinutes: timerMinutes,
+              dueAt: null,
+              kind: 'task',
+              rawText,
+              lineIndex,
+            }
         : null
     const displayText = deriveLineTitle(rawText)
     const outlineTokens = outlineVariant === 'structured' ? buildOutlineTokens(rawText) : []
@@ -323,7 +368,8 @@ export function MarkdownView(props: {
   return (
     <div className="md">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkBreaks]}
+        rehypePlugins={[[rehypeHighlight, { ignoreMissing: true }]]}
         components={{
           p: ({ children, ...rest }) => (props.hideParagraphs ? null : <p {...rest}>{renderWithChips(children)}</p>),
           li: ListItem,

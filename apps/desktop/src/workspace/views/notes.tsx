@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { InboxCapture } from '../../storage/inbox'
 import { Icon } from '../../ui/icons'
+import { MarkdownView } from '../../ui/markdown'
 import { categoriesFromStarter } from '../../taxonomy/starter'
 import {
   firstLine,
@@ -25,6 +26,7 @@ export function NotesView(props: {
 }) {
   const [q, setQ] = useState('')
   const [sort, setSort] = useState<'recent' | 'oldest' | 'title'>('recent')
+  const [layout, setLayout] = useState<'cards' | 'list'>('cards')
   const [filterType, setFilterType] = useState<'all' | 'category' | 'tag' | 'person' | 'place'>(props.initialFilterType ?? 'all')
   const [selectedFilters, setSelectedFilters] = useState<string[]>([])
 
@@ -75,6 +77,7 @@ export function NotesView(props: {
 
   const [editorText, setEditorText] = useState('')
   const [editorDirty, setEditorDirty] = useState(false)
+  const [inspectorMode, setInspectorMode] = useState<'preview' | 'edit'>('preview')
 
   useEffect(() => {
     setEditorText(selectedCapture?.rawText ?? '')
@@ -135,12 +138,13 @@ export function NotesView(props: {
     setEditorDirty(false)
   }
 
-  const selectedTags = selectedCapture ? extractTags(selectedCapture.rawText) : []
-  const selectedPeople = selectedCapture ? extractPeople(selectedCapture.rawText) : []
-  const selectedPlaces = selectedCapture ? extractPlaces(selectedCapture.rawText) : []
-  const selectedCategories = selectedCapture ? extractCategories(selectedCapture.rawText, categories) : []
-  const selectedWords = selectedCapture ? wordCount(selectedCapture.rawText) : 0
-  const selectedTitle = selectedCapture ? firstLine(selectedCapture.rawText) : ''
+  const currentRawText = selectedCapture ? editorText : ''
+  const selectedTags = selectedCapture ? extractTags(currentRawText) : []
+  const selectedPeople = selectedCapture ? extractPeople(currentRawText) : []
+  const selectedPlaces = selectedCapture ? extractPlaces(currentRawText) : []
+  const selectedCategories = selectedCapture ? extractCategories(currentRawText, categories) : []
+  const selectedWords = selectedCapture ? wordCount(currentRawText) : 0
+  const selectedTitle = selectedCapture ? firstLine(currentRawText) : ''
   const selectedDate = selectedCapture ? new Date(selectedCapture.createdAt).toLocaleString() : ''
 
   return (
@@ -152,6 +156,24 @@ export function NotesView(props: {
             <p>{props.captures.length} captures</p>
           </div>
           <div className="notesHeaderControls">
+            <div className="notesViewToggle" role="tablist" aria-label="Notes layout">
+              <button
+                type="button"
+                className={layout === 'list' ? 'active' : ''}
+                onClick={() => setLayout('list')}
+                role="tab"
+                aria-selected={layout === 'list'}>
+                List
+              </button>
+              <button
+                type="button"
+                className={layout === 'cards' ? 'active' : ''}
+                onClick={() => setLayout('cards')}
+                role="tab"
+                aria-selected={layout === 'cards'}>
+                Cards
+              </button>
+            </div>
             <div className="notesSearchRow">
               <div className="notesSearchInput">
                 <Icon name="search" size={14} />
@@ -226,6 +248,59 @@ export function NotesView(props: {
               <Icon name="file" size={32} />
               <span>No notes found</span>
             </div>
+          ) : layout === 'list' ? (
+            <div className="notesTable">
+              <div className="notesTableHeader">
+                <div>When</div>
+                <div>Title</div>
+                <div>Preview</div>
+                <div>Tags</div>
+              </div>
+              <div className="notesTableBody">
+                <AnimatePresence mode="popLayout">
+                  {filtered.map((c) => {
+                    const tags = extractTags(c.rawText)
+                    const people = extractPeople(c.rawText)
+                    const places = extractPlaces(c.rawText)
+                    const preview = getPreview(c.rawText)
+                    return (
+                      <motion.button
+                        key={c.id}
+                        layout
+                        onClick={() => props.onSelectCapture(c.id)}
+                        className={`notesTableRow ${props.selectedCaptureId === c.id ? 'active' : ''}`}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 6 }}
+                        transition={{ duration: 0.12 }}
+                      >
+                        <div className="notesTableCell time">{formatRelativeDate(c.createdAt)}</div>
+                        <div className="notesTableCell title">{firstLine(c.rawText)}</div>
+                        <div className="notesTableCell preview">{preview || '—'}</div>
+                        <div className="notesTableCell tags">
+                          {tags.slice(0, 3).map((tag) => (
+                            <span key={`${c.id}_${tag}`} className="notesTableTag">
+                              {tag}
+                            </span>
+                          ))}
+                          {people.slice(0, 1).map((person) => (
+                            <span key={`${c.id}_${person}`} className="notesTableTag kind">
+                              @{person}
+                            </span>
+                          ))}
+                          {places.slice(0, 1).map((place) => (
+                            <span key={`${c.id}_${place}`} className="notesTableTag kind">
+                              {place}
+                            </span>
+                          ))}
+                          {tags.length === 0 && people.length === 0 && places.length === 0 ? <span className="notesTableTag">—</span> : null}
+                        </div>
+                      </motion.button>
+                    )
+                  })}
+                </AnimatePresence>
+              </div>
+            </div>
           ) : (
             <div className="notesMasonry">
               <AnimatePresence mode="popLayout">
@@ -240,7 +315,7 @@ export function NotesView(props: {
                       key={c.id}
                       layout
                       onClick={() => props.onSelectCapture(c.id)}
-                      className={`notesCard ${props.selectedCaptureId === c.id ? 'active' : ''}`}
+                      className={`notesCard notesCardDark ${props.selectedCaptureId === c.id ? 'active' : ''}`}
                       initial={{ opacity: 0, scale: 0.96 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.96 }}
@@ -387,23 +462,55 @@ export function NotesView(props: {
               </div>
 
               <div className="notesInspectorSection">
-                <div className="notesInspectorLabel">Transcript</div>
-                <textarea
-                  className="notesInspectorEditor"
-                  value={editorText}
-                  onChange={(e) => {
-                    setEditorText(e.target.value)
-                    setEditorDirty(true)
-                  }}
-                  onBlur={() => commitEditor()}
-                  placeholder="Add your detailed notes here..."
-                />
-                <div className="notesInspectorActions">
-                  <button className="notesInspectorSave" onClick={() => commitEditor()} disabled={!editorDirty}>
-                    Save
-                  </button>
-                  <span className="notesInspectorHint">{editorDirty ? 'Unsaved changes' : 'Saved'}</span>
+                <div className="notesInspectorDocHeader">
+                  <div className="notesInspectorLabel">Note</div>
+                  <div className="notesInspectorDocTabs" role="tablist" aria-label="Note mode">
+                    <button
+                      type="button"
+                      className={inspectorMode === 'preview' ? 'notesInspectorDocTab active' : 'notesInspectorDocTab'}
+                      onClick={() => setInspectorMode('preview')}
+                      role="tab"
+                      aria-selected={inspectorMode === 'preview'}>
+                      Preview
+                    </button>
+                    <button
+                      type="button"
+                      className={inspectorMode === 'edit' ? 'notesInspectorDocTab active' : 'notesInspectorDocTab'}
+                      onClick={() => setInspectorMode('edit')}
+                      role="tab"
+                      aria-selected={inspectorMode === 'edit'}>
+                      Edit
+                    </button>
+                  </div>
                 </div>
+                {inspectorMode === 'preview' ? (
+                  <div className="notesInspectorDoc">
+                    {editorText.trim() ? (
+                      <MarkdownView markdown={editorText} />
+                    ) : (
+                      <div className="notesInspectorEmptyMeta">No note content yet.</div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <textarea
+                      className="notesInspectorEditor"
+                      value={editorText}
+                      onChange={(e) => {
+                        setEditorText(e.target.value)
+                        setEditorDirty(true)
+                      }}
+                      onBlur={() => commitEditor()}
+                      placeholder="Write markdown notes..."
+                    />
+                    <div className="notesInspectorActions">
+                      <button className="notesInspectorSave" onClick={() => commitEditor()} disabled={!editorDirty}>
+                        Save
+                      </button>
+                      <span className="notesInspectorHint">{editorDirty ? 'Unsaved changes' : 'Saved'}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </>
           ) : (

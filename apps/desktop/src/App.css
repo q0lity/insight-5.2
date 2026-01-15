@@ -49,7 +49,7 @@ textarea {
 button {
   border: 1px solid var(--control-border);
   background: var(--control-bg);
-  color: var(--text);
+  color: inherit;
   border-radius: var(--radius-md);
   height: var(--control-h-md);
   padding: var(--control-pad-md);
@@ -2483,7 +2483,6 @@ select:focus-visible {
 }
 
 .md pre {
-  padding: 12px;
   border-radius: 12px;
   background: rgba(17, 24, 39, 0.06);
   border: 1px solid rgba(17, 24, 39, 0.10);
@@ -2491,9 +2490,63 @@ select:focus-visible {
 }
 
 .md pre code {
-  padding: 0;
+  display: block;
+  padding: 12px;
   border: none;
   background: transparent;
+}
+
+.md pre code.hljs {
+  padding: 0;
+}
+
+.md .hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.12);
+  color: var(--text);
+}
+
+.md .hljs-comment,
+.md .hljs-quote {
+  color: var(--muted);
+}
+
+.md .hljs-keyword,
+.md .hljs-selector-tag,
+.md .hljs-literal,
+.md .hljs-section,
+.md .hljs-link {
+  color: #f97316;
+}
+
+.md .hljs-function,
+.md .hljs-title,
+.md .hljs-name,
+.md .hljs-attribute {
+  color: #38bdf8;
+}
+
+.md .hljs-string,
+.md .hljs-symbol,
+.md .hljs-bullet,
+.md .hljs-addition {
+  color: #34d399;
+}
+
+.md .hljs-number,
+.md .hljs-meta {
+  color: #f59e0b;
+}
+
+.md .hljs-emphasis {
+  font-style: italic;
+}
+
+.md .hljs-strong {
+  font-weight: 900;
 }
 
 .md blockquote {
@@ -2502,6 +2555,13 @@ select:focus-visible {
   border-left: 4px solid var(--accentBorder);
   background: var(--accentSoft);
   border-radius: 10px;
+}
+
+.md hr {
+  border: none;
+  height: 1px;
+  background: var(--border);
+  margin: 12px 0;
 }
 
 .md table {
@@ -4040,6 +4100,54 @@ select:focus-visible {
 .docBody .mdPreviewPane {
   min-height: 0;
   background: transparent;
+  padding: 16px 18px;
+}
+
+.docBody .md {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.docBody .md h1 {
+  font-size: 22px;
+}
+
+.docBody .md h2 {
+  font-size: 18px;
+}
+
+.docBody .md h3 {
+  font-size: 16px;
+}
+
+.docBody .md p,
+.docBody .md ul,
+.docBody .md ol {
+  margin: 10px 0;
+}
+
+.docBody .md ul,
+.docBody .md ol {
+  padding-left: 20px;
+}
+
+.docBody .mdLiRow {
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.docBody .mdLiContent {
+  min-width: 0;
+}
+
+.docBody .mdLiMeta {
+  max-width: 38%;
+  padding-left: 12px;
+  border-left: 1px dashed var(--border);
+}
+
+.docBody .md hr {
+  margin: 16px 0;
 }
 
 .docEmpty {
@@ -5033,6 +5141,370 @@ select:focus-visible {
 
 .kbDot {
   opacity: 0.6;
+}
+
+/* Tasks toolbar */
+.taskToolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.taskTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  flex-shrink: 0;
+}
+
+.taskFilterGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 320px;
+}
+
+.taskFilterTabs {
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.taskFilterBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.taskFilterBtn.active {
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.taskFilterCount {
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+.taskFilterSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  color: var(--muted);
+  min-width: 200px;
+}
+
+.taskFilterSearch input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.taskActionGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.taskLayoutToggle {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+}
+
+.taskLayoutToggle button {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.taskLayoutToggle button.active {
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.taskQuickAdd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  min-width: 240px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.taskQuickAdd input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.taskAddBtn {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: none;
+  background: #D95D39;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(217, 93, 57, 0.25);
+  transition: transform 120ms ease, filter 120ms ease;
+  flex-shrink: 0;
+}
+
+.taskAddBtn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.taskInput,
+.taskSelect {
+  width: 100%;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  outline: none;
+}
+
+.taskSelect {
+  cursor: pointer;
+}
+
+/* Tasks card view */
+.taskCardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.taskCard {
+  background: #101217;
+  border: 1px solid rgba(216, 224, 0, 0.45);
+  border-radius: 26px;
+  padding: 22px;
+  color: #f8fafc;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.taskCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+}
+
+.taskCard.active {
+  border-color: rgba(216, 224, 0, 0.9);
+}
+
+.taskCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.taskCardTitle {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.taskCardMenu {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  display: grid;
+  place-items: center;
+  color: inherit;
+}
+
+.taskCardPreview {
+  font-size: 13px;
+  color: rgba(248, 250, 252, 0.65);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.taskCardBadges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.taskCardBadge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(216, 224, 0, 0.35);
+  background: rgba(216, 224, 0, 0.08);
+  font-size: 11px;
+  font-weight: 700;
+  color: #d8e000;
+}
+
+.taskCardBadge.status {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.taskCardBadge.status.done {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+}
+
+.taskCardBadge.status.in_progress {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.taskCardProgress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.taskCardProgressLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.taskCardProgressValue {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.taskCardProgressBar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  position: relative;
+  overflow: hidden;
+}
+
+.taskCardProgressBar span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: var(--progress);
+  background: linear-gradient(90deg, #6ee7b7, #d8e000);
+}
+
+.taskCardDots {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.taskCardDots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.taskCardDots span.active {
+  background: #6ee7b7;
+}
+
+.taskCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.taskCardMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.taskCardAction {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: none;
+  background: #f59e0b;
+  color: #111827;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 /* Tasks table */
@@ -8250,8 +8722,10 @@ select:focus-visible {
 }
 
 .notesViewToggle button {
-  width: 32px;
+  width: auto;
+  min-width: 56px;
   height: 28px;
+  padding: 0 10px;
   border: none;
   background: transparent;
   border-radius: 6px;
@@ -8260,6 +8734,8 @@ select:focus-visible {
   display: grid;
   place-items: center;
   transition: all 120ms ease;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .notesViewToggle button:hover {
@@ -8497,16 +8973,54 @@ select:focus-visible {
   transition: all 150ms ease;
 }
 
+.notesCardDark {
+  background: #101217;
+  border-color: rgba(216, 224, 0, 0.45);
+  color: #f8fafc;
+}
+
+.notesCardDark .notesCardDate,
+.notesCardDark .notesCardPreview,
+.notesCardDark .notesCardMeta,
+.notesCardDark .notesCardWords {
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.notesCardDark .notesCardMeta {
+  border-top-color: rgba(255, 255, 255, 0.12);
+}
+
+.notesCardDark .notesCardTitle > span:first-child {
+  color: #f8fafc;
+}
+
+.notesCardDark .notesCardTags span {
+  background: rgba(216, 224, 0, 0.12);
+  color: #d8e000;
+  border: 1px solid rgba(216, 224, 0, 0.3);
+}
+
 .notesCard:hover {
   border-color: var(--border2);
   box-shadow: 0 8px 24px rgba(0,0,0,0.08);
   transform: translateY(-2px);
 }
 
+.notesCardDark:hover {
+  border-color: rgba(216, 224, 0, 0.7);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
 .notesCard.active {
   border-color: var(--accent);
   background: var(--accentSoft);
   box-shadow: 0 4px 16px rgba(217, 93, 57, 0.15);
+}
+
+.notesCardDark.active {
+  border-color: rgba(216, 224, 0, 0.9);
+  background: rgba(216, 224, 0, 0.08);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
 }
 
 .notesCardTitle {
@@ -8648,6 +9162,42 @@ select:focus-visible {
   color: var(--muted);
 }
 
+.notesInspectorDocHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.notesInspectorDocTabs {
+  display: inline-flex;
+  gap: 6px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+}
+
+.notesInspectorDocTab {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.notesInspectorDocTab.active {
+  border-color: var(--accentBorder);
+  background: var(--accentSoft);
+  color: var(--text);
+}
+
 .notesInspectorChips {
   display: flex;
   flex-wrap: wrap;
@@ -8685,6 +9235,46 @@ select:focus-visible {
   opacity: 0.7;
 }
 
+.notesInspectorDoc {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel2);
+  padding: 12px 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.notesInspectorDoc .md {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.notesInspectorDoc .md h1 {
+  font-size: 20px;
+  letter-spacing: 0.01em;
+}
+
+.notesInspectorDoc .md h2 {
+  font-size: 17px;
+  letter-spacing: 0.01em;
+}
+
+.notesInspectorDoc .md h3 {
+  font-size: 15px;
+  letter-spacing: 0.01em;
+}
+
+.notesInspectorDoc .md hr {
+  border: none;
+  height: 1px;
+  background: var(--border);
+  margin: 14px 0;
+}
+
+.notesInspectorDoc .md blockquote {
+  background: var(--accentSoft);
+  border-left-color: var(--accentBorder);
+}
+
 .notesInspectorEditor {
   min-height: 220px;
   border-radius: 12px;
@@ -8694,6 +9284,7 @@ select:focus-visible {
   font-size: 12px;
   line-height: 1.5;
   resize: vertical;
+  color: var(--text);
 }
 
 .notesInspectorActions {
@@ -8803,8 +9394,11 @@ select:focus-visible {
 }
 
 .notesTableCell.title {
-  font-weight: 600;
-  white-space: nowrap;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+  white-space: normal;
+  line-height: 1.35;
 }
 
 .notesTableCell.time {
@@ -8886,6 +9480,11 @@ select:focus-visible {
 /* Dark theme adjustments */
 :root[data-theme='dark'] .notesCard:hover {
   box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+}
+
+:root[data-theme='dark'] .notesCardDark:hover {
+  border-color: rgba(216, 224, 0, 0.7);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
 }
 
 :root[data-theme='dark'] .notesTable {

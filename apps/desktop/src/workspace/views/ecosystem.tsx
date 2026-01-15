@@ -256,6 +256,23 @@ export function EcosystemView(props: {
     return out
   }, [projectDefs, props.events, props.tasks])
 
+  const categories = useMemo(() => {
+    const starter = categoriesFromStarter()
+    const custom = customTaxonomy.map((c) => c.category)
+    const set = new Set([...starter, ...custom])
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [customTaxonomy])
+
+  const hiddenGoals = useMemo(() => new Set(hidden.goals.map((g) => normalizeHiddenValue('goals', g)).filter(Boolean)), [hidden.goals])
+  const hiddenProjects = useMemo(() => new Set(hidden.projects.map((p) => normalizeHiddenValue('projects', p)).filter(Boolean)), [hidden.projects])
+  const hiddenTrackers = useMemo(() => new Set(hidden.trackers.map((t) => normalizeHiddenValue('trackers', t)).filter(Boolean)), [hidden.trackers])
+  const hiddenHabits = useMemo(() => new Set(hidden.habits.map((h) => normalizeHiddenValue('habits', h)).filter(Boolean)), [hidden.habits])
+  const hiddenTags = useMemo(() => new Set(hidden.tags.map((t) => normalizeHiddenValue('tags', t)).filter(Boolean)), [hidden.tags])
+  const hiddenPeople = useMemo(() => new Set(hidden.people.map((p) => normalizeHiddenValue('people', p)).filter(Boolean)), [hidden.people])
+  const hiddenContexts = useMemo(() => new Set(hidden.contexts.map((c) => normalizeHiddenValue('contexts', c)).filter(Boolean)), [hidden.contexts])
+  const hiddenSkills = useMemo(() => new Set(hidden.skills.map((s) => normalizeHiddenValue('skills', s)).filter(Boolean)), [hidden.skills])
+  const hiddenLocations = useMemo(() => new Set(hidden.locations.map((l) => normalizeHiddenValue('locations', l)).filter(Boolean)), [hidden.locations])
+
   const goalRows = useMemo(() => {
     return Array.from(goalNames.entries())
       .map(([key, name]) => ({
@@ -279,23 +296,6 @@ export function EcosystemView(props: {
       .filter((row) => !hiddenProjects.has(row.key))
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [projectDefs, projectNames, multipliers.projects, hiddenProjects])
-
-  const categories = useMemo(() => {
-    const starter = categoriesFromStarter()
-    const custom = customTaxonomy.map((c) => c.category)
-    const set = new Set([...starter, ...custom])
-    return Array.from(set).sort((a, b) => a.localeCompare(b))
-  }, [customTaxonomy])
-
-  const hiddenGoals = useMemo(() => new Set(hidden.goals.map((g) => normalizeHiddenValue('goals', g)).filter(Boolean)), [hidden.goals])
-  const hiddenProjects = useMemo(() => new Set(hidden.projects.map((p) => normalizeHiddenValue('projects', p)).filter(Boolean)), [hidden.projects])
-  const hiddenTrackers = useMemo(() => new Set(hidden.trackers.map((t) => normalizeHiddenValue('trackers', t)).filter(Boolean)), [hidden.trackers])
-  const hiddenHabits = useMemo(() => new Set(hidden.habits.map((h) => normalizeHiddenValue('habits', h)).filter(Boolean)), [hidden.habits])
-  const hiddenTags = useMemo(() => new Set(hidden.tags.map((t) => normalizeHiddenValue('tags', t)).filter(Boolean)), [hidden.tags])
-  const hiddenPeople = useMemo(() => new Set(hidden.people.map((p) => normalizeHiddenValue('people', p)).filter(Boolean)), [hidden.people])
-  const hiddenContexts = useMemo(() => new Set(hidden.contexts.map((c) => normalizeHiddenValue('contexts', c)).filter(Boolean)), [hidden.contexts])
-  const hiddenSkills = useMemo(() => new Set(hidden.skills.map((s) => normalizeHiddenValue('skills', s)).filter(Boolean)), [hidden.skills])
-  const hiddenLocations = useMemo(() => new Set(hidden.locations.map((l) => normalizeHiddenValue('locations', l)).filter(Boolean)), [hidden.locations])
 
   const visibleHabitDefs = useMemo(() => habitDefs.filter((h) => !hiddenHabits.has(h.id)), [habitDefs, hiddenHabits])
   const visibleTrackerDefs = useMemo(() => trackerDefs.filter((t) => !hiddenTrackers.has(t.key)), [trackerDefs, hiddenTrackers])
