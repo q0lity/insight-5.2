@@ -1,0 +1,90 @@
+{
+  "task_description": "Analyze and optimize the parsing engine to intelligently categorize user input into 5 entity types (tasks, events, notes, trackers, habits) with automatic habit completion detection, confidence-based project auto-linking, and context-aware task pane updates.",
+  "scoped_services": ["parser", "desktop"],
+  "files_to_modify": {
+    "parser": [
+      "packages/parser/src/types.ts",
+      "packages/parser/src/pipeline/classifier.ts",
+      "packages/parser/src/context/habit-context.ts",
+      "packages/parser/src/context/project-context.ts"
+    ],
+    "desktop": [
+      "apps/desktop/src/nlp/natural.ts",
+      "apps/desktop/src/nlp/llm-parse.ts"
+    ]
+  },
+  "files_to_reference": [
+    "packages/parser/src/pipeline/classifier.ts",
+    "packages/parser/src/confidence/thresholds.ts",
+    "packages/parser/src/confidence/scorer.ts",
+    "packages/parser/src/context/project-context.ts",
+    "apps/desktop/src/nlp/llm-parse.ts"
+  ],
+  "patterns": {
+    "classifier_rule": {
+      "description": "Entity classification uses weighted regex patterns",
+      "example": "{ entityClass: 'task', patterns: [/\\b(need\\s+to)\\b/i], weight: 0.9 }"
+    },
+    "confidence_tiers": {
+      "description": "Three-tier confidence system for auto-apply decisions",
+      "high": ">= 0.85 - Auto-apply without confirmation",
+      "medium": ">= 0.50 - Suggest to user",
+      "low": "< 0.50 - Require explicit confirmation"
+    },
+    "fuzzy_matching": {
+      "description": "Normalize strings for case-insensitive matching against name/tags/category",
+      "function": "matchHabitFuzzy(), matchProjectFuzzy()"
+    },
+    "context_loading": {
+      "description": "Load entity definitions at parse time via context loaders",
+      "pattern": "loadHabitContext(source), loadProjectContext(source)"
+    }
+  },
+  "existing_implementations": {
+    "habit_context": {
+      "file": "packages/parser/src/context/habit-context.ts",
+      "functions": ["matchHabitFuzzy", "findHabitByName", "loadHabitContext"],
+      "status": "Exists but no completion detection"
+    },
+    "project_context": {
+      "file": "packages/parser/src/context/project-context.ts",
+      "functions": ["matchProjectFuzzy", "findProjectByName", "loadProjectContext"],
+      "status": "Exists but no confidence-based auto-linking"
+    },
+    "confidence_scorer": {
+      "file": "packages/parser/src/confidence/scorer.ts",
+      "class": "ConfidenceScorer",
+      "methods": ["score", "fromFactors", "combine", "getTier"],
+      "status": "Implemented, ready to use"
+    },
+    "classifier": {
+      "file": "packages/parser/src/pipeline/classifier.ts",
+      "entity_classes": ["workout", "meal", "sleep", "transport", "shopping", "social", "tracker", "task", "event"],
+      "missing": ["habit", "note"],
+      "status": "Needs habit and note entity classes added"
+    }
+  },
+  "identified_gaps": [
+    {
+      "gap": "No habit completion detection",
+      "impact": "Cannot auto-check habits when user says 'I did X'",
+      "solution": "Add detectHabitCompletion() using matchHabitFuzzy()"
+    },
+    {
+      "gap": "Missing 'note' entity class",
+      "impact": "Notes captured as event notes, not standalone",
+      "solution": "Add 'note' to CLASSIFIER_RULES with patterns like 'note:', 'remember:'"
+    },
+    {
+      "gap": "Confidence not wired to auto-linking",
+      "impact": "Project links not applied based on confidence tier",
+      "solution": "Add autoLinkProject() with tier-based decision"
+    },
+    {
+      "gap": "LLM prompt missing habit/note extraction",
+      "impact": "LLM parser doesn't return habit completions or notes",
+      "solution": "Update system prompt and add types to llm-parse.ts"
+    }
+  ],
+  "created_at": "2026-01-13T11:08:34.716337"
+}

@@ -1,0 +1,36 @@
+{
+  "task_description": "I need these to be analyzed, and I need the pages to look like an Obsidian, but, like, you know how the like, in G Docs, how there's, like, a beautiful title on the page, and, like, there's that left sidebar where you can click through the headings and markdown and stuff like that. So I need that to the left, and then I need, like, a timestamps column that correlates with the, like, the headings that are separated by that are separated and then, you know, separated by category or whatever. And then in addition to that, like, let's say that, like, I I have a segment thing in here that I'm doing segments on, and, you know, they can, like, parse time or something like that. But, like, let's say I have, like, a subtask, and you'll see here that there's, like, a, you know, a janky button on the right. But I needed to kinda look like this, like, this kinda tagging system. And that you see how there's, like, a little, like, when there's, like, a little this is, like, the Obsidian version. This is kinda what I need. Like, these kinda tagging and, like, these chips and stuff like that. I need it to look like an Obsidian page. And then, you know, these checkboxes work, all of that kind of stuff. And that usually speaking, that if there is a little And I like how there's, like, a little bit of, like, things here, but I need it to be, like, a markdown native, like, so that here's the thing. I wanna be able to export this to to, like, you know, Obsidian easily. Right? That it can make, like, this kind of, like, format when I do it. So, yeah, so that's that's, like, a big deal. You know, and all the front matter at the top will kinda look like this. But, like like, do you have these dividers there and, like, all that of stuff, and that there's a left column, like, this column that kinda, like, has that there. But I wanted to look more like Google Docs that it's, like, easy. So, yeah, that note taking section is really, really, really important, you know, where you have the times and you have everything, like, in there and, like, all that kind of stuff, so that you can make it. And then those tasks via the like, if there's, like, tasks that are related, like like so, like, for example, like, let's say I say I'm like, oh, hey. I'm coding right now. Okay. I'm working on this. Boom. There's, like, a subtask section that, comes up, like, within the event that I'm working on where I can press the play button on the right. And you can look through the plugins folder to kinda see where that is. Yeah. So, yeah, so what questions do you have for me as you're planning this out, and what are your what's your plan to do",
+  "workflow_type": "feature",
+  "attached_images": [
+    {
+      "filename": "screenshot-1768320172528.png",
+      "path": "attachments/screenshot-1768320172528.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768320182232.png",
+      "path": "attachments/screenshot-1768320182232.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768320352239.png",
+      "path": "attachments/screenshot-1768320352239.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768320406327.png",
+      "path": "attachments/screenshot-1768320406327.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768320435831.png",
+      "path": "attachments/screenshot-1768320435831.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768320444114.png",
+      "path": "attachments/screenshot-1768320444114.png",
+      "description": ""
+    }
+  ]
+}

@@ -1,0 +1,776 @@
+{
+  "id": "ideation-20260113-153818",
+  "project_id": "/Users/dg/Desktop/insight-5.2",
+  "config": {
+    "enabled_types": [
+      "code_improvements",
+      "ui_ux_improvements",
+      "security_hardening",
+      "documentation_gaps",
+      "performance_optimizations",
+      "code_quality"
+    ],
+    "include_roadmap_context": true,
+    "include_kanban_context": true,
+    "max_ideas_per_type": 5
+  },
+  "ideas": [
+    {
+      "id": "ci-001",
+      "type": "code_improvements",
+      "title": "Add Points Calculation for Workouts and Meals",
+      "description": "Extend the gamification scoring system to include workouts and meals, allowing users to earn points for fitness and nutrition activities using the same importance/difficulty mechanics as events and tasks.",
+      "rationale": "The scoring pattern already exists in apps/desktop/src/scoring/points.ts with pointsForEvent() and pointsForTask(). Both workouts and meals have importance/difficulty fields in their data models (visible in db/insight-db.ts). This is a direct pattern extension.",
+      "builds_upon": [
+        "scoring/points.ts pointsForEvent()",
+        "scoring/points.ts pointsForTask()",
+        "Workout and Meal data models with importance/difficulty"
+      ],
+      "estimated_effort": "trivial",
+      "affected_files": [
+        "apps/desktop/src/scoring/points.ts",
+        "apps/insight-mobile/src/utils/points.ts"
+      ],
+      "existing_patterns": [
+        "basePoints(importance, difficulty) calculation",
+        "pointsForMinutes() with multipliers",
+        "recordActivity() for streak tracking"
+      ],
+      "implementation_approach": "Add pointsForWorkout(workout: Workout) and pointsForMeal(meal: Meal) functions following the exact same pattern as pointsForEvent. Use basePoints() for importance\u00d7difficulty, calculate duration from workout/meal timestamps, apply multipliers via multiplierFor(goal, project), and call recordActivity() for streak tracking.",
+      "status": "draft",
+      "created_at": "2026-01-13T11:55:00.000Z"
+    },
+    {
+      "id": "ci-002",
+      "type": "code_improvements",
+      "title": "Add Skeleton Loading Components to Mobile App",
+      "description": "Port the comprehensive skeleton loading state system from the desktop app to mobile, providing consistent loading UI for habits, events, cards, and stats across the mobile experience.",
+      "rationale": "Desktop has a mature Skeleton component system (apps/desktop/src/ui/Skeleton.tsx) with 9 variants: Skeleton, SkeletonText, SkeletonCard, SkeletonHabitCard, SkeletonEventCard, SkeletonNote, SkeletonStatsGrid, SkeletonProgressCard, and SkeletonView. Mobile has no equivalent loading states, but has the same UI patterns (HabitCard, event cards) that would benefit from skeleton states.",
+      "builds_upon": [
+        "apps/desktop/src/ui/Skeleton.tsx",
+        "Mobile component architecture (HabitCard, etc.)",
+        "Mobile theme system (useTheme)"
+      ],
+      "estimated_effort": "small",
+      "affected_files": [
+        "apps/insight-mobile/src/components/Skeleton.tsx (new)",
+        "apps/insight-mobile/src/components/HabitCard.tsx",
+        "apps/insight-mobile/app/(tabs)/index.tsx"
+      ],
+      "existing_patterns": [
+        "framer-motion/Animated View for animations",
+        "useTheme() for theming",
+        "Rounded corners and panel backgrounds from HabitCard patterns"
+      ],
+      "implementation_approach": "Create apps/insight-mobile/src/components/Skeleton.tsx using React Native's Animated API for pulse animation. Follow desktop's component structure but adapt to React Native Views. Replace CSS with StyleSheet, use theme palette colors. Start with SkeletonHabitCard since habits view already exists.",
+      "status": "draft",
+      "created_at": "2026-01-13T11:55:00.000Z"
+    },
+    {
+      "id": "ci-003",
+      "type": "code_improvements",
+      "title": "Move Streak Utilities to Shared Package",
+      "description": "Consolidate the duplicated streak calculation logic from both desktop (apps/desktop/src/scoring/streaks.ts) and mobile (apps/insight-mobile/src/utils/streaks.ts) into the shared package for consistent behavior and reduced code duplication.",
+      "rationale": "Both platforms implement nearly identical streak logic: getStreakMultiplier(), checkMilestone(), getStreakMessage(), daysToNextMilestone(). The shared package (@insight/shared) already exists and is imported by both apps. This duplication increases maintenance burden and risks behavioral drift.",
+      "builds_upon": [
+        "packages/shared/src/ package structure",
+        "apps/desktop/src/scoring/streaks.ts",
+        "apps/insight-mobile/src/utils/streaks.ts"
+      ],
+      "estimated_effort": "small",
+      "affected_files": [
+        "packages/shared/src/streaks.ts (new)",
+        "packages/shared/src/index.ts",
+        "apps/desktop/src/scoring/streaks.ts",
+        "apps/insight-mobile/src/utils/streaks.ts"
+      ],
+      "existing_patterns": [
+        "Shared package exports in packages/shared/src/index.ts",
+        "Type definitions exported from shared",
+        "Platform-agnostic utility functions"
+      ],
+      "implementation_approach": "Extract pure calculation functions (getStreakMultiplier, checkMilestone, getStreakMessage, daysToNextMilestone, getLevelUpMessage) to packages/shared/src/streaks.ts. Keep storage-dependent functions (loadStreakData, saveStreakData, recordActivity) in platform-specific files. Update both apps to import shared functions.",
+      "status": "draft",
+      "created_at": "2026-01-13T11:55:00.000Z"
+    },
+    {
+      "id": "ci-004",
+      "type": "code_improvements",
+      "title": "Add Data Export Functionality",
+      "description": "Add JSON and CSV export capabilities for user data (events, tasks, habits, workouts, meals) allowing users to backup their data or migrate to other systems.",
+      "rationale": "Storage modules already have well-defined list() functions that return typed arrays (listEvents, listTasks, listHabits, etc.). All data models have clear TypeScript interfaces. No export capability currently exists, but the data access patterns are established.",
+      "builds_upon": [
+        "apps/desktop/src/storage/calendar.ts listEvents()",
+        "apps/desktop/src/storage/tasks.ts listTasks()",
+        "All storage modules with list functions"
+      ],
+      "estimated_effort": "medium",
+      "affected_files": [
+        "apps/desktop/src/storage/export.ts (new)",
+        "apps/desktop/src/ui/SettingsModal.tsx",
+        "apps/insight-mobile/src/storage/export.ts (new)"
+      ],
+      "existing_patterns": [
+        "listEvents(), listTasks(), listHabits() data access pattern",
+        "TypeScript interfaces for all data types",
+        "SettingsModal for user preferences"
+      ],
+      "implementation_approach": "Create export.ts with exportToJson(dataType) and exportToCsv(dataType) functions. Use existing list*() functions to gather data. For JSON, serialize with JSON.stringify. For CSV, flatten nested objects and generate rows. Add export buttons to SettingsModal. On mobile, use Share API to export files.",
+      "status": "draft",
+      "created_at": "2026-01-13T11:55:00.000Z"
+    },
+    {
+      "id": "ci-005",
+      "type": "code_improvements",
+      "title": "Add Pattern Learning System to Mobile",
+      "description": "Port the adaptive pattern learning system from desktop to mobile, enabling smart auto-categorization and suggestions based on user behavior patterns.",
+      "rationale": "Desktop has a complete learning system in apps/desktop/src/learning/ with: collector.ts (pattern collection), confidence.ts (scoring), context.ts (context building), enricher.ts (auto-enrichment), keywords.ts (text analysis), patterns.ts (CRUD for patterns). Mobile has no equivalent but would benefit from the same intelligent suggestions. Mobile already has Supabase integration for data sync.",
+      "builds_upon": [
+        "apps/desktop/src/learning/ (full system)",
+        "Mobile storage infrastructure",
+        "Supabase sync patterns on mobile"
+      ],
+      "estimated_effort": "large",
+      "affected_files": [
+        "apps/insight-mobile/src/learning/patterns.ts (new)",
+        "apps/insight-mobile/src/learning/enricher.ts (new)",
+        "apps/insight-mobile/src/learning/context.ts (new)",
+        "apps/insight-mobile/app/(tabs)/capture.tsx"
+      ],
+      "existing_patterns": [
+        "Pattern storage with confidence scores",
+        "recordAccept/recordReject feedback loop",
+        "enrichEvent() for auto-applying learned patterns",
+        "buildPatternContext() for analyzing input"
+      ],
+      "implementation_approach": "Start by porting patterns.ts for basic pattern CRUD using AsyncStorage (matching mobile's storage pattern). Then port context.ts and enricher.ts for the auto-suggestion capability. Integrate into capture.tsx to suggest categories/tags based on learned patterns. Use confidence thresholds from desktop (0.7 auto-apply, 0.4 suggest).",
+      "status": "draft",
+      "created_at": "2026-01-13T11:55:00.000Z"
+    },
+    {
+      "id": "uiux-001",
+      "type": "ui_ux_improvements",
+      "title": "Standardize Empty States with Actionable CTAs",
+      "description": "Replace basic empty state text with consistent, visually appealing empty state components that include icons, descriptive text, and clear call-to-action buttons.",
+      "rationale": "Current empty states like 'No open tasks.' and 'No habits yet. Add one in the Habits tab.' are inconsistent in styling and some lack clear next steps. Well-designed empty states reduce user confusion and encourage action.",
+      "category": "usability",
+      "affected_components": [
+        "apps/desktop/src/App.tsx",
+        "apps/desktop/src/workspace/views/habits.tsx",
+        "apps/desktop/src/workspace/views/placeholder.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "Empty states use simple inline text with classes like 'sbTasksEmpty', 'sbQuickEmpty', 'pomoPickEmpty', and 'empty'. These are visually minimal and inconsistent, with some providing guidance ('Add one in the Habits tab') while others don't ('No open tasks.').",
+      "proposed_change": "Create a reusable EmptyState component in src/ui/ that accepts props for icon, title, description, and optional CTA button. Apply consistently across all views. Example structure: centered layout with muted icon (64x64), title, helpful subtitle, and primary action button.",
+      "user_benefit": "Users immediately understand when a section is empty and know exactly what action to take next, reducing frustration and increasing feature discovery.",
+      "status": "draft",
+      "created_at": "2026-01-13T12:00:00.000Z"
+    },
+    {
+      "id": "uiux-002",
+      "type": "ui_ux_improvements",
+      "title": "Add Loading Skeletons to All Data Views",
+      "description": "Implement skeleton loading states in views that currently show nothing or basic spinners during data loading.",
+      "rationale": "The app has a comprehensive Skeleton component system (Skeleton.tsx with variants like SkeletonCard, SkeletonHabitCard, SkeletonNote, etc.) but it's not consistently used across all views. Some views like focus.tsx and health.tsx have loading states, but others lack visual feedback during data loading.",
+      "category": "performance",
+      "affected_components": [
+        "apps/desktop/src/ui/Skeleton.tsx",
+        "apps/desktop/src/workspace/views/notes.tsx",
+        "apps/desktop/src/workspace/views/trackers.tsx",
+        "apps/desktop/src/workspace/views/timeline.tsx",
+        "apps/desktop/src/workspace/views/habits.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "Views like notes.tsx, timeline.tsx, trackers.tsx, and habits.tsx don't show loading skeleton states during initial data fetch. Users see empty containers or sudden content appearance, which feels jarring.",
+      "proposed_change": "Add isLoading state to each view and wrap content with AnimatePresence. Show appropriate skeleton variant (SkeletonNote for notes, SkeletonHabitCard for habits, SkeletonEventCard for timeline) during the loading phase with smooth fade transitions.",
+      "user_benefit": "Perceived performance improves significantly. Users see immediate visual feedback that content is loading, reducing uncertainty and making the app feel faster and more polished.",
+      "status": "draft",
+      "created_at": "2026-01-13T12:01:00.000Z"
+    },
+    {
+      "id": "uiux-003",
+      "type": "ui_ux_improvements",
+      "title": "Improve Keyboard Navigation and Focus Management",
+      "description": "Enhance keyboard accessibility by adding visible focus indicators, keyboard shortcuts for common actions, and proper focus trapping in modals.",
+      "rationale": "While the app has some keyboard support (Enter key handlers, Escape for modals), focus-visible styling is limited (28 occurrences across 18 files). Power users benefit from keyboard navigation, and it's essential for accessibility.",
+      "category": "accessibility",
+      "affected_components": [
+        "apps/desktop/src/App.css",
+        "apps/desktop/src/ui/CaptureModal.tsx",
+        "apps/desktop/src/workspace/views/habits.tsx",
+        "apps/desktop/src/workspace/views/notes.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "Focus indicators exist via '--focus-ring' CSS variable and button:focus-visible styles, but many interactive elements (sidebar buttons, list items, cards) lack visible focus states. Modal focus trapping is not implemented - users can tab outside the modal.",
+      "proposed_change": "1) Add consistent focus-visible styles to all clickable elements (cards, list items, sidebar buttons) with the existing --focus-ring variable. 2) Implement focus trapping in CaptureModal and other modals using a custom hook or library. 3) Add keyboard shortcut hints in tooltips for common actions. 4) Ensure all interactive elements have tabIndex where needed.",
+      "user_benefit": "Users can navigate the entire app using only a keyboard, which is faster for power users and essential for users with motor disabilities. Clear focus indicators prevent users from losing their place.",
+      "status": "draft",
+      "created_at": "2026-01-13T12:02:00.000Z"
+    },
+    {
+      "id": "uiux-004",
+      "type": "ui_ux_improvements",
+      "title": "Enhance Error Boundary with Friendly Recovery Options",
+      "description": "Improve the ErrorBoundary component to provide more user-friendly error messages, optional error reporting, and multiple recovery options.",
+      "rationale": "The current ErrorBoundary shows 'App crashed' with a stack trace and single 'Reload' button. This is technical and intimidating for non-developers. A friendlier error UI increases user trust and helps them recover gracefully.",
+      "category": "usability",
+      "affected_components": [
+        "apps/desktop/src/ui/error-boundary.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "ErrorBoundary displays 'App crashed', 'Open DevTools Console for details', a pre-formatted stack trace, and a single 'Reload' button. The UI uses basic classes (errRoot, errCard, errTitle, etc.) without the app's polished styling.",
+      "proposed_change": "1) Replace technical messaging with friendly copy: 'Something went wrong' with a sad icon. 2) Hide stack trace by default behind a 'Show technical details' toggle for developers. 3) Add 'Try Again' (attempts to recover state), 'Go Home' (navigates to dashboard), and 'Report Issue' buttons. 4) Style using existing design tokens for consistency. 5) Consider auto-recovery for transient errors.",
+      "user_benefit": "Users feel supported rather than alarmed when errors occur. They have clear options to recover without losing their work or needing technical knowledge.",
+      "status": "draft",
+      "created_at": "2026-01-13T12:03:00.000Z"
+    },
+    {
+      "id": "uiux-005",
+      "type": "ui_ux_improvements",
+      "title": "Add Touch Target Sizing for Sidebar Button Labels",
+      "description": "Ensure all interactive elements in the sidebar and throughout the app meet the minimum 44x44px touch target guideline for better mobile/touch accessibility.",
+      "rationale": "The sidebar railBtn class uses 44x44px (good) but the label display mechanism and some chip/badge elements may have smaller touch targets. As a cross-platform app (with mobile versions), consistent touch targets improve usability.",
+      "category": "accessibility",
+      "affected_components": [
+        "apps/desktop/src/App.css",
+        "apps/desktop/src/ui/ChipInput.tsx",
+        "apps/desktop/src/workspace/views/habits.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "Rail buttons are 44x44px (good). However, elements like chip badges, toggle switches, and inline action buttons (e.g., 'captureAttachDetach' is a small X button) may fall below the 44x44px minimum recommended by WCAG for touch targets. Some control heights are defined as small as 26px (--control-h-xs).",
+      "proposed_change": "1) Audit all interactive elements for minimum 44x44px clickable area. 2) For visual elements that need to appear smaller, use padding to expand the touch target while keeping visual size compact. 3) Add a new CSS utility class for ensuring minimum touch targets. 4) Apply to chip close buttons, small toggles, and inline action buttons.",
+      "user_benefit": "Users on touch devices can tap buttons accurately without frustration. Users with motor control difficulties benefit from larger touch targets. Reduces mis-taps and accidental actions.",
+      "status": "draft",
+      "created_at": "2026-01-13T12:04:00.000Z"
+    },
+    {
+      "id": "sec-001",
+      "type": "security_hardening",
+      "title": "Remove Auto-Login Credentials from Environment Variables",
+      "description": "The mobile app stores auto-login credentials (EXPO_PUBLIC_SUPABASE_AUTO_LOGIN_EMAIL and EXPO_PUBLIC_SUPABASE_AUTO_LOGIN_PASSWORD) in environment variables, which are logged to the console during authentication attempts. Even though this is gated behind __DEV__, credentials in environment files can be accidentally committed and console logs may persist in crash reports.",
+      "rationale": "Hardcoded or environment-stored credentials represent a significant security risk. Even in development mode, these credentials can leak through console logs, crash reporters, or environment file mishandling. OWASP identifies credential exposure as a critical authentication failure.",
+      "category": "secrets_management",
+      "severity": "high",
+      "affectedFiles": [
+        "apps/insight-mobile/src/state/auth.tsx",
+        "apps/insight-mobile/.env.local"
+      ],
+      "vulnerability": "CWE-798: Use of Hard-coded Credentials",
+      "currentRisk": "Development credentials visible in console logs at line 45: console.log('[Auth] Attempting auto-login with', email). Credentials stored in env files risk accidental commit.",
+      "remediation": "1) Remove auto-login feature entirely or move to a secure developer-only configuration mechanism. 2) Use a secure credential storage solution like Expo SecureStore for any stored credentials. 3) Remove sensitive data from console.log statements. 4) Add .env.local to .gitignore if not already present.",
+      "references": [
+        "https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/",
+        "https://cwe.mitre.org/data/definitions/798.html"
+      ],
+      "compliance": [
+        "SOC2",
+        "GDPR"
+      ]
+    },
+    {
+      "id": "sec-002",
+      "type": "security_hardening",
+      "title": "Prevent OpenAI API Key Exposure in Client-Side Code",
+      "description": "The desktop application stores the OpenAI API key in client-side environment variables (VITE_OPENAI_API_KEY) and makes direct API calls from the browser/renderer process. While Vite proxies requests in development, the API key is still accessible in the client bundle and exposed in production builds.",
+      "rationale": "API keys embedded in client-side code can be extracted by anyone with access to the application. Attackers could use stolen API keys to make unauthorized requests, leading to financial loss and potential abuse of the AI service. This is particularly critical for pay-per-use APIs like OpenAI.",
+      "category": "secrets_management",
+      "severity": "high",
+      "affectedFiles": [
+        "apps/desktop/src/openai.ts",
+        "apps/desktop/vite.config.ts",
+        "apps/insight-mobile/src/lib/llm/openai.ts"
+      ],
+      "vulnerability": "CWE-312: Cleartext Storage of Sensitive Information",
+      "currentRisk": "OpenAI API key is passed directly in Authorization header from client code. Key is accessible via browser DevTools and can be extracted from production builds.",
+      "remediation": "1) Create a backend proxy service (Supabase Edge Function) that holds the API key securely and forwards requests to OpenAI. 2) Implement user-specific API key storage in the backend with encryption. 3) Add rate limiting and usage monitoring to detect API key abuse. 4) For the mobile app, consider requiring users to input their own API keys stored in SecureStore.",
+      "references": [
+        "https://owasp.org/www-community/vulnerabilities/Use_of_hard-coded_cryptographic_key",
+        "https://cwe.mitre.org/data/definitions/312.html"
+      ],
+      "compliance": [
+        "SOC2",
+        "PCI-DSS"
+      ]
+    },
+    {
+      "id": "sec-003",
+      "type": "security_hardening",
+      "title": "Harden Electron Security Configuration",
+      "description": "The Electron main process (electron/main.cjs) lacks several recommended security configurations. While contextIsolation is enabled, other critical security features like sandbox mode, Content Security Policy (CSP), and explicit nodeIntegration:false are missing.",
+      "rationale": "Electron applications have access to Node.js APIs which can be exploited if malicious content is loaded in the renderer. Without proper sandboxing and CSP, XSS vulnerabilities could escalate to remote code execution. Electron security best practices recommend defense-in-depth configuration.",
+      "category": "configuration",
+      "severity": "medium",
+      "affectedFiles": [
+        "apps/desktop/electron/main.cjs"
+      ],
+      "vulnerability": "CWE-693: Protection Mechanism Failure",
+      "currentRisk": "Renderer process could potentially access Node.js APIs or execute arbitrary code if combined with an XSS vulnerability. No CSP restricts what scripts can execute.",
+      "remediation": "Update electron/main.cjs webPreferences to include: { contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true }. Add Content Security Policy via session.defaultSession.webRequest.onHeadersReceived. Consider enabling process sandboxing with app.enableSandbox().",
+      "references": [
+        "https://www.electronjs.org/docs/latest/tutorial/security",
+        "https://cwe.mitre.org/data/definitions/693.html"
+      ],
+      "compliance": [
+        "SOC2"
+      ]
+    },
+    {
+      "id": "sec-004",
+      "type": "security_hardening",
+      "title": "Restrict CORS Policy in Supabase Edge Functions",
+      "description": "The Supabase Edge Functions (claude_agent and send_push_notification) use overly permissive CORS headers with 'Access-Control-Allow-Origin': '*', allowing any origin to make requests to these endpoints.",
+      "rationale": "Wildcard CORS policies allow any website to make authenticated requests to your API endpoints. This could enable CSRF-like attacks where malicious sites trick users into performing actions. APIs should only accept requests from known, trusted origins.",
+      "category": "configuration",
+      "severity": "medium",
+      "affectedFiles": [
+        "supabase/functions/claude_agent/index.ts",
+        "supabase/functions/send_push_notification/index.ts"
+      ],
+      "vulnerability": "CWE-942: Permissive Cross-domain Policy with Untrusted Domains",
+      "currentRisk": "Any website can make requests to the Edge Functions on behalf of authenticated users. Combined with CSRF, this could allow unauthorized data access or modification.",
+      "remediation": "1) Define an allowlist of trusted origins (e.g., your mobile app scheme, desktop app origin, landing page domain). 2) Dynamically check the Origin header against the allowlist. 3) Only return CORS headers for matching origins. Example: const allowedOrigins = ['https://insight.app', 'insight://']; if (allowedOrigins.includes(origin)) { corsHeaders['Access-Control-Allow-Origin'] = origin; }",
+      "references": [
+        "https://owasp.org/www-community/attacks/cors-origin-header-security",
+        "https://cwe.mitre.org/data/definitions/942.html"
+      ],
+      "compliance": [
+        "SOC2",
+        "PCI-DSS"
+      ]
+    },
+    {
+      "id": "sec-005",
+      "type": "security_hardening",
+      "title": "Add Input Validation and Sanitization to Tool Executor",
+      "description": "The Supabase Edge Function tool-executor.ts accepts user input directly without validation or sanitization. The semanticSearch function constructs database queries using string interpolation with user-provided search queries, creating potential injection risks.",
+      "rationale": "Unsanitized user input in database queries can lead to injection attacks. While Supabase's query builder provides some protection, string interpolation in the .or() clause bypasses parameterization. Input validation is a fundamental security control that should be applied to all user-provided data.",
+      "category": "input_validation",
+      "severity": "medium",
+      "affectedFiles": [
+        "supabase/functions/_shared/tool-executor.ts"
+      ],
+      "vulnerability": "CWE-20: Improper Input Validation",
+      "currentRisk": "Line 1152: .or(`title.ilike.%${query}%,body_markdown.ilike.%${query}%`) - User input is interpolated directly into the query string. Special characters could potentially manipulate query logic.",
+      "remediation": "1) Implement input validation schemas (using Zod or similar) for all tool inputs. 2) Sanitize search queries by escaping special characters: const sanitizedQuery = query.replace(/[%_\\\\]/g, '\\\\$&'). 3) Use parameterized queries where possible. 4) Add length limits to string inputs. 5) Validate UUIDs with regex before using in queries.",
+      "references": [
+        "https://owasp.org/www-community/attacks/SQL_Injection",
+        "https://cwe.mitre.org/data/definitions/20.html"
+      ],
+      "compliance": [
+        "SOC2",
+        "PCI-DSS"
+      ]
+    },
+    {
+      "id": "doc-001",
+      "type": "documentation_gaps",
+      "title": "Add comprehensive README for the parser package",
+      "description": "The packages/parser package contains critical parsing infrastructure including tokenizer, entity extraction, classification, confidence scoring, and markdown parsing - but has no README or API documentation. The package exports through src/index.ts and src/types.ts but users have no guidance on how to use these components.",
+      "rationale": "The parser package is the core NLP/parsing engine used across desktop and mobile apps. Developers need to understand the token types, pattern syntax (like #tracker(value), @person, !location), the pipeline architecture (tokenizer -> classifier -> entity-extractor -> output-builder), and confidence scoring system to effectively integrate or extend parsing capabilities.",
+      "category": "api_docs",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "packages/parser/src/index.ts",
+        "packages/parser/src/types.ts",
+        "packages/parser/src/pipeline/tokenizer.ts",
+        "packages/parser/src/pipeline/classifier.ts",
+        "packages/parser/src/pipeline/entity-extractor.ts",
+        "packages/parser/src/confidence/scorer.ts"
+      ],
+      "currentDocumentation": "Some inline JSDoc comments exist in tokenizer.ts, but no package README, no API overview, no usage examples",
+      "proposedContent": "Create packages/parser/README.md with: 1) Package overview and purpose, 2) Token type reference table (tracker, person, location, tag, time, duration, etc.), 3) Pattern syntax guide with examples, 4) Pipeline architecture diagram, 5) Basic usage examples, 6) Confidence scoring explanation",
+      "priority": "high",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "doc-002",
+      "type": "documentation_gaps",
+      "title": "Document the shared package data models and types",
+      "description": "The packages/shared/src/models.ts file exports 20+ types (Task, CalendarEvent, Workout, Meal, Exercise, Pattern, Entity, etc.) that form the core data model used across all apps. These types have no documentation explaining field meanings, relationships, or usage patterns.",
+      "rationale": "Understanding the data model is essential for any developer working on the project. Fields like 'entityIds', 'kind', 'character', 'skills', or the relationship between CalendarEvent.taskId and Task.parentEventId are non-obvious. The Pattern system for adaptive learning also needs explanation.",
+      "category": "api_docs",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "packages/shared/src/models.ts",
+        "packages/shared/src/index.ts",
+        "packages/shared/src/taxonomy.ts",
+        "packages/shared/src/normalize.ts"
+      ],
+      "currentDocumentation": "Only minimal inline comments like '// grams' or '// milligrams' exist",
+      "proposedContent": "Add JSDoc comments to all exported types explaining: 1) Purpose of each type, 2) Field descriptions with valid values, 3) Relationships between types (e.g., CalendarEvent <-> Task <-> Note), 4) Example values, 5) Create packages/shared/README.md with data model overview diagram",
+      "priority": "high",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "doc-003",
+      "type": "documentation_gaps",
+      "title": "Update root README with accurate monorepo setup guide",
+      "description": "The root README.md references outdated paths ('cd \"Insight 5\"'), mentions a Flutter prototype and external folders that don't exist in this repo, and lacks essential information about the monorepo structure, npm workspace setup, and development workflows.",
+      "rationale": "The README is the primary entry point for any developer. Currently it directs users to non-existent paths and doesn't explain the apps/ and packages/ structure, how to run each app independently, or how dependencies flow between packages.",
+      "category": "readme",
+      "targetAudience": "contributors",
+      "affectedAreas": [
+        "README.md",
+        "apps/desktop/README.md",
+        "apps/landing/README.md",
+        "apps/insight-mobile/README.md"
+      ],
+      "currentDocumentation": "Minimal README with outdated references; app-specific READMEs are default template boilerplate (Vite/Next.js defaults)",
+      "proposedContent": "Rewrite README.md with: 1) Project overview (what Insight does), 2) Monorepo structure explanation (apps/desktop, apps/insight-mobile, apps/landing, packages/shared, packages/parser), 3) Prerequisites (Node.js, npm), 4) Installation instructions, 5) Running each app, 6) Environment variable setup guide with .env.example references, 7) Links to detailed docs in AGENTS/ and PRD/",
+      "priority": "high",
+      "estimatedEffort": "low"
+    },
+    {
+      "id": "doc-004",
+      "type": "documentation_gaps",
+      "title": "Add Supabase sync architecture documentation",
+      "description": "The apps/desktop/src/supabase/sync.ts file (1160+ lines) handles complex bidirectional sync between local IndexedDB (Dexie) and Supabase. This includes entity mapping, embedding generation, workout/meal specialized tables, and conflict resolution - all undocumented.",
+      "rationale": "The sync system is critical for multi-device usage and data integrity. Understanding the sync flow (local -> entries table, entries <-> workout_sessions/nutrition_logs, entity management, embedding generation) is essential for debugging sync issues or extending functionality.",
+      "category": "architecture",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "apps/desktop/src/supabase/sync.ts",
+        "apps/desktop/src/supabase/client.ts",
+        "apps/desktop/src/supabase/bootstrap.ts",
+        "apps/desktop/src/db/insight-db.ts"
+      ],
+      "currentDocumentation": "Zero documentation - no comments, no overview, no data flow explanation",
+      "proposedContent": "Create docs/SYNC_ARCHITECTURE.md with: 1) Sync strategy overview (local-first, eventual consistency), 2) Data flow diagram (local Dexie -> Supabase entries/workout_sessions/nutrition_logs), 3) Entity mapping explanation, 4) Embedding generation process, 5) Pull/push mechanics, 6) Migration/bootstrap process, 7) Troubleshooting common sync issues",
+      "priority": "medium",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "doc-005",
+      "type": "documentation_gaps",
+      "title": "Create mobile app setup and development guide",
+      "description": "The apps/insight-mobile directory (Expo/React Native app) has no README or setup documentation. Developers need guidance on Expo setup, environment variables (EXPO_PUBLIC_*), running on iOS/Android simulators, and the app's navigation structure.",
+      "rationale": "Mobile development has specific tooling requirements (Expo CLI, simulators/emulators, Metro bundler). The app structure uses Expo Router with file-based routing (app/(tabs)/, app/health/, etc.) which needs explanation. Environment setup for Supabase connection is also critical.",
+      "category": "readme",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "apps/insight-mobile/app/(tabs)/",
+        "apps/insight-mobile/app.json",
+        "apps/insight-mobile/src/supabase/",
+        "apps/insight-mobile/src/storage/",
+        "apps/insight-mobile/.env.local"
+      ],
+      "currentDocumentation": "No README exists; only an app.json with basic Expo config",
+      "proposedContent": "Create apps/insight-mobile/README.md with: 1) Prerequisites (Node.js, Expo CLI, Xcode/Android Studio), 2) Environment setup (.env.local variables), 3) Running on simulator/device, 4) Project structure overview (Expo Router file-based routing), 5) Key screens and their purposes, 6) Storage architecture (AsyncStorage, Supabase sync), 7) Building for release",
+      "priority": "medium",
+      "estimatedEffort": "low"
+    },
+    {
+      "id": "perf-001",
+      "type": "performance_optimizations",
+      "title": "Replace chrono-node with lightweight date parsing",
+      "description": "The natural.ts NLP parser imports the entire chrono-node library (~110KB) for basic date parsing, but only uses `chrono.parseDate()` in a single location. This significantly inflates bundle size for minimal functionality.",
+      "rationale": "chrono-node is a full-featured natural language date parser, but the codebase already implements custom time parsing functions (parseTimeToken, parseTimeRange, parseDurationMinutes). The chrono-node usage could be replaced with the existing custom parsers or a lighter alternative like dayjs with the customParseFormat plugin (~6KB).",
+      "category": "bundle_size",
+      "impact": "high",
+      "affectedAreas": [
+        "apps/desktop/src/nlp/natural.ts",
+        "apps/desktop/package.json"
+      ],
+      "currentMetric": "chrono-node adds ~110KB to bundle (unminified)",
+      "expectedImprovement": "~100KB bundle reduction, ~5-10% faster initial load for desktop app",
+      "implementation": "1. Analyze chrono.parseDate() usage (line 526: only extracts day offset from text)\n2. Extend existing detectDayOffset() and parseTimeRange() to handle the same cases\n3. Or replace with dayjs + customParseFormat (~6KB)\n4. Remove chrono-node dependency\n5. Run bundle analyzer to verify savings",
+      "tradeoffs": "Custom implementation may not handle as many edge cases as chrono-node. Thorough testing of date parsing is needed.",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "perf-002",
+      "type": "performance_optimizations",
+      "title": "Batch Supabase sync operations to eliminate N+1 queries",
+      "description": "The sync.ts file has an N+1 query pattern: each task/event/note sync calls `db.entities.toArray()` to load ALL entities, then makes individual API calls for lookup, upsert, and embedding. With 100 items, this means 100 full entity loads and 300+ API round-trips.",
+      "rationale": "In `syncTaskToSupabase`, `syncEventToSupabase`, and `syncNoteToSupabase`, each sync loads all entities from IndexedDB and makes 3 sequential Supabase calls. The `migrateLocalDataToSupabase` function also embeds entries one-by-one. This creates severe performance issues during bulk operations.",
+      "category": "database",
+      "impact": "high",
+      "affectedAreas": [
+        "apps/desktop/src/supabase/sync.ts"
+      ],
+      "currentMetric": "Syncing 100 items: ~100 IndexedDB reads + ~300 API calls (serial)",
+      "expectedImprovement": "Batch upserts could reduce to 1 IndexedDB read + ~3 API calls (90%+ reduction in network round-trips)",
+      "implementation": "1. Cache entities at sync-session start instead of per-item\n2. Refactor upsertEntries to batch multiple entries in single Supabase upsert\n3. Use Promise.all or batched embedding calls for OpenAI embeddings\n4. Add debouncing for real-time sync to coalesce rapid changes\n5. Implement sync queue that batches pending changes before sending",
+      "tradeoffs": "Batching introduces slight delay before sync completes. Need error handling for partial batch failures.",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "perf-003",
+      "type": "performance_optimizations",
+      "title": "Memoize Kanban column filtering to prevent redundant iterations",
+      "description": "The KanbanView component filters the tasks array 6 times per render (twice per column - once for count, once for items). This creates O(n * columns * 2) iterations when O(n) is possible.",
+      "rationale": "In kanban.tsx lines 60-82, `props.tasks.filter(t => t.status === col.key)` is called twice per column: once in kbColHeader for count and again in kbColBody for rendering cards. With 3 columns, this means 6 filter operations per render. Pre-computing grouped tasks would eliminate 5 of these iterations.",
+      "category": "runtime",
+      "impact": "medium",
+      "affectedAreas": [
+        "apps/desktop/src/workspace/views/kanban.tsx"
+      ],
+      "currentMetric": "6 filter iterations per render (O(6n))",
+      "expectedImprovement": "Single pass grouping (O(n)) - 6x reduction in iteration overhead",
+      "implementation": "1. Add useMemo to compute tasksByStatus map once:\n   ```typescript\n   const tasksByStatus = useMemo(() => {\n     const map = new Map<TaskStatus, Task[]>()\n     for (const t of tasks) {\n       const arr = map.get(t.status) ?? []\n       arr.push(t)\n       map.set(t.status, arr)\n     }\n     return map\n   }, [tasks])\n   ```\n2. Use tasksByStatus.get(col.key) in both header and body\n3. Pre-compute counts from the same grouped data",
+      "tradeoffs": "Minimal - small memory overhead for the grouped map. Cleaner code overall.",
+      "estimatedEffort": "trivial"
+    },
+    {
+      "id": "perf-004",
+      "type": "performance_optimizations",
+      "title": "Lazy-load framer-motion for non-critical animations",
+      "description": "framer-motion is imported eagerly in 10+ view components (~30KB parsed) even for simple fade animations. Many animations are decorative and not critical for initial render.",
+      "rationale": "Components like TimelineView, PlannerView, and TimelineEventBlock use framer-motion for entrance animations and subtle hover effects. The library adds significant bundle weight. For initial paint, these animations could be deferred or replaced with CSS transitions.",
+      "category": "bundle_size",
+      "impact": "medium",
+      "affectedAreas": [
+        "apps/desktop/src/workspace/views/timeline.tsx",
+        "apps/desktop/src/workspace/views/planner.tsx",
+        "apps/desktop/src/App.tsx",
+        "apps/desktop/package.json"
+      ],
+      "currentMetric": "framer-motion adds ~30KB to initial bundle (parsed size)",
+      "expectedImprovement": "~20-30KB reduction in initial bundle with lazy loading, faster TTI",
+      "implementation": "1. Create a LazyMotion wrapper using framer-motion's LazyMotion and domAnimation\n2. For simple animations (fade, slide), use CSS transitions with data attributes\n3. Lazy-import AnimatePresence only in components that need exit animations\n4. Consider motion/react (new lighter package) as alternative",
+      "tradeoffs": "Slight flash-of-unstyled-content for animated components on first load. Complex gesture animations may need the full library.",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "perf-005",
+      "type": "performance_optimizations",
+      "title": "Consolidate Timeline stats computation into single pass",
+      "description": "In TimelineView, the stats useMemo filters the items array 3 separate times to count events, captures, and active items. This could be combined into a single iteration.",
+      "rationale": "Lines 396-401 in timeline.tsx compute stats with 3 separate filter calls on the same items array. With 500 timeline items (the slice limit), this means 1500 iterations instead of 500.",
+      "category": "runtime",
+      "impact": "low",
+      "affectedAreas": [
+        "apps/desktop/src/workspace/views/timeline.tsx"
+      ],
+      "currentMetric": "3 filter iterations for stats (O(3n))",
+      "expectedImprovement": "Single pass (O(n)) - 3x reduction for stats computation",
+      "implementation": "```typescript\nconst stats = useMemo(() => {\n  let eventCount = 0, captureCount = 0, activeCount = 0\n  for (const i of items) {\n    if (i.kind === 'event') {\n      eventCount++\n      if ((i as any).active) activeCount++\n    } else {\n      captureCount++\n    }\n  }\n  return { eventCount, captureCount, activeCount }\n}, [items])\n```",
+      "tradeoffs": "None - strictly better performance with same result.",
+      "estimatedEffort": "trivial"
+    },
+    {
+      "id": "cq-001",
+      "type": "code_quality",
+      "title": "Split monolithic App.tsx (9,049 lines) into modular architecture",
+      "description": "The main App.tsx file in the desktop app has grown to 9,049 lines, making it one of the largest single-file components possible. It handles state management, event handling, capture processing, UI rendering, and business logic all in one place. This violates every principle of maintainable code architecture.",
+      "rationale": "A file this large is nearly impossible to reason about, test, or safely modify. It creates severe merge conflicts, makes onboarding new developers extremely difficult, and hides bugs in its complexity. Industry best practice suggests component files stay under 300-500 lines. This file is 20-30x that size.",
+      "category": "large_files",
+      "severity": "critical",
+      "affectedFiles": [
+        "apps/desktop/src/App.tsx"
+      ],
+      "currentState": "Single 9,049-line file containing: workspace state management, event/task CRUD operations, capture parsing logic, multiple inline components, UI state for modals/panels, drag-and-drop handlers, and business logic for 15+ domain areas",
+      "proposedChange": "Split into: 1) App.tsx (shell, ~200 lines) - just layout and context providers, 2) src/state/workspace-state.ts - pane/tab management, 3) src/state/capture-state.ts - capture processing, 4) src/state/entities-state.ts - events/tasks/habits CRUD, 5) src/hooks/useCapture.ts - capture modal logic, 6) src/hooks/useEventEditor.ts - event editing logic, 7) Move inline components to separate files, 8) Create a context-based state architecture",
+      "codeExample": "// Current App.tsx structure:\nexport default function App() {\n  // 200+ useState calls\n  // 50+ useEffect hooks\n  // 100+ handler functions\n  // All inline\n  return (<>9000+ lines of JSX</>)\n}\n\n// Proposed structure:\n// App.tsx (~200 lines)\nimport { WorkspaceProvider } from './state/workspace-context'\nimport { CaptureProvider } from './state/capture-context'\nimport { WorkspaceShell } from './workspace/Shell'\n\nexport default function App() {\n  return (\n    <WorkspaceProvider>\n      <CaptureProvider>\n        <WorkspaceShell />\n      </CaptureProvider>\n    </WorkspaceProvider>\n  )\n}",
+      "bestPractice": "Single Responsibility Principle - Each module should have one reason to change. Component-driven architecture with state management extracted to contexts/stores.",
+      "metrics": {
+        "lineCount": 9049,
+        "complexity": null,
+        "duplicateLines": null,
+        "testCoverage": 0
+      },
+      "estimatedEffort": "large",
+      "breakingChange": false,
+      "prerequisites": [
+        "Create comprehensive test coverage before refactoring",
+        "Establish state management pattern (Context API or Zustand)",
+        "Define module boundaries and interfaces"
+      ]
+    },
+    {
+      "id": "cq-002",
+      "type": "code_quality",
+      "title": "Consolidate duplicated NLP parsing logic into shared parser package",
+      "description": "The natural language parsing code is duplicated between desktop (1,107 lines) and mobile (933 lines) with nearly identical implementations. Meanwhile, a well-structured packages/parser module exists with proper separation (tokenizer, classifier, entity-extractor) but is not being used by either app.",
+      "rationale": "Code duplication leads to inconsistent behavior between platforms, doubled maintenance burden, and bugs when fixes are applied to only one copy. The parser package already exists with proper architecture but is being ignored.",
+      "category": "duplication",
+      "severity": "major",
+      "affectedFiles": [
+        "apps/desktop/src/nlp/natural.ts",
+        "apps/insight-mobile/src/lib/nlp/natural.ts",
+        "packages/parser/src/pipeline/tokenizer.ts",
+        "packages/parser/src/pipeline/classifier.ts",
+        "packages/parser/src/pipeline/entity-extractor.ts"
+      ],
+      "currentState": "Two parallel NLP implementations (desktop: 1,107 lines, mobile: 933 lines) with identical type definitions (ParsedTask, ParsedEvent, ParsedBlock), identical helper functions (clamp, startOfDayMs, addDaysMs, snapDownToHalfHour), and similar parsing logic. The shared packages/parser module is never imported.",
+      "proposedChange": "1) Audit packages/parser to understand its capabilities, 2) Migrate desktop and mobile NLP code into packages/parser, 3) Create platform adapters (packages/parser/src/adapter/desktop.ts already exists), 4) Update apps to import from @insight/parser, 5) Remove duplicate implementations from apps",
+      "codeExample": "// Current (duplicated in both apps):\n// apps/desktop/src/nlp/natural.ts\nexport type ParsedEvent = { title: string; startAt: number; ... }\nfunction clamp(n: number, a: number, b: number) { return Math.max(a, Math.min(b, n)) }\nfunction startOfDayMs(ms: number) { ... }\nexport function parseCaptureNatural(...) { ... }\n\n// apps/insight-mobile/src/lib/nlp/natural.ts\nexport type ParsedEvent = { title: string; startAt: number; ... } // SAME!\nfunction clamp(n: number, a: number, b: number) { ... } // SAME!\nfunction startOfDayMs(ms: number) { ... } // SAME!\nexport function parseCaptureNatural(...) { ... } // SIMILAR!\n\n// Proposed:\n// Both apps import from:\nimport { parseCaptureNatural, ParsedEvent } from '@insight/parser'",
+      "bestPractice": "DRY (Don't Repeat Yourself) - Extract common logic into shared packages. Monorepo packages should be the single source of truth for shared functionality.",
+      "metrics": {
+        "lineCount": 2040,
+        "complexity": null,
+        "duplicateLines": 850,
+        "testCoverage": 0
+      },
+      "estimatedEffort": "medium",
+      "breakingChange": false,
+      "prerequisites": [
+        "Document current behavior of both implementations",
+        "Identify any platform-specific differences",
+        "Add tests to packages/parser before migration"
+      ]
+    },
+    {
+      "id": "cq-003",
+      "type": "code_quality",
+      "title": "Add comprehensive test coverage for critical business logic",
+      "description": "The entire apps directory has zero test files. No unit tests, no integration tests, no component tests. Critical business logic (parsing, scoring, storage, sync) has no test coverage at all.",
+      "rationale": "Without tests, refactoring is extremely risky. Any code change could introduce regressions that go unnoticed. Test coverage is a prerequisite for safe refactoring and is essential for maintaining code quality in a production application.",
+      "category": "testing",
+      "severity": "major",
+      "affectedFiles": [
+        "apps/desktop/src/nlp/natural.ts",
+        "apps/desktop/src/nlp/llm-parse.ts",
+        "apps/desktop/src/scoring/points.ts",
+        "apps/desktop/src/scoring/streaks.ts",
+        "apps/desktop/src/supabase/sync.ts",
+        "apps/desktop/src/storage/*.ts",
+        "apps/insight-mobile/src/lib/capture/processor.ts",
+        "apps/insight-mobile/src/storage/*.ts"
+      ],
+      "currentState": "0 test files in apps/ directory. Critical modules like NLP parsing (parseCaptureNatural), scoring (points.ts, streaks.ts), and sync (sync.ts with 14 'any' types) have no tests.",
+      "proposedChange": "1) Set up testing infrastructure (Vitest for desktop, Jest for mobile), 2) Add unit tests for pure functions first (date utils, scoring calculations, parsing helpers), 3) Add integration tests for storage modules, 4) Add component tests for critical UI flows, 5) Target 80% coverage for business logic modules",
+      "codeExample": "// Example test for scoring/points.ts\nimport { describe, it, expect } from 'vitest'\nimport { basePoints, pointsForMinutes, multiplierFor } from '../src/scoring/points'\n\ndescribe('scoring/points', () => {\n  describe('basePoints', () => {\n    it('should return correct points for importance and difficulty', () => {\n      expect(basePoints(5, 5)).toBe(25)\n      expect(basePoints(10, 1)).toBe(10)\n    })\n  })\n\n  describe('pointsForMinutes', () => {\n    it('should scale points with duration', () => {\n      expect(pointsForMinutes(25, 30)).toBe(18.75)\n    })\n  })\n})",
+      "bestPractice": "Test Pyramid - Build a solid foundation of unit tests, supplemented by integration tests, with fewer end-to-end tests. Critical business logic should have near-100% coverage.",
+      "metrics": {
+        "lineCount": null,
+        "complexity": null,
+        "duplicateLines": null,
+        "testCoverage": 0
+      },
+      "estimatedEffort": "large",
+      "breakingChange": false,
+      "prerequisites": [
+        "Choose testing framework (Vitest recommended for Vite project)",
+        "Set up test configuration files",
+        "Create test utilities and mocks for common dependencies"
+      ]
+    },
+    {
+      "id": "cq-004",
+      "type": "code_quality",
+      "title": "Eliminate excessive 'any' type usage for type safety",
+      "description": "There are 82 occurrences of ': any' type annotations across 26 files, with sync.ts alone having 14 'any' types. This defeats TypeScript's purpose and hides potential runtime errors.",
+      "rationale": "Excessive 'any' usage creates invisible type errors that only manifest at runtime. It makes refactoring dangerous, IDE autocomplete useless, and documentation unclear. Type safety is essential for maintainability in a large codebase.",
+      "category": "types",
+      "severity": "minor",
+      "affectedFiles": [
+        "apps/desktop/src/supabase/sync.ts",
+        "apps/desktop/src/nlp/llm-parse.ts",
+        "apps/desktop/src/openai.ts",
+        "apps/desktop/src/workspace/views/settings.tsx",
+        "apps/insight-mobile/src/storage/workouts.ts",
+        "apps/insight-mobile/src/storage/inbox.ts"
+      ],
+      "currentState": "82 'any' type usages including: sync.ts (14), llm-parse.ts (20), settings.tsx (5), workouts.ts (7). Common patterns: Supabase responses typed as 'any', LLM API responses as 'any', event handlers as 'any'.",
+      "proposedChange": "1) Enable stricter TypeScript settings (noImplicitAny: true), 2) Create proper types for Supabase responses using generated types, 3) Create types for LLM API responses with validation, 4) Replace 'any' with 'unknown' where type is truly unknown, then add type guards, 5) Use generics for flexible but type-safe functions",
+      "codeExample": "// Current (sync.ts):\nconst data: any = await supabase.from('events').select('*')\nconst result: any = processData(data)\n\n// Proposed:\nimport type { Database } from '../types/supabase'\ntype EventRow = Database['public']['Tables']['events']['Row']\n\nconst { data, error } = await supabase.from('events').select('*')\nif (error) throw error\nconst typedData: EventRow[] = data\n\n// For LLM responses:\nfunction parseLLMResponse(raw: unknown): LLMParsedResult {\n  if (!isValidLLMResponse(raw)) throw new Error('Invalid response')\n  return raw as LLMParsedResult\n}",
+      "bestPractice": "Strict TypeScript - Enable strict mode and avoid 'any'. Use 'unknown' with type guards, generics for flexibility, and generated types for external APIs (Supabase, OpenAI).",
+      "metrics": {
+        "lineCount": null,
+        "complexity": null,
+        "duplicateLines": null,
+        "testCoverage": null
+      },
+      "estimatedEffort": "medium",
+      "breakingChange": false,
+      "prerequisites": [
+        "Generate Supabase types using supabase gen types",
+        "Define response types for OpenAI API calls",
+        "Enable incremental strict mode in tsconfig"
+      ]
+    },
+    {
+      "id": "cq-005",
+      "type": "code_quality",
+      "title": "Standardize InboxCapture type definitions across platforms",
+      "description": "The InboxCapture type is defined differently in desktop and mobile apps with divergent fields. Desktop has 5 fields while mobile has 21 fields, leading to inconsistent data handling and potential sync issues.",
+      "rationale": "Divergent type definitions for the same domain concept cause data inconsistencies, sync bugs, and confusion. Shared domain types should be defined once in the shared package and imported by all apps.",
+      "category": "types",
+      "severity": "minor",
+      "affectedFiles": [
+        "apps/desktop/src/storage/inbox.ts",
+        "apps/insight-mobile/src/storage/inbox.ts",
+        "packages/shared/src/models.ts"
+      ],
+      "currentState": "Desktop InboxCapture: { id, createdAt, rawText, status, entityIds } (5 fields). Mobile InboxCapture: { id, createdAt, rawText, status, attachments, tags, contexts, people, location, skills, character, goal, project, category, subcategory, estimateMinutes, importance, difficulty, points, processedText } (21 fields). These types have drifted apart over time.",
+      "proposedChange": "1) Define canonical InboxCapture type in packages/shared/src/models.ts with all fields as optional where appropriate, 2) Create platform-specific extensions if needed (e.g., MobileInboxCapture extends InboxCapture), 3) Update both apps to import from @insight/shared, 4) Add data migration if needed for desktop to support new fields",
+      "codeExample": "// packages/shared/src/models.ts\nexport type InboxCaptureStatus = 'raw' | 'parsed' | 'needs_clarification'\n\nexport type CaptureAttachment = {\n  id: string\n  type: 'image' | 'audio' | 'location' | 'file'\n  createdAt: number\n  uri?: string\n  label?: string\n  status?: 'pending' | 'ready' | 'failed'\n  transcription?: string | null\n  analysis?: string | null\n}\n\nexport type InboxCapture = {\n  id: string\n  createdAt: number\n  rawText: string\n  status: InboxCaptureStatus\n  entityIds?: string[]\n  // Extended fields (optional for backwards compatibility)\n  attachments?: CaptureAttachment[]\n  tags?: string[]\n  contexts?: string[]\n  people?: string[]\n  location?: string | null\n  // ... rest of fields\n}\n\n// Both apps:\nimport type { InboxCapture } from '@insight/shared'",
+      "bestPractice": "Single Source of Truth - Domain types should be defined once in a shared package. Use optional fields for backwards compatibility and platform-specific extensions for specialized needs.",
+      "metrics": {
+        "lineCount": null,
+        "complexity": null,
+        "duplicateLines": 50,
+        "testCoverage": null
+      },
+      "estimatedEffort": "small",
+      "breakingChange": true,
+      "prerequisites": [
+        "Audit all usages of InboxCapture in both apps",
+        "Plan data migration strategy for field additions",
+        "Ensure Supabase schema supports all fields"
+      ]
+    }
+  ],
+  "project_context": {
+    "existing_features": [],
+    "tech_stack": [
+      "JavaScript",
+      "TypeScript",
+      "React",
+      "Next.js"
+    ],
+    "target_audience": "ADHD adults who struggle with manual journaling/tracking and want voice-first capture with gamification to stay motivated",
+    "planned_features": [
+      "Specification: Mobile App UI/UX Improvements and Bug Fixes",
+      "Mood-Activity Correlation Dashboard",
+      "CI/CD Pipeline with Automated Releases",
+      "Voice-Created Habits",
+      "Full Data Export (YAML/Markdown)",
+      "Sync Preferences & Multipliers to Supabase",
+      "Offline Capture Queue",
+      "Complete Mobile Habit Creation Form",
+      "Specification: Notes Explorer Redesign - Obsidian-Style File Explorer",
+      "Specification: Activity Taxonomy Explorer and Event Autofill Enhancement",
+      "Specification: Parsing Engine Analysis and Optimization",
+      "Feature Flags for Safe Rollouts",
+      "Calendar View Memoization",
+      "Import from Day One / Obsidian",
+      "Specification: Obsidian-Style Note View with Google Docs Navigation",
+      "Apple Watch Voice Capture",
+      "Advanced Life Tracker Correlations",
+      "iOS Home Screen Widget",
+      "Google Calendar Bidirectional Sync",
+      "AI Reflections & Weekly Synthesis",
+      "Bidirectional Sync with Conflict Resolution",
+      "Specification: ChatGPT-Style Life Planner Engine",
+      "Welcome Email Sequence",
+      "Subscription System & Payment Processing",
+      "Life Tracker CSV Import from Nomie",
+      "Privacy Policy & Terms of Service",
+      "Focus View Performance Optimization",
+      "Apple Health Integration",
+      "Comprehensive Test Suite",
+      "Specification: Major UI Redesign Based on Reference Design",
+      "First-Run Onboarding Flow",
+      "Analytics & Error Tracking",
+      "Specification: UI Consistency & Multi-Select Item Properties"
+    ]
+  },
+  "summary": {
+    "total_ideas": 30,
+    "by_type": {
+      "code_improvements": 5,
+      "ui_ux_improvements": 5,
+      "security_hardening": 5,
+      "documentation_gaps": 5,
+      "performance_optimizations": 5,
+      "code_quality": 5
+    },
+    "by_status": {
+      "draft": 30
+    }
+  },
+  "generated_at": "2026-01-13T15:38:18.985278",
+  "updated_at": "2026-01-13T15:38:18.985290"
+}

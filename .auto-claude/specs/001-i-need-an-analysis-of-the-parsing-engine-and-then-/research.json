@@ -1,0 +1,349 @@
+{
+  "integrations_researched": [
+    {
+      "name": "chrono-node",
+      "type": "library",
+      "verified_package": {
+        "name": "chrono-node",
+        "install_command": "npm install chrono-node",
+        "version": "^2.9.0",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import * as chrono from 'chrono-node'"
+        ],
+        "initialization": "No initialization required - directly use chrono functions",
+        "key_functions": [
+          "chrono.parseDate(text, referenceDate?, options?) → Date | null",
+          "chrono.parse(text, referenceDate?, options?) → ParsedResult[]"
+        ],
+        "verified_against": "https://www.npmjs.com/package/chrono-node, https://github.com/wanasit/chrono"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "embedded_database": null,
+        "external_services": []
+      },
+      "gotchas": [
+        "Supported languages are en, ja, fr, nl, ru, uk (de, es, pt, zh.hant partially supported)",
+        "Options object can include forwardDate: true to prefer future dates",
+        "Returns null if no date found in text - must handle gracefully",
+        "Custom parsers can be added for specific date formats",
+        "The library is heavily tested - Jest-based unit testing"
+      ],
+      "research_sources": [
+        "https://www.npmjs.com/package/chrono-node",
+        "https://github.com/wanasit/chrono"
+      ],
+      "current_usage_in_codebase": {
+        "file": "apps/desktop/src/nlp/natural.ts",
+        "pattern": "chrono.parseDate(text, new Date(nowMs), { forwardDate: true })",
+        "purpose": "Parse natural language dates from user input with forward-looking preference"
+      }
+    },
+    {
+      "name": "OpenAI API",
+      "type": "service",
+      "verified_package": {
+        "name": "OpenAI REST API (direct fetch)",
+        "install_command": "No npm package used - direct HTTP calls",
+        "version": "v1 API",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [],
+        "initialization": "Custom wrapper in apps/desktop/src/openai.ts using fetch()",
+        "key_functions": [
+          "callOpenAiText({ apiKey, model, messages, temperature?, maxOutputTokens?, responseFormat? })",
+          "callOpenAiEmbedding({ apiKey, model, input })"
+        ],
+        "endpoints_used": [
+          "/v1/responses (primary - newer unified API)",
+          "/v1/chat/completions (fallback - legacy chat API)",
+          "/v1/embeddings"
+        ],
+        "verified_against": "https://platform.openai.com/docs/models/gpt-4.1-mini"
+      },
+      "configuration": {
+        "env_vars": [
+          "OPENAI_API_KEY (expected to be passed as apiKey parameter)"
+        ],
+        "config_files": [],
+        "dependencies": []
+      },
+      "models_used": {
+        "default": "gpt-4.1-mini",
+        "notes": "GPT-4.1-mini is OpenAI's latest efficient model - outperforms GPT-4o on many benchmarks at lower cost"
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "external_services": [
+          "OpenAI API (api.openai.com)"
+        ]
+      },
+      "gotchas": [
+        "GPT-4.1-mini is the correct model name (not gpt-4.1-mini-2025 or similar)",
+        "The codebase uses both /v1/responses (new) and /v1/chat/completions (legacy) endpoints",
+        "Temperature parameter not supported on gpt-5 and o1-o9 reasoning models - code handles this",
+        "response_format: { type: 'json_object' } may not work on all models - has fallback",
+        "max_tokens vs max_completion_tokens handling differs between model versions",
+        "Pricing: $0.40/1M input tokens, $1.60/1M output tokens",
+        "1M token context window supported"
+      ],
+      "research_sources": [
+        "https://platform.openai.com/docs/models/gpt-4.1-mini",
+        "https://openai.com/index/gpt-4-1/"
+      ],
+      "current_usage_in_codebase": {
+        "file": "apps/desktop/src/nlp/llm-parse.ts",
+        "pattern": "LLM-based parsing with JSON schema extraction",
+        "purpose": "Extract tasks, events, workouts, meals from natural language input"
+      }
+    },
+    {
+      "name": "Dexie.js",
+      "type": "library",
+      "verified_package": {
+        "name": "dexie",
+        "install_command": "npm install dexie",
+        "version": "^4.2.1",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import Dexie from 'dexie'",
+          "import type { Table } from 'dexie'"
+        ],
+        "initialization": "Subclass Dexie and define schema with table properties for TypeScript support",
+        "key_functions": [
+          "db.table.add(item)",
+          "db.table.put(item)",
+          "db.table.get(key)",
+          "db.table.where(field).equals(value).toArray()",
+          "db.table.bulkPut(items)",
+          "db.transaction('rw', db.table, async () => { })"
+        ],
+        "verified_against": "https://dexie.org/docs/Typescript"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "embedded_database": "IndexedDB (browser built-in)",
+        "external_services": []
+      },
+      "gotchas": [
+        "Dexie 4.x has improved TypeScript support - use subclass pattern for type-safe tables",
+        "Typings are bundled - no @types package needed",
+        "Bulk methods are optimized for performance using lesser-known IndexedDB features",
+        "Works across browsers, Electron, Capacitor, PWAs",
+        "Dexie works around IndexedDB browser bugs for stability",
+        "Optional Dexie Cloud add-on for sync (commercial)"
+      ],
+      "research_sources": [
+        "https://www.npmjs.com/package/dexie",
+        "https://dexie.org/docs/Typescript",
+        "https://github.com/dexie/Dexie.js"
+      ],
+      "current_usage_in_codebase": {
+        "file": "apps/desktop/src/db/insight-db",
+        "pattern": "Local storage for patterns, tasks, events, and other app data",
+        "purpose": "Offline-first data persistence"
+      }
+    },
+    {
+      "name": "@supabase/supabase-js",
+      "type": "library",
+      "verified_package": {
+        "name": "@supabase/supabase-js",
+        "install_command": "npm install @supabase/supabase-js",
+        "version": "^2.87.1",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import { createClient } from '@supabase/supabase-js'",
+          "import type { Database } from './supabase-types'"
+        ],
+        "initialization": "const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)",
+        "key_functions": [
+          "supabase.from(table).select(columns)",
+          "supabase.from(table).insert(data)",
+          "supabase.from(table).update(data).eq(column, value)",
+          "supabase.from(table).delete().eq(column, value)",
+          "supabase.auth.signIn/signUp/signOut",
+          "supabase.channel(name).subscribe()"
+        ],
+        "verified_against": "https://supabase.com/docs/reference/javascript/typescript-support"
+      },
+      "configuration": {
+        "env_vars": [
+          "SUPABASE_URL",
+          "SUPABASE_ANON_KEY"
+        ],
+        "config_files": [],
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "external_services": [
+          "Supabase hosted service or self-hosted Supabase instance"
+        ]
+      },
+      "gotchas": [
+        "Types can be auto-generated with Supabase CLI: npx supabase gen types typescript",
+        "TypeScript detects not-null constraints and generated columns",
+        "Relationship types: one-to-many typed as T[], many-to-one typed as T | null",
+        "Always returns { data, error } - must handle both cases",
+        "Works with Cloudflare Workers, Node.js, Deno, Bun, Browsers, React Native"
+      ],
+      "research_sources": [
+        "https://www.npmjs.com/package/@supabase/supabase-js",
+        "https://supabase.com/docs/reference/javascript/typescript-support",
+        "https://github.com/supabase/supabase-js"
+      ],
+      "current_usage_in_codebase": {
+        "file": "apps/desktop/src/supabase/",
+        "pattern": "Backend integration for cloud sync",
+        "purpose": "Optional cloud data persistence and sync"
+      }
+    }
+  ],
+  "codebase_analysis": {
+    "parsing_engine_architecture": {
+      "dual_parser_system": {
+        "rule_based_parser": {
+          "file": "apps/desktop/src/nlp/natural.ts",
+          "description": "Regex and heuristic-based parser for predictable patterns",
+          "capabilities": [
+            "Time range parsing (e.g., '9am to 5pm', 'at 3pm')",
+            "Duration parsing (e.g., 'for 2 hours')",
+            "Daypart detection (morning, afternoon, evening)",
+            "Mood/sentiment extraction",
+            "Money/budget parsing ($40, 'spend 40 dollars')",
+            "Past tense detection",
+            "Future intent detection ('gonna', 'need to', 'have to')",
+            "Workout set parsing (e.g., '100 push-ups')",
+            "Meal/food parsing",
+            "Hydration tracking",
+            "Grocery list extraction"
+          ],
+          "uses_chrono_node": true
+        },
+        "llm_based_parser": {
+          "file": "apps/desktop/src/nlp/llm-parse.ts",
+          "description": "OpenAI GPT-4.1-mini based parser for complex natural language",
+          "capabilities": [
+            "Task extraction with metadata (title, status, tags, notes, estimates, due dates)",
+            "Event extraction with full calendar details",
+            "Workout parsing (exercises, sets, reps, weight, RPE)",
+            "Nutrition parsing (meals, food items, full macros)",
+            "Block-based parsing (text divided by --- dividers)",
+            "Entity extraction (people, tags, contexts, locations, trackers)",
+            "Importance and difficulty scoring (1-10)",
+            "Project and goal linking"
+          ],
+          "uses_openai": true,
+          "model": "gpt-4.1-mini"
+        }
+      },
+      "learning_system": {
+        "directory": "apps/desktop/src/learning/",
+        "files": [
+          "confidence.ts - Confidence scoring with thresholds",
+          "context.ts - Pattern context building for LLM hints",
+          "patterns.ts - Pattern storage and retrieval",
+          "keywords.ts - Keyword/entity extraction",
+          "collector.ts - Pattern collection from user behavior",
+          "enricher.ts - Data enrichment from learned patterns"
+        ],
+        "confidence_levels": {
+          "SUGGEST_THRESHOLD": 0.5,
+          "AUTO_APPLY_THRESHOLD": 0.8,
+          "BASE_CONFIDENCE": 0.3
+        }
+      }
+    },
+    "entity_types_parsed": {
+      "tasks": {
+        "fields": ["title", "status", "tags", "notes", "estimateMinutes", "scheduledAt", "dueAt", "location", "people", "costUsd", "goal", "project", "importance", "difficulty"],
+        "statuses": ["todo", "in_progress", "done"]
+      },
+      "events": {
+        "fields": ["title", "startAt", "endAt", "allDay", "kind", "tags", "notes", "icon", "color", "estimateMinutes", "location", "people", "skills", "character", "trackerKey", "active", "importance", "difficulty", "costUsd", "goal", "project"],
+        "kinds": ["event", "task", "log", "episode"]
+      },
+      "trackers": {
+        "supported": ["mood", "energy", "stress", "pain", "anxiety", "focus", "motivation", "productivity"],
+        "syntax": ["#tracker(value)", "#tracker:value", "natural language (e.g., 'mood 7/10')"]
+      },
+      "workouts": {
+        "types": ["strength", "cardio", "mobility", "recovery", "mixed"],
+        "exercise_data": ["sets", "reps", "weight", "duration", "distance", "RPE", "muscle groups"]
+      },
+      "meals": {
+        "types": ["breakfast", "lunch", "dinner", "snack", "drink"],
+        "nutrition_data": ["calories", "protein", "carbs", "fat", "fiber", "saturatedFat", "transFat", "sugar", "sodium", "potassium", "cholesterol"]
+      }
+    },
+    "current_gaps_identified": {
+      "habits": {
+        "status": "NOT_EXPLICITLY_MODELED",
+        "notes": "Requirements mention 'habits' as a distinct entity type that should be checkable. Currently habits would be parsed as tasks, but there's no explicit habit tracking with recurring behavior support."
+      },
+      "notes_entity": {
+        "status": "PARTIALLY_MODELED",
+        "notes": "Notes exist as a field on tasks/events, but 'Notes' as a standalone entity type for general information capture is not explicitly modeled in the parser."
+      },
+      "auto_linking_confidence": {
+        "status": "EXISTS_BUT_LIMITED",
+        "notes": "Confidence scoring exists in learning/confidence.ts with SUGGEST_THRESHOLD (0.5) and AUTO_APPLY_THRESHOLD (0.8), but project auto-linking with confidence intervals is not fully implemented in the parser output."
+      }
+    }
+  },
+  "unverified_claims": [
+    {
+      "claim": "'Habits' as a distinct entity type with check-off behavior",
+      "reason": "No explicit Habit type found in parsed output types. Tasks with 'done' status may serve this purpose, but dedicated habit tracking with recurring patterns not implemented.",
+      "risk_level": "medium"
+    },
+    {
+      "claim": "'Notes' as a standalone capture entity type",
+      "reason": "Notes exist as a field on other entities, but not as a standalone parsed entity type. May need to be added.",
+      "risk_level": "low"
+    },
+    {
+      "claim": "Auto-linking projects with confidence levels",
+      "reason": "Project field exists on parsed tasks/events, but auto-linking with confidence scoring is not currently wired up in the LLM parser. Learning system exists but isn't integrated with project matching.",
+      "risk_level": "medium"
+    }
+  ],
+  "recommendations": [
+    "Add explicit 'Habit' type to parser output with recurring behavior support and check-off tracking",
+    "Consider adding 'Note' as a standalone parsed entity type for general information capture",
+    "Wire up the existing learning/confidence system to project auto-linking in the LLM parser",
+    "The dual-parser architecture (rule-based + LLM) is solid - optimize rather than replace",
+    "The confidence thresholds (0.5 suggest, 0.8 auto-apply) are reasonable starting points",
+    "Consider caching OpenAI responses for repeated similar inputs to reduce API costs",
+    "The chrono-node integration works well - no changes needed",
+    "Consider adding explicit 'Tracker' entity type (currently embedded in events as kind='log')"
+  ],
+  "technology_stack_summary": {
+    "frontend": "React 19, TypeScript, Tailwind CSS, Vite",
+    "desktop": "Electron",
+    "local_storage": "Dexie (IndexedDB)",
+    "cloud_backend": "Supabase (optional)",
+    "nlp_parsing": "chrono-node (dates) + OpenAI GPT-4.1-mini (LLM)",
+    "ui_components": "Radix UI, Framer Motion"
+  },
+  "created_at": "2025-01-13T18:00:00Z"
+}

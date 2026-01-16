@@ -364,20 +364,37 @@ export default function CalendarScreen() {
   };
 
   const todayKey = useMemo(() => new Date().toDateString(), []);
+  const calendarEvents = useMemo(
+    () => events.filter((event) => !event.parentEventId && event.kind !== 'log'),
+    [events],
+  );
+  const childEventsByParent = useMemo(() => {
+    const map = new Map<string, MobileEvent[]>();
+    for (const event of events) {
+      if (!event.parentEventId) continue;
+      const list = map.get(event.parentEventId) ?? [];
+      list.push(event);
+      map.set(event.parentEventId, list);
+    }
+    for (const [key, list] of map.entries()) {
+      map.set(key, list.sort((a, b) => a.startAt - b.startAt));
+    }
+    return map;
+  }, [events]);
   const todayEvents = useMemo(() => {
-    return events
+    return calendarEvents
       .filter((event) => new Date(event.startAt).toDateString() === todayKey)
       .sort((a, b) => a.startAt - b.startAt);
-  }, [events, todayKey]);
+  }, [calendarEvents, todayKey]);
 
   const weekDays = useMemo(() => getWeekDays(new Date()), []);
   const weekEvents = useMemo(() => {
     const weekStart = weekDays[0].getTime();
     const weekEnd = weekDays[6].getTime() + 24 * 60 * 60 * 1000;
-    return events
+    return calendarEvents
       .filter((event) => event.startAt >= weekStart && event.startAt < weekEnd)
       .sort((a, b) => a.startAt - b.startAt);
-  }, [events, weekDays]);
+  }, [calendarEvents, weekDays]);
 
   const { days: monthDays, month: currentMonth } = useMemo(() => getMonthDays(new Date()), []);
 
@@ -386,7 +403,7 @@ export default function CalendarScreen() {
     const monthStart = monthDays[0].getTime();
     const monthEnd = monthDays[monthDays.length - 1].getTime() + 24 * 60 * 60 * 1000;
 
-    const eventsInMonth = events.filter(
+    const eventsInMonth = calendarEvents.filter(
       (event) => event.startAt >= monthStart && event.startAt < monthEnd
     );
 
@@ -399,7 +416,7 @@ export default function CalendarScreen() {
     }
 
     return grouped;
-  }, [events, monthDays]);
+  }, [calendarEvents, monthDays]);
 
   const timelineGroups = useMemo(() => {
     const start = startOfDay(new Date());
@@ -853,6 +870,7 @@ export default function CalendarScreen() {
                 const isActiveEvent = ev.active;
                 const eventPoints = ev.points ?? 0;
                 const pointsIntensity = getPointsIntensity(eventPoints);
+                const childEvents = childEventsByParent.get(ev.id) ?? [];
 
                 return (
                   <Pressable
@@ -887,6 +905,22 @@ export default function CalendarScreen() {
                       <Text style={[styles.eventTime, { color: palette.textSecondary, fontSize: sizes.tinyText }]}>
                         {formatHour(start.getHours())}:{start.getMinutes().toString().padStart(2, '0')}
                       </Text>
+                    )}
+                    {childEvents.length > 0 && (
+                      <View style={[styles.inlineEventRow, { gap: sizes.spacingSmall / 2 }]}>
+                        {childEvents.slice(0, 2).map((child) => (
+                          <View key={child.id} style={[styles.inlineEventChip, { backgroundColor: palette.surface }]}>
+                            <Text style={[styles.inlineEventText, { color: palette.textSecondary, fontSize: sizes.tinyText }]} numberOfLines={1}>
+                              {formatTimelineTime(child.startAt)} {getDisplayTitle(child)}
+                            </Text>
+                          </View>
+                        ))}
+                        {childEvents.length > 2 && (
+                          <Text style={[styles.inlineEventMore, { color: palette.textSecondary, fontSize: sizes.tinyText }]}>
+                            +{childEvents.length - 2}
+                          </Text>
+                        )}
+                      </View>
                     )}
                   </Pressable>
                 );
@@ -1299,6 +1333,25 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     marginTop: 2,
+  },
+  inlineEventRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  inlineEventChip: {
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  inlineEventText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  inlineEventMore: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   weekContainer: {
     flex: 1,

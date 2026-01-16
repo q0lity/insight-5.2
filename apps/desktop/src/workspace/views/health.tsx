@@ -279,34 +279,34 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-[var(--panel)]">
-        <div className="text-[#8E8E93] font-bold animate-pulse">Loading health data...</div>
+      <div className="flex items-center justify-center h-full bg-[var(--bg)]">
+        <div className="text-[var(--muted)] font-bold animate-pulse">Loading health data...</div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-full bg-[var(--panel)] font-['Figtree'] overflow-hidden">
+    <div className="flex flex-col h-full bg-[var(--bg)] font-['Figtree'] overflow-hidden">
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-[#E5E5EA]">
+      <div className="px-8 pt-8 pb-6 border-b border-[var(--border)]">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-[var(--text)] tracking-tight">Health & Fitness</h1>
-            <p className="text-sm text-[#8E8E93] mt-1">Track your workouts, nutrition, and well-being</p>
+            <p className="text-sm text-[var(--muted)] mt-1">Track your workouts, nutrition, and well-being</p>
           </div>
         </div>
 
         {/* Navigation */}
         <div className="flex items-center gap-4">
-          <div className="flex p-1 bg-white rounded-xl shadow-sm">
+          <div className="flex p-1 bg-[var(--glass2)] rounded-xl shadow-sm">
             {(['overview', 'workouts', 'nutrition', 'trackers'] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
                 className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
                   view === v
-                    ? 'bg-[#1C1C1E] text-white'
-                    : 'text-[#8E8E93] hover:text-[var(--text)]'
+                    ? 'bg-[var(--glass3)] text-white'
+                    : 'text-[var(--muted)] hover:text-[var(--text)]'
                 }`}
               >
                 {v}
@@ -314,7 +314,7 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
             ))}
           </div>
 
-          <div className="flex p-1 bg-white rounded-xl shadow-sm">
+          <div className="flex p-1 bg-[var(--glass2)] rounded-xl shadow-sm">
             {(['today', 'week', 'month'] as const).map((r) => (
               <button
                 key={r}
@@ -322,7 +322,7 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
                 className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
                   range === r
                     ? 'bg-orange-500 text-white'
-                    : 'text-[#8E8E93] hover:text-[var(--text)]'
+                    : 'text-[var(--muted)] hover:text-[var(--text)]'
                 }`}
               >
                 {r}
@@ -338,25 +338,25 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
           <div className="space-y-6 max-w-6xl">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Workout Summary Card */}
-            <div className="bg-white rounded-2xl border border-[#E5E5EA] p-6 shadow-sm">
+            <div className="bg-[var(--glass2)] rounded-2xl border border-[var(--border)] p-6 shadow-sm">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-orange-500/20 text-orange-300 flex items-center justify-center">
                   <Icon name="zap" size={20} />
                 </div>
-                <h3 className="text-sm font-bold uppercase tracking-widest text-[#8E8E93]">Workouts</h3>
+                <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--muted)]">Workouts</h3>
               </div>
               <div className="space-y-4">
                 <div className="flex justify-between items-baseline">
                   <span className="text-4xl font-bold text-[var(--text)]">{workoutStats.totalSessions}</span>
-                  <span className="text-sm font-bold text-[#8E8E93]">sessions</span>
+                  <span className="text-sm font-bold text-[var(--muted)]">sessions</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="p-3 bg-[var(--panel)] rounded-xl">
-                    <span className="block text-xs font-bold text-[#8E8E93]">Duration</span>
+                  <div className="p-3 bg-[var(--glass2)] rounded-xl">
+                    <span className="block text-xs font-bold text-[var(--muted)]">Duration</span>
                     <span className="font-bold text-[var(--text)]">{formatDuration(workoutStats.totalDuration)}</span>
                   </div>
-                  <div className="p-3 bg-[var(--panel)] rounded-xl">
-                    <span className="block text-xs font-bold text-[#8E8E93]">Calories</span>
+                  <div className="p-3 bg-[var(--glass2)] rounded-xl">
+                    <span className="block text-xs font-bold text-[var(--muted)]">Calories</span>
                     <span className="font-bold text-[var(--text)]">{workoutStats.totalCalories.toLocaleString()}</span>
                   </div>
                 </div>
@@ -364,20 +364,20 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
             </div>
 
             {/* Nutrition Summary Card */}
-            <div className="bg-white rounded-2xl border border-[#E5E5EA] p-6 shadow-sm">
+            <div className="bg-[var(--glass2)] rounded-2xl border border-[var(--border)] p-6 shadow-sm">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-green-100 text-green-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-green-500/20 text-green-300 flex items-center justify-center">
                   <Icon name="utensils" size={20} />
                 </div>
-                <h3 className="text-sm font-bold uppercase tracking-widest text-[#8E8E93]">Nutrition</h3>
+                <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--muted)]">Nutrition</h3>
               </div>
               <div className="space-y-4">
                 <div className="flex justify-between items-baseline">
                   <span className="text-4xl font-bold text-[var(--text)]">{nutritionStats.avgCaloriesPerDay.toLocaleString()}</span>
-                  <span className="text-sm font-bold text-[#8E8E93]">kcal/day</span>
+                  <span className="text-sm font-bold text-[var(--muted)]">kcal/day</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div className="p-2 bg-blue-50 rounded-xl text-center">
+                  <div className="p-2 bg-blue-500/15 rounded-xl text-center">
                     <span className="block text-[10px] font-bold text-blue-400">Protein</span>
                     <span className="font-bold text-blue-600">{nutritionStats.totalProtein}g</span>
                   </div>
@@ -394,12 +394,12 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
             </div>
 
             {/* Trackers Summary Card */}
-            <div className="bg-white rounded-2xl border border-[#E5E5EA] p-6 shadow-sm">
+            <div className="bg-[var(--glass2)] rounded-2xl border border-[var(--border)] p-6 shadow-sm">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
                   <Icon name="heart" size={20} />
                 </div>
-                <h3 className="text-sm font-bold uppercase tracking-widest text-[#8E8E93]">Well-being</h3>
+                <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--muted)]">Well-being</h3>
               </div>
               <div className="space-y-3">
                 {trackerSummaryRows.slice(0, 4).map((row) => (
@@ -409,14 +409,14 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
                       <div className="w-24 h-2 bg-[#E5E5EA] rounded-full overflow-hidden">
                         <div className="h-full bg-purple-500 rounded-full" style={{ width: `${row.pct * 100}%` }} />
                       </div>
-                      <span className="text-xs font-bold text-[#8E8E93] w-12 text-right">
+                      <span className="text-xs font-bold text-[var(--muted)] w-12 text-right">
                         {row.avg.toFixed(1)} {row.unit}
                       </span>
                     </div>
                   </div>
                 ))}
                 {trackerSummaryRows.length === 0 && (
-                  <p className="text-sm text-[#8E8E93] text-center py-4">
+                  <p className="text-sm text-[var(--muted)] text-center py-4">
                     No tracker data yet
                   </p>
                 )}
@@ -424,19 +424,19 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
             </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-[#E5E5EA] p-6 shadow-sm">
+            <div className="bg-[var(--glass2)] rounded-2xl border border-[var(--border)] p-6 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-widest text-[#8E8E93]">Apple Health Import</h3>
-                  <p className="text-sm text-[#8E8E93] mt-2">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--muted)]">Apple Health Import</h3>
+                  <p className="text-sm text-[var(--muted)] mt-2">
                     Connect on iOS to import workouts, steps, and recovery data into your health dashboard.
                   </p>
                 </div>
-                <button className="px-4 py-2 rounded-lg bg-[#1C1C1E] text-white text-xs font-bold uppercase tracking-wider">
+                <button className="px-4 py-2 rounded-lg bg-[var(--glass3)] text-white text-xs font-bold uppercase tracking-wider">
                   Connect
                 </button>
               </div>
-              <p className="text-xs text-[#8E8E93] mt-3">
+              <p className="text-xs text-[var(--muted)] mt-3">
                 iOS-only. Requires HealthKit permissions in the mobile dev client.
               </p>
             </div>
@@ -447,23 +447,23 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
           <div className="space-y-6 max-w-6xl">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-[var(--text)]">Workout Log</h2>
-              <span className="text-sm font-bold text-[#8E8E93]">
+              <span className="text-sm font-bold text-[var(--muted)]">
                 {workouts.length} workouts
               </span>
             </div>
 
             {workouts.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-2xl border border-[#E5E5EA]">
-                <div className="w-16 h-16 mx-auto rounded-full bg-orange-100 flex items-center justify-center mb-4">
+              <div className="text-center py-12 bg-[var(--glass2)] rounded-2xl border border-[var(--border)]">
+                <div className="w-16 h-16 mx-auto rounded-full bg-orange-500/20 flex items-center justify-center mb-4">
                   <Icon name="zap" className="w-8 h-8 text-orange-400" />
                 </div>
                 <h3 className="font-bold text-[var(--text)] mb-2">No workouts logged</h3>
-                <p className="text-sm text-[#8E8E93]">
+                <p className="text-sm text-[var(--muted)]">
                   Log your workouts using voice capture or add them manually
                 </p>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-[#E5E5EA] shadow-sm overflow-hidden">
+              <div className="bg-[var(--glass2)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -485,13 +485,13 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
                         const totals = workoutTotals(workout)
                         return (
                           <TableRow key={workout.id}>
-                            <TableCell className="text-xs text-[#8E8E93]">
+                            <TableCell className="text-xs text-[var(--muted)]">
                               <div className="font-semibold text-[var(--text)]">{formatDate(workout.startAt)}</div>
                               <div>{formatTime(workout.startAt)}</div>
                             </TableCell>
                             <TableCell className="text-xs">
                               <div className="font-bold text-[var(--text)]">{workout.title}</div>
-                              <div className="text-[#8E8E93] uppercase tracking-wider">{workout.type}</div>
+                              <div className="text-[var(--muted)] uppercase tracking-wider">{workout.type}</div>
                             </TableCell>
                             <TableCell className="text-xs text-[var(--text)]">
                               <div className="space-y-1">
@@ -500,7 +500,7 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
                                   return (
                                     <div key={ex.id} className="flex gap-2">
                                       <span className="font-semibold">{ex.name}</span>
-                                      {summary ? <span className="text-[#8E8E93]">- {summary}</span> : null}
+                                      {summary ? <span className="text-[var(--muted)]">- {summary}</span> : null}
                                     </div>
                                   )
                                 })}
@@ -535,23 +535,23 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
           <div className="space-y-6 max-w-6xl">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-[var(--text)]">Meal Timeline</h2>
-              <span className="text-sm font-bold text-[#8E8E93]">
+              <span className="text-sm font-bold text-[var(--muted)]">
                 {meals.length} meals
               </span>
             </div>
 
             {meals.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-2xl border border-[#E5E5EA]">
-                <div className="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-4">
+              <div className="text-center py-12 bg-[var(--glass2)] rounded-2xl border border-[var(--border)]">
+                <div className="w-16 h-16 mx-auto rounded-full bg-green-500/20 flex items-center justify-center mb-4">
                   <Icon name="utensils" className="w-8 h-8 text-green-400" />
                 </div>
                 <h3 className="font-bold text-[var(--text)] mb-2">No meals logged</h3>
-                <p className="text-sm text-[#8E8E93]">
+                <p className="text-sm text-[var(--muted)]">
                   Log your meals using voice capture or add them manually
                 </p>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-[#E5E5EA] shadow-sm overflow-hidden">
+              <div className="bg-[var(--glass2)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -570,13 +570,13 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
                       .sort((a, b) => a.eatenAt - b.eatenAt)
                       .map((meal) => (
                         <TableRow key={meal.id}>
-                          <TableCell className="text-xs text-[#8E8E93]">
+                          <TableCell className="text-xs text-[var(--muted)]">
                             <div className="font-semibold text-[var(--text)]">{formatDate(meal.eatenAt)}</div>
                             <div>{formatTime(meal.eatenAt)}</div>
                           </TableCell>
                           <TableCell className="text-xs">
                             <div className="font-bold text-[var(--text)]">{meal.title}</div>
-                            <div className="text-[#8E8E93] uppercase tracking-wider">{meal.type}</div>
+                            <div className="text-[var(--muted)] uppercase tracking-wider">{meal.type}</div>
                           </TableCell>
                           <TableCell className="text-xs text-[var(--text)]">
                             <div className="space-y-1">
@@ -619,12 +619,12 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
             <h2 className="text-xl font-bold text-[var(--text)]">Tracker Trends</h2>
 
             {visibleTrackerLogs.size === 0 ? (
-              <div className="text-center py-12 bg-white rounded-2xl border border-[#E5E5EA]">
+              <div className="text-center py-12 bg-[var(--glass2)] rounded-2xl border border-[var(--border)]">
                 <div className="w-16 h-16 mx-auto rounded-full bg-purple-100 flex items-center justify-center mb-4">
                   <Icon name="heart" className="w-8 h-8 text-purple-400" />
                 </div>
                 <h3 className="font-bold text-[var(--text)] mb-2">No tracker data</h3>
-                <p className="text-sm text-[#8E8E93]">
+                <p className="text-sm text-[var(--muted)]">
                   Log trackers like mood, energy, or pain using voice capture
                 </p>
               </div>
@@ -642,13 +642,13 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
                   return (
                     <div
                       key={key}
-                      className="bg-white rounded-xl border border-[#E5E5EA] p-6 shadow-sm"
+                      className="bg-[var(--glass2)] rounded-xl border border-[var(--border)] p-6 shadow-sm"
                     >
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold text-[var(--text)]">{def?.label ?? key}</h3>
                         <div className="text-right">
                           <span className="block text-2xl font-bold text-purple-600">{avg.toFixed(1)}</span>
-                          <span className="text-[10px] font-bold text-[#8E8E93]">avg</span>
+                          <span className="text-[10px] font-bold text-[var(--muted)]">avg</span>
                         </div>
                       </div>
 
@@ -666,7 +666,7 @@ export function HealthDashboard({ events, trackerDefs: trackerDefsProp }: Health
                         ))}
                       </div>
 
-                      <div className="flex items-center justify-between mt-4 text-xs text-[#8E8E93]">
+                      <div className="flex items-center justify-between mt-4 text-xs text-[var(--muted)]">
                         <span>{logs.length} entries</span>
                         {latest && (
                           <span>

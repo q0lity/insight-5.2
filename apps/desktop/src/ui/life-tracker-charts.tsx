@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useId } from 'react'
+import { useRef, useState, useEffect } from 'react'
 
 export type SeriesPoint = { x: number; y: number }
 
@@ -46,7 +46,6 @@ export function LtLineAreaChart(props: { points: SeriesPoint[]; color?: string }
   const height = 200
   const padding = 32
   const stroke = props.color ?? 'var(--accent)'
-  const gradientId = useId()
 
   if (props.points.length < 2) return <LtEmptyChart message="No data yet" />
 
@@ -55,13 +54,6 @@ export function LtLineAreaChart(props: { points: SeriesPoint[]; color?: string }
 
   return (
     <svg className="w-full h-auto overflow-visible" viewBox={`0 0 ${width} ${height}`} role="img">
-      <defs>
-        <linearGradient id={`lt-area-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={stroke} stopOpacity="0.22" />
-          <stop offset="100%" stopColor={stroke} stopOpacity="0.02" />
-        </linearGradient>
-      </defs>
-
       {/* grid */}
       {Array.from({ length: 3 }).map((_, i) => {
         const y = padding + (i / 2) * (height - padding * 2)
@@ -80,7 +72,7 @@ export function LtLineAreaChart(props: { points: SeriesPoint[]; color?: string }
         )
       })}
 
-      <path d={areaPath} fill={`url(#lt-area-${gradientId})`} />
+      <path d={areaPath} fill={stroke} fillOpacity="0.12" />
       <path d={linePath} fill="none" stroke={stroke} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
 
       {/* points */}
@@ -105,7 +97,6 @@ export function LtBarChart(props: { values: number[]; color?: string }) {
   const height = 200
   const padding = 32
   const stroke = props.color ?? 'var(--accent)'
-  const gradientId = useId()
   const values = props.values
 
   if (values.length === 0) return <LtEmptyChart message="No data yet" />
@@ -115,12 +106,6 @@ export function LtBarChart(props: { values: number[]; color?: string }) {
 
   return (
     <svg className="w-full h-auto overflow-visible" viewBox={`0 0 ${width} ${height}`} role="img">
-      <defs>
-        <linearGradient id={`lt-bar-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={stroke} stopOpacity="0.95" />
-          <stop offset="100%" stopColor={stroke} stopOpacity="0.55" />
-        </linearGradient>
-      </defs>
       {/* grid */}
       {Array.from({ length: 3 }).map((_, i) => {
         const y = padding + (i / 2) * (height - padding * 2)
@@ -151,7 +136,8 @@ export function LtBarChart(props: { values: number[]; color?: string }) {
             width={barW * 0.6}
             height={h}
             rx="7"
-            fill={`url(#lt-bar-${gradientId})`}
+            fill={stroke}
+            fillOpacity="0.85"
             className="transition-all duration-700 cubic-bezier(0.4, 0, 0.2, 1)"
             style={{ filter: v === max ? 'drop-shadow(0 6px 14px rgba(0,0,0,0.12))' : 'none' }}
           />

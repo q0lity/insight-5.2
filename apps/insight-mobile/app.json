@@ -18,7 +18,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.dgu.insight-mobile",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocalNetworkUsageDescription": "Allow Insight to access the local network to connect to the Expo dev server.",
+        "NSMicrophoneUsageDescription": "Allow Insight to access the microphone to record voice notes."
       }
     },
     "android": {
@@ -34,7 +36,8 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true

@@ -147,7 +147,7 @@ export function TrackersView(props: {
         <div className="flex flex-wrap items-center gap-6 mt-6">
           <div className="flex-1 min-w-[240px] max-w-md relative">
             <input
-              className="w-full h-11 bg-white/50 border border-black/5 rounded-2xl px-10 text-sm font-medium focus:bg-white focus:shadow-md transition-all outline-none"
+              className="w-full h-11 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-10 text-sm font-medium focus:bg-[var(--glass3)] focus:shadow-[0_10px_24px_var(--glowSoft)] transition-all outline-none backdrop-blur"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Filter trackers..."
@@ -158,7 +158,7 @@ export function TrackersView(props: {
           </div>
           <div className="flex items-center gap-2 min-w-[260px] max-w-md w-full">
             <input
-              className="flex-1 h-11 bg-white/50 border border-black/5 rounded-2xl px-4 text-sm font-medium focus:bg-white focus:shadow-md transition-all outline-none"
+              className="flex-1 h-11 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium focus:bg-[var(--glass3)] focus:shadow-[0_10px_24px_var(--glowSoft)] transition-all outline-none backdrop-blur"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="New tracker name..."
@@ -189,7 +189,7 @@ export function TrackersView(props: {
               }}
             />
             <button
-              className="h-11 px-4 rounded-2xl bg-white/70 border border-black/5 text-xs font-bold hover:bg-[var(--panel)] transition-all"
+              className="h-11 px-4 rounded-2xl bg-[var(--glass2)] border border-[var(--border)] text-xs font-bold hover:bg-[var(--glass3)] transition-all"
               onClick={() => {
                 const name = draft.trim()
                 if (!name) return

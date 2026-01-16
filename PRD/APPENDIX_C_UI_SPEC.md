@@ -1,5 +1,9 @@
 # Appendix C — UI Spec (Beauty + Interactivity)
 
+## C0) Wireframe Source of Truth
+- Canonical wireframes and capture/outline contract live in `PRD/WIREFRAME_SOURCE_OF_TRUTH.md`.
+- Capture UX and live outline must follow the bullet-journal block format and maximum linker rules defined there.
+
 ## C1) Global Style Requirements
 - Calm, modern aesthetic (Obsidian-inspired density, not clutter).
 - Strong typography hierarchy and clear spacing system.

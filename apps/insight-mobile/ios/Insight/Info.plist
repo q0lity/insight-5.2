@@ -53,6 +53,12 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Allow Insight to access the local network to connect to the Expo dev server.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Allow Insight to access the microphone to record voice notes.</string>
+	<key>RCTPackagerHost</key>
+	<string>192.168.1.112:8081</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>

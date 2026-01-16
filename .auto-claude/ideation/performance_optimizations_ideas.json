@@ -1,0 +1,111 @@
+{
+  "performance_optimizations": [
+    {
+      "id": "perf-001",
+      "type": "performance_optimizations",
+      "title": "Replace chrono-node with lightweight date parsing",
+      "description": "The natural.ts NLP parser imports the entire chrono-node library (~110KB) for basic date parsing, but only uses `chrono.parseDate()` in a single location. This significantly inflates bundle size for minimal functionality.",
+      "rationale": "chrono-node is a full-featured natural language date parser, but the codebase already implements custom time parsing functions (parseTimeToken, parseTimeRange, parseDurationMinutes). The chrono-node usage could be replaced with the existing custom parsers or a lighter alternative like dayjs with the customParseFormat plugin (~6KB).",
+      "category": "bundle_size",
+      "impact": "high",
+      "affectedAreas": [
+        "apps/desktop/src/nlp/natural.ts",
+        "apps/desktop/package.json"
+      ],
+      "currentMetric": "chrono-node adds ~110KB to bundle (unminified)",
+      "expectedImprovement": "~100KB bundle reduction, ~5-10% faster initial load for desktop app",
+      "implementation": "1. Analyze chrono.parseDate() usage (line 526: only extracts day offset from text)\n2. Extend existing detectDayOffset() and parseTimeRange() to handle the same cases\n3. Or replace with dayjs + customParseFormat (~6KB)\n4. Remove chrono-node dependency\n5. Run bundle analyzer to verify savings",
+      "tradeoffs": "Custom implementation may not handle as many edge cases as chrono-node. Thorough testing of date parsing is needed.",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "perf-002",
+      "type": "performance_optimizations",
+      "title": "Batch Supabase sync operations to eliminate N+1 queries",
+      "description": "The sync.ts file has an N+1 query pattern: each task/event/note sync calls `db.entities.toArray()` to load ALL entities, then makes individual API calls for lookup, upsert, and embedding. With 100 items, this means 100 full entity loads and 300+ API round-trips.",
+      "rationale": "In `syncTaskToSupabase`, `syncEventToSupabase`, and `syncNoteToSupabase`, each sync loads all entities from IndexedDB and makes 3 sequential Supabase calls. The `migrateLocalDataToSupabase` function also embeds entries one-by-one. This creates severe performance issues during bulk operations.",
+      "category": "database",
+      "impact": "high",
+      "affectedAreas": [
+        "apps/desktop/src/supabase/sync.ts"
+      ],
+      "currentMetric": "Syncing 100 items: ~100 IndexedDB reads + ~300 API calls (serial)",
+      "expectedImprovement": "Batch upserts could reduce to 1 IndexedDB read + ~3 API calls (90%+ reduction in network round-trips)",
+      "implementation": "1. Cache entities at sync-session start instead of per-item\n2. Refactor upsertEntries to batch multiple entries in single Supabase upsert\n3. Use Promise.all or batched embedding calls for OpenAI embeddings\n4. Add debouncing for real-time sync to coalesce rapid changes\n5. Implement sync queue that batches pending changes before sending",
+      "tradeoffs": "Batching introduces slight delay before sync completes. Need error handling for partial batch failures.",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "perf-003",
+      "type": "performance_optimizations",
+      "title": "Memoize Kanban column filtering to prevent redundant iterations",
+      "description": "The KanbanView component filters the tasks array 6 times per render (twice per column - once for count, once for items). This creates O(n * columns * 2) iterations when O(n) is possible.",
+      "rationale": "In kanban.tsx lines 60-82, `props.tasks.filter(t => t.status === col.key)` is called twice per column: once in kbColHeader for count and again in kbColBody for rendering cards. With 3 columns, this means 6 filter operations per render. Pre-computing grouped tasks would eliminate 5 of these iterations.",
+      "category": "runtime",
+      "impact": "medium",
+      "affectedAreas": [
+        "apps/desktop/src/workspace/views/kanban.tsx"
+      ],
+      "currentMetric": "6 filter iterations per render (O(6n))",
+      "expectedImprovement": "Single pass grouping (O(n)) - 6x reduction in iteration overhead",
+      "implementation": "1. Add useMemo to compute tasksByStatus map once:\n   ```typescript\n   const tasksByStatus = useMemo(() => {\n     const map = new Map<TaskStatus, Task[]>()\n     for (const t of tasks) {\n       const arr = map.get(t.status) ?? []\n       arr.push(t)\n       map.set(t.status, arr)\n     }\n     return map\n   }, [tasks])\n   ```\n2. Use tasksByStatus.get(col.key) in both header and body\n3. Pre-compute counts from the same grouped data",
+      "tradeoffs": "Minimal - small memory overhead for the grouped map. Cleaner code overall.",
+      "estimatedEffort": "trivial"
+    },
+    {
+      "id": "perf-004",
+      "type": "performance_optimizations",
+      "title": "Lazy-load framer-motion for non-critical animations",
+      "description": "framer-motion is imported eagerly in 10+ view components (~30KB parsed) even for simple fade animations. Many animations are decorative and not critical for initial render.",
+      "rationale": "Components like TimelineView, PlannerView, and TimelineEventBlock use framer-motion for entrance animations and subtle hover effects. The library adds significant bundle weight. For initial paint, these animations could be deferred or replaced with CSS transitions.",
+      "category": "bundle_size",
+      "impact": "medium",
+      "affectedAreas": [
+        "apps/desktop/src/workspace/views/timeline.tsx",
+        "apps/desktop/src/workspace/views/planner.tsx",
+        "apps/desktop/src/App.tsx",
+        "apps/desktop/package.json"
+      ],
+      "currentMetric": "framer-motion adds ~30KB to initial bundle (parsed size)",
+      "expectedImprovement": "~20-30KB reduction in initial bundle with lazy loading, faster TTI",
+      "implementation": "1. Create a LazyMotion wrapper using framer-motion's LazyMotion and domAnimation\n2. For simple animations (fade, slide), use CSS transitions with data attributes\n3. Lazy-import AnimatePresence only in components that need exit animations\n4. Consider motion/react (new lighter package) as alternative",
+      "tradeoffs": "Slight flash-of-unstyled-content for animated components on first load. Complex gesture animations may need the full library.",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "perf-005",
+      "type": "performance_optimizations",
+      "title": "Consolidate Timeline stats computation into single pass",
+      "description": "In TimelineView, the stats useMemo filters the items array 3 separate times to count events, captures, and active items. This could be combined into a single iteration.",
+      "rationale": "Lines 396-401 in timeline.tsx compute stats with 3 separate filter calls on the same items array. With 500 timeline items (the slice limit), this means 1500 iterations instead of 500.",
+      "category": "runtime",
+      "impact": "low",
+      "affectedAreas": [
+        "apps/desktop/src/workspace/views/timeline.tsx"
+      ],
+      "currentMetric": "3 filter iterations for stats (O(3n))",
+      "expectedImprovement": "Single pass (O(n)) - 3x reduction for stats computation",
+      "implementation": "```typescript\nconst stats = useMemo(() => {\n  let eventCount = 0, captureCount = 0, activeCount = 0\n  for (const i of items) {\n    if (i.kind === 'event') {\n      eventCount++\n      if ((i as any).active) activeCount++\n    } else {\n      captureCount++\n    }\n  }\n  return { eventCount, captureCount, activeCount }\n}, [items])\n```",
+      "tradeoffs": "None - strictly better performance with same result.",
+      "estimatedEffort": "trivial"
+    }
+  ],
+  "metadata": {
+    "totalBundleSize": "Unknown (requires bundle analysis)",
+    "largestDependencies": [
+      "chrono-node (~110KB)",
+      "framer-motion (~30KB parsed)",
+      "@supabase/supabase-js",
+      "react-markdown",
+      "electron"
+    ],
+    "filesAnalyzed": 85,
+    "potentialSavings": "~150-200KB bundle reduction + significant sync performance improvement",
+    "generatedAt": "2026-01-13T12:00:00Z",
+    "keyFindings": {
+      "bundleIssues": "chrono-node imported for minimal usage, framer-motion loaded eagerly",
+      "runtimeIssues": "N+1 queries in Supabase sync, redundant array filtering in views",
+      "memoizationCoverage": "193 usages across 29 files - decent but key hot paths missing optimization"
+    }
+  }
+}

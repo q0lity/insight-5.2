@@ -1,0 +1,163 @@
+{
+  "complexity": "complex",
+  "workflow_type": "feature",
+  "confidence": 0.88,
+  "reasoning": "This task combines critical bug fixes (recording engine crash, stop button failure) with extensive UI modifications across 10+ files and two new feature implementations (markdown editor, calendar drag-and-drop). The recording crash is a blocking issue requiring investigation, while the markdown editor and drag-and-drop features require research into React Native libraries and patterns.",
+
+  "analysis": {
+    "scope": {
+      "estimated_files": 15,
+      "estimated_services": 1,
+      "is_cross_cutting": true,
+      "notes": "Changes span multiple UI components: capture.tsx (122KB), voice.tsx, timeline.tsx, notes.tsx, MobileHeatmap.tsx, calendar views, and trackers. Many are substantial files with complex state management."
+    },
+    "integrations": {
+      "external_services": [],
+      "new_dependencies": ["react-native-markdown-editor or similar", "react-native-gesture-handler (drag-drop)"],
+      "research_needed": true,
+      "notes": "Markdown editor requires research into React Native markdown editing libraries (react-native-markdown-display, react-native-pell-rich-editor, etc). Calendar drag-and-drop requires gesture handler patterns research."
+    },
+    "infrastructure": {
+      "docker_changes": false,
+      "database_changes": false,
+      "config_changes": false,
+      "notes": "No infrastructure changes needed. All changes are UI/frontend only within the Expo/React Native mobile app."
+    },
+    "knowledge": {
+      "patterns_exist": true,
+      "research_required": true,
+      "unfamiliar_tech": ["react-native markdown editor patterns", "react-native drag-and-drop for calendar"],
+      "notes": "Existing patterns exist for basic components, but markdown editing with Obsidian-like experience and calendar drag-and-drop are new patterns that need research. The recording engine crash investigation also requires debugging unfamiliar audio/recording code."
+    },
+    "risk": {
+      "level": "high",
+      "concerns": [
+        "Recording engine crash is a critical blocking bug that may have deep root causes",
+        "Stop button failure suggests state management issues in complex timer/recording logic",
+        "Markdown editor implementation could become scope creep (Obsidian has many features)",
+        "Calendar drag-and-drop gestures can conflict with existing touch interactions",
+        "Many UI changes across large files (capture.tsx is 122KB) risk unintended regressions"
+      ],
+      "notes": "The critical bugs combined with new feature additions create significant risk. The recording crash especially needs thorough investigation before implementing other changes."
+    }
+  },
+
+  "task_breakdown": {
+    "critical_bugs": [
+      {
+        "issue": "Recording engine crash on front action button",
+        "files": ["capture.tsx", "voice.tsx", "src/lib/audio.ts"],
+        "priority": "P0 - Blocking"
+      },
+      {
+        "issue": "Stop button doesn't stop timer",
+        "files": ["capture.tsx"],
+        "priority": "P0 - Critical"
+      }
+    ],
+    "ui_changes": [
+      {
+        "issue": "Timer font too large",
+        "files": ["capture.tsx"],
+        "priority": "P1"
+      },
+      {
+        "issue": "Tracker boxes too large, need compaction",
+        "files": ["capture.tsx", "trackers.tsx"],
+        "priority": "P1"
+      },
+      {
+        "issue": "Today's Pulse needs single line display",
+        "files": ["capture.tsx or related component"],
+        "priority": "P1"
+      },
+      {
+        "issue": "Heat map box spacing and width issues",
+        "files": ["MobileHeatmap.tsx"],
+        "priority": "P1"
+      },
+      {
+        "issue": "Timeline spacing improvements",
+        "files": ["timeline.tsx"],
+        "priority": "P2"
+      }
+    ],
+    "new_features": [
+      {
+        "issue": "Obsidian-like markdown editor for notes",
+        "files": ["notes.tsx", "note/[id].tsx", "new SimpleMarkdown or editor component"],
+        "priority": "P1",
+        "requires_research": true
+      },
+      {
+        "issue": "Calendar drag-and-drop for adding events",
+        "files": ["calendar.tsx", "DayView.tsx", "WeekView.tsx", "MonthView.tsx"],
+        "priority": "P2",
+        "requires_research": true
+      }
+    ]
+  },
+
+  "recommended_phases": [
+    "discovery",
+    "requirements",
+    "research",
+    "context",
+    "spec_writing",
+    "self_critique",
+    "planning",
+    "validation"
+  ],
+
+  "flags": {
+    "needs_research": true,
+    "needs_self_critique": true,
+    "needs_infrastructure_setup": false
+  },
+
+  "research_topics": [
+    {
+      "topic": "React Native Markdown Editor Libraries",
+      "why": "Need Obsidian-like editing experience with headers, markdown preview, and full-screen mode",
+      "candidates": ["react-native-markdown-editor", "react-native-pell-rich-editor", "react-native-rich-editor", "@10play/tentap-editor"]
+    },
+    {
+      "topic": "React Native Calendar Drag and Drop",
+      "why": "Need to implement drag-to-add events functionality on calendar views",
+      "candidates": ["react-native-gesture-handler", "react-native-draggable-flatlist patterns", "PanResponder"]
+    },
+    {
+      "topic": "Expo Audio Recording State Management",
+      "why": "Need to investigate and fix recording engine crash on front action button press",
+      "candidates": ["expo-av documentation", "recording lifecycle patterns"]
+    }
+  ],
+
+  "validation_recommendations": {
+    "risk_level": "high",
+    "skip_validation": false,
+    "minimal_mode": false,
+    "test_types_required": ["unit", "integration", "e2e"],
+    "security_scan_required": false,
+    "staging_deployment_required": false,
+    "reasoning": "High risk due to critical recording crash bug fix combined with multiple UI changes across a large codebase. The recording engine fix needs thorough testing to ensure no regressions. New features (markdown editor, drag-drop) require integration testing to verify proper functionality."
+  },
+
+  "implementation_notes": {
+    "suggested_order": [
+      "1. Investigate and fix recording engine crash (P0)",
+      "2. Fix stop button timer issue (P0)",
+      "3. UI compaction changes (timer font, tracker boxes, Today's Pulse)",
+      "4. Heat map box spacing fixes",
+      "5. Timeline spacing improvements",
+      "6. Research and implement markdown editor",
+      "7. Research and implement calendar drag-and-drop"
+    ],
+    "dependencies": [
+      "Markdown editor may need new npm dependencies",
+      "Drag-and-drop may require react-native-gesture-handler configuration"
+    ]
+  },
+
+  "created_at": "2025-01-13T12:00:00.000Z"
+}

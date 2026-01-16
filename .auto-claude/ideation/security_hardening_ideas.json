@@ -1,0 +1,129 @@
+{
+  "security_hardening": [
+    {
+      "id": "sec-001",
+      "type": "security_hardening",
+      "title": "Remove Auto-Login Credentials from Environment Variables",
+      "description": "The mobile app stores auto-login credentials (EXPO_PUBLIC_SUPABASE_AUTO_LOGIN_EMAIL and EXPO_PUBLIC_SUPABASE_AUTO_LOGIN_PASSWORD) in environment variables, which are logged to the console during authentication attempts. Even though this is gated behind __DEV__, credentials in environment files can be accidentally committed and console logs may persist in crash reports.",
+      "rationale": "Hardcoded or environment-stored credentials represent a significant security risk. Even in development mode, these credentials can leak through console logs, crash reporters, or environment file mishandling. OWASP identifies credential exposure as a critical authentication failure.",
+      "category": "secrets_management",
+      "severity": "high",
+      "affectedFiles": [
+        "apps/insight-mobile/src/state/auth.tsx",
+        "apps/insight-mobile/.env.local"
+      ],
+      "vulnerability": "CWE-798: Use of Hard-coded Credentials",
+      "currentRisk": "Development credentials visible in console logs at line 45: console.log('[Auth] Attempting auto-login with', email). Credentials stored in env files risk accidental commit.",
+      "remediation": "1) Remove auto-login feature entirely or move to a secure developer-only configuration mechanism. 2) Use a secure credential storage solution like Expo SecureStore for any stored credentials. 3) Remove sensitive data from console.log statements. 4) Add .env.local to .gitignore if not already present.",
+      "references": [
+        "https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/",
+        "https://cwe.mitre.org/data/definitions/798.html"
+      ],
+      "compliance": ["SOC2", "GDPR"]
+    },
+    {
+      "id": "sec-002",
+      "type": "security_hardening",
+      "title": "Prevent OpenAI API Key Exposure in Client-Side Code",
+      "description": "The desktop application stores the OpenAI API key in client-side environment variables (VITE_OPENAI_API_KEY) and makes direct API calls from the browser/renderer process. While Vite proxies requests in development, the API key is still accessible in the client bundle and exposed in production builds.",
+      "rationale": "API keys embedded in client-side code can be extracted by anyone with access to the application. Attackers could use stolen API keys to make unauthorized requests, leading to financial loss and potential abuse of the AI service. This is particularly critical for pay-per-use APIs like OpenAI.",
+      "category": "secrets_management",
+      "severity": "high",
+      "affectedFiles": [
+        "apps/desktop/src/openai.ts",
+        "apps/desktop/vite.config.ts",
+        "apps/insight-mobile/src/lib/llm/openai.ts"
+      ],
+      "vulnerability": "CWE-312: Cleartext Storage of Sensitive Information",
+      "currentRisk": "OpenAI API key is passed directly in Authorization header from client code. Key is accessible via browser DevTools and can be extracted from production builds.",
+      "remediation": "1) Create a backend proxy service (Supabase Edge Function) that holds the API key securely and forwards requests to OpenAI. 2) Implement user-specific API key storage in the backend with encryption. 3) Add rate limiting and usage monitoring to detect API key abuse. 4) For the mobile app, consider requiring users to input their own API keys stored in SecureStore.",
+      "references": [
+        "https://owasp.org/www-community/vulnerabilities/Use_of_hard-coded_cryptographic_key",
+        "https://cwe.mitre.org/data/definitions/312.html"
+      ],
+      "compliance": ["SOC2", "PCI-DSS"]
+    },
+    {
+      "id": "sec-003",
+      "type": "security_hardening",
+      "title": "Harden Electron Security Configuration",
+      "description": "The Electron main process (electron/main.cjs) lacks several recommended security configurations. While contextIsolation is enabled, other critical security features like sandbox mode, Content Security Policy (CSP), and explicit nodeIntegration:false are missing.",
+      "rationale": "Electron applications have access to Node.js APIs which can be exploited if malicious content is loaded in the renderer. Without proper sandboxing and CSP, XSS vulnerabilities could escalate to remote code execution. Electron security best practices recommend defense-in-depth configuration.",
+      "category": "configuration",
+      "severity": "medium",
+      "affectedFiles": [
+        "apps/desktop/electron/main.cjs"
+      ],
+      "vulnerability": "CWE-693: Protection Mechanism Failure",
+      "currentRisk": "Renderer process could potentially access Node.js APIs or execute arbitrary code if combined with an XSS vulnerability. No CSP restricts what scripts can execute.",
+      "remediation": "Update electron/main.cjs webPreferences to include: { contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true }. Add Content Security Policy via session.defaultSession.webRequest.onHeadersReceived. Consider enabling process sandboxing with app.enableSandbox().",
+      "references": [
+        "https://www.electronjs.org/docs/latest/tutorial/security",
+        "https://cwe.mitre.org/data/definitions/693.html"
+      ],
+      "compliance": ["SOC2"]
+    },
+    {
+      "id": "sec-004",
+      "type": "security_hardening",
+      "title": "Restrict CORS Policy in Supabase Edge Functions",
+      "description": "The Supabase Edge Functions (claude_agent and send_push_notification) use overly permissive CORS headers with 'Access-Control-Allow-Origin': '*', allowing any origin to make requests to these endpoints.",
+      "rationale": "Wildcard CORS policies allow any website to make authenticated requests to your API endpoints. This could enable CSRF-like attacks where malicious sites trick users into performing actions. APIs should only accept requests from known, trusted origins.",
+      "category": "configuration",
+      "severity": "medium",
+      "affectedFiles": [
+        "supabase/functions/claude_agent/index.ts",
+        "supabase/functions/send_push_notification/index.ts"
+      ],
+      "vulnerability": "CWE-942: Permissive Cross-domain Policy with Untrusted Domains",
+      "currentRisk": "Any website can make requests to the Edge Functions on behalf of authenticated users. Combined with CSRF, this could allow unauthorized data access or modification.",
+      "remediation": "1) Define an allowlist of trusted origins (e.g., your mobile app scheme, desktop app origin, landing page domain). 2) Dynamically check the Origin header against the allowlist. 3) Only return CORS headers for matching origins. Example: const allowedOrigins = ['https://insight.app', 'insight://']; if (allowedOrigins.includes(origin)) { corsHeaders['Access-Control-Allow-Origin'] = origin; }",
+      "references": [
+        "https://owasp.org/www-community/attacks/cors-origin-header-security",
+        "https://cwe.mitre.org/data/definitions/942.html"
+      ],
+      "compliance": ["SOC2", "PCI-DSS"]
+    },
+    {
+      "id": "sec-005",
+      "type": "security_hardening",
+      "title": "Add Input Validation and Sanitization to Tool Executor",
+      "description": "The Supabase Edge Function tool-executor.ts accepts user input directly without validation or sanitization. The semanticSearch function constructs database queries using string interpolation with user-provided search queries, creating potential injection risks.",
+      "rationale": "Unsanitized user input in database queries can lead to injection attacks. While Supabase's query builder provides some protection, string interpolation in the .or() clause bypasses parameterization. Input validation is a fundamental security control that should be applied to all user-provided data.",
+      "category": "input_validation",
+      "severity": "medium",
+      "affectedFiles": [
+        "supabase/functions/_shared/tool-executor.ts"
+      ],
+      "vulnerability": "CWE-20: Improper Input Validation",
+      "currentRisk": "Line 1152: .or(`title.ilike.%${query}%,body_markdown.ilike.%${query}%`) - User input is interpolated directly into the query string. Special characters could potentially manipulate query logic.",
+      "remediation": "1) Implement input validation schemas (using Zod or similar) for all tool inputs. 2) Sanitize search queries by escaping special characters: const sanitizedQuery = query.replace(/[%_\\\\]/g, '\\\\$&'). 3) Use parameterized queries where possible. 4) Add length limits to string inputs. 5) Validate UUIDs with regex before using in queries.",
+      "references": [
+        "https://owasp.org/www-community/attacks/SQL_Injection",
+        "https://cwe.mitre.org/data/definitions/20.html"
+      ],
+      "compliance": ["SOC2", "PCI-DSS"]
+    }
+  ],
+  "metadata": {
+    "dependenciesScanned": 45,
+    "knownVulnerabilities": 0,
+    "filesAnalyzed": 28,
+    "criticalIssues": 0,
+    "highIssues": 2,
+    "mediumIssues": 3,
+    "lowIssues": 0,
+    "generatedAt": "2026-01-13T12:00:00Z",
+    "categories": {
+      "secrets_management": 2,
+      "configuration": 2,
+      "input_validation": 1
+    },
+    "frameworksAnalyzed": [
+      "Next.js",
+      "React Native/Expo",
+      "Electron",
+      "Supabase Edge Functions"
+    ]
+  }
+}

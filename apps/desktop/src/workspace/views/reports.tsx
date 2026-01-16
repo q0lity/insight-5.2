@@ -181,13 +181,13 @@ export function ReportsView(props: { events: CalendarEvent[]; tasks: Task[] }) {
             <p className="text-sm text-[var(--muted)] font-semibold uppercase tracking-widest">Deep dive into your data.</p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex p-1 bg-white/50 backdrop-blur border border-white/20 rounded-2xl shadow-sm">
+            <div className="flex p-1 bg-[var(--glass2)] backdrop-blur border border-[var(--border)] rounded-2xl shadow-sm">
               {(['7d', '30d', '90d', '365d', 'all'] as const).map((k) => (
                 <button
                   key={k}
                   onClick={() => setRange(k)}
                   className={`px-6 py-2 text-xs font-bold rounded-xl transition-all ${
-                    range === k ? 'bg-white shadow-md text-[var(--text)]' : 'text-[var(--muted)] hover:text-[var(--text)]'
+                    range === k ? 'bg-[var(--glass3)] shadow-md text-[var(--text)]' : 'text-[var(--muted)] hover:text-[var(--text)]'
                   }`}
                 >
                   <span className="uppercase">{k}</span>
@@ -202,7 +202,7 @@ export function ReportsView(props: { events: CalendarEvent[]; tasks: Task[] }) {
                 <label className="flex items-center gap-2 cursor-pointer group">
                     <input 
                         type="checkbox" 
-                        className="w-5 h-5 rounded-lg border-2 border-[#E5E5EA] checked:bg-[#D95D39] checked:border-[#D95D39] transition-all appearance-none"
+                        className="w-5 h-5 rounded-lg border-2 border-[var(--border)] checked:bg-[var(--accent)] checked:border-[var(--accent)] transition-all appearance-none"
                         checked={includeLogs} 
                         onChange={(e) => setIncludeLogs(e.target.checked)} 
                     />
@@ -211,7 +211,7 @@ export function ReportsView(props: { events: CalendarEvent[]; tasks: Task[] }) {
                 <label className="flex items-center gap-2 cursor-pointer group">
                     <input 
                         type="checkbox" 
-                        className="w-5 h-5 rounded-lg border-2 border-[#E5E5EA] checked:bg-[#D95D39] checked:border-[#D95D39] transition-all appearance-none"
+                        className="w-5 h-5 rounded-lg border-2 border-[var(--border)] checked:bg-[var(--accent)] checked:border-[var(--accent)] transition-all appearance-none"
                         checked={includeTasks} 
                         onChange={(e) => setIncludeTasks(e.target.checked)} 
                     />

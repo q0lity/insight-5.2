@@ -579,7 +579,7 @@ export function TiimoDayView(props: {
                 className={ev.active ? 'tmAllDayPill active' : 'tmAllDayPill'}
                 onClick={() => props.onSelectEvent(ev.id)}
                 title={formatEventTitle(ev, titleMode)}
-                style={{ borderColor: hexToRgba(accent.color, 0.38), background: `linear-gradient(180deg, ${hexToRgba(accent.color, 0.16)}, ${hexToRgba(accent.color, 0.10)})` }}>
+                style={{ borderColor: hexToRgba(accent.color, 0.38), background: hexToRgba(accent.color, 0.14) }}>
                 <span className="tmAllDayIcon" style={{ borderColor: hexToRgba(accent.color, 0.42) }}>
                   <Icon name={accent.icon} size={14} />
                 </span>
@@ -754,7 +754,7 @@ export function TiimoDayView(props: {
                   left: `${leftPct}%`,
                   width: `${widthPct}%`,
                   borderColor: hexToRgba(accent.color, 0.42),
-                  background: `linear-gradient(180deg, ${hexToRgba(accent.color, 0.20)}, ${hexToRgba(accent.color, 0.10)})`,
+                  background: hexToRgba(accent.color, 0.16),
                 }}
                 onMouseDown={(e) => {
                   if (e.button !== 0) return

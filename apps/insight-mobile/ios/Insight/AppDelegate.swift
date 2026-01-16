@@ -54,6 +54,20 @@ public class AppDelegate: ExpoAppDelegate {
 
 class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
   // Extension point for config-plugins
+  private func resolvePackagerHost() -> String? {
+    let env = ProcessInfo.processInfo.environment
+    let host =
+      env["RCT_PACKAGER_HOST"] ??
+      env["EXPO_PACKAGER_HOST"] ??
+      env["EXPO_DEV_SERVER_HOST"] ??
+      (Bundle.main.object(forInfoDictionaryKey: "RCTPackagerHost") as? String)
+
+    guard let host, !host.isEmpty else {
+      return nil
+    }
+
+    return host
+  }
 
   override func sourceURL(for bridge: RCTBridge) -> URL? {
     // needed to return the correct URL for expo-dev-client.
@@ -62,6 +76,17 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
 
   override func bundleURL() -> URL? {
 #if DEBUG
+    if let host = resolvePackagerHost() {
+      RCTBundleURLProvider.sharedSettings().jsLocation = host
+      return RCTBundleURLProvider.jsBundleURL(
+        forBundleRoot: ".expo/.virtual-metro-entry",
+        packagerHost: host,
+        enableDev: true,
+        enableMinification: false,
+        inlineSourceMap: false
+      )
+    }
+
     return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: ".expo/.virtual-metro-entry")
 #else
     return Bundle.main.url(forResource: "main", withExtension: "jsbundle")

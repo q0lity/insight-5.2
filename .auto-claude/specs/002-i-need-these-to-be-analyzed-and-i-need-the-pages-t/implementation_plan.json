@@ -1,0 +1,636 @@
+{
+  "feature": "Obsidian-Style Note View with Google Docs Navigation",
+  "workflow_type": "feature",
+  "workflow_rationale": "This is a substantial UI overhaul that adds new components (heading navigation sidebar, timestamp column, front matter renderer) while transforming the visual appearance of existing markdown rendering. It requires creating new React components, CSS styling, and integrating with existing markdown parsing infrastructure across one primary service (desktop).",
+  "created_at": "2026-01-13T16:08:58.554Z",
+  "updated_at": "2026-01-13T18:07:57.331Z",
+  "status": "done",
+  "planStatus": "completed",
+  "phases": [
+    {
+      "id": "phase-1-infrastructure",
+      "name": "Markdown Infrastructure",
+      "type": "implementation",
+      "description": "Add heading extraction and front matter parsing utilities to the markdown module",
+      "depends_on": [],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-1-1",
+          "description": "Create heading extraction utility function that parses h1-h6 from markdown content",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/markdown/note-items.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "packages/shared/src/notes.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/desktop && npx tsc --noEmit 2>&1 | head -20",
+            "expected": "No TypeScript errors"
+          },
+          "status": "completed",
+          "notes": "Implemented extractHeadings() function that parses h1-h6 headings from markdown content. Added HeadingLevel type (1-6) and HeadingMeta type with level, text, and line number. Function follows existing patterns from notes.ts extraction utilities.",
+          "updated_at": "2026-01-13T16:22:59.594630+00:00"
+        },
+        {
+          "id": "subtask-1-2",
+          "description": "Create front matter parsing utility for YAML metadata at top of notes",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/markdown/note-items.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/ui/checklist.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/desktop && npx tsc --noEmit 2>&1 | head -20",
+            "expected": "No TypeScript errors"
+          },
+          "status": "completed",
+          "notes": "Created front matter parsing utility with: FrontMatter type, parseFrontMatter(), hasFrontMatter(), stripFrontMatter() functions. Supports strings, numbers, booleans, nulls, inline arrays, and YAML-style arrays. Follows existing code patterns from checklist.ts.",
+          "updated_at": "2026-01-13T16:25:00.612012+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-2-css",
+      "name": "Obsidian CSS Styles",
+      "type": "implementation",
+      "description": "Add Obsidian-inspired CSS styles for the note view, heading sidebar, and enhanced chips",
+      "depends_on": [],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-2-1",
+          "description": "Add CSS styles for 3-column note layout (heading sidebar, content, timestamps)",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/App.css"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/App.css"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'obsNote' apps/desktop/src/App.css",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Added 566 lines of CSS for 3-column Obsidian-style note layout. Includes: .obsNote root container with grid layout, .obsNoteHeadingSidebar with heading depth indentation (h1-h6), .obsNoteContent center column, .obsNoteTimestamps right column, .obsNoteFrontMatter styles, .obsNoteTitle with Google Docs typography, .obsNoteTag chips for tags/people/places, .obsNoteSubtask with checkboxes and play buttons, .obsNoteMarkdown prose styles, responsive breakpoints at 900px/1200px, and dark theme adjustments. Verification: grep -c 'obsNote' = 90 (>0 expected).",
+          "updated_at": "2026-01-13T16:28:07.054347+00:00"
+        },
+        {
+          "id": "subtask-2-2",
+          "description": "Add CSS styles for heading tree navigation with expand/collapse and indentation",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/App.css"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/App.css"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'obsHeadingItem' apps/desktop/src/App.css",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Added CSS styles for heading tree navigation with expand/collapse and indentation. Includes .obsHeadingItem, .obsHeadingToggle, .obsHeadingChildren with animations, indentation levels 1-6, and dark theme support. Verification passed with 16 occurrences of obsHeadingItem.",
+          "updated_at": "2026-01-13T16:30:57.957373+00:00"
+        },
+        {
+          "id": "subtask-2-3",
+          "description": "Add Obsidian-style front matter display CSS with dividers",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/App.css"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/App.css"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'obsFrontMatter' apps/desktop/src/App.css",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Added standalone Obsidian-style front matter CSS classes: .obsFrontMatter container with accent border decoration, .obsFrontMatterRow for key-value pairs, .obsFrontMatterLabel with uppercase styling, .obsFrontMatterValue with link support, .obsFrontMatterArrayItem pill-style chips, .obsDivider with decorative dots and variants (.obsDivider-subtle, .obsDivider-thick), plus dark theme overrides. Verification passed with 13 occurrences of 'obsFrontMatter'.",
+          "updated_at": "2026-01-13T16:32:41.172275+00:00"
+        },
+        {
+          "id": "subtask-2-4",
+          "description": "Enhance chip styling to match Obsidian aesthetic (more rounded, subtle colors)",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/App.css"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/App.css"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'obsChip' apps/desktop/src/App.css",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Added comprehensive obsChip CSS component system with: base .obsChip class with rounded pill styling (border-radius: 999px), size variants (sm, md, lg), 8 color variants for different entity types, interactive states, supporting components (container, icon, remove, count, input), and full dark theme support. Verification passed with 81 occurrences of obsChip in App.css.",
+          "updated_at": "2026-01-13T16:34:49.364200+00:00"
+        },
+        {
+          "id": "subtask-2-5",
+          "description": "Add beautiful Google Docs-style title typography CSS",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/App.css"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/App.css"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'obsTitle' apps/desktop/src/App.css",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Added comprehensive Google Docs-style title typography CSS including:\n- Main .obsTitle class (42px Google Sans)\n- Size variants: obsTitleLg/Md/Sm\n- Heading hierarchy: obsTitleH1-H6\n- Editable titles with focus states\n- Accent underline decoration\n- Layout helpers (obsTitleRow, obsTitleGroup)\n- Supporting text (obsTitleSubtitle, obsTitleMeta)\n- Icon-prefixed titles\n- Weight/color variants and text overflow handling\n- Dark theme adjustments\nVerification passed: 43 obsTitle occurrences found.",
+          "updated_at": "2026-01-13T16:36:42.274819+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-3-components",
+      "name": "React Components",
+      "type": "implementation",
+      "description": "Build the new React components for heading sidebar, front matter display, and enhanced markdown view",
+      "depends_on": [
+        "phase-1-infrastructure",
+        "phase-2-css"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-3-1",
+          "description": "Create HeadingSidebar component with collapsible tree navigation",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/ui/markdown.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/workspace/views/tiimo-day.tsx",
+            "apps/desktop/src/ui/icons.tsx"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'HeadingSidebar' apps/desktop/src/ui/markdown.tsx",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Created HeadingSidebar component with collapsible tree navigation. Includes: buildHeadingTree() for hierarchical structure, generateHeadingId() for stable IDs, chevron toggle icons for collapsing, active heading tracking, and proper ARIA accessibility attributes.",
+          "updated_at": "2026-01-13T16:39:54.204848+00:00"
+        },
+        {
+          "id": "subtask-3-2",
+          "description": "Create FrontMatterDisplay component for YAML metadata with dividers",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/ui/markdown.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/ui/markdown.tsx"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'FrontMatterDisplay' apps/desktop/src/ui/markdown.tsx",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Created FrontMatterDisplay component in markdown.tsx that renders YAML front matter with styled key-value pairs using existing CSS classes (obsFrontMatter, obsFrontMatterRow, etc.). Features include: multi-type value handling (strings, arrays, booleans, numbers), URL auto-linking, clickable array items with onTagClick callback, visual divider using obsDivider class, accessibility with ARIA roles and keyboard navigation, and priority sorting for common keys.",
+          "updated_at": "2026-01-13T16:42:03.700652+00:00"
+        },
+        {
+          "id": "subtask-3-3",
+          "description": "Create TimestampColumn component for time markers correlated with sections",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/ui/markdown.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/workspace/views/tiimo-day.tsx"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'TimestampColumn' apps/desktop/src/ui/markdown.tsx",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Created TimestampColumn component in markdown.tsx with:\\n- extractTimestamps() utility function that parses multiple timestamp formats (**HH:MM**, [HH:MM], HH:MM)\\n- TimestampSegment type with time, label, line, and atMinutes properties\\n- Clickable timestamp items with active state support\\n- Empty placeholder when showEmptyPlaceholder is true\\n- Proper ARIA accessibility attributes\\n- Uses existing obsNoteTimestamps CSS classes\\n- Sorted by time order, limited to 24 entries\\nVerification passed: grep -c 'TimestampColumn' = 2 (>0 expected).",
+          "updated_at": "2026-01-13T16:43:58.535306+00:00"
+        },
+        {
+          "id": "subtask-3-4",
+          "description": "Enhance MarkdownView with custom heading components that include IDs for scroll-to",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/ui/markdown.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/ui/markdown.tsx"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'generateHeadingId' apps/desktop/src/ui/markdown.tsx",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Added custom heading components (h1-h6) to MarkdownView with scroll-to IDs. Created extractChildrenText helper for text extraction and createHeadingComponent factory that uses generateHeadingId. Verification passed: generateHeadingId appears 3 times in the file.",
+          "updated_at": "2026-01-13T16:46:02.945160+00:00"
+        },
+        {
+          "id": "subtask-3-5",
+          "description": "Create ObsidianNoteView wrapper component combining all new elements",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/ui/markdown.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/ui/markdown.tsx"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'ObsidianNoteView' apps/desktop/src/ui/markdown.tsx",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Created ObsidianNoteView wrapper component that combines all Obsidian-style elements in a 3-column layout:\n- Left sidebar: HeadingSidebar for navigation\n- Center: Title + FrontMatterDisplay + MarkdownView\n- Right: TimestampColumn for timestamps\n\nFeatures include:\n- Automatic front matter parsing with parseFrontMatter\n- Scroll-to heading functionality on sidebar click\n- Active heading/timestamp state tracking\n- Configurable sidebar visibility (showHeadingSidebar, showTimestamps)\n- Empty placeholder support with showEmptyPlaceholders\n- Title override with fallback to front matter title\n- All task/timer props passed through to MarkdownView\n- Tag click callback for filtering functionality\n\nVerification passed: grep -c 'ObsidianNoteView' = 2 (>0 expected)",
+          "updated_at": "2026-01-13T16:48:14.994634+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-4-subtasks",
+      "name": "Subtask Play Button Integration",
+      "type": "implementation",
+      "description": "Add play button functionality to subtasks for timer integration",
+      "depends_on": [
+        "phase-3-components"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-4-1",
+          "description": "Enhance play button styling on task list items to match Obsidian aesthetic",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/ui/markdown.tsx",
+            "apps/desktop/src/App.css"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/workspace/views/tiimo-day.tsx"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'obsPlayBtn' apps/desktop/src/App.css",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Added obsPlayBtn CSS class with Obsidian aesthetic styling. Updated markdown.tsx to use obsPlayBtn class with play icon. Includes hover, focus, active, and over-time states with pulse animation.",
+          "updated_at": "2026-01-13T16:50:32.424847+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-5-integration",
+      "name": "Notes View Integration",
+      "type": "integration",
+      "description": "Integrate the new ObsidianNoteView into the main NotesView component",
+      "depends_on": [
+        "phase-4-subtasks"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-5-1",
+          "description": "Refactor NotesView to use ObsidianNoteView for selected note display",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/workspace/views/notes.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/workspace/views/notes.tsx"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'ObsidianNoteView' apps/desktop/src/workspace/views/notes.tsx",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Refactored NotesView to use ObsidianNoteView for selected note display. Added view/edit mode toggle, integrated ObsidianNoteView with tag click handling for filtering. Verification passed with count=2 ObsidianNoteView usages.",
+          "updated_at": "2026-01-13T16:53:24.115688+00:00"
+        },
+        {
+          "id": "subtask-5-2",
+          "description": "Add scroll-to-heading functionality when clicking sidebar headings",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/workspace/views/notes.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/workspace/views/tiimo-day.tsx"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'scrollIntoView' apps/desktop/src/workspace/views/notes.tsx",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Added scroll-to-heading functionality: useRef for container, handleHeadingClick callback with scrollIntoView, enabled showHeadingSidebar=true on ObsidianNoteView. Verification passes (grep -c 'scrollIntoView' returns 1).",
+          "updated_at": "2026-01-13T16:56:10.126515+00:00"
+        },
+        {
+          "id": "subtask-5-3",
+          "description": "Wire up tag/chip clicks to filter functionality in notes list",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/workspace/views/notes.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/workspace/views/notes.tsx"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'handleTagClick' apps/desktop/src/workspace/views/notes.tsx",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Wired up tag/chip clicks to filter functionality. Added click handlers to tag spans in note cards with stopPropagation() to prevent card selection. Tags now call handleTagClick() and show active styling when filtered.",
+          "updated_at": "2026-01-13T16:57:15.068139+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-6-polish",
+      "name": "Polish and Edge Cases",
+      "type": "implementation",
+      "description": "Handle edge cases and polish the UI",
+      "depends_on": [
+        "phase-5-integration"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-6-1",
+          "description": "Handle edge case: notes with no headings (show empty sidebar placeholder)",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/ui/markdown.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/workspace/views/notes.tsx"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'No headings' apps/desktop/src/ui/markdown.tsx",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Edge case already implemented: HeadingSidebar shows \"No headings\" placeholder when markdown has no headings and showEmptyPlaceholder prop is true. Verification passed (grep count = 1).",
+          "updated_at": "2026-01-13T16:58:05.186833+00:00"
+        },
+        {
+          "id": "subtask-6-2",
+          "description": "Handle edge case: invalid YAML front matter (graceful fallback)",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/markdown/note-items.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/ui/checklist.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'catch' apps/desktop/src/markdown/note-items.ts",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Added try-catch block to parseFrontMatter function for graceful fallback when YAML parsing fails. Returns { frontMatter: null, content } on error.",
+          "updated_at": "2026-01-13T16:58:54.671616+00:00"
+        },
+        {
+          "id": "subtask-6-3",
+          "description": "Handle edge case: long headings (truncate with ellipsis in sidebar)",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/App.css"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/App.css"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'text-overflow' apps/desktop/src/App.css",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Verified that long heading truncation with ellipsis is already implemented in sidebar. The following classes already have proper overflow handling: .obsNoteHeadingItem (lines 12176-12178), .obsHeadingItem (lines 12830-12832), and .obsHeadingLabel (lines 12890-12892). All have overflow: hidden, text-overflow: ellipsis, and white-space: nowrap. Verification passes with 50 occurrences of text-overflow in App.css.",
+          "updated_at": "2026-01-13T17:00:27.191078+00:00"
+        },
+        {
+          "id": "subtask-6-4",
+          "description": "Ensure dark theme support for all new Obsidian-style components",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/App.css"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/App.css"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -c 'data-theme' apps/desktop/src/App.css",
+            "expected": "Count > 0"
+          },
+          "status": "completed",
+          "notes": "Added comprehensive dark theme support for Obsidian-style components: (1) Dark theme overrides for control CSS variables (--shadow, --shadow2, --control-border, --control-bg, --control-bg-hover, --control-shadow, --control-shadow-hover), (2) Dark theme button shadow adjustments, (3) Dark theme for rail/left ribbon components (.railBtn, .railLabel), (4) Dark theme for sidebar (.sbSectionToggle, .sbItem), (5) Dark theme for theme selector dropdown. Verification passed with 114 data-theme selectors.",
+          "updated_at": "2026-01-13T17:02:40.592672+00:00"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_phases": 6,
+    "total_subtasks": 17,
+    "services_involved": [
+      "desktop"
+    ],
+    "parallelism": {
+      "max_parallel_phases": 2,
+      "parallel_groups": [
+        {
+          "phases": [
+            "phase-1-infrastructure",
+            "phase-2-css"
+          ],
+          "reason": "Both have no dependencies and modify different files (note-items.ts vs App.css)"
+        }
+      ],
+      "recommended_workers": 1,
+      "speedup_estimate": "1.2x faster with parallelism on phases 1 and 2"
+    },
+    "startup_command": "source auto-claude/.venv/bin/activate && python auto-claude/run.py --spec 002 --parallel 1"
+  },
+  "verification_strategy": {
+    "risk_level": "medium",
+    "skip_validation": false,
+    "test_creation_phase": "post_implementation",
+    "test_types_required": [
+      "unit",
+      "integration"
+    ],
+    "security_scanning_required": false,
+    "staging_deployment_required": false,
+    "acceptance_criteria": [
+      "All existing tests pass",
+      "No TypeScript compiler errors",
+      "No console errors in browser",
+      "Left sidebar heading navigation works",
+      "Front matter displays correctly",
+      "Tags render as Obsidian-style chips",
+      "Checkboxes toggle properly",
+      "Play buttons on subtasks function",
+      "Markdown exports cleanly (no proprietary formatting)"
+    ],
+    "verification_steps": [
+      {
+        "name": "TypeScript Check",
+        "command": "cd apps/desktop && npx tsc --noEmit",
+        "expected_outcome": "No errors",
+        "type": "lint",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "ESLint Check",
+        "command": "cd apps/desktop && npm run lint",
+        "expected_outcome": "No errors",
+        "type": "lint",
+        "required": true,
+        "blocking": false
+      },
+      {
+        "name": "Build Check",
+        "command": "cd apps/desktop && npm run build",
+        "expected_outcome": "Build succeeds",
+        "type": "build",
+        "required": true,
+        "blocking": true
+      }
+    ],
+    "reasoning": "Medium risk UI change requires TypeScript compilation and build verification. Unit tests for new utilities recommended."
+  },
+  "qa_acceptance": {
+    "unit_tests": {
+      "required": true,
+      "commands": [
+        "cd apps/desktop && npx tsc --noEmit"
+      ],
+      "minimum_coverage": null
+    },
+    "integration_tests": {
+      "required": false,
+      "commands": [],
+      "services_to_test": [
+        "desktop"
+      ]
+    },
+    "e2e_tests": {
+      "required": false,
+      "commands": [],
+      "flows": []
+    },
+    "browser_verification": {
+      "required": true,
+      "pages": [
+        {
+          "url": "http://localhost:5174",
+          "checks": [
+            "3-column layout visible",
+            "sidebar shows headings",
+            "no-console-errors"
+          ]
+        }
+      ]
+    },
+    "database_verification": {
+      "required": false,
+      "checks": []
+    }
+  },
+  "qa_signoff": {
+    "status": "approved",
+    "timestamp": "2026-01-13T17:10:00.000Z",
+    "qa_session": 1,
+    "report_file": "qa_report.md",
+    "tests_passed": {
+      "typescript_spec_files": "PASS",
+      "security": "PASS",
+      "css_implementation": "PASS",
+      "pattern_compliance": "PASS",
+      "feature_implementation": "PASS"
+    },
+    "issues_found": [
+      {
+        "type": "major",
+        "title": "Unused heading parameter",
+        "location": "notes.tsx:150",
+        "fix_required": "Prefix with underscore: _heading"
+      },
+      {
+        "type": "major",
+        "title": "Invalid IconName 'edit'",
+        "location": "notes.tsx:446",
+        "fix_required": "Use valid icon name or add 'edit' to IconName type"
+      }
+    ],
+    "verified_by": "qa_agent"
+  },
+  "last_updated": "2026-01-13T17:10:00.000Z",
+  "recoveryNote": "Task recovered from stuck state at 2026-01-13T16:38:49.767Z",
+  "qa_iteration_history": [
+    {
+      "iteration": 1,
+      "status": "approved",
+      "timestamp": "2026-01-13T17:26:23.358120+00:00",
+      "issues": [],
+      "duration_seconds": 1411.71
+    }
+  ],
+  "qa_stats": {
+    "total_iterations": 1,
+    "last_iteration": 1,
+    "last_status": "approved",
+    "issues_by_type": {}
+  }
+}

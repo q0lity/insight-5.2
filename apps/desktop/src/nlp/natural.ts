@@ -329,6 +329,8 @@ function parseMood(text: string) {
     return v != null ? v : null
   }
 
+  if (/\bnot (?:feeling|doing|really)?\s*(?:great|good|well|okay|ok|amazing|awesome)\b/.test(t)) return 3
+
   const adjectiveMap: Array<{ re: RegExp; value: number }> = [
     { re: /\b(amazing|awesome|fantastic|incredible|great)\b/, value: 9 },
     { re: /\b(looking forward)\b/, value: 7 },

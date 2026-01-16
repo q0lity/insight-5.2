@@ -1,0 +1,90 @@
+{
+  "complexity": "standard",
+  "workflow_type": "feature",
+  "confidence": 0.85,
+  "reasoning": "This task adds two features to an existing React/TypeScript desktop app: (1) a hierarchical file explorer component for browsing activity taxonomy, and (2) enhanced autofill functionality. Both the taxonomy system and the learning/enrichment engine already exist in the codebase - the work involves creating a new UI component and wiring up existing backend logic. Estimated 6-8 files modified within a single service.",
+
+  "analysis": {
+    "scope": {
+      "estimated_files": 7,
+      "estimated_services": 1,
+      "is_cross_cutting": false,
+      "notes": "New TaxonomyExplorer component + modifications to App.tsx sidebar + possible enhancements to enricher integration. All contained within desktop app at insight/mayor/rig/apps/desktop/src/"
+    },
+    "integrations": {
+      "external_services": [],
+      "new_dependencies": [],
+      "research_needed": false,
+      "notes": "No external integrations. The taxonomy system (taxonomy/starter.ts, taxonomy/rules.ts) and learning engine (learning/enricher.ts) already exist. Just need to connect them to UI."
+    },
+    "infrastructure": {
+      "docker_changes": false,
+      "database_changes": false,
+      "config_changes": false,
+      "notes": "Pure frontend UI changes. IndexedDB-based local storage already in place. No infrastructure modifications needed."
+    },
+    "knowledge": {
+      "patterns_exist": true,
+      "research_required": false,
+      "unfamiliar_tech": [],
+      "notes": "Codebase has clear patterns: React components with TypeScript, existing sidebar structure (see screenshot 1), taxonomy types in taxonomy/starter.ts (StarterTaxonomy with category/subcategory arrays), enricher in learning/enricher.ts. Tree/collapsible patterns already used in sidebar (PINNED, RECENT NOTES sections)."
+    },
+    "risk": {
+      "level": "low",
+      "concerns": ["Must integrate seamlessly with existing sidebar layout", "Autofill should not override user's manual selections"],
+      "notes": "Low risk - additive feature building on existing foundations. Auto-fill button already exists (App.tsx:6717), just needs enhanced logic. The enricher has confidence thresholds (AUTO_APPLY_THRESHOLD) to prevent aggressive overwriting."
+    }
+  },
+
+  "recommended_phases": [
+    "discovery",
+    "requirements",
+    "context",
+    "spec_writing",
+    "planning",
+    "validation"
+  ],
+
+  "flags": {
+    "needs_research": false,
+    "needs_self_critique": false,
+    "needs_infrastructure_setup": false
+  },
+
+  "validation_recommendations": {
+    "risk_level": "medium",
+    "skip_validation": false,
+    "minimal_mode": false,
+    "test_types_required": ["unit", "integration"],
+    "security_scan_required": false,
+    "staging_deployment_required": false,
+    "reasoning": "New UI component and event autofill logic changes require unit tests for component rendering and integration tests for the autofill flow. No auth/security implications. No database schema changes."
+  },
+
+  "key_files_identified": {
+    "taxonomy_system": [
+      "insight/mayor/rig/apps/desktop/src/taxonomy/starter.ts",
+      "insight/mayor/rig/apps/desktop/src/taxonomy/rules.ts",
+      "insight/mayor/rig/apps/desktop/src/taxonomy/custom.ts"
+    ],
+    "learning_engine": [
+      "insight/mayor/rig/apps/desktop/src/learning/enricher.ts",
+      "insight/mayor/rig/apps/desktop/src/learning/context.ts"
+    ],
+    "main_app": [
+      "insight/mayor/rig/apps/desktop/src/App.tsx"
+    ],
+    "existing_components": [
+      "insight/mayor/rig/apps/desktop/src/workspace/views/ecosystem.tsx",
+      "insight/mayor/rig/apps/desktop/src/ui/MetaEditor.tsx"
+    ]
+  },
+
+  "implementation_hints": {
+    "file_explorer": "Create new TaxonomyExplorer component in src/ui/ with collapsible tree structure. Use existing StarterTaxonomy type. Place in left sidebar where screenshots show 'Vault' section.",
+    "autofill_enhancement": "Auto-fill buttons exist at App.tsx:6717 and :7459. Currently use inferCategorySubcategoryLoose. Should integrate learning/enricher.ts enrichEvent() function for pattern-based autofill with confidence scoring.",
+    "data_structure": "Taxonomy is hierarchical: Category > Subcategory (e.g., Personal > Health > Cardio). Use STARTER_TAXONOMY from taxonomy/starter.ts."
+  },
+
+  "created_at": "2026-01-13T17:00:00.000Z"
+}

@@ -1,0 +1,118 @@
+{
+  "complexity": "complex",
+  "workflow_type": "feature",
+  "confidence": 0.88,
+  "reasoning": "This task involves transforming an existing basic chat into a full ChatGPT-style multi-modal AI planner. It requires multiple new integrations (voice-to-text, OCR/vision, document parsing), significant UI redesign, cross-cutting changes across multiple data stores, and new architectural patterns for file upload handling and intelligent data extraction. The scope spans 20+ files across UI, AI integrations, and data layers.",
+
+  "analysis": {
+    "scope": {
+      "estimated_files": 22,
+      "estimated_services": 3,
+      "is_cross_cutting": true,
+      "notes": "Changes span: (1) UI layer - assistant view redesign, new upload/voice components, vault collapse logic; (2) AI layer - OpenAI vision, function calling for task/event creation, document parsing; (3) Data layer - integration with tasks, events, calendar, nutrition storage for analytics queries. Affects how users interact with all existing data stores."
+    },
+    "integrations": {
+      "external_services": [
+        "OpenAI Vision API (for image OCR/analysis)",
+        "Web Speech API (browser native voice-to-text)",
+        "OpenAI GPT with function calling (for task/event creation)"
+      ],
+      "new_dependencies": [
+        "pdf-parse or pdf.js (document/syllabus parsing)",
+        "potentially mammoth (for docx parsing)"
+      ],
+      "research_needed": true,
+      "notes": "OpenAI Vision API for workout photo analysis and document image OCR is new. Web Speech API for voice input is browser native but needs implementation. Function calling pattern for LLM to create tasks/events needs design. Document parsing libraries for syllabus extraction need evaluation."
+    },
+    "infrastructure": {
+      "docker_changes": false,
+      "database_changes": false,
+      "config_changes": true,
+      "notes": "No new database schema required - existing Task/Event/Meal storage handles extracted data. May need new localStorage keys for chat file attachments metadata. OpenAI API key already configured but Vision API usage may need model selection updates."
+    },
+    "knowledge": {
+      "patterns_exist": true,
+      "research_required": true,
+      "unfamiliar_tech": [
+        "OpenAI Vision API for image analysis",
+        "Function calling/tools pattern for task creation",
+        "Web Speech API for voice input",
+        "PDF/document parsing in browser"
+      ],
+      "notes": "Basic chat patterns exist (assistant.tsx, openai.ts). LLM integration exists but needs enhancement for: (1) Vision API calls with image payloads, (2) Function/tool calling for structured output, (3) Voice transcription handling. Existing patterns for tasks/events creation can be leveraged."
+    },
+    "risk": {
+      "level": "medium",
+      "concerns": [
+        "API costs for vision/voice could be significant",
+        "File upload security (malicious files, size limits)",
+        "User expectations management - AI accuracy on document extraction",
+        "Confidence scoring accuracy for clarifying questions",
+        "Browser compatibility for Web Speech API",
+        "Performance with large file uploads"
+      ],
+      "notes": "Primary risks are around setting appropriate user expectations for AI extraction accuracy, and cost management with vision API calls. Security for file uploads needs attention. Voice input has browser compatibility limitations (Chrome-focused)."
+    }
+  },
+
+  "recommended_phases": [
+    "discovery",
+    "requirements",
+    "research",
+    "context",
+    "spec_writing",
+    "self_critique",
+    "planning",
+    "validation"
+  ],
+
+  "flags": {
+    "needs_research": true,
+    "needs_self_critique": true,
+    "needs_infrastructure_setup": false
+  },
+
+  "validation_recommendations": {
+    "risk_level": "high",
+    "skip_validation": false,
+    "minimal_mode": false,
+    "test_types_required": ["unit", "integration", "e2e"],
+    "security_scan_required": true,
+    "staging_deployment_required": false,
+    "reasoning": "Multi-modal file upload requires security scanning for file handling. Integration tests needed for OpenAI API calls with vision/function-calling. E2E tests critical for voice input flow and document extraction accuracy. No staging required as this is a desktop/browser app with existing API key configuration."
+  },
+
+  "feature_breakdown": {
+    "ui_changes": {
+      "scope": "major",
+      "components": [
+        "Redesign AssistantView for full ChatGPT-style layout",
+        "Add vault auto-collapse functionality",
+        "Create voice input button with recording UI",
+        "Create file upload button with drag-drop support",
+        "Add table formatting for query results (markdown tables)",
+        "Clarifying question UI with confidence indicators"
+      ]
+    },
+    "ai_integrations": {
+      "scope": "major",
+      "features": [
+        "OpenAI Vision API for image analysis (workout photos, documents)",
+        "Function calling for structured task/event creation",
+        "Enhanced context building for database analytics queries",
+        "Confidence scoring for extraction accuracy"
+      ]
+    },
+    "data_flow": {
+      "scope": "moderate",
+      "features": [
+        "Query builder for database analytics (nutrition, tasks, events)",
+        "Task/event creation from conversation",
+        "Document parsing pipeline (PDF → text → entities)",
+        "Voice transcript to text pipeline"
+      ]
+    }
+  },
+
+  "created_at": "2025-01-13T20:15:00.000Z"
+}

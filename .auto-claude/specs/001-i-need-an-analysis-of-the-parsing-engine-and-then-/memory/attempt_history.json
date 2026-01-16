@@ -1,0 +1,261 @@
+{
+  "subtasks": {
+    "subtask-1-1": {
+      "attempts": [
+        {
+          "session": 1,
+          "timestamp": "2026-01-13T11:42:26.207838",
+          "approach": "Implemented: Create analysis document covering dual-parser architecture and classification pipeline flow",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-1-2": {
+      "attempts": [
+        {
+          "session": 2,
+          "timestamp": "2026-01-13T11:45:15.228326",
+          "approach": "Implemented: Document confidence tier system and current entity classification rules",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-2-1": {
+      "attempts": [
+        {
+          "session": 3,
+          "timestamp": "2026-01-13T11:48:04.994943",
+          "approach": "Implemented: Add HabitCompletionEvent and NoteEntity types to parser types.ts",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-2-2": {
+      "attempts": [
+        {
+          "session": 4,
+          "timestamp": "2026-01-13T11:48:56.459689",
+          "approach": "Implemented: Add 'habit' and 'note' to EntityClass union type",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-3-1": {
+      "attempts": [
+        {
+          "session": 5,
+          "timestamp": "2026-01-13T11:51:10.145077",
+          "approach": "Implemented: Add habit completion detection patterns to CLASSIFIER_RULES",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-3-2": {
+      "attempts": [
+        {
+          "session": 6,
+          "timestamp": "2026-01-13T11:52:21.360474",
+          "approach": "Implemented: Add note entity detection patterns to CLASSIFIER_RULES",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-3-3": {
+      "attempts": [
+        {
+          "session": 7,
+          "timestamp": "2026-01-13T11:54:08.286734",
+          "approach": "Implemented: Add habit_completion intent to INTENT_PATTERNS",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-4-1": {
+      "attempts": [
+        {
+          "session": 8,
+          "timestamp": "2026-01-13T11:56:29.868299",
+          "approach": "Implemented: Add detectHabitCompletion function with fuzzy matching to habit-context.ts",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-4-2": {
+      "attempts": [
+        {
+          "session": 9,
+          "timestamp": "2026-01-13T11:58:21.211907",
+          "approach": "Implemented: Add completion confidence scoring based on name/tag/category match quality",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-5-1": {
+      "attempts": [
+        {
+          "session": 10,
+          "timestamp": "2026-01-13T12:01:01.621847",
+          "approach": "Implemented: Add autoLinkProject function with confidence scoring to project-context.ts",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-5-2": {
+      "attempts": [
+        {
+          "session": 11,
+          "timestamp": "2026-01-13T12:02:17.232710",
+          "approach": "Implemented: Add LinkDecision type with tier-based auto/suggest/require behavior",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-6-1": {
+      "attempts": [
+        {
+          "session": 12,
+          "timestamp": "2026-01-13T12:05:25.310816",
+          "approach": "Implemented: Add habit completion detection to parseCaptureNatural function",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-6-2": {
+      "attempts": [
+        {
+          "session": 13,
+          "timestamp": "2026-01-13T12:07:27.390302",
+          "approach": "Implemented: Add note entity extraction pattern to parseCaptureNatural",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-6-3": {
+      "attempts": [
+        {
+          "session": 14,
+          "timestamp": "2026-01-13T12:08:53.802376",
+          "approach": "Implemented: Add ParsedNote type to natural.ts export types",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-7-1": {
+      "attempts": [
+        {
+          "session": 15,
+          "timestamp": "2026-01-13T12:12:06.323191",
+          "approach": "Implemented: Add habit completion extraction to LLM system prompt",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-7-2": {
+      "attempts": [
+        {
+          "session": 16,
+          "timestamp": "2026-01-13T12:16:02.170935",
+          "approach": "Implemented: Add note entity type to LLM schema and prompt",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-7-3": {
+      "attempts": [
+        {
+          "session": 17,
+          "timestamp": "2026-01-13T12:17:19.439471",
+          "approach": "Implemented: Add LlmParsedHabitCompletion type definition",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-8-1": {
+      "attempts": [
+        {
+          "session": 18,
+          "timestamp": "2026-01-13T12:21:20.930233",
+          "approach": "Implemented: Integration test: habit completion flow from input to check-off",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-8-2": {
+      "attempts": [
+        {
+          "session": 19,
+          "timestamp": "2026-01-13T12:44:41.819614",
+          "approach": "Implemented: Integration test: project auto-linking with confidence tiers",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-8-3": {
+      "attempts": [
+        {
+          "session": 20,
+          "timestamp": "2026-01-13T12:58:21.541977",
+          "approach": "Implemented: Integration test: note entity creation",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-8-4": {
+      "attempts": [
+        {
+          "session": 21,
+          "timestamp": "2026-01-13T13:07:42.922170",
+          "approach": "Implemented: Verify all 5 entity types classify correctly",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    }
+  },
+  "stuck_subtasks": [],
+  "metadata": {
+    "created_at": "2026-01-13T11:38:17.470092",
+    "last_updated": "2026-01-13T13:07:42.922214"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "task_description": "Redesign Notes Explorer page to Obsidian-style file explorer with compact header, collapsible tree navigation, and enhanced detail panel. Remove redundant People, Places, Tags views.",
+  "scoped_services": ["desktop"],
+  "files_to_modify": {
+    "desktop": [
+      "apps/desktop/src/workspace/views/notes.tsx",
+      "apps/desktop/src/App.tsx",
+      "apps/desktop/src/App.css",
+      "apps/desktop/src/workspace/pane.tsx"
+    ]
+  },
+  "files_to_delete": [
+    "apps/desktop/src/workspace/views/people.tsx",
+    "apps/desktop/src/workspace/views/places.tsx",
+    "apps/desktop/src/workspace/views/tags.tsx"
+  ],
+  "files_to_reference": [
+    "apps/desktop/src/App.tsx",
+    "apps/desktop/src/workspace/views/habits.tsx",
+    "apps/desktop/src/workspace/views/ecosystem.tsx",
+    "apps/desktop/src/ui/icons.tsx"
+  ],
+  "patterns": {
+    "collapsible_tree": {
+      "source": "apps/desktop/src/App.tsx (lines 5944-6099)",
+      "description": "Sidebar explorer uses sbSection, sbSectionHead, sbSectionToggle for collapsible tree structure with chevron icons",
+      "css_classes": ["sbSection", "sbSectionHead", "sbSectionToggle", "sbItemStack", "sbItem"]
+    },
+    "compact_list": {
+      "source": "apps/desktop/src/workspace/views/habits.tsx",
+      "description": "Single-line selectable items with active state styling"
+    },
+    "split_panel": {
+      "source": "apps/desktop/src/workspace/views/ecosystem.tsx",
+      "description": "Two-panel layout with list on left and detail/inspector on right"
+    },
+    "icon_usage": {
+      "source": "apps/desktop/src/ui/icons.tsx",
+      "description": "Available icons: chevronDown, chevronRight, folder, file, search, plus"
+    }
+  },
+  "existing_implementations": {
+    "notes_explorer": {
+      "file": "apps/desktop/src/workspace/views/notes.tsx",
+      "line_count": 475,
+      "current_structure": {
+        "header": "Multi-row (title, search, sort, filter tabs, filter chips) - needs consolidation",
+        "main_content": "Masonry card grid - to be replaced with tree navigation",
+        "inspector": "Right panel with property sections - to be preserved/enhanced"
+      },
+      "filter_functionality": "Already has filterType: all/category/tag/person/place with selectedFilters array",
+      "note": "Core filtering logic should be preserved, only UI restructure needed"
+    },
+    "sidebar_buttons": {
+      "file": "apps/desktop/src/App.tsx",
+      "lines": "5870-5907",
+      "description": "Three railBtn blocks for people, places, tags to be removed"
+    },
+    "workspace_view_type": {
+      "file": "apps/desktop/src/workspace/pane.tsx",
+      "description": "WorkspaceViewKey union type includes 'people' | 'places' | 'tags' to be removed"
+    }
+  },
+  "css_patterns": {
+    "theme_variables": ["--panel", "--panel2", "--bg", "--border", "--border2", "--accent", "--accentSoft", "--muted", "--text"],
+    "existing_notes_classes": "Extensive .notes* classes in App.css (lines 8024-8776+)",
+    "sidebar_classes": "sb* classes for sidebar explorer tree structure"
+  },
+  "created_at": "2026-01-13T11:25:47.290148",
+  "updated_at": "2026-01-13T11:45:00.000000"
+}

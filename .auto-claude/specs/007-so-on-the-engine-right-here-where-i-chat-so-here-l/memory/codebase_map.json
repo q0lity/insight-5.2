@@ -1,0 +1,20 @@
+{
+  "discovered_files": {
+    "apps/desktop/src/hooks/useFileUpload.ts": {
+      "description": "useFileUpload hook for file uploads with react-dropzone. Supports images (PNG, JPEG, GIF, WebP) and PDFs up to 25MB. Converts files to base64 ChatAttachment format. Provides getRootProps/getInputProps for dropzone, isDragActive, openFilePicker, removeAttachment, and clearAttachments.",
+      "category": "hooks",
+      "discovered_at": "2026-01-13T17:46:58.097853+00:00"
+    },
+    "apps/desktop/src/assistant/image-utils.ts": {
+      "description": "Image utilities for Vision API. Key functions: imageToBase64(File) \u2192 data URL, prepareImageForVisionApi(data) \u2192 Vision API format, resizeImage(File, maxDim) \u2192 smaller data URL, extractBase64Data/extractMimeType for parsing data URLs. All outputs use the format data:image/{format};base64,{data}.",
+      "category": "utilities",
+      "discovered_at": "2026-01-13T17:51:38.776063+00:00"
+    },
+    "apps/desktop/src/workspace/views/assistant.tsx": {
+      "description": "Image analysis integration in chat flow. The send() function detects image attachments via currentAttachments.filter(att => att.type === 'image'), calls analyzeImage() from image-analysis.ts with auto type detection, and formats response using getAnalysisSummary() and formatClarifyingQuestions(). Confidence is displayed with emoji (\u2705 high, \u26a0\ufe0f medium, \u2753 low) and percentage.",
+      "category": "patterns",
+      "discovered_at": "2026-01-13T18:07:10.256028+00:00"
+    }
+  },
+  "last_updated": "2026-01-13T18:07:10.256052+00:00"
+}

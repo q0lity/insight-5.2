@@ -1,0 +1,90 @@
+{
+  "complexity": "standard",
+  "workflow_type": "refactor",
+  "confidence": 0.85,
+  "reasoning": "UI refactoring task that consolidates multiple views (tags, people, places) into an enhanced Notes Explorer with Obsidian-style file tree interface. Requires modifying 6-10 files including view components, navigation/routing in App.tsx, and CSS styling. No external dependencies or infrastructure changes needed.",
+
+  "analysis": {
+    "scope": {
+      "estimated_files": 8,
+      "estimated_services": 1,
+      "is_cross_cutting": false,
+      "notes": "Changes confined to desktop app. Primary modifications: notes.tsx (major redesign), App.tsx (navigation changes), App.css (styling), pane.tsx (type updates). Files to remove: people.tsx, places.tsx, tags.tsx."
+    },
+    "integrations": {
+      "external_services": [],
+      "new_dependencies": [],
+      "research_needed": false,
+      "notes": "No external integrations. Uses existing React, framer-motion stack. Obsidian-style UI is a design pattern, not a library integration."
+    },
+    "infrastructure": {
+      "docker_changes": false,
+      "database_changes": false,
+      "config_changes": false,
+      "notes": "Pure frontend refactoring with no infrastructure impact."
+    },
+    "knowledge": {
+      "patterns_exist": true,
+      "research_required": false,
+      "unfamiliar_tech": [],
+      "notes": "Existing codebase uses React components, framer-motion animations, and CSS modules. File tree/explorer patterns are common React patterns. Notes.tsx already has search, filtering, and inspector panel - needs consolidation and space optimization."
+    },
+    "risk": {
+      "level": "medium",
+      "concerns": [
+        "Navigation changes must not break existing routing",
+        "Removing 3 views requires ensuring their functionality is preserved in Notes Explorer",
+        "Layout redesign may require iterative CSS adjustments",
+        "Filter functionality (tags/people/places) must work correctly after consolidation"
+      ],
+      "notes": "Main risk is breaking navigation or losing filtering capabilities. Notes Explorer already has filter tabs for tags/people/places, so the core functionality exists - just needs consolidation."
+    }
+  },
+
+  "recommended_phases": [
+    "discovery",
+    "requirements",
+    "context",
+    "spec_writing",
+    "planning",
+    "validation"
+  ],
+
+  "flags": {
+    "needs_research": false,
+    "needs_self_critique": false,
+    "needs_infrastructure_setup": false
+  },
+
+  "validation_recommendations": {
+    "risk_level": "medium",
+    "skip_validation": false,
+    "minimal_mode": false,
+    "test_types_required": ["unit", "integration"],
+    "security_scan_required": false,
+    "staging_deployment_required": false,
+    "reasoning": "UI refactoring with navigation changes requires unit tests for component logic and integration tests to verify routing works correctly after removing views. No security implications as this is purely presentational. Visual QA recommended to verify Obsidian-style layout renders properly."
+  },
+
+  "key_files": {
+    "to_modify": [
+      "apps/desktop/src/workspace/views/notes.tsx",
+      "apps/desktop/src/App.tsx",
+      "apps/desktop/src/App.css",
+      "apps/desktop/src/workspace/pane.tsx"
+    ],
+    "to_remove": [
+      "apps/desktop/src/workspace/views/people.tsx",
+      "apps/desktop/src/workspace/views/places.tsx",
+      "apps/desktop/src/workspace/views/tags.tsx"
+    ]
+  },
+
+  "implementation_hints": {
+    "layout_strategy": "Obsidian-style: collapsible file tree sidebar + search bar + compact 1-line list items + detail panel on selection",
+    "space_optimization": "Consolidate header to 1 line, use compact list view instead of card masonry, move property display to click-to-expand inspector",
+    "filter_preservation": "Notes Explorer already has filterType tabs for all/category/tag/person/place - ensure this covers removed views' functionality"
+  },
+
+  "created_at": "2025-01-13T12:00:00.000Z"
+}

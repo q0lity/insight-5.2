@@ -1,0 +1,465 @@
+{
+  "integrations_researched": [
+    {
+      "name": "Tailwind CSS",
+      "type": "library",
+      "verified_package": {
+        "name": "tailwindcss",
+        "install_command": "npm install tailwindcss",
+        "version": "^4.1.18 (desktop), ^3.4.19 (mobile4)",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": ["@tailwind base;", "@tailwind components;", "@tailwind utilities;"],
+        "initialization": "CSS-first configuration using @theme directive in v4, or tailwind.config.js in v3",
+        "key_functions": [
+          "@custom-variant dark (&:is(.dark *))",
+          "@theme inline { ... }",
+          "CSS custom properties (--bg, --panel, --text, etc.)"
+        ],
+        "verified_against": "https://tailwindcss.com/docs/dark-mode"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": ["tailwind.config.js", "postcss.config.js", "index.css"],
+        "dependencies": ["postcss", "autoprefixer", "@tailwindcss/postcss"]
+      },
+      "current_implementation": {
+        "desktop": {
+          "version": "v4 with CSS-first config",
+          "theme_file": "apps/desktop/src/index.css",
+          "config_file": "apps/desktop/tailwind.config.js",
+          "dark_mode_strategy": "data-theme attribute on :root"
+        },
+        "mobile": {
+          "version": "v3 with NativeWind",
+          "theme_file": "apps/mobile4/global.css",
+          "config_file": "apps/mobile4/tailwind.config.js",
+          "dark_mode_strategy": "System color scheme via NativeWind"
+        }
+      },
+      "gotchas": [
+        "Tailwind v4 uses @custom-variant for dark mode instead of v3's darkMode config",
+        "CSS variables must be defined in both :root and data-theme variants",
+        "Desktop uses data-theme='dark' while mobile uses NativeWind colorScheme API"
+      ],
+      "research_sources": [
+        "https://tailwindcss.com/docs/dark-mode",
+        "https://dev.to/tene/dark-mode-using-tailwindcss-v40-2lc6"
+      ]
+    },
+    {
+      "name": "NativeWind",
+      "type": "library",
+      "verified_package": {
+        "name": "nativewind",
+        "install_command": "npm install nativewind",
+        "version": "^4.2.1",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import { useColorScheme } from 'nativewind'",
+          "import { cssInterop } from 'nativewind'"
+        ],
+        "initialization": "Configure presets in tailwind.config.js: presets: [require('nativewind/preset')]",
+        "key_functions": [
+          "useColorScheme() - returns { colorScheme, setColorScheme }",
+          "colorScheme.set('dark' | 'light' | 'system')",
+          "dark: variant prefix for dark mode styles"
+        ],
+        "verified_against": "https://www.nativewind.dev/docs/core-concepts/dark-mode"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": ["tailwind.config.js", "babel.config.js", "metro.config.js"],
+        "dependencies": ["tailwindcss", "react-native-reanimated"]
+      },
+      "current_implementation": {
+        "tailwind_config_pattern": "presets: [require('nativewind/preset')]",
+        "theme_context": "Custom ThemeProvider in apps/insight-mobile/src/state/theme.tsx"
+      },
+      "gotchas": [
+        "NativeWind v4 defaults to system appearance (prefers-color-scheme)",
+        "Remove darkMode from Tailwind config when using NativeWind",
+        "CSS variables work via the vars functionality from NativeWind",
+        "Must configure metro.config.js for CSS variable support"
+      ],
+      "research_sources": [
+        "https://www.nativewind.dev/docs/core-concepts/dark-mode",
+        "https://www.nativewind.dev/docs/guides/themes"
+      ]
+    },
+    {
+      "name": "Radix UI Primitives",
+      "type": "library",
+      "verified_package": {
+        "name": "@radix-ui/react-*",
+        "install_command": "npm install @radix-ui/react-dropdown-menu @radix-ui/react-scroll-area ...",
+        "version": "Various (^2.x for most)",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import * as DropdownMenu from '@radix-ui/react-dropdown-menu'",
+          "import * as ScrollArea from '@radix-ui/react-scroll-area'"
+        ],
+        "initialization": "Wrap in Root component, use compound components pattern",
+        "key_functions": [
+          "DropdownMenu.Root, .Trigger, .Content, .Item",
+          "ScrollArea.Root, .Viewport, .Scrollbar",
+          "Tabs.Root, .List, .Trigger, .Content"
+        ],
+        "verified_against": "https://www.radix-ui.com/themes/docs/overview/getting-started"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": []
+      },
+      "current_packages_used": [
+        "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-scroll-area",
+        "@radix-ui/react-separator",
+        "@radix-ui/react-slot",
+        "@radix-ui/react-tabs",
+        "@radix-ui/react-toggle",
+        "@radix-ui/react-toggle-group"
+      ],
+      "gotchas": [
+        "Radix primitives are unstyled - need to apply Tailwind classes",
+        "Use data-state attributes for styling based on component state",
+        "Components are WAI-ARIA compliant - maintain accessibility",
+        "For theming, use CSS variables that Radix can inherit"
+      ],
+      "research_sources": [
+        "https://www.radix-ui.com/themes/docs/theme/dark-mode",
+        "https://www.radix-ui.com/themes/docs/overview/styling"
+      ]
+    },
+    {
+      "name": "Framer Motion (Motion)",
+      "type": "library",
+      "verified_package": {
+        "name": "framer-motion",
+        "install_command": "npm install framer-motion",
+        "version": "^12.23.26",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import { motion, AnimatePresence } from 'framer-motion'"
+        ],
+        "initialization": "Use <motion.div> components with animate props",
+        "key_functions": [
+          "motion.div, motion.span (any HTML element)",
+          "AnimatePresence - for mount/unmount animations",
+          "variants - reusable animation states",
+          "initial, animate, exit - animation lifecycle",
+          "transition - timing and easing"
+        ],
+        "verified_against": "https://motion.dev/docs/react-motion-component"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": []
+      },
+      "current_usage": {
+        "files_using": [
+          "apps/desktop/src/ui/ActiveSessionBanner.tsx",
+          "apps/desktop/src/ui/CaptureModal.tsx",
+          "apps/desktop/src/ui/Skeleton.tsx",
+          "apps/desktop/src/workspace/views/*.tsx"
+        ],
+        "patterns_used": [
+          "AnimatePresence for conditional rendering",
+          "motion.div with initial/animate/exit",
+          "Pulsing animations with repeat: Infinity"
+        ]
+      },
+      "gotchas": [
+        "Use variants for reusable animation definitions",
+        "AnimatePresence must wrap conditionally rendered motion components",
+        "Use layout prop for layout animations",
+        "Respect reduced-motion preferences with useReducedMotion"
+      ],
+      "research_sources": [
+        "https://motion.dev/docs/react-animation",
+        "https://blog.maximeheckel.com/posts/advanced-animation-patterns-with-framer-motion/"
+      ]
+    },
+    {
+      "name": "React Native Reanimated",
+      "type": "library",
+      "verified_package": {
+        "name": "react-native-reanimated",
+        "install_command": "npm install react-native-reanimated",
+        "version": "~4.1.1",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated'"
+        ],
+        "initialization": "Add plugin to babel.config.js: 'react-native-reanimated/plugin'",
+        "key_functions": [
+          "useSharedValue() - create animated value",
+          "useAnimatedStyle() - create animated styles",
+          "withSpring(), withTiming() - animation drivers",
+          "Animated.View, Animated.Text - animated components"
+        ],
+        "verified_against": "https://docs.swmansion.com/react-native-reanimated/"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": ["babel.config.js"],
+        "dependencies": ["react-native-worklets"]
+      },
+      "reanimated_4_features": {
+        "css_animations": "Use CSS-like transitions and keyframes",
+        "worklets": "Extracted to react-native-worklets-core package",
+        "backward_compatible": "Existing Reanimated 3 code still works"
+      },
+      "gotchas": [
+        "Reanimated 4 requires React Native's New Architecture (Fabric)",
+        "Plugin must be last in babel.config.js plugins array",
+        "Use 'worklet' directive for functions running on UI thread",
+        "Consider using CSS transitions for simple state-driven animations"
+      ],
+      "research_sources": [
+        "https://www.freecodecamp.org/news/how-to-create-fluid-animations-with-react-native-reanimated-v4/",
+        "https://blog.swmansion.com/reanimated-4-stable-release-the-future-of-react-native-animations-ba68210c3713"
+      ]
+    },
+    {
+      "name": "class-variance-authority (CVA)",
+      "type": "library",
+      "verified_package": {
+        "name": "class-variance-authority",
+        "install_command": "npm install class-variance-authority",
+        "version": "^0.7.1",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import { cva, type VariantProps } from 'class-variance-authority'"
+        ],
+        "initialization": "Define variant schemas with cva() function",
+        "key_functions": [
+          "cva(base, { variants, compoundVariants, defaultVariants })",
+          "VariantProps<typeof myVariants> - TypeScript utility"
+        ],
+        "verified_against": "https://cva.style/docs"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": ["tailwind-merge (recommended)", "clsx (optional)"]
+      },
+      "current_usage": {
+        "installed_in_desktop": true,
+        "usage_pattern": "Not actively used in code (opportunity to adopt)"
+      },
+      "gotchas": [
+        "Best used with tailwind-merge to handle class conflicts",
+        "Define variants object with all possible variant combinations",
+        "Use compoundVariants for styles when multiple conditions are met",
+        "Best for SSR/SSG - minimal client-side JS needed"
+      ],
+      "research_sources": [
+        "https://cva.style/docs/getting-started/variants",
+        "https://cva.style/docs/examples/react/tailwind-css"
+      ]
+    },
+    {
+      "name": "tailwind-merge",
+      "type": "library",
+      "verified_package": {
+        "name": "tailwind-merge",
+        "install_command": "npm install tailwind-merge",
+        "version": "^3.4.0",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import { twMerge } from 'tailwind-merge'"
+        ],
+        "initialization": "Use twMerge() to combine class strings",
+        "key_functions": [
+          "twMerge('p-4 p-2') → 'p-2' (later wins)",
+          "twMerge(baseClasses, overrideClasses)"
+        ],
+        "verified_against": "https://github.com/dcastil/tailwind-merge"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": []
+      },
+      "best_practice": "Combine with clsx for conditional classes: twMerge(clsx(base, { 'variant': condition }))",
+      "gotchas": [
+        "Only merges conflicting Tailwind classes - non-Tailwind classes pass through",
+        "Works with custom Tailwind config if you extend twMerge config",
+        "Later classes override earlier ones (unlike standard className concatenation)"
+      ],
+      "research_sources": [
+        "https://github.com/dcastil/tailwind-merge"
+      ]
+    },
+    {
+      "name": "Expo",
+      "type": "framework",
+      "verified_package": {
+        "name": "expo",
+        "install_command": "npx create-expo-app",
+        "version": "~54.0.29",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import { StatusBar } from 'expo-status-bar'",
+          "import * as Font from 'expo-font'"
+        ],
+        "initialization": "Entry point via expo-router/entry",
+        "key_functions": [
+          "expo-router for file-based routing",
+          "expo-font for custom fonts",
+          "expo-av for audio/video",
+          "expo-status-bar for status bar theming"
+        ],
+        "verified_against": "https://docs.expo.dev/"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": ["app.json", "metro.config.js"],
+        "dependencies": []
+      },
+      "current_setup": {
+        "fonts_loaded": ["@expo-google-fonts/figtree", "@expo-google-fonts/space-grotesk"],
+        "routing": "expo-router (file-based)",
+        "userInterfaceStyle": "automatic (for dark/light mode)"
+      },
+      "gotchas": [
+        "Set userInterfaceStyle: 'automatic' in app.json for system theme detection",
+        "expo-status-bar must be configured to match theme",
+        "Use expo-dev-client for native module debugging"
+      ],
+      "research_sources": [
+        "https://docs.expo.dev/"
+      ]
+    }
+  ],
+  "existing_theme_system": {
+    "desktop": {
+      "theme_types": ["system", "light", "dark", "warm", "olive", "oliveOrange", "roseGold"],
+      "dark_themes": ["dark", "olive", "oliveOrange", "roseGold"],
+      "implementation": "CSS custom properties with data-theme attribute",
+      "storage_key": "insight5.ui.theme.v2",
+      "css_variables": {
+        "colors": ["--bg", "--panel", "--panel2", "--border", "--border2", "--text", "--muted", "--muted2", "--accent", "--accentSoft", "--accentMid", "--accentBorder"],
+        "semantic": ["--background", "--foreground", "--card", "--primary", "--secondary", "--destructive", "--input", "--ring"]
+      }
+    },
+    "mobile": {
+      "theme_types": ["system", "light", "dark", "warm", "olive", "oliveOrange", "roseGold"],
+      "implementation": "React Context with ThemePalettes object",
+      "storage_key": "@insight/themeMode",
+      "palette_properties": ["background", "surface", "surfaceAlt", "text", "textSecondary", "tint", "tintLight", "border", "borderLight", "success", "error", "warning"]
+    }
+  },
+  "reference_ui_analysis": {
+    "source": "Superwhisper app screenshots (IMG_4938-4944.PNG)",
+    "design_characteristics": {
+      "dark_mode": {
+        "background": "Pure/deep black (#000 or very close)",
+        "surface_color": "Slightly elevated dark (#1a1a1a to #2a2a2a range)",
+        "border_style": "Very subtle, low opacity borders"
+      },
+      "components": {
+        "cards": "Rounded corners (~12-16px radius), subtle elevation via background color",
+        "list_items": "Grouped with thin separators, row-based layout",
+        "badges": "Small chips/tags (NEW, PRO, English) with contrasting backgrounds",
+        "progress_bars": "Blue accent color (#4B8BF5 or similar), horizontal bars"
+      },
+      "typography": {
+        "hierarchy": "Clear size hierarchy, bold headings",
+        "colors": "White/near-white for primary, gray for secondary"
+      },
+      "spacing": {
+        "card_padding": "16-20px internal padding",
+        "section_gaps": "12-16px between grouped sections",
+        "list_item_height": "44-52px for standard rows"
+      },
+      "icons": {
+        "style": "Outline/line icons, consistent stroke weight",
+        "color": "Match text color or use accent"
+      }
+    },
+    "key_patterns_to_implement": [
+      "Grouped card containers with rounded borders",
+      "Thin separator lines between list items",
+      "Badge/chip components for status indicators",
+      "Progress bars with speed/accuracy metrics",
+      "Date-grouped content lists (history view)",
+      "Download/action buttons aligned right",
+      "Nested navigation with back arrows"
+    ]
+  },
+  "active_session_requirements": {
+    "current_implementation": "apps/desktop/src/ui/ActiveSessionBanner.tsx",
+    "current_features": [
+      "Minimized/expanded states",
+      "Timer display (HH:MM:SS)",
+      "Progress bar with percentage",
+      "XP calculation and display",
+      "Pulsing dot animation",
+      "Stop/Open actions"
+    ],
+    "requested_enhancements": [
+      "Subtask breakdown display",
+      "Taskbar-like compact component",
+      "Real-time progress for subtasks",
+      "Better visual integration with main screen"
+    ]
+  },
+  "unverified_claims": [],
+  "recommendations": [
+    "Adopt CVA pattern for consistent component variants across desktop and mobile",
+    "Create shared theme token system between desktop CSS variables and mobile ThemePalettes",
+    "Add pure black (#000000) variant to existing dark theme to match reference UI",
+    "Implement grouped card component pattern from reference for both platforms",
+    "Consider using motion.dev's LazyMotion for reduced bundle size",
+    "Add subtask props to ActiveSessionBanner component for breakdown display",
+    "Create reusable Badge/Chip component for status indicators",
+    "Use NativeWind CSS variables for theme synchronization on mobile"
+  ],
+  "component_patterns_to_create": [
+    {
+      "name": "GroupedCard",
+      "description": "Container with rounded corners for grouping related list items",
+      "platforms": ["desktop", "mobile"]
+    },
+    {
+      "name": "ListItemRow",
+      "description": "Standard row component with left content, right action, and separator",
+      "platforms": ["desktop", "mobile"]
+    },
+    {
+      "name": "Badge",
+      "description": "Small status indicator chip (NEW, PRO, etc.)",
+      "platforms": ["desktop", "mobile"]
+    },
+    {
+      "name": "ProgressBar",
+      "description": "Horizontal progress indicator with label",
+      "platforms": ["desktop", "mobile"]
+    },
+    {
+      "name": "SubtaskList",
+      "description": "Compact subtask display for active session",
+      "platforms": ["desktop", "mobile"]
+    }
+  ],
+  "created_at": "2025-01-13T12:55:00Z"
+}

@@ -315,7 +315,7 @@ export function NotesView(props: {
                       key={c.id}
                       layout
                       onClick={() => props.onSelectCapture(c.id)}
-                      className={`notesCard notesCardDark ${props.selectedCaptureId === c.id ? 'active' : ''}`}
+                      className={`notesCard ${props.selectedCaptureId === c.id ? 'active' : ''}`}
                       initial={{ opacity: 0, scale: 0.96 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.96 }}

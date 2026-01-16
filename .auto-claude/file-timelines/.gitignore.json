@@ -1,0 +1,48 @@
+{
+  "file_path": ".gitignore",
+  "main_branch_history": [],
+  "task_views": {
+    "002-i-need-these-to-be-analyzed-and-i-need-the-pages-t": {
+      "task_id": "002-i-need-these-to-be-analyzed-and-i-need-the-pages-t",
+      "branch_point": {
+        "commit_hash": "223b6906c6e567162b9c4367984c6ffbc6ed28e6",
+        "content": "# Dependencies\nnode_modules/\n.pnp/\n.pnp.js\n\n# Build outputs\ndist/\nbuild/\n.next/\nout/\n\n# Environment files\n.env.local\n.env.*.local\n\n# IDE\n.vscode/\n.idea/\n*.swp\n*.swo\n\n# OS\n.DS_Store\nThumbs.db\n\n# Logs\n*.log\nnpm-debug.log*\nyarn-debug.log*\nyarn-error.log*\n\n# Misc\n*.pid\n\n# Expo\n.expo/\n\n# NPM cache\n.npm-cache/\n\n# Supabase local\nsupabase/.temp/\n",
+        "timestamp": "2026-01-13T11:38:54.774343"
+      },
+      "worktree_state": {
+        "content": "# Dependencies\nnode_modules/\n.pnp/\n.pnp.js\n\n# Build outputs\ndist/\nbuild/\n.next/\nout/\n\n# Environment files\n.env.local\n.env.*.local\n\n# IDE\n.vscode/\n.idea/\n*.swp\n*.swo\n\n# OS\n.DS_Store\nThumbs.db\n\n# Logs\n*.log\nnpm-debug.log*\nyarn-debug.log*\nyarn-error.log*\n\n# Misc\n*.pid\n\n# Expo\n.expo/\n\n# NPM cache\n.npm-cache/\n\n# Supabase local\nsupabase/.temp/\n\n# Auto Claude data directory\n.auto-claude/\n\n# Auto Claude generated files\n.auto-claude-security.json\n.auto-claude-status\n.claude_settings.json\n.worktrees/\n.security-key\nlogs/security/\n",
+        "last_modified": "2026-01-13T13:07:29.879644"
+      },
+      "task_intent": {
+        "title": "002-i-need-these-to-be-analyzed-and-i-need-the-pages-t",
+        "description": "",
+        "from_plan": false
+      },
+      "commits_behind_main": 3,
+      "status": "active",
+      "merged_at": null
+    },
+    "007-so-on-the-engine-right-here-where-i-chat-so-here-l": {
+      "task_id": "007-so-on-the-engine-right-here-where-i-chat-so-here-l",
+      "branch_point": {
+        "commit_hash": "223b6906c6e567162b9c4367984c6ffbc6ed28e6",
+        "content": "# Dependencies\nnode_modules/\n.pnp/\n.pnp.js\n\n# Build outputs\ndist/\nbuild/\n.next/\nout/\n\n# Environment files\n.env.local\n.env.*.local\n\n# IDE\n.vscode/\n.idea/\n*.swp\n*.swo\n\n# OS\n.DS_Store\nThumbs.db\n\n# Logs\n*.log\nnpm-debug.log*\nyarn-debug.log*\nyarn-error.log*\n\n# Misc\n*.pid\n\n# Expo\n.expo/\n\n# NPM cache\n.npm-cache/\n\n# Supabase local\nsupabase/.temp/\n",
+        "timestamp": "2026-01-13T12:35:10.658231"
+      },
+      "worktree_state": {
+        "content": "# Dependencies\nnode_modules/\n.pnp/\n.pnp.js\n\n# Build outputs\ndist/\nbuild/\n.next/\nout/\n\n# Environment files\n.env.local\n.env.*.local\n\n# IDE\n.vscode/\n.idea/\n*.swp\n*.swo\n\n# OS\n.DS_Store\nThumbs.db\n\n# Logs\n*.log\nnpm-debug.log*\nyarn-debug.log*\nyarn-error.log*\n\n# Misc\n*.pid\n\n# Expo\n.expo/\n\n# NPM cache\n.npm-cache/\n\n# Supabase local\nsupabase/.temp/\n\n# Auto Claude data directory\n.auto-claude/\n",
+        "last_modified": "2026-01-13T12:35:11.797619"
+      },
+      "task_intent": {
+        "title": "007-so-on-the-engine-right-here-where-i-chat-so-here-l",
+        "description": "",
+        "from_plan": false
+      },
+      "commits_behind_main": 3,
+      "status": "active",
+      "merged_at": null
+    }
+  },
+  "created_at": "2026-01-13T11:38:54.879449",
+  "last_updated": "2026-01-13T12:35:11.146795"
+}

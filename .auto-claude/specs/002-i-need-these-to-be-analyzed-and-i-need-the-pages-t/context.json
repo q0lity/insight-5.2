@@ -1,0 +1,41 @@
+{
+  "task_description": "Transform the notes view to Obsidian-style UI with Google Docs heading navigation",
+  "scoped_services": ["desktop", "shared"],
+  "files_to_modify": {
+    "desktop": [
+      "apps/desktop/src/workspace/views/notes.tsx",
+      "apps/desktop/src/ui/markdown.tsx",
+      "apps/desktop/src/App.css",
+      "apps/desktop/src/ui/ChipInput.tsx",
+      "apps/desktop/src/markdown/note-items.ts"
+    ]
+  },
+  "files_to_reference": [
+    "apps/desktop/src/workspace/views/tiimo-day.tsx",
+    "apps/desktop/src/ui/icons.tsx",
+    "apps/desktop/src/ui/checklist.ts",
+    "packages/shared/src/notes.ts"
+  ],
+  "patterns": {
+    "markdown_rendering": "Use ReactMarkdown with remarkGfm plugin and custom components for li, p, a tags",
+    "chip_styling": "CSS class pattern: mdChip mdChip-{kind} with color variants for tag, person, ctx, loc",
+    "icon_usage": "Use Icon component from ui/icons.tsx with name prop and size",
+    "play_button": "tmPlay tmPlayCompact active classes with Icon name='play'/'pause'",
+    "checkbox": "mdCheck checked classes with mdCheckBox inner span",
+    "css_variables": "Use --accent, --text, --border, --panel, --muted CSS variables from App.css"
+  },
+  "existing_implementations": {
+    "tag_extraction": "extractTags(), extractPeople(), extractPlaces() from @insight/shared",
+    "chip_rendering": "renderTextWithChips() and extractInlineChips() in markdown.tsx",
+    "checklist_parsing": "parseChecklistMarkdown() and toggleChecklistLine() in checklist.ts",
+    "note_item_meta": "parseNoteItemMeta() in note-items.ts for task/habit detection",
+    "segment_extraction": "extractSegmentsFromNotes() in tiimo-day.tsx for timestamps"
+  },
+  "conventions": {
+    "component_naming": "PascalCase for components (NotesView, MarkdownView)",
+    "css_class_naming": "camelCase for component root (notesViewRoot), kebab-like for variants (mdChip-tag)",
+    "state_management": "useState for local state, useMemo for derived values",
+    "callback_naming": "on* prefix for callbacks (onSelectCapture, onTagClick)"
+  },
+  "created_at": "2026-01-13T11:30:00.000000"
+}

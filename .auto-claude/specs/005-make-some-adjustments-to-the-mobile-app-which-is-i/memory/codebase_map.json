@@ -1,0 +1,35 @@
+{
+  "discovered_files": {
+    "apps/mobile4/app/voice.tsx": {
+      "description": "The mobile app uses expo-av Audio module for recording. Key requirements: 1) expo-av requires ~300ms minimum between stop and new recording, 2) Only one Recording object can be prepared at a time, 3) Must call Audio.setAudioModeAsync({ allowsRecordingIOS: false }) after stopping on iOS to properly release audio session. The actual mobile app is in mobile4, not insight-mobile as referenced in the spec.",
+      "category": "audio",
+      "discovered_at": "2026-01-13T17:05:20.364338+00:00"
+    },
+    "apps/mobile4/src/state/session.tsx": {
+      "description": "Session state management uses React Context with stopSession function that needs debouncing (isStoppingRef) to prevent multiple simultaneous stop calls. Also needs try/catch for error handling and proper cleanup of Live Activity. The actual mobile app is in apps/mobile4, not apps/insight-mobile as mentioned in specs.",
+      "category": "state_management",
+      "discovered_at": "2026-01-13T17:09:21.144972+00:00"
+    },
+    "apps/mobile4/app/(tabs)/index.tsx": {
+      "description": "Today's Pulse section uses pulseInlineRow and pulseInlineStat styles for compact single-line display. Stats use flexDirection: 'row' with flex: 1 for equal spacing, value comes before label in reading order.",
+      "category": "UI Pattern",
+      "discovered_at": "2026-01-13T17:18:13.626512+00:00"
+    },
+    "apps/mobile4/src/components/MobileHeatmap.tsx": {
+      "description": "Heatmap cell size calculation must use consistent gap values in both the calculation and the actual grid rendering. The gap value used for calculating available width must match the gap used in the flexbox layout, otherwise cells won't fill the width properly.",
+      "category": "pattern",
+      "discovered_at": "2026-01-13T17:29:58.402130+00:00"
+    },
+    "apps/mobile4/app/timeline.tsx": {
+      "description": "Timeline screen with improved visual hierarchy - includes day headers with formatted dates, category-aware accent colors/icons, vertical timeline indicator, compact event rows with time/icon/content columns, duration display, and empty state",
+      "category": "ui_pattern",
+      "discovered_at": "2026-01-13T17:42:07.834237+00:00"
+    },
+    "apps/mobile4/app/(tabs)/calendar.tsx": {
+      "description": "Drag-to-create implementation in Day view uses React Native's responder system (onStartShouldSetResponder, onResponderGrant, onResponderMove, onResponderRelease) with long-press detection via setTimeout (500ms). Scroll is disabled during drag using scrollViewRef.current.setNativeProps({ scrollEnabled: false }). Y positions are converted to minutes using (y / hourHeight) * 60 formula. Times are rounded to 15-minute intervals for cleaner event boundaries.",
+      "category": "implementation_pattern",
+      "discovered_at": "2026-01-13T18:03:49.239222+00:00"
+    }
+  },
+  "last_updated": "2026-01-13T18:03:49.239251+00:00"
+}

@@ -1,0 +1,533 @@
+{
+  "integrations_researched": [
+    {
+      "name": "OpenAI Vision API",
+      "type": "library",
+      "verified_package": {
+        "name": "openai",
+        "install_command": "Already installed - uses existing OpenAI API integration",
+        "version": "N/A - uses REST API directly via fetch",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "Uses existing openai.ts wrapper"
+        ],
+        "initialization": "Uses existing callOpenAiText function with modified message format",
+        "key_functions": [
+          "POST /v1/chat/completions with image content",
+          "POST /v1/responses with image input"
+        ],
+        "request_format": {
+          "model": "gpt-4.1-mini, gpt-4.1, gpt-4o, or gpt-4o-mini",
+          "messages": [
+            {
+              "role": "user",
+              "content": [
+                { "type": "text", "text": "describe the image" },
+                { "type": "image_url", "image_url": { "url": "data:image/jpeg;base64,{base64_string}", "detail": "auto" } }
+              ]
+            }
+          ]
+        },
+        "responses_api_format": {
+          "model": "gpt-4.1-mini",
+          "input": [
+            {
+              "role": "user",
+              "content": [
+                { "type": "input_text", "text": "what's in this image?" },
+                { "type": "input_image", "image_url": "data:image/jpeg;base64,{base64_string}" }
+              ]
+            }
+          ]
+        },
+        "verified_against": "OpenAI Platform Documentation"
+      },
+      "configuration": {
+        "env_vars": [
+          "OPENAI_API_KEY (already configured in app)"
+        ],
+        "supported_image_formats": ["PNG", "JPEG", "GIF", "WebP"],
+        "max_images_per_request": 10,
+        "detail_options": ["low", "high", "auto"]
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "requires_external_service": true,
+        "service": "OpenAI API"
+      },
+      "gotchas": [
+        "Base64 images must be prefixed with data:image/{format};base64,",
+        "Low detail mode costs 85 tokens regardless of image size",
+        "gpt-4.1-mini multiplies image tokens by 1.62 for billing",
+        "Images up to 20MB supported, but larger = more tokens",
+        "Vision fine-tuning available but requires at least 100 images"
+      ],
+      "token_costs": {
+        "low_detail": "85 tokens (fixed)",
+        "high_detail": "Calculated based on image tiles (512x512 each = 170 tokens + 85 base)"
+      },
+      "research_sources": [
+        "https://platform.openai.com/docs/guides/images-vision",
+        "https://platform.openai.com/docs/guides/vision"
+      ]
+    },
+    {
+      "name": "OpenAI Whisper API (Voice Input)",
+      "type": "library",
+      "verified_package": {
+        "name": "openai",
+        "install_command": "Already installed - uses existing OpenAI API integration",
+        "version": "N/A - uses REST API directly",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "Uses fetch to OpenAI transcriptions endpoint"
+        ],
+        "initialization": "POST multipart/form-data to /v1/audio/transcriptions",
+        "key_functions": [
+          "POST /v1/audio/transcriptions",
+          "POST /v1/audio/translations (for non-English to English)"
+        ],
+        "request_format": {
+          "endpoint": "/v1/audio/transcriptions",
+          "method": "POST",
+          "content_type": "multipart/form-data",
+          "fields": {
+            "file": "audio file (blob or File)",
+            "model": "whisper-1 or gpt-4o-transcribe",
+            "language": "optional - ISO 639-1 code",
+            "response_format": "json, text, srt, verbose_json, or vtt"
+          }
+        },
+        "verified_against": "OpenAI Platform Documentation"
+      },
+      "configuration": {
+        "env_vars": [
+          "OPENAI_API_KEY (already configured in app)"
+        ],
+        "supported_audio_formats": ["flac", "mp3", "mp4", "mpeg", "mpga", "m4a", "ogg", "wav", "webm"],
+        "max_file_size": "25MB"
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "requires_external_service": true,
+        "service": "OpenAI API"
+      },
+      "pricing": "$0.006 per minute of audio",
+      "models": [
+        "whisper-1 (Whisper V2, most stable)",
+        "gpt-4o-transcribe (newer, higher accuracy)",
+        "gpt-4o-mini-transcribe (faster, lower cost)"
+      ],
+      "gotchas": [
+        "API key must never be exposed in frontend code",
+        "For Electron: need to record audio to blob, then send to API",
+        "WebM audio format works well for browser MediaRecorder",
+        "Consider implementing chunking for long recordings"
+      ],
+      "research_sources": [
+        "https://platform.openai.com/docs/guides/speech-to-text",
+        "https://platform.openai.com/docs/api-reference/audio"
+      ]
+    },
+    {
+      "name": "Web Speech API",
+      "type": "browser_api",
+      "verified_package": {
+        "name": "N/A - Browser built-in API",
+        "install_command": "No installation required",
+        "verified": true,
+        "warning": "DOES NOT WORK RELIABLY IN ELECTRON"
+      },
+      "api_patterns": {
+        "imports": [
+          "const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition"
+        ],
+        "initialization": "const recognition = new SpeechRecognition()",
+        "key_functions": [
+          "recognition.start()",
+          "recognition.stop()",
+          "recognition.onresult",
+          "recognition.onerror"
+        ],
+        "verified_against": "MDN Web Docs"
+      },
+      "configuration": {
+        "properties": {
+          "continuous": "boolean - keep listening after each result",
+          "interimResults": "boolean - return partial results",
+          "lang": "string - BCP 47 language tag"
+        }
+      },
+      "browser_support": {
+        "chrome": "Full support (requires internet)",
+        "edge": "Full support (requires internet)",
+        "firefox": "Limited support",
+        "safari": "Limited support",
+        "electron": "BROKEN - Google blocked API key for shell environments"
+      },
+      "gotchas": [
+        "CRITICAL: Does NOT work in Electron apps - Google blocked the API key",
+        "recognition.start() immediately calls recognition.stop() in Electron",
+        "Throws 'network' error in Electron environment",
+        "Requires internet connection (sends audio to Google servers)",
+        "Only SpeechSynthesis works offline, not SpeechRecognition",
+        "Feature detection: 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window"
+      ],
+      "recommendation": "DO NOT USE for Electron apps. Use OpenAI Whisper API instead.",
+      "research_sources": [
+        "https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API",
+        "https://github.com/electron/electron/issues/46143",
+        "https://github.com/electron/electron/issues/24278"
+      ]
+    },
+    {
+      "name": "react-dropzone",
+      "type": "library",
+      "verified_package": {
+        "name": "react-dropzone",
+        "install_command": "npm install react-dropzone",
+        "version": "^14.x (latest stable)",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import { useDropzone } from 'react-dropzone'"
+        ],
+        "initialization": "const { getRootProps, getInputProps, isDragActive, acceptedFiles } = useDropzone({ accept, onDrop })",
+        "key_functions": [
+          "useDropzone(options)",
+          "getRootProps()",
+          "getInputProps()",
+          "onDrop(acceptedFiles, rejectedFiles, event)",
+          "onDropAccepted(files, event)",
+          "onDropRejected(fileRejections, event)"
+        ],
+        "options": {
+          "accept": "MIME types object e.g. { 'image/*': ['.png', '.jpg'], 'application/pdf': ['.pdf'] }",
+          "maxFiles": "number - max files allowed",
+          "maxSize": "number - max file size in bytes",
+          "multiple": "boolean - allow multiple files",
+          "disabled": "boolean - disable dropzone",
+          "noClick": "boolean - disable click to open file dialog",
+          "noDrag": "boolean - disable drag and drop"
+        },
+        "verified_against": "react-dropzone documentation"
+      },
+      "configuration": {
+        "peer_dependencies": [
+          "react >= 16.8 (uses hooks)"
+        ]
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "client_side_only": true
+      },
+      "gotchas": [
+        "This is NOT a file uploader - it only handles the dropzone UI",
+        "You need to implement your own upload logic or file processing",
+        "Props from getRootProps() must be spread on the root element",
+        "Additional props should be passed through getRootProps(), not directly on element",
+        "Works well with existing Radix UI components in the project"
+      ],
+      "research_sources": [
+        "https://react-dropzone.js.org/",
+        "https://www.npmjs.com/package/react-dropzone",
+        "https://github.com/react-dropzone/react-dropzone"
+      ]
+    },
+    {
+      "name": "pdf-parse",
+      "type": "library",
+      "verified_package": {
+        "name": "pdf-parse",
+        "install_command": "npm install pdf-parse",
+        "version": "^2.4.5 (latest)",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import { PDFParse } from 'pdf-parse'",
+          "// or for v1.x: import pdfParse from 'pdf-parse'"
+        ],
+        "initialization_v2": "const parser = new PDFParse(buffer_or_url)",
+        "key_functions": [
+          "new PDFParse(source)",
+          "parser.getText()",
+          "parser.getInfo()",
+          "parser.getMetadata()"
+        ],
+        "v1_usage": {
+          "code": "const pdf = require('pdf-parse'); const data = await pdf(dataBuffer); console.log(data.text);"
+        },
+        "verified_against": "npm documentation"
+      },
+      "configuration": {
+        "dependencies": [
+          "No native dependencies - pure TypeScript"
+        ],
+        "supported_platforms": [
+          "Browser",
+          "Node.js",
+          "Next.js + Vercel",
+          "Netlify",
+          "AWS Lambda",
+          "Cloudflare Workers"
+        ]
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "supports_password_protected": true
+      },
+      "gotchas": [
+        "Version 2 has different API than version 1",
+        "Extracts text only - no formatting, images, or styles preserved",
+        "For text with coordinates, use pdf.js-extract or pdf2json instead",
+        "May need @types/pdf-parse for TypeScript if not included"
+      ],
+      "alternatives": {
+        "pdfjs-dist": "Mozilla's PDF.js - good for rendering + extraction, more complex API",
+        "pdf.js-extract": "Wrapper around pdfjs-dist for simpler text extraction with coordinates",
+        "unpdf": "Modern serverless-friendly option with PDF.js v5"
+      },
+      "research_sources": [
+        "https://www.npmjs.com/package/pdf-parse",
+        "https://strapi.io/blog/7-best-javascript-pdf-parsing-libraries-nodejs-2025"
+      ]
+    },
+    {
+      "name": "pdfjs-dist",
+      "type": "library",
+      "verified_package": {
+        "name": "pdfjs-dist",
+        "install_command": "npm install pdfjs-dist",
+        "version": "^5.4.530 (latest)",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import * as pdfjsLib from 'pdfjs-dist'",
+          "import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs'"
+        ],
+        "initialization": "pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker",
+        "key_functions": [
+          "pdfjsLib.getDocument(source)",
+          "pdfDoc.getPage(pageNumber)",
+          "page.getTextContent()",
+          "page.render(renderContext)"
+        ],
+        "text_extraction_pattern": {
+          "code": "const doc = await pdfjsLib.getDocument(arrayBuffer).promise;\nconst page = await doc.getPage(1);\nconst content = await page.getTextContent();\nconst text = content.items.map(item => item.str).join(' ');"
+        },
+        "verified_against": "npm documentation and blog tutorials"
+      },
+      "configuration": {
+        "web_worker_required": true,
+        "worker_setup": "Must set pdfjsLib.GlobalWorkerOptions.workerSrc to worker URL"
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "maintained_by": "Mozilla"
+      },
+      "gotchas": [
+        "MUST set up web worker or PDF loading will block main thread",
+        "Worker script path must be correctly configured in build setup",
+        "Extracts raw text only - formatting not preserved",
+        "More complex API than pdf-parse but more powerful",
+        "Good for both rendering PDFs and text extraction"
+      ],
+      "research_sources": [
+        "https://www.npmjs.com/package/pdfjs-dist",
+        "https://iamvkr.in/posts/extract-text-from-pdf-react/"
+      ]
+    },
+    {
+      "name": "tesseract.js",
+      "type": "library",
+      "verified_package": {
+        "name": "tesseract.js",
+        "install_command": "npm install tesseract.js",
+        "version": "^5.x or ^6.x (latest)",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import { createWorker } from 'tesseract.js'"
+        ],
+        "initialization": "const worker = await createWorker('eng')",
+        "key_functions": [
+          "createWorker(language)",
+          "worker.recognize(image)",
+          "worker.terminate()"
+        ],
+        "basic_usage": {
+          "code": "const worker = await createWorker('eng');\nconst { data: { text } } = await worker.recognize(imageFile);\nconsole.log(text);\nawait worker.terminate();"
+        },
+        "verified_against": "GitHub README and npm documentation"
+      },
+      "configuration": {
+        "supported_languages": "100+ languages",
+        "language_codes": "eng, spa, fra, deu, etc."
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "uses_webassembly": true,
+        "works_in_browser": true,
+        "works_in_nodejs": true
+      },
+      "version_6_changes": {
+        "hocr_disabled_by_default": true,
+        "enable_hocr": "worker.recognize(image, {}, { hocr: true })"
+      },
+      "gotchas": [
+        "Does NOT support PDF files directly - use with images only",
+        "Initial model download can be large (several MB per language)",
+        "WebAssembly-based so runs client-side",
+        "For multiple images, reuse worker instead of creating new ones",
+        "OpenAI Vision may be better for complex OCR tasks in this use case",
+        "Consider Scribe.js for PDF OCR support"
+      ],
+      "cdn_usage": {
+        "script": "<script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>",
+        "access": "Tesseract.createWorker('eng')"
+      },
+      "research_sources": [
+        "https://github.com/naptha/tesseract.js",
+        "https://tesseract.projectnaptha.com/",
+        "https://www.npmjs.com/package/tesseract.js"
+      ]
+    },
+    {
+      "name": "MediaRecorder API (Audio Recording)",
+      "type": "browser_api",
+      "verified_package": {
+        "name": "N/A - Browser built-in API",
+        "install_command": "No installation required",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "navigator.mediaDevices.getUserMedia({ audio: true })"
+        ],
+        "initialization": "const stream = await navigator.mediaDevices.getUserMedia({ audio: true });\nconst mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });",
+        "key_functions": [
+          "mediaRecorder.start()",
+          "mediaRecorder.stop()",
+          "mediaRecorder.ondataavailable",
+          "mediaRecorder.onstop"
+        ],
+        "audio_blob_creation": {
+          "code": "const chunks = [];\nmediaRecorder.ondataavailable = (e) => chunks.push(e.data);\nmediaRecorder.onstop = () => {\n  const blob = new Blob(chunks, { type: 'audio/webm' });\n  // Send to Whisper API\n};"
+        },
+        "verified_against": "MDN Web Docs"
+      },
+      "configuration": {
+        "recommended_mime_type": "audio/webm",
+        "whisper_compatible_formats": ["webm", "mp3", "wav", "m4a", "ogg"]
+      },
+      "gotchas": [
+        "Requires user permission for microphone access",
+        "Works well in Electron (unlike Web Speech API)",
+        "WebM format is well-supported and works with Whisper API",
+        "Need to handle permission denied errors gracefully",
+        "Consider showing visual feedback during recording"
+      ],
+      "research_sources": [
+        "https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder"
+      ]
+    }
+  ],
+  "unverified_claims": [
+    {
+      "claim": "ChatGPT-style table formatting",
+      "reason": "This is a UI/UX feature that depends on markdown rendering, not a specific library. The app already uses react-markdown which supports tables via remark-gfm (already installed).",
+      "risk_level": "low",
+      "resolution": "Use existing react-markdown + remark-gfm for table rendering"
+    }
+  ],
+  "recommendations": [
+    {
+      "category": "Voice Input",
+      "recommendation": "Use OpenAI Whisper API instead of Web Speech API",
+      "reason": "Web Speech API is broken in Electron due to Google blocking the API key for shell environments. OpenAI Whisper works reliably and integrates with existing OpenAI setup.",
+      "implementation": "Use MediaRecorder API to capture audio, then send to Whisper API endpoint"
+    },
+    {
+      "category": "Image Processing",
+      "recommendation": "Use OpenAI Vision API for all image analysis including OCR",
+      "reason": "The app already has OpenAI integration. GPT-4o/4.1-mini Vision can handle OCR, workout photo analysis, and document parsing. Simpler than maintaining separate OCR library.",
+      "fallback": "tesseract.js for offline OCR if needed"
+    },
+    {
+      "category": "PDF Parsing",
+      "recommendation": "Use pdf-parse for syllabus text extraction",
+      "reason": "Pure TypeScript, no native dependencies, works in browser/Electron. Simpler API than pdfjs-dist. Consider pdfjs-dist only if PDF rendering is also needed.",
+      "alternative": "OpenAI Vision can also extract text from PDF pages rendered as images"
+    },
+    {
+      "category": "File Upload UI",
+      "recommendation": "Use react-dropzone for drag-and-drop file upload",
+      "reason": "Well-maintained, hooks-based API, compatible with React 19, integrates well with existing Radix UI components",
+      "implementation": "Combine with existing UI patterns in the app"
+    },
+    {
+      "category": "Architecture",
+      "recommendation": "Implement a unified multi-modal input handler",
+      "reason": "All inputs (voice, images, documents) should flow through a common processing pipeline that determines the appropriate handler based on input type",
+      "flow": "Input -> Type Detection -> Specialized Handler -> LLM Context -> Response"
+    }
+  ],
+  "existing_integrations_to_leverage": [
+    {
+      "name": "OpenAI API",
+      "file": "src/openai.ts",
+      "current_usage": "Text chat completions via callOpenAiText()",
+      "extend_for": "Vision API (image analysis), Whisper API (voice transcription)"
+    },
+    {
+      "name": "react-markdown",
+      "current_usage": "Rendering assistant responses",
+      "extend_for": "Table formatting (already supported via remark-gfm)"
+    },
+    {
+      "name": "Dexie (IndexedDB)",
+      "file": "src/db/insight-db.ts",
+      "current_usage": "Local data storage",
+      "extend_for": "Storing uploaded documents, parsed data"
+    },
+    {
+      "name": "Supabase",
+      "file": "src/supabase/client.ts",
+      "current_usage": "Cloud sync",
+      "extend_for": "File storage if needed"
+    }
+  ],
+  "new_dependencies_required": [
+    {
+      "name": "react-dropzone",
+      "purpose": "File upload UI",
+      "install": "npm install react-dropzone",
+      "priority": "high"
+    },
+    {
+      "name": "pdf-parse",
+      "purpose": "PDF text extraction for syllabus parsing",
+      "install": "npm install pdf-parse",
+      "priority": "high"
+    }
+  ],
+  "optional_dependencies": [
+    {
+      "name": "tesseract.js",
+      "purpose": "Offline OCR fallback",
+      "install": "npm install tesseract.js",
+      "priority": "low",
+      "note": "OpenAI Vision API is preferred for OCR"
+    }
+  ],
+  "context7_libraries_used": [],
+  "created_at": "2025-01-13T12:00:00Z"
+}

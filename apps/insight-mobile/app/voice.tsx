@@ -2,7 +2,13 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-type Recording = import('expo-av').Audio.Recording;
+import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioRecorder,
+  useAudioRecorderState,
+} from 'expo-audio';
 
 import { Text, View } from '@/components/Themed';
 import { useTheme } from '@/src/state/theme';
@@ -17,7 +23,6 @@ import { uploadCaptureAudio } from '@/src/supabase/storage';
 import { uniqStrings } from '@/src/supabase/helpers';
 import { saveMeal } from '@/src/storage/nutrition';
 import { saveWorkout } from '@/src/storage/workouts';
-import { getRecordingOptions } from '@/src/lib/audio';
 
 function normalizeCaptureText(rawText: string) {
   return rawText
@@ -34,18 +39,20 @@ function formatTimeMarker(date = new Date()) {
 }
 
 const TIMESTAMP_LINE_RE = /^\[\d{2}:\d{2}(?::\d{2})?\]\s*$/;
-
-let cachedAudio: typeof import('expo-av') | null = null;
-
-function getAudioModule() {
-  if (cachedAudio) return cachedAudio;
-  try {
-    cachedAudio = require('expo-av');
-    return cachedAudio;
-  } catch {
-    return null;
-  }
-}
+const RECORDING_AUDIO_MODE = {
+  playsInSilentMode: true,
+  interruptionMode: 'duckOthers',
+  allowsRecording: true,
+  shouldPlayInBackground: false,
+  allowsBackgroundRecording: false,
+} as const;
+const IDLE_AUDIO_MODE = {
+  playsInSilentMode: true,
+  interruptionMode: 'mixWithOthers',
+  allowsRecording: false,
+  shouldPlayInBackground: false,
+  allowsBackgroundRecording: false,
+} as const;
 
 function hasSemanticContent(text?: string | null) {
   if (!text || typeof text !== 'string') return false;
@@ -63,14 +70,14 @@ export default function VoiceCaptureScreen() {
   const appendEventId = Array.isArray(eventIdParam) ? eventIdParam[0] : eventIdParam;
   const { palette, sizes, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const recordingRef = useRef<Recording | null>(null);
   const startTokenRef = useRef(0);
   const isStartingRef = useRef(false);
   const fullTranscriptRef = useRef('');
-  const [recording, setRecording] = useState<Recording | null>(null);
   const [recordingState, setRecordingState] = useState<'starting' | 'recording' | 'processing'>('starting');
   const [displayText, setDisplayText] = useState('');
   const [initError, setInitError] = useState<string | null>(null);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(audioRecorder);
 
   const markdownHint = useMemo(() => '#mood(8) +gym @person\n---', []);
   const maxDisplayChars = 4000;
@@ -90,60 +97,38 @@ export default function VoiceCaptureScreen() {
     const token = ++startTokenRef.current;
     setInitError(null);
     setRecordingState('starting');
-    const Audio = getAudioModule()?.Audio;
-    const recordingOptions = getRecordingOptions();
-    if (!Audio?.requestPermissionsAsync || !Audio?.Recording || !recordingOptions) {
-      setInitError('Audio recording is not available in this build.');
-      isStartingRef.current = false;
-      return;
-    }
     try {
-      if (recordingRef.current) {
-        try {
-          await recordingRef.current.stopAndUnloadAsync();
-        } catch {
-          // ignore stop failures
-        }
-        recordingRef.current = null;
-        setRecording(null);
-      }
-      const permission = await Audio.requestPermissionsAsync();
+      const permission = await AudioModule.requestRecordingPermissionsAsync();
       if (!permission.granted) {
         Alert.alert('Microphone permission needed', 'Enable mic access to record audio.');
         setInitError('Microphone permission denied.');
         return;
       }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const next = new Audio.Recording();
-      await next.prepareToRecordAsync(recordingOptions);
-      await next.startAsync();
+      await setAudioModeAsync(RECORDING_AUDIO_MODE);
+      await audioRecorder.prepareToRecordAsync(RecordingPresets.HIGH_QUALITY);
+      audioRecorder.record({});
       if (token !== startTokenRef.current) {
-        await next.stopAndUnloadAsync().catch(() => {});
+        await audioRecorder.stop().catch(() => {});
         return;
       }
-      recordingRef.current = next;
-      setRecording(next);
       setRecordingState('recording');
     } catch (err) {
       console.error('Audio recording start failed', err);
       setInitError(err instanceof Error ? err.message : 'Unable to start audio recording.');
-      setRecording(null);
-      recordingRef.current = null;
     } finally {
       isStartingRef.current = false;
     }
-  }, []);
+  }, [audioRecorder]);
 
   useEffect(() => {
     void startRecording();
     return () => {
       startTokenRef.current += 1;
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(() => {});
-        recordingRef.current = null;
+      if (recorderState.isRecording) {
+        audioRecorder.stop().catch(() => {});
       }
     };
-  }, [startRecording]);
+  }, [audioRecorder, recorderState.isRecording, startRecording]);
 
   useEffect(() => {
     if (recordingState !== 'recording') return;
@@ -373,15 +358,10 @@ export default function VoiceCaptureScreen() {
 
   const stopRecording = useCallback(async () => {
     if (recordingState !== 'recording') return;
-    if (!recording) {
-      router.back();
-      return;
-    }
     setRecordingState('processing');
     try {
-      await recording.stopAndUnloadAsync();
-      recordingRef.current = null;
-      const uri = recording.getURI();
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri;
       const attachment = uri
         ? ({
             id: `att_${Date.now()}_${Math.random().toString(16).slice(2)}`,
@@ -399,22 +379,22 @@ export default function VoiceCaptureScreen() {
       Alert.alert('Recording failed', 'Unable to stop the recording.');
       setRecordingState('recording');
     } finally {
-      setRecording(null);
+      if (!recorderState.isRecording) {
+        await setAudioModeAsync(IDLE_AUDIO_MODE);
+      }
     }
-  }, [finishCapture, recording, recordingState]);
+  }, [audioRecorder, finishCapture, recorderState.isRecording, recordingState]);
 
   const cancelRecording = useCallback(async () => {
-    if (recordingRef.current) {
+    if (recorderState.isRecording) {
       try {
-        await recordingRef.current.stopAndUnloadAsync();
+        await audioRecorder.stop();
       } catch {
         // ignore stop failures
       }
-      recordingRef.current = null;
     }
-    setRecording(null);
     router.back();
-  }, []);
+  }, [audioRecorder, recorderState.isRecording, router]);
 
   const hasContent = useMemo(() => hasSemanticContent(fullTranscriptRef.current), [displayText]);
   const previewText = useMemo(() => {

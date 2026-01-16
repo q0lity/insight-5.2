@@ -1,0 +1,48 @@
+{
+  "file_path": ".auto-claude-status",
+  "main_branch_history": [],
+  "task_views": {
+    "002-i-need-these-to-be-analyzed-and-i-need-the-pages-t": {
+      "task_id": "002-i-need-these-to-be-analyzed-and-i-need-the-pages-t",
+      "branch_point": {
+        "commit_hash": "223b6906c6e567162b9c4367984c6ffbc6ed28e6",
+        "content": "",
+        "timestamp": "2026-01-13T11:38:54.774343"
+      },
+      "worktree_state": {
+        "content": "{\n  \"active\": true,\n  \"spec\": \"002-i-need-these-to-be-analyzed-and-i-need-the-pages-t\",\n  \"state\": \"complete\",\n  \"subtasks\": {\n    \"completed\": 20,\n    \"total\": 20,\n    \"in_progress\": 0,\n    \"failed\": 0\n  },\n  \"phase\": {\n    \"current\": \"Polish and Edge Cases\",\n    \"id\": null,\n    \"total\": 4\n  },\n  \"workers\": {\n    \"active\": 0,\n    \"max\": 1\n  },\n  \"session\": {\n    \"number\": 13,\n    \"started_at\": \"2026-01-13T11:38:55.308521\"\n  },\n  \"last_update\": \"2026-01-13T12:02:51.624173\"\n}",
+        "last_modified": "2026-01-13T13:07:29.874637"
+      },
+      "task_intent": {
+        "title": "002-i-need-these-to-be-analyzed-and-i-need-the-pages-t",
+        "description": "",
+        "from_plan": false
+      },
+      "commits_behind_main": 3,
+      "status": "active",
+      "merged_at": null
+    },
+    "007-so-on-the-engine-right-here-where-i-chat-so-here-l": {
+      "task_id": "007-so-on-the-engine-right-here-where-i-chat-so-here-l",
+      "branch_point": {
+        "commit_hash": "223b6906c6e567162b9c4367984c6ffbc6ed28e6",
+        "content": "",
+        "timestamp": "2026-01-13T12:35:10.658231"
+      },
+      "worktree_state": {
+        "content": "{\n  \"active\": true,\n  \"spec\": \"007-so-on-the-engine-right-here-where-i-chat-so-here-l\",\n  \"state\": \"building\",\n  \"subtasks\": {\n    \"completed\": 6,\n    \"total\": 29,\n    \"in_progress\": 1,\n    \"failed\": 0\n  },\n  \"phase\": {\n    \"current\": \"Voice Input Component\",\n    \"id\": null,\n    \"total\": 3\n  },\n  \"workers\": {\n    \"active\": 0,\n    \"max\": 1\n  },\n  \"session\": {\n    \"number\": 7,\n    \"started_at\": \"2026-01-13T12:16:08.670571\"\n  },\n  \"last_update\": \"2026-01-13T12:28:43.670210\"\n}",
+        "last_modified": "2026-01-13T12:35:11.764143"
+      },
+      "task_intent": {
+        "title": "007-so-on-the-engine-right-here-where-i-chat-so-here-l",
+        "description": "",
+        "from_plan": false
+      },
+      "commits_behind_main": 3,
+      "status": "active",
+      "merged_at": null
+    }
+  },
+  "created_at": "2026-01-13T11:38:54.809392",
+  "last_updated": "2026-01-13T12:35:10.884481"
+}

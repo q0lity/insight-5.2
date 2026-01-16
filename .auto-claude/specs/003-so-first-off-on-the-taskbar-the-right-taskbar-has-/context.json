@@ -1,0 +1,46 @@
+{
+  "task_description": "UI Consistency & Multi-Select Item Properties: (1) Right sidebar property parity with calendar, (2) Convert item type selector to multi-select, (3) Add dashboard-style filters to Tasks/Notes views",
+  "scoped_services": ["desktop", "shared"],
+  "files_to_modify": {
+    "desktop": [
+      "apps/desktop/src/App.tsx",
+      "apps/desktop/src/workspace/views/ticktick-tasks.tsx",
+      "apps/desktop/src/workspace/views/notes.tsx"
+    ],
+    "shared": [
+      "packages/shared/src/models.ts"
+    ]
+  },
+  "files_to_reference": {
+    "filter_pattern": [
+      "apps/desktop/src/workspace/views/dashboard.tsx (lines 279-437, 1064-1122)",
+      "apps/desktop/src/workspace/views/notes.tsx (lines 28-71, 124-134, 216-260)"
+    ],
+    "item_type_selector": [
+      "apps/desktop/src/App.tsx (lines 1275, 6799-6814)"
+    ],
+    "detail_panel": [
+      "apps/desktop/src/App.tsx (lines 6780-7495)"
+    ],
+    "data_models": [
+      "packages/shared/src/models.ts (CalendarEvent, CalendarEventKind)"
+    ]
+  },
+  "patterns": {
+    "filter_ui_pattern": "Dashboard uses FilterType = 'all' | 'category' | 'tag' | 'person' | 'place' with filterType state and selectedFilters array. currentFilterOptions memo switches on filterType to return available options.",
+    "toggle_behavior": "Multi-select uses array toggle: isSelected ? filter out : spread and add",
+    "css_variables": "Use --panel, --accent, --muted, --text, --bg for consistent theming",
+    "styling_pattern": "Inline Tailwind CSS classes, no separate component files unless necessary"
+  },
+  "existing_implementations": {
+    "notes_filter": "apps/desktop/src/workspace/views/notes.tsx already has the complete filter pattern implementation - use as primary reference",
+    "dashboard_filter": "apps/desktop/src/workspace/views/dashboard.tsx has the original filter pattern at lines 1064-1122",
+    "detail_panel_properties": "App.tsx detail panel (lines 6780-7495) already has most properties: tags, context, location, people, skills, character, goal, project, category, subcategory, importance, difficulty sliders"
+  },
+  "key_decisions": {
+    "multi_kind_approach": "Add 'kinds: CalendarEventKind[]' array to CalendarEvent model while maintaining backward compatibility with single 'kind' field. Read legacy data as kinds: [kind]",
+    "filter_extraction": "Do NOT extract filter as separate component - inline implementation following existing patterns per spec"
+  },
+  "created_at": "2026-01-13T11:23:44.134371",
+  "updated_at": "2026-01-13T16:35:00.000Z"
+}

@@ -1,0 +1,177 @@
+{
+  "code_quality": [
+    {
+      "id": "cq-001",
+      "type": "code_quality",
+      "title": "Split monolithic App.tsx (9,049 lines) into modular architecture",
+      "description": "The main App.tsx file in the desktop app has grown to 9,049 lines, making it one of the largest single-file components possible. It handles state management, event handling, capture processing, UI rendering, and business logic all in one place. This violates every principle of maintainable code architecture.",
+      "rationale": "A file this large is nearly impossible to reason about, test, or safely modify. It creates severe merge conflicts, makes onboarding new developers extremely difficult, and hides bugs in its complexity. Industry best practice suggests component files stay under 300-500 lines. This file is 20-30x that size.",
+      "category": "large_files",
+      "severity": "critical",
+      "affectedFiles": [
+        "apps/desktop/src/App.tsx"
+      ],
+      "currentState": "Single 9,049-line file containing: workspace state management, event/task CRUD operations, capture parsing logic, multiple inline components, UI state for modals/panels, drag-and-drop handlers, and business logic for 15+ domain areas",
+      "proposedChange": "Split into: 1) App.tsx (shell, ~200 lines) - just layout and context providers, 2) src/state/workspace-state.ts - pane/tab management, 3) src/state/capture-state.ts - capture processing, 4) src/state/entities-state.ts - events/tasks/habits CRUD, 5) src/hooks/useCapture.ts - capture modal logic, 6) src/hooks/useEventEditor.ts - event editing logic, 7) Move inline components to separate files, 8) Create a context-based state architecture",
+      "codeExample": "// Current App.tsx structure:\nexport default function App() {\n  // 200+ useState calls\n  // 50+ useEffect hooks\n  // 100+ handler functions\n  // All inline\n  return (<>9000+ lines of JSX</>)\n}\n\n// Proposed structure:\n// App.tsx (~200 lines)\nimport { WorkspaceProvider } from './state/workspace-context'\nimport { CaptureProvider } from './state/capture-context'\nimport { WorkspaceShell } from './workspace/Shell'\n\nexport default function App() {\n  return (\n    <WorkspaceProvider>\n      <CaptureProvider>\n        <WorkspaceShell />\n      </CaptureProvider>\n    </WorkspaceProvider>\n  )\n}",
+      "bestPractice": "Single Responsibility Principle - Each module should have one reason to change. Component-driven architecture with state management extracted to contexts/stores.",
+      "metrics": {
+        "lineCount": 9049,
+        "complexity": null,
+        "duplicateLines": null,
+        "testCoverage": 0
+      },
+      "estimatedEffort": "large",
+      "breakingChange": false,
+      "prerequisites": [
+        "Create comprehensive test coverage before refactoring",
+        "Establish state management pattern (Context API or Zustand)",
+        "Define module boundaries and interfaces"
+      ]
+    },
+    {
+      "id": "cq-002",
+      "type": "code_quality",
+      "title": "Consolidate duplicated NLP parsing logic into shared parser package",
+      "description": "The natural language parsing code is duplicated between desktop (1,107 lines) and mobile (933 lines) with nearly identical implementations. Meanwhile, a well-structured packages/parser module exists with proper separation (tokenizer, classifier, entity-extractor) but is not being used by either app.",
+      "rationale": "Code duplication leads to inconsistent behavior between platforms, doubled maintenance burden, and bugs when fixes are applied to only one copy. The parser package already exists with proper architecture but is being ignored.",
+      "category": "duplication",
+      "severity": "major",
+      "affectedFiles": [
+        "apps/desktop/src/nlp/natural.ts",
+        "apps/insight-mobile/src/lib/nlp/natural.ts",
+        "packages/parser/src/pipeline/tokenizer.ts",
+        "packages/parser/src/pipeline/classifier.ts",
+        "packages/parser/src/pipeline/entity-extractor.ts"
+      ],
+      "currentState": "Two parallel NLP implementations (desktop: 1,107 lines, mobile: 933 lines) with identical type definitions (ParsedTask, ParsedEvent, ParsedBlock), identical helper functions (clamp, startOfDayMs, addDaysMs, snapDownToHalfHour), and similar parsing logic. The shared packages/parser module is never imported.",
+      "proposedChange": "1) Audit packages/parser to understand its capabilities, 2) Migrate desktop and mobile NLP code into packages/parser, 3) Create platform adapters (packages/parser/src/adapter/desktop.ts already exists), 4) Update apps to import from @insight/parser, 5) Remove duplicate implementations from apps",
+      "codeExample": "// Current (duplicated in both apps):\n// apps/desktop/src/nlp/natural.ts\nexport type ParsedEvent = { title: string; startAt: number; ... }\nfunction clamp(n: number, a: number, b: number) { return Math.max(a, Math.min(b, n)) }\nfunction startOfDayMs(ms: number) { ... }\nexport function parseCaptureNatural(...) { ... }\n\n// apps/insight-mobile/src/lib/nlp/natural.ts\nexport type ParsedEvent = { title: string; startAt: number; ... } // SAME!\nfunction clamp(n: number, a: number, b: number) { ... } // SAME!\nfunction startOfDayMs(ms: number) { ... } // SAME!\nexport function parseCaptureNatural(...) { ... } // SIMILAR!\n\n// Proposed:\n// Both apps import from:\nimport { parseCaptureNatural, ParsedEvent } from '@insight/parser'",
+      "bestPractice": "DRY (Don't Repeat Yourself) - Extract common logic into shared packages. Monorepo packages should be the single source of truth for shared functionality.",
+      "metrics": {
+        "lineCount": 2040,
+        "complexity": null,
+        "duplicateLines": 850,
+        "testCoverage": 0
+      },
+      "estimatedEffort": "medium",
+      "breakingChange": false,
+      "prerequisites": [
+        "Document current behavior of both implementations",
+        "Identify any platform-specific differences",
+        "Add tests to packages/parser before migration"
+      ]
+    },
+    {
+      "id": "cq-003",
+      "type": "code_quality",
+      "title": "Add comprehensive test coverage for critical business logic",
+      "description": "The entire apps directory has zero test files. No unit tests, no integration tests, no component tests. Critical business logic (parsing, scoring, storage, sync) has no test coverage at all.",
+      "rationale": "Without tests, refactoring is extremely risky. Any code change could introduce regressions that go unnoticed. Test coverage is a prerequisite for safe refactoring and is essential for maintaining code quality in a production application.",
+      "category": "testing",
+      "severity": "major",
+      "affectedFiles": [
+        "apps/desktop/src/nlp/natural.ts",
+        "apps/desktop/src/nlp/llm-parse.ts",
+        "apps/desktop/src/scoring/points.ts",
+        "apps/desktop/src/scoring/streaks.ts",
+        "apps/desktop/src/supabase/sync.ts",
+        "apps/desktop/src/storage/*.ts",
+        "apps/insight-mobile/src/lib/capture/processor.ts",
+        "apps/insight-mobile/src/storage/*.ts"
+      ],
+      "currentState": "0 test files in apps/ directory. Critical modules like NLP parsing (parseCaptureNatural), scoring (points.ts, streaks.ts), and sync (sync.ts with 14 'any' types) have no tests.",
+      "proposedChange": "1) Set up testing infrastructure (Vitest for desktop, Jest for mobile), 2) Add unit tests for pure functions first (date utils, scoring calculations, parsing helpers), 3) Add integration tests for storage modules, 4) Add component tests for critical UI flows, 5) Target 80% coverage for business logic modules",
+      "codeExample": "// Example test for scoring/points.ts\nimport { describe, it, expect } from 'vitest'\nimport { basePoints, pointsForMinutes, multiplierFor } from '../src/scoring/points'\n\ndescribe('scoring/points', () => {\n  describe('basePoints', () => {\n    it('should return correct points for importance and difficulty', () => {\n      expect(basePoints(5, 5)).toBe(25)\n      expect(basePoints(10, 1)).toBe(10)\n    })\n  })\n\n  describe('pointsForMinutes', () => {\n    it('should scale points with duration', () => {\n      expect(pointsForMinutes(25, 30)).toBe(18.75)\n    })\n  })\n})",
+      "bestPractice": "Test Pyramid - Build a solid foundation of unit tests, supplemented by integration tests, with fewer end-to-end tests. Critical business logic should have near-100% coverage.",
+      "metrics": {
+        "lineCount": null,
+        "complexity": null,
+        "duplicateLines": null,
+        "testCoverage": 0
+      },
+      "estimatedEffort": "large",
+      "breakingChange": false,
+      "prerequisites": [
+        "Choose testing framework (Vitest recommended for Vite project)",
+        "Set up test configuration files",
+        "Create test utilities and mocks for common dependencies"
+      ]
+    },
+    {
+      "id": "cq-004",
+      "type": "code_quality",
+      "title": "Eliminate excessive 'any' type usage for type safety",
+      "description": "There are 82 occurrences of ': any' type annotations across 26 files, with sync.ts alone having 14 'any' types. This defeats TypeScript's purpose and hides potential runtime errors.",
+      "rationale": "Excessive 'any' usage creates invisible type errors that only manifest at runtime. It makes refactoring dangerous, IDE autocomplete useless, and documentation unclear. Type safety is essential for maintainability in a large codebase.",
+      "category": "types",
+      "severity": "minor",
+      "affectedFiles": [
+        "apps/desktop/src/supabase/sync.ts",
+        "apps/desktop/src/nlp/llm-parse.ts",
+        "apps/desktop/src/openai.ts",
+        "apps/desktop/src/workspace/views/settings.tsx",
+        "apps/insight-mobile/src/storage/workouts.ts",
+        "apps/insight-mobile/src/storage/inbox.ts"
+      ],
+      "currentState": "82 'any' type usages including: sync.ts (14), llm-parse.ts (20), settings.tsx (5), workouts.ts (7). Common patterns: Supabase responses typed as 'any', LLM API responses as 'any', event handlers as 'any'.",
+      "proposedChange": "1) Enable stricter TypeScript settings (noImplicitAny: true), 2) Create proper types for Supabase responses using generated types, 3) Create types for LLM API responses with validation, 4) Replace 'any' with 'unknown' where type is truly unknown, then add type guards, 5) Use generics for flexible but type-safe functions",
+      "codeExample": "// Current (sync.ts):\nconst data: any = await supabase.from('events').select('*')\nconst result: any = processData(data)\n\n// Proposed:\nimport type { Database } from '../types/supabase'\ntype EventRow = Database['public']['Tables']['events']['Row']\n\nconst { data, error } = await supabase.from('events').select('*')\nif (error) throw error\nconst typedData: EventRow[] = data\n\n// For LLM responses:\nfunction parseLLMResponse(raw: unknown): LLMParsedResult {\n  if (!isValidLLMResponse(raw)) throw new Error('Invalid response')\n  return raw as LLMParsedResult\n}",
+      "bestPractice": "Strict TypeScript - Enable strict mode and avoid 'any'. Use 'unknown' with type guards, generics for flexibility, and generated types for external APIs (Supabase, OpenAI).",
+      "metrics": {
+        "lineCount": null,
+        "complexity": null,
+        "duplicateLines": null,
+        "testCoverage": null
+      },
+      "estimatedEffort": "medium",
+      "breakingChange": false,
+      "prerequisites": [
+        "Generate Supabase types using supabase gen types",
+        "Define response types for OpenAI API calls",
+        "Enable incremental strict mode in tsconfig"
+      ]
+    },
+    {
+      "id": "cq-005",
+      "type": "code_quality",
+      "title": "Standardize InboxCapture type definitions across platforms",
+      "description": "The InboxCapture type is defined differently in desktop and mobile apps with divergent fields. Desktop has 5 fields while mobile has 21 fields, leading to inconsistent data handling and potential sync issues.",
+      "rationale": "Divergent type definitions for the same domain concept cause data inconsistencies, sync bugs, and confusion. Shared domain types should be defined once in the shared package and imported by all apps.",
+      "category": "types",
+      "severity": "minor",
+      "affectedFiles": [
+        "apps/desktop/src/storage/inbox.ts",
+        "apps/insight-mobile/src/storage/inbox.ts",
+        "packages/shared/src/models.ts"
+      ],
+      "currentState": "Desktop InboxCapture: { id, createdAt, rawText, status, entityIds } (5 fields). Mobile InboxCapture: { id, createdAt, rawText, status, attachments, tags, contexts, people, location, skills, character, goal, project, category, subcategory, estimateMinutes, importance, difficulty, points, processedText } (21 fields). These types have drifted apart over time.",
+      "proposedChange": "1) Define canonical InboxCapture type in packages/shared/src/models.ts with all fields as optional where appropriate, 2) Create platform-specific extensions if needed (e.g., MobileInboxCapture extends InboxCapture), 3) Update both apps to import from @insight/shared, 4) Add data migration if needed for desktop to support new fields",
+      "codeExample": "// packages/shared/src/models.ts\nexport type InboxCaptureStatus = 'raw' | 'parsed' | 'needs_clarification'\n\nexport type CaptureAttachment = {\n  id: string\n  type: 'image' | 'audio' | 'location' | 'file'\n  createdAt: number\n  uri?: string\n  label?: string\n  status?: 'pending' | 'ready' | 'failed'\n  transcription?: string | null\n  analysis?: string | null\n}\n\nexport type InboxCapture = {\n  id: string\n  createdAt: number\n  rawText: string\n  status: InboxCaptureStatus\n  entityIds?: string[]\n  // Extended fields (optional for backwards compatibility)\n  attachments?: CaptureAttachment[]\n  tags?: string[]\n  contexts?: string[]\n  people?: string[]\n  location?: string | null\n  // ... rest of fields\n}\n\n// Both apps:\nimport type { InboxCapture } from '@insight/shared'",
+      "bestPractice": "Single Source of Truth - Domain types should be defined once in a shared package. Use optional fields for backwards compatibility and platform-specific extensions for specialized needs.",
+      "metrics": {
+        "lineCount": null,
+        "complexity": null,
+        "duplicateLines": 50,
+        "testCoverage": null
+      },
+      "estimatedEffort": "small",
+      "breakingChange": true,
+      "prerequisites": [
+        "Audit all usages of InboxCapture in both apps",
+        "Plan data migration strategy for field additions",
+        "Ensure Supabase schema supports all fields"
+      ]
+    }
+  ],
+  "metadata": {
+    "filesAnalyzed": 156,
+    "largeFilesFound": 12,
+    "duplicateBlocksFound": 3,
+    "lintingConfigured": true,
+    "prettierConfigured": false,
+    "testsPresent": false,
+    "typeAnyCount": 82,
+    "generatedAt": "2026-01-13T12:00:00Z"
+  }
+}

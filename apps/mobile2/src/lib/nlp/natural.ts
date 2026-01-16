@@ -15,6 +15,7 @@ export type ParsedTask = {
   project?: string | null
   importance?: number | null
   difficulty?: number | null
+  scope?: 'inline' | 'global'
 }
 
 export type ParsedEvent = {
@@ -37,6 +38,8 @@ export type ParsedEvent = {
   project?: string | null
   importance?: number | null
   difficulty?: number | null
+  parentHint?: string | null
+  openEnded?: boolean
 }
 
 export type ParseNaturalResult = {
@@ -261,6 +264,25 @@ function estimateMinutes(text: string) {
   return 30
 }
 
+function isImmediateIntent(text: string) {
+  return /\b(right now|now|starting|start(?:ing)?|about to|gonna|going to)\b/i.test(text)
+}
+
+function isPhysicalAction(text: string) {
+  return /\b(run|running|workout|gym|exercise|walk|walking|lift|lifting|train|training|bike|biking|cycle|cycling|swim|swimming|jog|jogging|stretch|stretching)\b/i.test(text)
+}
+
+function extractEmbeddedParentHint(text: string) {
+  const match = text.match(/\b(?:during|while)\s+(?:my|the|a|an)?\s*([a-z][\w\s-]{0,40})/i)
+  if (!match?.[1]) return null
+  const raw = match[1]
+    .split(/\b(?:and then|then|also|but)\b/i)[0]
+    ?.split(/[,.]/)[0]
+    ?.trim()
+  if (!raw) return null
+  return normalizeTitle(raw)
+}
+
 function parseMood(text: string) {
   const t = text.toLowerCase()
   if (/#mood\s*(?:\(|:)/.test(t)) return null
@@ -286,6 +308,7 @@ function parseMood(text: string) {
     { re: /\b(awful|terrible|horrible|miserable)\b/, value: 1 },
     { re: /\b(happy|joyful|excited)\b/, value: 8 },
     { re: /\b(sad|down|depressed)\b/, value: 2 },
+    { re: /\b(angry|mad|frustrated)\b/, value: 3 },
   ]
 
   for (const m of adjectiveMap) {
@@ -445,6 +468,7 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
     const mood = parseMood(phraseRaw)
     const base = phraseRaw.replace(/\b(feeling|feel|mood)\b.*$/i, '').trim()
     const phrase = stripTokenNoise(base)
+    const embeddedParentHint = extractEmbeddedParentHint(phraseRaw)
     const isPast = looksLikePastTense(phraseRaw) || looksLikePastTense(text)
     const preferredMin: number | null = lastExplicitEndMin ?? lastExplicitMin
     let time: { startMin: number; endMin: number; consumed: string } | null = phrase ? parseTimeRange(phrase, nowMs, preferredMin) : null
@@ -466,6 +490,9 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
     const duration = parseDurationMinutes(phrase) ?? estimateMinutes(phrase)
     const isForgot = looksLikeForgot(phraseRaw)
     const isFutureContext = dayOffset > 0 && !isPast
+    const immediateIntent = isImmediateIntent(phraseRaw)
+    const physicalAction = isPhysicalAction(phrase)
+    const forceEvent = physicalAction && (immediateIntent || /\bshould\b/i.test(phraseRaw))
 
     if (mood != null) {
       let at = isPast ? defaultPastAt(dayStart, phraseRaw, nowMs) : nowMs
@@ -523,6 +550,7 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
         }
       }
       let createdTask = false
+      const scoped = /\b(later|after this|after that|tomorrow|next|eventually)\b/i.test(phraseRaw) || isFutureContext ? 'global' : 'inline'
       if (taskIntent) {
         const taskRaw = normalizeTitle(stripFirstPersonFuturePrefix(titlePrefix.replace(/\b(make|set)\b.*\b(task|todo|reminder)\b.*$/i, '').trim()))
         if (!looksLikeGarbagePhrase(taskRaw)) {
@@ -532,6 +560,7 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
             estimateMinutes: estimateMinutes(taskRaw),
             scheduledAt: startAt,
             dueAt: endAt,
+            scope: scoped,
           })
           lastTaskIndex = tasks.length - 1
         } else if (lastTaskIndex != null) {
@@ -554,6 +583,7 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
           dueAt: endAt,
           tags: ['#shopping'],
           notes: buyItems.map((x) => `- [ ] ${x}`).join('\n'),
+          scope: scoped,
         })
         createdTask = true
       }
@@ -563,10 +593,11 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
           title: eventTitleNorm,
           startAt,
           endAt: Math.max(endAt, startAt + 5 * 60 * 1000),
-          kind: 'event',
+          kind: embeddedParentHint ? 'episode' : 'event',
           estimateMinutes: Math.round((Math.max(endAt, startAt) - startAt) / (60 * 1000)),
           explicitTime: true,
           sourceText: phraseRaw,
+          parentHint: embeddedParentHint,
         })
       }
       lastExplicitMin = inferredEndMin
@@ -578,8 +609,9 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
         if (!looksLikeGarbagePhrase(taskTitleNorm)) {
           tasks.push({
             title: taskTitleNorm,
-          status: isPast ? 'done' : isForgot ? 'todo' : 'todo',
-          estimateMinutes: estimateMinutes(taskTitle),
+            status: isPast ? 'done' : isForgot ? 'todo' : 'todo',
+            estimateMinutes: estimateMinutes(taskTitle),
+            scope: scoped,
           })
           lastTaskIndex = tasks.length - 1
         }
@@ -701,11 +733,13 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
     }
 
     const imperative =
-      /^(call|text|email|buy|pick up|schedule|book|do|finish|start)\b/i.test(phrase) ||
-      /\b(i have to|i need to|i'm gonna|im gonna|going to|gotta)\b/i.test(phrase)
+      !forceEvent &&
+      (/^(call|text|email|buy|pick up|schedule|book|do|finish|start)\b/i.test(phrase) ||
+        /\b(i have to|i need to|i'm gonna|im gonna|going to|gotta)\b/i.test(phrase))
     if (imperative || isForgot || isFutureContext) {
       const normalized = normalizeTitle(stripFirstPersonFuturePrefix(phrase.replace(/^forgot\s+/i, '').trim()))
       if (looksLikeGarbagePhrase(normalized)) continue
+      const scope = /\b(later|after this|after that|tomorrow|next|eventually)\b/i.test(phraseRaw) || isFutureContext ? 'global' : 'inline'
       const buyList = extractBuyList(phrase)
       const money = parseMoneyUsd(phrase) ?? parseMoneyUsd(text)
       const scheduledAt = isFutureContext ? dayStart + inferDefaultFutureTaskHour(phrase) * 60 * 60 * 1000 : null
@@ -722,18 +756,24 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
         dueAt,
         tags,
         notes: noteLines.length ? noteLines.join('\n') : undefined,
+        scope,
       })
     } else {
       const normalized = normalizeTitle(stripFirstPersonFuturePrefix(phrase))
       if (looksLikeGarbagePhrase(normalized)) continue
+      const baseStart = defaultStart
+      const baseEnd = defaultEnd
+      const openEnded = forceEvent && immediateIntent && !isPast
       events.push({
         title: normalized,
-        startAt: defaultStart,
-        endAt: defaultEnd,
-        kind: 'event',
+        startAt: baseStart,
+        endAt: baseEnd,
+        kind: embeddedParentHint ? 'episode' : 'event',
         estimateMinutes: duration,
         explicitTime: false,
         sourceText: phraseRaw,
+        parentHint: embeddedParentHint,
+        openEnded,
       })
     }
   }

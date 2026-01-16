@@ -1,0 +1,153 @@
+{
+  "subtasks": {
+    "subtask-2-1": {
+      "attempts": [
+        {
+          "session": 1,
+          "timestamp": "2026-01-13T11:42:43.527174",
+          "approach": "Implemented: Convert detailNotesFilter state to array type in App.tsx",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-2-2": {
+      "attempts": [
+        {
+          "session": 2,
+          "timestamp": "2026-01-13T11:46:49.397298",
+          "approach": "Implemented: Update item type selector UI to toggle behavior in App.tsx",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-2-3": {
+      "attempts": [
+        {
+          "session": 3,
+          "timestamp": "2026-01-13T11:51:33.498002",
+          "approach": "Implemented: Update commitEvent to handle multiple kinds",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-3-1": {
+      "attempts": [
+        {
+          "session": 4,
+          "timestamp": "2026-01-13T11:54:25.734614",
+          "approach": "Implemented: Add filter state and available options memos to ticktick-tasks.tsx",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-3-2": {
+      "attempts": [
+        {
+          "session": 5,
+          "timestamp": "2026-01-13T11:56:13.569254",
+          "approach": "Implemented: Add filter bar UI below status filters in ticktick-tasks.tsx",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-3-3": {
+      "attempts": [
+        {
+          "session": 6,
+          "timestamp": "2026-01-13T11:58:27.650183",
+          "approach": "Implemented: Apply filters to task list in ticktick-tasks.tsx",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-4-1": {
+      "attempts": [
+        {
+          "session": 7,
+          "timestamp": "2026-01-13T12:00:18.357296",
+          "approach": "Implemented: Audit Notes filter UI against dashboard pattern for consistency",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-5-1": {
+      "attempts": [
+        {
+          "session": 8,
+          "timestamp": "2026-01-13T12:03:54.380510",
+          "approach": "Implemented: Audit right sidebar for missing calendar properties",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-5-2": {
+      "attempts": [
+        {
+          "session": 9,
+          "timestamp": "2026-01-13T12:07:09.218606",
+          "approach": "Implemented: Add any missing properties to right sidebar detail panel",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-6-1": {
+      "attempts": [
+        {
+          "session": 10,
+          "timestamp": "2026-01-13T12:15:01.337384",
+          "approach": "Implemented: End-to-end verification of multi-select item types",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-6-2": {
+      "attempts": [
+        {
+          "session": 11,
+          "timestamp": "2026-01-13T12:18:07.902455",
+          "approach": "Implemented: Cross-view filter consistency verification",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    },
+    "subtask-6-3": {
+      "attempts": [
+        {
+          "session": 12,
+          "timestamp": "2026-01-13T12:23:32.989508",
+          "approach": "Implemented: Console error and TypeScript verification",
+          "success": true,
+          "error": null
+        }
+      ],
+      "status": "completed"
+    }
+  },
+  "stuck_subtasks": [],
+  "metadata": {
+    "created_at": "2026-01-13T11:35:24.879604",
+    "last_updated": "2026-01-13T12:23:32.989566"
+  }
+}

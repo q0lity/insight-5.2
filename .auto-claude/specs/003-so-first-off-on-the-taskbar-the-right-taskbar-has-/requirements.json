@@ -1,0 +1,26 @@
+{
+  "task_description": "So first off, on the taskbar, the right taskbar has to have all the properties of the, the calendar. So when I'm here and I have an event, it needs to have, like, everything that's, like, in here. You know what I mean? So I need that to be at parity. The second thing is is that The this part needs to be a multiselect. Okay? Because some things can be events and tasks. So it just needs to it needs to be additive properties, not not like either ors. Okay? And then everything on the task pane, like, it needs to fit in, and I need to have, like, selector columns and a little selector that allows me to kind of select the tasks that, you know, like, the properties and stuff that I have going on. So for example, like, if I'm on the dashboard, I like when I have all these, things here, like, you know, that I can select by, categories and stuff like that. So, that's a like, I want that across, like, even, like, you know, even in my, notes section. And so and then, yeah, so I need you to make, those fixes, and, I need you to make those fixes. So that's, that's another thing.",
+  "workflow_type": "feature",
+  "attached_images": [
+    {
+      "filename": "screenshot-1768321154451.png",
+      "path": "attachments/screenshot-1768321154451.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321177401.png",
+      "path": "attachments/screenshot-1768321177401.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321192294.png",
+      "path": "attachments/screenshot-1768321192294.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321229861.png",
+      "path": "attachments/screenshot-1768321229861.png",
+      "description": ""
+    }
+  ]
+}

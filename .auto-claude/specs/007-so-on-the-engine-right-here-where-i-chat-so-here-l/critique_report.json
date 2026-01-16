@@ -1,0 +1,56 @@
+{
+  "critique_completed": true,
+  "issues_found": [
+    {
+      "severity": "medium",
+      "category": "completeness",
+      "description": "Missing pdf-parse code patterns - research.json provided both v1 and v2 API patterns, but spec had no code examples showing how to use pdf-parse for PDF text extraction",
+      "location": "Patterns to Follow section (after Task/Event Creation Pattern)",
+      "fix_applied": "Added new 'PDF Text Extraction Pattern' section with complete code example using v1.x API pattern (pdfParse(buffer) returning { text, numpages, info })",
+      "verified": true
+    },
+    {
+      "severity": "medium",
+      "category": "completeness",
+      "description": "Missing react-dropzone usage pattern - spec only mentioned adding the dependency without showing the critical initialization code using useDropzone() hook",
+      "location": "Patterns to Follow section (after Task/Event Creation Pattern)",
+      "fix_applied": "Added new 'react-dropzone Pattern' section with complete code example showing useDropzone() hook, accept configuration, and JSX usage pattern",
+      "verified": true
+    },
+    {
+      "severity": "low",
+      "category": "alignment",
+      "description": "Missing critical gotcha about getRootProps() spreading - research.json explicitly warned 'Props from getRootProps() must be spread on the root element', but this was not in spec's DO/DON'T section",
+      "location": "Implementation Notes > DON'T section",
+      "fix_applied": "Added two new DON'T items: 'Pass getRootProps() as a prop - MUST spread it directly on root element' and 'Forget getInputProps() - react-dropzone requires the hidden input element'",
+      "verified": true
+    },
+    {
+      "severity": "low",
+      "category": "accuracy",
+      "description": "pdf-parse version ambiguity - research.json noted v1 vs v2 have different APIs, but spec didn't specify which version to use in package.json entry",
+      "location": "Files to Modify table, package.json row",
+      "fix_applied": "Updated package.json entry to specify 'react-dropzone@^14.x', 'pdf-parse@^1.1.1' with explicit note '(use v1.x API, NOT v2)'",
+      "verified": true
+    }
+  ],
+  "issues_fixed": true,
+  "no_issues_found": false,
+  "critique_summary": "The spec was well-structured but had completeness gaps in code patterns. Missing patterns for pdf-parse and react-dropzone could have caused implementation confusion. Also missing a critical gotcha about react-dropzone's getRootProps() spreading requirement from the research findings. All 4 issues have been fixed: added 2 new pattern sections, added 2 new DON'T items, and clarified package versions.",
+  "confidence_level": "high",
+  "recommendations": [
+    "The spec now comprehensively covers all patterns from research.json - ready for implementation",
+    "Confidence thresholds (0.85/0.50) correctly match existing codebase LearningSettings defaults",
+    "Environment variables correctly use VITE_ prefix matching .env.example",
+    "Vision API and Whisper API patterns match research findings exactly"
+  ],
+  "validation_checks": {
+    "spec_valid_markdown": true,
+    "overview_section_present": true,
+    "requirements_section_present": true,
+    "success_criteria_section_present": true,
+    "patterns_section_enhanced": true,
+    "all_research_findings_incorporated": true
+  },
+  "created_at": "2026-01-13T12:30:00Z"
+}

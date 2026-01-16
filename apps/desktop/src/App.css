@@ -1,12 +1,13 @@
 :root {
-  --shadow: 0 10px 28px rgba(17, 24, 39, 0.06);
-  --shadow2: 0 10px 18px rgba(17, 24, 39, 0.08);
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  --shadow2: 0 16px 40px rgba(0, 0, 0, 0.28);
+  --shadowSoft: 0 12px 30px rgba(0, 0, 0, 0.18);
   --right-panel-width: 300px;
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
   --control-h-xs: 26px;
   --control-h-sm: 28px;
   --control-h-md: 34px;
@@ -14,25 +15,35 @@
   --control-pad-sm: 0 9px;
   --control-pad-md: 0 10px;
   --control-pad-lg: 0 12px;
-  --control-border: rgba(17, 24, 39, 0.12);
-  --control-bg: rgba(255, 255, 255, 0.9);
-  --control-bg-hover: rgba(255, 255, 255, 1);
-  --control-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
-  --control-shadow-hover: 0 10px 24px rgba(15, 23, 42, 0.12);
-  --focus-ring: var(--accentSoft);
-  --cta-gradient: linear-gradient(135deg, var(--accent), rgba(217, 93, 57, 0.85));
-  --cta-border: var(--accentBorder);
+  --control-border: color-mix(in srgb, var(--border2) 85%, transparent);
+  --control-bg: var(--glass);
+  --control-bg-hover: color-mix(in srgb, var(--glass3) 70%, transparent);
+  --control-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  --control-shadow-hover: 0 16px 34px rgba(0, 0, 0, 0.32);
+  --focus-ring: var(--accentMid);
+  --cta-gradient: var(--accent);
+  --cta-border: color-mix(in srgb, var(--accent) 70%, #ffffff 10%);
+  --glass-border: color-mix(in srgb, var(--border2) 70%, transparent);
+  --edge-highlight: rgba(255, 255, 255, 0.06);
+  --edge-shadow: rgba(0, 0, 0, 0.45);
 }
 
 :root[data-theme='dark'] {
-  --shadow: 0 14px 32px rgba(0, 0, 0, 0.2);
-  --shadow2: 0 10px 22px rgba(0, 0, 0, 0.16);
-  --control-border: rgba(255, 255, 255, 0.08);
-  --control-bg: rgba(22, 28, 44, 0.9);
-  --control-bg-hover: rgba(27, 34, 52, 0.94);
-  --control-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
-  --control-shadow-hover: 0 12px 26px rgba(0, 0, 0, 0.18);
-  --focus-ring: rgba(217, 123, 80, 0.26);
+  --shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+  --shadow2: 0 18px 44px rgba(0, 0, 0, 0.35);
+  --control-border: rgba(148, 163, 184, 0.18);
+  --control-bg: var(--glass);
+  --control-bg-hover: rgba(24, 30, 40, 0.92);
+  --control-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  --control-shadow-hover: 0 18px 40px rgba(0, 0, 0, 0.38);
+  --focus-ring: var(--accentMid);
+}
+
+:root[data-theme='midnight'] {
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  --shadow2: 0 12px 40px rgba(0, 0, 0, 0.40);
+  --shadowSoft: 0 8px 30px rgba(0, 0, 0, 0.28);
+  --focus-ring: var(--accentMid);
 }
 
 :root[data-calendar-mode='day'] {
@@ -58,22 +69,26 @@ button {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-weight: 600;
+  font-weight: 650;
   line-height: 1;
-  box-shadow: var(--control-shadow);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease, background 0.2s ease;
+  box-shadow: var(--control-shadow), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background 0.2s ease;
 }
 
 button:hover {
   border-color: var(--border2);
   background: var(--control-bg-hover);
   box-shadow: var(--control-shadow-hover);
+  transform: translateY(-1px);
 }
 
 button:focus-visible {
-  outline: none;
   border-color: var(--accentBorder);
-  box-shadow: 0 0 0 3px var(--focus-ring), var(--control-shadow);
+  outline: 3px solid var(--accentMid);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--glowSoft), var(--control-shadow);
 }
 
 button:disabled {
@@ -85,20 +100,25 @@ button:disabled {
 input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
 textarea {
   border: 1px solid var(--border);
-  background: var(--panel2);
+  background: var(--glass2);
   color: var(--text);
   border-radius: var(--radius-md);
   padding: 6px 10px;
   min-height: var(--control-h-md);
   line-height: 1.25;
   outline: none;
+  box-shadow: inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
 }
 
 input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):focus,
 textarea:focus {
   border-color: var(--accentBorder);
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  outline: 3px solid var(--accentMid);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--glowSoft);
 }
 
 select {
@@ -106,15 +126,20 @@ select {
   height: var(--control-h-md);
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
-  background: var(--panel2);
+  background: var(--glass2);
   padding: 0 10px;
   color: var(--text);
   outline: none;
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
 }
 
 select:focus-visible {
   border-color: var(--accentBorder);
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  outline: 3px solid var(--accentMid);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--glowSoft);
 }
 
 /* Shell */
@@ -125,6 +150,14 @@ select:focus-visible {
   gap: 0;
   padding: 0;
   position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--bg2);
+}
+
+.uiShell::before,
+.uiShell::after {
+  display: none;
 }
 
 .uiMain {
@@ -136,6 +169,8 @@ select:focus-visible {
   overflow: hidden;
   grid-template-rows: minmax(0, 1fr);
   transition: grid-template-columns 220ms ease;
+  position: relative;
+  z-index: 1;
 }
 
 .uiMain > * {
@@ -151,16 +186,18 @@ select:focus-visible {
 
 /* Left ribbon (Obsidian-like) */
 .rail {
-  background: transparent;
-  border: none;
-  border-right: 1px solid var(--border);
-  box-shadow: none;
+  background: var(--panelAlpha);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 12px 8px;
   gap: 12px;
   overflow: hidden;
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
 }
 
 .rail.showLabels {
@@ -174,12 +211,13 @@ select:focus-visible {
   border-radius: 16px;
   display: grid;
   place-items: center;
-  background: var(--panelAlpha);
+  background: var(--glass2);
   backdrop-filter: blur(10px);
   border: 1px solid var(--border);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: var(--muted);
   position: relative;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 rgba(0, 0, 0, 0.4);
 }
 
 .railBtn svg {
@@ -192,7 +230,7 @@ select:focus-visible {
   left: 52px;
   top: 50%;
   transform: translateY(-50%) translateX(-4px);
-  background: var(--panel);
+  background: var(--glass);
   border: 1px solid var(--border);
   color: var(--text);
   padding: 6px 10px;
@@ -207,7 +245,7 @@ select:focus-visible {
   text-overflow: ellipsis;
   opacity: 0;
   pointer-events: none;
-  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.08), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 rgba(0, 0, 0, 0.35);
   transition: opacity 160ms ease, transform 160ms ease;
   z-index: 5;
 }
@@ -218,17 +256,17 @@ select:focus-visible {
 }
 
 .railBtn:hover {
-  background: var(--panel);
+  background: var(--glass2);
   color: var(--text);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.25);
   transform: translateY(-1px);
 }
 
 .railBtn.active {
-  background: var(--panel);
+  background: var(--glass2);
   color: var(--accent);
-  box-shadow: 0 8px 24px var(--accentSoft);
-  border-color: var(--accent);
+  box-shadow: 0 12px 30px var(--glowSoft);
+  border-color: var(--accentBorder);
 }
 
 .railBtn.active::after {
@@ -241,19 +279,32 @@ select:focus-visible {
   height: 16px;
   background: var(--accent);
   border-radius: 0 4px 4px 0;
-  box-shadow: 0 0 12px var(--accent);
+  box-shadow: 0 0 16px var(--glow);
 }
 
 .railBtn.railPrimary {
   background: var(--accent);
   color: white;
   border: none;
-  box-shadow: 0 8px 20px var(--accentSoft);
+  box-shadow: 0 12px 24px var(--glow);
 }
 
 .railBtn.railPrimary:hover {
   filter: brightness(1.1);
   transform: translateY(-2px) scale(1.05);
+}
+
+.railBrand {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
 }
 
 .railSep {
@@ -366,18 +417,27 @@ select:focus-visible {
 
 /* Sidebar (Obsidian-ish) */
 .sb {
-  border-radius: 32px;
-  background: var(--panelAlpha);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: 28px;
+  background: var(--glass);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
   border: 1px solid var(--border);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadowSoft), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   height: 100%;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+}
+
+.sb::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: none;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .sb.explorer {
@@ -394,10 +454,12 @@ select:focus-visible {
 }
 
 .pageHero {
-  border-radius: 28px;
+  border-radius: 24px;
   border: 1px solid var(--border);
-  background: var(--panel);
-  box-shadow: var(--shadow2);
+  background: var(--glass);
+  box-shadow: var(--shadow2), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
 }
 
 /* Sidebar grid removed for cleaner flat look */
@@ -463,7 +525,7 @@ select:focus-visible {
 }
 
 .sbSectionToggle:hover {
-  background: rgba(17, 24, 39, 0.06);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
 }
 
 .sbSectionTitleInline {
@@ -479,7 +541,7 @@ select:focus-visible {
   height: var(--control-h-xs);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
-  background: var(--panel2);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   color: var(--muted);
   font-weight: 800;
   padding: 0 8px;
@@ -490,7 +552,7 @@ select:focus-visible {
   width: 100%;
   text-align: left;
   padding: 12px 16px;
-  border-radius: 16px;
+  border-radius: 14px;
   border: 1px solid transparent;
   background: transparent;
   font-weight: 600;
@@ -502,8 +564,9 @@ select:focus-visible {
 }
 
 .sbItem:hover {
-  background: var(--panel);
+  background: var(--glass2);
   border-color: var(--border);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
 }
 
 .sbTree {
@@ -533,11 +596,11 @@ select:focus-visible {
 }
 
 .sbTreeBtn:hover {
-  background: var(--panelAlpha);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
 }
 
 .sbTreeBtn.active {
-  border-color: var(--accent);
+  border-color: var(--accentBorder);
   background: var(--accentSoft);
 }
 
@@ -605,7 +668,7 @@ select:focus-visible {
   height: 32px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--panel2);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   padding: 0 12px;
   outline: none;
   font-size: 12px;
@@ -632,7 +695,7 @@ select:focus-visible {
 
 .sbTasksAdd:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(217, 93, 57, 0.25);
+  box-shadow: 0 10px 24px var(--glowSoft);
 }
 
 .sbTasksList {
@@ -653,23 +716,28 @@ select:focus-visible {
 .sbTaskRow {
   display: grid;
   grid-template-columns: 18px 1fr;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
   border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--border);
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
 }
 
 .sbTaskRow:hover {
-  background: rgba(17, 24, 39, 0.04);
-  border-color: var(--border);
+  background: var(--glass2);
+  border-color: var(--border2);
+  border-left-color: var(--accent);
+  transform: translateY(-1px);
 }
 
 .sbTaskRow.selected {
   border-color: var(--accentBorder);
   background: var(--accentSoft);
+  border-left-color: var(--accent);
 }
 
 .sbTaskRow.done .sbTaskTitle {
@@ -680,11 +748,11 @@ select:focus-visible {
 .sbTaskCheck {
   width: 18px;
   height: 18px;
-  border-radius: 5px;
-  border: 1.5px solid rgba(17, 24, 39, 0.18);
+  border-radius: 6px;
+  border: 1.5px solid color-mix(in srgb, var(--border2) 70%, transparent);
   display: grid;
   place-items: center;
-  background: var(--panel2);
+  background: var(--glass2);
   transition: border-color 120ms ease, background 120ms ease;
 }
 
@@ -711,7 +779,7 @@ select:focus-visible {
 
 .sbTaskTitle {
   font-weight: 700;
-  font-size: 13px;
+  font-size: 15px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -729,22 +797,23 @@ select:focus-visible {
   gap: 10px;
   align-items: center;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid transparent;
   cursor: grab;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background 120ms ease, border-color 120ms ease, transform 160ms ease;
 }
 
 .sbQuickRow:hover {
-  background: rgba(17, 24, 39, 0.04);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   border-color: var(--border);
+  transform: translateY(-1px);
 }
 
 .sbQuickIcon {
   width: 20px;
   height: 20px;
   border-radius: 6px;
-  border: 1px solid var(--accentMid);
+  border: 1px solid var(--accentBorder);
   background: var(--accentSoft);
   display: grid;
   place-items: center;
@@ -800,8 +869,8 @@ select:focus-visible {
 /* Dark mode sidebar overrides */
 :root[data-theme='dark'] .sbTaskRow:hover,
 :root[data-theme='dark'] .sbQuickRow:hover {
-  background: rgba(148, 163, 184, 0.06);
-  border-color: rgba(148, 163, 184, 0.08);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
+  border-color: var(--border2);
 }
 
 :root[data-theme='dark'] .sbTaskCheck {
@@ -816,7 +885,7 @@ select:focus-visible {
 
 :root[data-theme='dark'] .sbTasksSearch:focus,
 :root[data-theme='dark'] .sbTasksQuick:focus {
-  box-shadow: 0 0 0 3px rgba(217, 93, 57, 0.15);
+  box-shadow: 0 0 0 3px var(--accentSoft);
 }
 
 .sbPomodoro {
@@ -839,8 +908,9 @@ select:focus-visible {
   margin: 6px auto 2px;
   display: grid;
   place-items: center;
-  background: conic-gradient(var(--accent) calc(var(--pomo) * 1turn), rgba(17, 24, 39, 0.08) 0);
+  background: conic-gradient(color-mix(in srgb, var(--accent) 90%, #fff) calc(var(--pomo) * 1turn), color-mix(in srgb, var(--border2) 60%, transparent) 0);
   position: relative;
+  box-shadow: 0 0 24px var(--glowSoft);
 }
 
 @media (min-width: 920px) {
@@ -858,8 +928,9 @@ select:focus-visible {
   position: absolute;
   inset: 10px;
   border-radius: 999px;
-  background: var(--panel);
+  background: var(--glass);
   border: 1px solid var(--border);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.2);
 }
 
 .pomoTime {
@@ -882,7 +953,7 @@ select:focus-visible {
 }
 
 .pomoBtn.secondary {
-  background: var(--panel2);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
 }
 
 .pomoTask {
@@ -945,8 +1016,8 @@ select:focus-visible {
 }
 
 .pomoPickBtn.secondary {
-  background: var(--panel2);
-  border: 1px solid rgba(17, 24, 39, 0.12);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
+  border: 1px solid var(--border);
 }
 
 .pomoPickBtn:disabled {
@@ -967,8 +1038,8 @@ select:focus-visible {
   padding: 0 10px;
   text-align: left;
   font-weight: 800;
-  background: rgba(17, 24, 39, 0.03);
-  border: 1px solid rgba(17, 24, 39, 0.10);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
+  border: 1px solid var(--border);
   color: var(--text);
   overflow: hidden;
   white-space: nowrap;
@@ -1023,8 +1094,10 @@ select:focus-visible {
 
 /* Workspace */
 .ws {
-  border-radius: 12px;
-  background: transparent;
+  border-radius: 20px;
+  background: var(--glass2);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadowSoft), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
   display: grid;
   grid-template-rows: 1fr;
   gap: 8px;
@@ -1032,14 +1105,18 @@ select:focus-visible {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  padding: 6px;
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
 }
 
 .wsSplit {
   display: flex;
   min-width: 0;
   min-height: 0;
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
+  background: color-mix(in srgb, var(--glass) 60%, transparent);
 }
 
 .wsSplit.dragging {
@@ -1067,13 +1144,20 @@ select:focus-visible {
   bottom: 10px;
   width: 2px;
   border-radius: 99px;
-  background: rgba(17, 24, 39, 0.12);
+  background: color-mix(in srgb, var(--border2) 80%, transparent);
+  box-shadow: 0 0 12px transparent;
+  transition: background 160ms ease, box-shadow 160ms ease;
+}
+
+.wsDivider:hover::before {
+  background: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 0 12px var(--glowSoft);
 }
 
 .wsPaneRoot {
   height: 100%;
-  border: none;
-  background: transparent;
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--glass2) 65%, transparent);
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -1111,9 +1195,9 @@ select:focus-visible {
 }
 
 .wsTab.active {
-  background: white;
-  border-color: rgba(0, 0, 0, 0.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  background: var(--glass2);
+  border-color: var(--border2);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
   color: var(--text);
 }
 
@@ -1133,7 +1217,7 @@ select:focus-visible {
 
 .wsTab:hover .wsTabClose {
   opacity: 0.85;
-  background: rgba(17, 24, 39, 0.06);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
 }
 
 .wsPaneBody {
@@ -1148,22 +1232,24 @@ select:focus-visible {
 
 /* Details */
 .details {
-  border-radius: 10px;
-  background: var(--panel);
+  border-radius: 18px;
+  background: var(--glass);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   min-width: 0;
   height: 100%;
   position: relative;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
 
 :root[data-theme='dark'] .details {
-  background: rgba(17, 23, 35, 0.96);
-  border-color: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.24);
+  background: var(--glass);
+  border-color: rgba(148, 163, 184, 0.12);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4);
 }
 
 .details.resizing {
@@ -1199,10 +1285,12 @@ select:focus-visible {
 }
 
 .detailsHeader {
-  padding: 6px 7px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
-  background: var(--panel2);
-  backdrop-filter: blur(12px);
+  background: var(--glass2);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  box-shadow: inset 0 1px 0 var(--edge-highlight);
 }
 
 .detailsHeaderRow {
@@ -1225,18 +1313,25 @@ select:focus-visible {
 .detailsIconBtn {
   width: 28px;
   height: 28px;
-  border-radius: 8px;
-  background: var(--panel);
+  border-radius: 10px;
+  background: var(--glass2);
   border: 1px solid var(--border);
   display: grid;
   place-items: center;
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+  box-shadow: inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
 }
 
 .detailsIconBtn.active {
   border-color: var(--accentBorder);
   background: var(--accentSoft);
-  box-shadow: 0 6px 14px var(--accentMid);
+  box-shadow: 0 10px 20px var(--glowSoft);
+}
+
+.detailsIconBtn:hover {
+  border-color: var(--border2);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
 }
 
 .detailsTitle {
@@ -1261,10 +1356,12 @@ select:focus-visible {
 
 .detailCard {
   border: 1px solid var(--border);
-  background: var(--panel);
-  border-radius: 12px;
+  background: var(--glass);
+  border-radius: 14px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadowSoft), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
 }
 
 .detailTitle {
@@ -1294,14 +1391,14 @@ select:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .detailKindSelect {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .detailKindBtn {
@@ -1328,6 +1425,7 @@ select:focus-visible {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .detailQuickBtn {
@@ -2125,16 +2223,16 @@ select:focus-visible {
 .mdEditorTop {
   padding: 8px 10px;
   border-bottom: 1px solid rgba(17, 24, 39, 0.08);
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .mdEditorTabs {
   display: inline-flex;
   gap: 6px;
-  justify-self: center;
+  flex-wrap: wrap;
 }
 
 .mdTab {
@@ -2170,7 +2268,7 @@ select:focus-visible {
   display: flex;
   align-items: center;
   gap: 6px;
-  justify-self: end;
+  flex-wrap: wrap;
 }
 
 .mdTextarea {
@@ -2204,39 +2302,154 @@ select:focus-visible {
 }
 
 .md {
-  font-size: 13px;
-  line-height: 1.35;
+  font-size: 14px;
+  line-height: 1.6;
   color: var(--text);
+}
+
+.mdProps {
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+
+.mdProps summary {
+  cursor: pointer;
+  font-weight: 900;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  list-style: none;
+}
+
+.mdProps summary::-webkit-details-marker {
+  display: none;
+}
+
+.mdPropsGrid {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) 1fr;
+  gap: 6px 12px;
+  margin-top: 8px;
+}
+
+.mdPropRow {
+  display: contents;
+}
+
+.mdPropKey {
+  font-weight: 800;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: lowercase;
+}
+
+.mdPropValue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.mdPropValueText {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mdPropValueChips {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .md > :first-child {
   margin-top: 0;
 }
 
-.md h1,
-.md h2,
-.md h3 {
-  line-height: 1.25;
-  margin: 16px 0 10px;
-  font-weight: 950;
-}
-
 .md h1 {
-  font-size: 20px;
+  font-size: 26px;
+  font-weight: 700;
+  margin: 24px 0 12px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 .md h2 {
-  font-size: 17px;
+  font-size: 22px;
+  font-weight: 650;
+  margin: 20px 0 10px;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
 }
 
 .md h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.md h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 14px 0 6px;
+  line-height: 1.4;
+}
+
+.md h5 {
   font-size: 15px;
+  font-weight: 600;
+  margin: 12px 0 6px;
+  line-height: 1.4;
+}
+
+.md h6 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 10px 0 6px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* Heading anchor links */
+.heading-anchor {
+  float: left;
+  margin-left: -1.2em;
+  padding-right: 0.3em;
+  color: var(--muted);
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  font-weight: 400;
+}
+
+.md h1:hover .heading-anchor,
+.md h2:hover .heading-anchor,
+.md h3:hover .heading-anchor,
+.md h4:hover .heading-anchor,
+.md h5:hover .heading-anchor,
+.md h6:hover .heading-anchor {
+  opacity: 1;
+}
+
+.heading-anchor:hover {
+  color: var(--accent);
 }
 
 .md p,
 .md ul,
 .md ol {
-  margin: 6px 0;
+  margin: 10px 0;
+}
+
+.md li {
+  margin: 4px 0;
+  line-height: 1.5;
 }
 
 .md ul,
@@ -2259,7 +2472,8 @@ select:focus-visible {
 .mdLiRow {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 10px;
+  padding: 4px 0;
 }
 
 .mdLiContent {
@@ -2269,6 +2483,7 @@ select:focus-visible {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  padding-right: 8px;
 }
 
 .mdLiMeta {
@@ -2300,15 +2515,39 @@ select:focus-visible {
 }
 
 .mdLiToggle {
-  border: 1px solid rgba(17, 24, 39, 0.18);
-  background: rgba(255, 255, 255, 0.7);
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
   color: var(--muted);
-  font-weight: 900;
-  border-radius: 6px;
-  width: 18px;
-  height: 18px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
   cursor: pointer;
   flex: 0 0 auto;
+}
+
+.mdLiToggle:hover {
+  background: var(--bg2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.mdLiToggle:active {
+  transform: scale(0.95);
+}
+
+.mdLiToggle[aria-expanded="true"] {
+  font-weight: 600;
+}
+
+.mdLiToggle[aria-expanded="false"] {
+  font-weight: 400;
 }
 
 .mdLiChildren {
@@ -2362,29 +2601,54 @@ select:focus-visible {
 }
 
 .mdCheckBox {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  border: 1px solid rgba(17, 24, 39, 0.2);
-  background: rgba(255, 255, 255, 0.7);
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border);
+  background: transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  transition: all 0.15s ease;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.mdCheck:hover .mdCheckBox {
+  border-color: var(--accent);
+  background: var(--accentSoft);
 }
 
 .mdCheck.checked .mdCheckBox {
-  background: var(--accentSoft);
-  border-color: var(--accentBorder);
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  animation: checkPop 0.2s ease;
 }
 
 .mdCheck.checked .mdCheckBox::after {
   content: '';
-  width: 6px;
-  height: 10px;
-  border-right: 2px solid var(--accent);
-  border-bottom: 2px solid var(--accent);
-  transform: rotate(45deg);
+  width: 5px;
+  height: 9px;
+  border-right: 2px solid white;
+  border-bottom: 2px solid white;
+  transform: rotate(45deg) translateY(-1px);
+}
+
+.mdCheckBox[data-task='-']::after,
+.mdCheckBox[data-task='>']::after,
+.mdCheckBox[data-task='<']::after,
+.mdCheckBox[data-task='o']::after,
+.mdCheckBox[data-task='/']::after {
+  content: attr(data-task);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+@keyframes checkPop {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
 }
 
 .mdChip {
@@ -2392,14 +2656,57 @@ select:focus-visible {
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  font-weight: 900;
-  color: rgba(17, 24, 39, 0.72);
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(17, 24, 39, 0.12);
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--bg2);
+  border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 0 6px;
+  padding: 2px 8px;
   margin: 0 4px 2px 0;
   white-space: nowrap;
+  transition: all 0.15s ease;
+  cursor: default;
+}
+
+.mdChip-signifier {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: rgba(185, 28, 28, 0.95);
+}
+
+.mdChip-play {
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text);
+  padding: 0 6px;
+  height: 22px;
+  cursor: pointer;
+}
+
+.mdChip-play:hover {
+  border-color: var(--accent);
+  background: var(--accentSoft);
+  color: var(--accent);
+}
+
+.mdChip-play.running {
+  border-color: var(--accent);
+  background: var(--accentSoft);
+  color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.2);
+}
+
+.mdChip-play.running.over {
+  border-color: rgba(185, 28, 28, 0.4);
+  background: rgba(254, 226, 226, 0.8);
+  color: #b91c1c;
+}
+
+.mdChip:hover {
+  background: var(--bg3);
+  border-color: var(--accent);
+  color: var(--text);
+  transform: translateY(-1px);
 }
 
 .mdChip-kind {
@@ -2441,6 +2748,18 @@ select:focus-visible {
   color: rgba(91, 33, 182, 0.9);
 }
 
+.mdChip-block {
+  background: rgba(15, 23, 42, 0.14);
+  border-color: rgba(15, 23, 42, 0.3);
+  color: rgba(15, 23, 42, 0.7);
+}
+
+.mdChip-prop {
+  background: rgba(14, 116, 144, 0.12);
+  border-color: rgba(14, 116, 144, 0.28);
+  color: rgba(12, 74, 110, 0.9);
+}
+
 .mdChip-tag {
   background: rgba(234, 179, 8, 0.12);
   border-color: rgba(234, 179, 8, 0.22);
@@ -2480,6 +2799,80 @@ select:focus-visible {
   border-radius: 8px;
   background: rgba(17, 24, 39, 0.06);
   border: 1px solid rgba(17, 24, 39, 0.10);
+}
+
+.mdBlockProps {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: 6px;
+}
+
+.mdBlockId {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.mdCodeBlock {
+  position: relative;
+  margin: 12px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+}
+
+.mdCodeHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.mdCodeLang {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: ui-monospace, monospace;
+}
+
+.mdCodeCopy {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-weight: 500;
+}
+
+.mdCodeCopy:hover {
+  background: var(--bg2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.mdCodeBlock pre {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.mdCodeBlock code {
+  font-size: 13px;
+  line-height: 1.5;
+  background: transparent;
 }
 
 .md pre {
@@ -2549,6 +2942,22 @@ select:focus-visible {
   font-weight: 900;
 }
 
+/* KaTeX math styling */
+.md .katex {
+  font-size: 1.05em;
+  color: var(--text);
+}
+
+.md .katex-display {
+  margin: 16px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.md .katex-display > .katex {
+  text-align: center;
+}
+
 .md blockquote {
   margin: 10px 0;
   padding: 8px 12px;
@@ -2608,7 +3017,7 @@ select:focus-visible {
   height: 32px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--panel);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   color: var(--muted);
   display: inline-flex;
   align-items: center;
@@ -2641,10 +3050,11 @@ select:focus-visible {
   background: var(--cta-gradient);
   border-color: var(--cta-border);
   color: #fff;
+  box-shadow: 0 10px 22px var(--glowSoft);
 }
 
 .secondaryButton {
-  background: var(--panel2);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   border-color: var(--border);
 }
 
@@ -2652,12 +3062,14 @@ select:focus-visible {
 .bottomDock {
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: var(--panel);
-  box-shadow: var(--shadow2);
+  background: var(--glass);
+  box-shadow: var(--shadow2), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
   padding: 10px;
   display: flex;
   align-items: center;
   gap: 10px;
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
 }
 
 .dockIconButton {
@@ -2666,7 +3078,7 @@ select:focus-visible {
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: var(--panel2);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
 }
 
 .dockInputWrap {
@@ -2683,7 +3095,7 @@ select:focus-visible {
   border: 1px solid var(--border);
   padding: 0 12px;
   outline: none;
-  background: var(--panel2);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
 }
 
 .dockHint {
@@ -2696,9 +3108,10 @@ select:focus-visible {
   border-radius: 12px;
   padding: 0 14px;
   font-weight: 900;
-  background: var(--accent);
+  background: var(--cta-gradient);
   border-color: var(--accentBorder);
   color: #fff;
+  box-shadow: 0 12px 24px var(--glowSoft);
 }
 
 .dockPrimaryButton:disabled {
@@ -2734,7 +3147,7 @@ select:focus-visible {
 
 .navBtn:hover {
   border-color: var(--border);
-  background: var(--panelAlpha);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   color: var(--text);
 }
 
@@ -2750,16 +3163,16 @@ select:focus-visible {
   border: 1px solid var(--accentBorder);
   position: relative;
   overflow: hidden;
-  background: var(--accentSoft);
-  box-shadow: 0 10px 18px var(--accentMid);
+  background: var(--accent);
+  box-shadow: 0 14px 28px var(--glow);
 }
 
 .navPlusGlow {
   position: absolute;
   inset: -20px;
-  background: conic-gradient(from 180deg, var(--accentBorder), transparent 35%, var(--accentMid));
-  filter: blur(10px);
-  opacity: 0.35;
+  background: none;
+  filter: none;
+  opacity: 0;
 }
 
 .navPlus svg {
@@ -2775,9 +3188,9 @@ select:focus-visible {
   height: 42px;
   border-radius: 14px;
   background: var(--glass);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(17, 24, 39, 0.12);
-  box-shadow: 0 10px 22px rgba(17, 24, 39, 0.08);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadowSoft), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
   display: grid;
   place-items: center;
 }
@@ -2790,10 +3203,10 @@ select:focus-visible {
   width: 46px;
   height: 46px;
   border-radius: 16px;
-  background: #D95D39 !important;
+  background: var(--cta-gradient) !important;
   border: none;
   color: #fff;
-  box-shadow: 0 8px 20px rgba(217, 93, 57, 0.35);
+  box-shadow: 0 14px 28px var(--glow);
   display: grid;
   place-items: center;
   z-index: 44;
@@ -2802,17 +3215,17 @@ select:focus-visible {
 }
 
 .captureFab:hover {
-  background: #D95D39 !important;
+  background: var(--cta-gradient) !important;
   transform: translateX(-50%) translateY(-2px) scale(1.05);
 }
 
 .captureFab:active {
-  background: #D95D39 !important;
+  background: var(--cta-gradient) !important;
   transform: translateX(-50%) scale(0.98);
 }
 
 .captureFab:focus {
-  background: #D95D39 !important;
+  background: var(--cta-gradient) !important;
   outline: none;
 }
 
@@ -2844,9 +3257,9 @@ select:focus-visible {
 .modalCard {
   width: min(720px, calc(100vw - 28px));
   border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--border);
   background: var(--glass);
-  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.25);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 
@@ -2864,7 +3277,7 @@ select:focus-visible {
 
 /* Capture Modal Polish - Glassmorphism */
 .captureModalCard {
-  background: var(--glass, linear-gradient(165deg, var(--panel) 0%, var(--panel2) 100%));
+  background: var(--glass);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--border);
@@ -2887,7 +3300,7 @@ select:focus-visible {
   justify-content: space-between;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--panel2) 70%, transparent);
+  background: var(--glass2);
 }
 
 .captureModalHeaderLeft {
@@ -2980,7 +3393,7 @@ select:focus-visible {
 .captureSheet {
   border-radius: 20px;
   border: 1px solid var(--border);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 95%, transparent) 0%, color-mix(in srgb, var(--panel2) 92%, transparent) 100%);
+  background: var(--panel);
   padding: 16px 18px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
@@ -3368,7 +3781,7 @@ select:focus-visible {
 
 .waveform-bar {
   width: 4px;
-  background: linear-gradient(to top, var(--accent), var(--accentSoft));
+  background: var(--accent);
   border-radius: 2px;
   animation: waveform 1.2s ease-in-out infinite;
 }
@@ -3406,7 +3819,7 @@ select:focus-visible {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, var(--accentSoft) 0%, transparent 70%);
+  background: transparent;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -3770,7 +4183,7 @@ select:focus-visible {
   position: absolute;
   inset: 1px;
   border-radius: inherit;
-  background: linear-gradient(135deg, var(--accentSoft), rgba(236, 72, 153, 0.08));
+  background: var(--accentSoft);
   opacity: 0.6;
   pointer-events: none;
 }
@@ -4173,21 +4586,59 @@ select:focus-visible {
 }
 
 .title {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 900;
+  letter-spacing: -0.02em;
 }
 
 .subhead {
   margin-top: 4px;
   font-size: 12px;
   color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
 }
 
 .glassCard {
   border: 1px solid var(--border);
-  background: var(--panel);
-  border-radius: 12px;
-  padding: 12px;
+  background: var(--glass);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: var(--shadowSoft), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.glassCard::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+
+.glassCard:hover {
+  border-color: var(--border2);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.glassCard:hover::after {
+  opacity: 0.6;
+}
+
+.glassPanel {
+  position: relative;
+}
+
+.glassPanelGlow {
+  box-shadow: var(--shadow), 0 0 0 1px var(--accentBorder), 0 0 28px var(--glowSoft);
 }
 
 /* Ecosystem layout */
@@ -4253,8 +4704,8 @@ select:focus-visible {
 }
 
 .ecoCard.active {
-  border-color: rgba(217, 93, 57, 0.35);
-  box-shadow: 0 18px 30px rgba(217, 93, 57, 0.12);
+  border-color: var(--accentBorder);
+  box-shadow: 0 18px 30px var(--glowSoft);
 }
 
 .ecoCardTop {
@@ -4494,14 +4945,16 @@ select:focus-visible {
 
 .authCard {
   width: min(440px, 92vw);
-  background: var(--panel);
+  background: var(--glass);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 18px;
   box-shadow: var(--shadow2);
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
 }
 
 .authHeader {
@@ -4653,26 +5106,43 @@ select:focus-visible {
 
 /* Dashboard Widget Card */
 .dashWidget {
-  background: var(--panel);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, transparent), var(--panel));
+  background: var(--glass);
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 20px;
   padding: var(--widget-padding, 20px);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shadowSoft), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
   transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
   break-inside: avoid;
   margin-bottom: var(--widget-gap);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  position: relative;
+}
+
+.dashWidget::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+
+.dashWidget:hover::before {
+  opacity: 0.6;
 }
 
 .dashWidget:hover {
   border-color: var(--border2);
-  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.1);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
 }
 
 .dashWidget:focus-within {
   border-color: var(--accentBorder);
-  box-shadow: 0 0 0 1px var(--accentBorder), 0 16px 32px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 0 0 1px var(--accentBorder), var(--shadow);
 }
 
 .dashboardGrid:not(.masonry) .dashWidget {
@@ -4703,24 +5173,30 @@ select:focus-visible {
 
 .dashWidgetTitle {
   font-size: var(--title-size, 12px);
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
   color: var(--muted);
 }
 
 .dashWidgetCollapse {
   width: 20px;
   height: 20px;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  background: var(--panel2);
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   color: var(--muted);
   display: grid;
   place-items: center;
-  transition: transform 200ms ease, opacity 150ms ease;
+  transition: transform 200ms ease, opacity 150ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
   opacity: 0;
   flex-shrink: 0;
+}
+
+.dashWidgetCollapse:hover {
+  border-color: var(--border2);
+  color: var(--text);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
 }
 
 .dashWidget:hover .dashWidgetCollapse {
@@ -4796,7 +5272,7 @@ select:focus-visible {
 
 .viewModeSelect:focus {
   outline: none;
-  border-color: #D95D39;
+  border-color: var(--accent);
 }
 
 /* Full-width widgets (heatmaps) */
@@ -4841,8 +5317,8 @@ select:focus-visible {
 }
 
 .dashWidget.dragOver {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(217, 93, 57, 0.3);
+  border-color: var(--accentBorder);
+  box-shadow: 0 0 0 2px var(--accentBorder), var(--shadowSoft);
 }
 
 /* Timeline */
@@ -4892,8 +5368,9 @@ select:focus-visible {
   padding: 0 10px;
   font-size: 12px;
   font-weight: 900;
-  background: var(--panel2);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   color: var(--muted);
+  border: 1px solid var(--border);
 }
 
 .tlChip.active {
@@ -4926,11 +5403,18 @@ select:focus-visible {
 .tlBrick {
   width: 100%;
   text-align: left;
-  border-radius: 14px;
-  border: 1px solid rgba(17, 24, 39, 0.10);
+  border-radius: 16px;
+  border: 1px solid var(--border);
   background: var(--glass);
   padding: 10px 12px;
-  box-shadow: 0 8px 16px rgba(17, 24, 39, 0.05);
+  box-shadow: var(--shadowSoft);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.tlBrick:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+  border-color: var(--border2);
 }
 
 .tlBrick.event {
@@ -4995,148 +5479,291 @@ select:focus-visible {
 
 /* Kanban */
 .kbRoot {
-  padding: 12px;
-}
-
-.kbHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.kbRight {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.kbLeft {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.kbTitleRow {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  min-width: 0;
-}
-
-.kbTitle {
-  font-weight: 900;
-}
-
-.kbResults {
-  font-size: 12px;
-  color: var(--muted);
-  font-weight: 700;
-}
-
-.kbToolBtn {
-  height: 30px;
-  border-radius: 999px;
-  padding: 0 10px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--muted);
-  font-weight: 800;
-}
-
-.kbToolBtn:hover {
-  background: rgba(17, 24, 39, 0.04);
-  border-color: rgba(17, 24, 39, 0.08);
-  color: var(--text);
-}
-
-.kbNew {
-  height: 34px;
-  border-radius: 10px;
-  padding: 0 12px;
-  font-weight: 800;
-  background: var(--accentSoft);
-  border-color: var(--accentBorder);
+  padding: 4px 0 16px;
 }
 
 .kbGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  align-items: start;
 }
 
 .kbCol {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--panel2);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+  border-radius: 18px;
+  background: var(--glass);
   min-height: 520px;
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
 }
 
+.kbCol::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: var(--kb-accent, var(--accent));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--kb-accent, var(--accent)) 70%, transparent);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.kbCol[data-status='todo'] { --kb-accent: #38BDF8; }
+.kbCol[data-status='in_progress'] { --kb-accent: #F59E0B; }
+.kbCol[data-status='done'] { --kb-accent: #22C55E; }
+
 .kbColHeader {
-  padding: 10px 10px 8px;
-  border-bottom: 1px solid var(--border);
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  background: var(--glass2);
 }
 
 .kbColTitle {
-  font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
 }
 
 .kbCount {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
+  font-weight: 700;
+  margin-left: auto;
+}
+
+.kbColAdd {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
+  color: var(--text);
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .kbColBody {
-  padding: 10px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .kbCard {
-  border: 1px solid var(--border);
-  background: var(--panel);
-  border-radius: 12px;
-  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--kb-accent, var(--accent)) 45%, var(--border2));
+  background: var(--glass);
+  border-radius: 16px;
+  padding: 14px;
   cursor: pointer;
-  box-shadow: 0 6px 14px rgba(17, 24, 39, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 18px 36px rgba(0, 0, 0, 0.35);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.kbCard:hover {
+  transform: translateY(-3px);
+  border-color: var(--kb-accent, var(--accent));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 22px 44px rgba(0, 0, 0, 0.4);
+}
+
+/* Tasks page shell */
+.tasksPage {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.tasksTopBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--glass2);
+  border-bottom: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+}
+
+.tasksTopLeft {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.tasksTopDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+
+.tasksTopTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tasksTopRefresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: color-mix(in srgb, var(--glass2) 65%, transparent);
+  color: var(--muted);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tasksHeader {
+  padding: 18px 24px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: var(--glass2);
+}
+
+.tasksBody {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+}
+
+.taskPageTitle {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.taskPageSubtitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .kbCardTitle {
   font-weight: 800;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.kbCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.kbCardMenu {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
+  color: var(--muted);
+}
+
+.kbCardPreview {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.kbCardTags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.kbCardProgress {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.kbCardProgressBar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.kbCardProgressBar span {
+  display: block;
+  height: 100%;
+  background: var(--kb-accent, var(--accent));
+}
+
+.kbCardProgressMeta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
 }
 
 .kbCardMeta {
-  margin-top: 6px;
+  margin-top: 10px;
   font-size: 12px;
   color: var(--muted);
   display: flex;
   gap: 8px;
   align-items: center;
+  justify-content: space-between;
+}
+
+.kbMetaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.kbCardAction {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--kb-accent, var(--accent)) 70%, transparent);
+  background: color-mix(in srgb, var(--kb-accent, var(--accent)) 25%, transparent);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.kbCardAction:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .kbTag {
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--panel2);
+  border: 1px solid color-mix(in srgb, var(--kb-accent, var(--accent)) 45%, transparent);
+  background: color-mix(in srgb, var(--kb-accent, var(--accent)) 18%, transparent);
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .kbTag.muted {
   opacity: 0.6;
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .kbDot {
@@ -5173,8 +5800,8 @@ select:focus-visible {
   display: inline-flex;
   padding: 4px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
   gap: 6px;
   flex-shrink: 0;
 }
@@ -5197,9 +5824,9 @@ select:focus-visible {
 }
 
 .taskFilterBtn.active {
-  background: #fff;
+  background: var(--glass);
   color: var(--text);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
 }
 
 .taskFilterCount {
@@ -5214,8 +5841,8 @@ select:focus-visible {
   height: 34px;
   padding: 0 10px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
   color: var(--muted);
   min-width: 200px;
 }
@@ -5241,8 +5868,8 @@ select:focus-visible {
   display: inline-flex;
   padding: 3px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
   flex-shrink: 0;
 }
 
@@ -5259,9 +5886,9 @@ select:focus-visible {
 }
 
 .taskLayoutToggle button.active {
-  background: #fff;
+  background: var(--glass);
   color: var(--text);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.4);
 }
 
 .taskQuickAdd {
@@ -5271,8 +5898,8 @@ select:focus-visible {
   height: 34px;
   padding: 0 10px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
   min-width: 240px;
   color: var(--muted);
   flex-shrink: 0;
@@ -5293,12 +5920,12 @@ select:focus-visible {
   padding: 0 16px;
   border-radius: 12px;
   border: none;
-  background: #D95D39;
+  background: var(--cta-gradient);
   color: #fff;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 8px 18px rgba(217, 93, 57, 0.25);
+  box-shadow: 0 12px 24px var(--glowSoft);
   transition: transform 120ms ease, filter 120ms ease;
   flex-shrink: 0;
 }
@@ -5314,7 +5941,7 @@ select:focus-visible {
   height: 30px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--panel2);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   padding: 0 8px;
   font-size: 11px;
   font-weight: 600;
@@ -5334,26 +5961,29 @@ select:focus-visible {
 }
 
 .taskCard {
-  background: #101217;
-  border: 1px solid rgba(216, 224, 0, 0.45);
-  border-radius: 26px;
-  padding: 22px;
-  color: #f8fafc;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px;
+  color: var(--text);
+  box-shadow: var(--shadowSoft), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
   display: flex;
   flex-direction: column;
   gap: 14px;
   cursor: pointer;
-  transition: transform 150ms ease, box-shadow 150ms ease;
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
 }
 
 .taskCard:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
 }
 
 .taskCard.active {
-  border-color: rgba(216, 224, 0, 0.9);
+  border-color: var(--accentBorder);
+  box-shadow: 0 22px 44px var(--glow);
 }
 
 .taskCardHeader {
@@ -5364,7 +5994,7 @@ select:focus-visible {
 }
 
 .taskCardTitle {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
   line-height: 1.3;
   display: -webkit-box;
@@ -5377,8 +6007,8 @@ select:focus-visible {
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   display: grid;
   place-items: center;
   color: inherit;
@@ -5386,7 +6016,7 @@ select:focus-visible {
 
 .taskCardPreview {
   font-size: 13px;
-  color: rgba(248, 250, 252, 0.65);
+  color: var(--muted);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -5403,17 +6033,17 @@ select:focus-visible {
 .taskCardBadge {
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(216, 224, 0, 0.35);
-  background: rgba(216, 224, 0, 0.08);
+  border: 1px solid var(--accentBorder);
+  background: var(--accentSoft);
   font-size: 11px;
   font-weight: 700;
-  color: #d8e000;
+  color: var(--accent);
 }
 
 .taskCardBadge.status {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  border-color: var(--border2);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
+  color: var(--text);
 }
 
 .taskCardBadge.status.done {
@@ -5435,9 +6065,9 @@ select:focus-visible {
 }
 
 .taskCardProgressLabel {
-  font-size: 12px;
-  font-weight: 700;
-  color: rgba(248, 250, 252, 0.6);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -5449,7 +6079,7 @@ select:focus-visible {
 
 .taskCardProgressBar {
   height: 8px;
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--border2) 65%, transparent);
   border-radius: 999px;
   position: relative;
   overflow: hidden;
@@ -5461,7 +6091,7 @@ select:focus-visible {
   top: 0;
   height: 100%;
   width: var(--progress);
-  background: linear-gradient(90deg, #6ee7b7, #d8e000);
+  background: var(--accent);
 }
 
 .taskCardDots {
@@ -5474,11 +6104,36 @@ select:focus-visible {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, var(--border2) 70%, transparent);
 }
 
 .taskCardDots span.active {
-  background: #6ee7b7;
+  background: var(--accent);
+}
+
+.taskCardSubtasks {
+  display: grid;
+  gap: 6px;
+}
+
+.taskCardSubtask {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.taskCardSubtask.done {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.taskCardSubtaskMore {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
 }
 
 .taskCardFooter {
@@ -5493,7 +6148,7 @@ select:focus-visible {
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: rgba(248, 250, 252, 0.6);
+  color: var(--muted);
 }
 
 .taskCardAction {
@@ -5501,19 +6156,48 @@ select:focus-visible {
   padding: 0 16px;
   border-radius: 12px;
   border: none;
-  background: #f59e0b;
-  color: #111827;
+  background: var(--cta-gradient);
+  color: #fff;
   font-weight: 800;
   cursor: pointer;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.taskCardAction:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+  opacity: 0.7;
+}
+
+.taskCardAction:not(:disabled):hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+:root[data-theme='dark'] .taskCard,
+:root[data-theme='midnight'] .taskCard {
+  background: var(--glass);
+  border-color: color-mix(in srgb, var(--accentBorder) 60%, transparent);
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.45), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
+}
+
+:root[data-theme='dark'] .taskCardProgressBar,
+:root[data-theme='midnight'] .taskCardProgressBar {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+:root[data-theme='dark'] .taskCardDots span,
+:root[data-theme='midnight'] .taskCardDots span {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Tasks table */
 .taskTable {
   --task-grid: 48px minmax(220px, 2fr) minmax(140px, 1fr) 110px 110px 110px 140px 140px minmax(160px, 1fr) 90px 110px 110px;
-  border-radius: 22px;
+  border-radius: 20px;
   border: 1px solid var(--border);
-  background: var(--panel);
-  box-shadow: var(--shadow2);
+  background: var(--glass);
+  box-shadow: var(--shadowSoft), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
   overflow: hidden;
 }
 
@@ -5523,7 +6207,7 @@ select:focus-visible {
   gap: 8px;
   align-items: center;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.6);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   border-bottom: 1px solid var(--border);
   font-size: 11px;
   font-weight: 900;
@@ -5553,13 +6237,13 @@ select:focus-visible {
   gap: 8px;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  border-bottom: 1px solid var(--border);
   transition: background 120ms ease, transform 120ms ease;
   cursor: pointer;
 }
 
 .taskRow:hover {
-  background: var(--accentSoft);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
 }
 
 .taskRow.active {
@@ -5582,11 +6266,11 @@ select:focus-visible {
   width: 26px;
   height: 26px;
   border-radius: 10px;
-  border: 2px solid rgba(15, 23, 42, 0.2);
+  border: 2px solid var(--border2);
   display: grid;
   place-items: center;
   transition: all 120ms ease;
-  background: transparent;
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
 }
 
 .taskCheck.active {
@@ -5634,7 +6318,7 @@ select:focus-visible {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   background: var(--accentSoft);
-  color: #6d28d9;
+  color: var(--accent);
 }
 
 .taskMuted {
@@ -5962,8 +6646,7 @@ select:focus-visible {
 
 :root[data-theme='dark'] .agEvent {
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.22);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.0)),
-    rgba(26, 33, 48, 0.95);
+  background: rgba(26, 33, 48, 0.95);
   border-color: rgba(255, 255, 255, 0.06);
 }
 
@@ -6492,7 +7175,7 @@ select:focus-visible {
 
 .agZoomBtn.active {
   background: var(--accentSoft);
-  border-color: rgba(217, 93, 57, 0.35);
+  border-color: var(--accentBorder);
   color: var(--text);
 }
 
@@ -6899,7 +7582,7 @@ select:focus-visible {
   bottom: 0;
   height: 8px;
   cursor: ns-resize;
-  background: linear-gradient(180deg, transparent, rgba(17, 24, 39, 0.08));
+  background: transparent;
   opacity: 0.6;
 }
 
@@ -7103,7 +7786,7 @@ select:focus-visible {
 
 .tmZoomBtn.active {
   background: var(--accentSoft);
-  border-color: rgba(217, 93, 57, 0.35);
+  border-color: var(--accentBorder);
   color: var(--text);
 }
 
@@ -7229,8 +7912,8 @@ select:focus-visible {
 }
 
 .tmLogResize:hover .tmLogResizeGrip {
-  background: rgba(217, 93, 57, 0.45);
-  box-shadow: 0 0 0 1px rgba(217, 93, 57, 0.35);
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 :root[data-theme='dark'] .tmLogResizeGrip {
@@ -7239,8 +7922,8 @@ select:focus-visible {
 }
 
 :root[data-theme='dark'] .tmLogResize:hover .tmLogResizeGrip {
-  background: rgba(217, 93, 57, 0.55);
-  box-shadow: 0 0 0 1px rgba(217, 93, 57, 0.4);
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .tmLogLaneLine {
@@ -7829,7 +8512,7 @@ select:focus-visible {
   bottom: 0;
   height: 12px;
   cursor: ns-resize;
-  background: linear-gradient(180deg, transparent, rgba(17, 24, 39, 0.10));
+  background: transparent;
   opacity: 0.55;
 }
 
@@ -8321,7 +9004,7 @@ select:focus-visible {
   position: relative;
   height: 18px;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--accentSoft) 1px, transparent 1px);
+  background: var(--glass2);
   background-size: calc(100% / var(--pl-gantt-cols)) 100%;
 }
 
@@ -8670,7 +9353,7 @@ select:focus-visible {
   flex-direction: column;
   gap: 12px;
   border-bottom: 1px solid var(--border);
-  background: var(--panel);
+  background: var(--glass);
 }
 
 .notesHeaderTop {
@@ -8715,8 +9398,8 @@ select:focus-visible {
 
 .notesViewToggle {
   display: flex;
-  background: var(--panel2);
-  border: 1px solid var(--border);
+  background: rgba(10, 12, 18, 0.75);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
   border-radius: 8px;
   padding: 2px;
 }
@@ -8743,9 +9426,9 @@ select:focus-visible {
 }
 
 .notesViewToggle button.active {
-  background: var(--bg);
+  background: rgba(22, 28, 38, 0.9);
   color: var(--text);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.35);
 }
 
 .notesNewBtn {
@@ -8784,8 +9467,8 @@ select:focus-visible {
   align-items: center;
   gap: 8px;
   padding: 0 10px;
-  background: var(--panel2);
-  border: 1px solid var(--border);
+  background: rgba(12, 15, 22, 0.9);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
   border-radius: 8px;
   color: var(--muted);
 }
@@ -8807,8 +9490,8 @@ select:focus-visible {
 .notesSortSelect {
   height: 32px;
   padding: 0 10px;
-  background: var(--panel2);
-  border: 1px solid var(--border);
+  background: rgba(12, 15, 22, 0.9);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
@@ -8830,8 +9513,8 @@ select:focus-visible {
   gap: 6px;
   padding: 4px;
   border-radius: 999px;
-  background: var(--panel2);
-  border: 1px solid var(--border);
+  background: rgba(10, 12, 18, 0.75);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
 }
 
 .notesFilterTab {
@@ -8850,9 +9533,9 @@ select:focus-visible {
 }
 
 .notesFilterTab.active {
-  background: var(--panel);
+  background: rgba(22, 28, 38, 0.9);
   color: var(--text);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.35);
 }
 
 .notesFilterChips {
@@ -8864,8 +9547,8 @@ select:focus-visible {
 .notesFilterChip {
   height: 26px;
   padding: 0 10px;
-  background: var(--panel2);
-  border: 1px solid var(--border);
+  background: rgba(12, 15, 22, 0.9);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
@@ -8901,8 +9584,8 @@ select:focus-visible {
 .notesTagChip {
   height: 26px;
   padding: 0 10px;
-  background: var(--panel2);
-  border: 1px solid var(--border);
+  background: rgba(12, 15, 22, 0.9);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
@@ -8966,61 +9649,23 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   padding: 20px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  background: var(--glass);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+  border-radius: 18px;
   cursor: pointer;
   transition: all 150ms ease;
 }
 
-.notesCardDark {
-  background: #101217;
-  border-color: rgba(216, 224, 0, 0.45);
-  color: #f8fafc;
-}
-
-.notesCardDark .notesCardDate,
-.notesCardDark .notesCardPreview,
-.notesCardDark .notesCardMeta,
-.notesCardDark .notesCardWords {
-  color: rgba(248, 250, 252, 0.6);
-}
-
-.notesCardDark .notesCardMeta {
-  border-top-color: rgba(255, 255, 255, 0.12);
-}
-
-.notesCardDark .notesCardTitle > span:first-child {
-  color: #f8fafc;
-}
-
-.notesCardDark .notesCardTags span {
-  background: rgba(216, 224, 0, 0.12);
-  color: #d8e000;
-  border: 1px solid rgba(216, 224, 0, 0.3);
-}
-
 .notesCard:hover {
-  border-color: var(--border2);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  border-color: var(--accentBorder);
+  box-shadow: 0 16px 32px rgba(0,0,0,0.35);
   transform: translateY(-2px);
-}
-
-.notesCardDark:hover {
-  border-color: rgba(216, 224, 0, 0.7);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
 }
 
 .notesCard.active {
   border-color: var(--accent);
-  background: var(--accentSoft);
-  box-shadow: 0 4px 16px rgba(217, 93, 57, 0.15);
-}
-
-.notesCardDark.active {
-  border-color: rgba(216, 224, 0, 0.9);
-  background: rgba(216, 224, 0, 0.08);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+  background: var(--glass2);
+  box-shadow: 0 16px 32px rgba(0,0,0,0.4);
 }
 
 .notesCardTitle {
@@ -9070,7 +9715,7 @@ select:focus-visible {
   flex-wrap: wrap;
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
 }
 
 .notesCardPlace,
@@ -9100,16 +9745,17 @@ select:focus-visible {
 
 .notesCardTags span {
   padding: 4px 10px;
-  background: var(--panel2);
+  background: color-mix(in srgb, var(--glass2) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--text);
 }
 
 .notesInspector {
-  border: 1px solid var(--border);
-  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+  background: color-mix(in srgb, var(--glass3) 85%, transparent);
   border-radius: 20px;
   padding: 16px;
   display: flex;
@@ -9333,9 +9979,9 @@ select:focus-visible {
 .notesTable {
   display: flex;
   flex-direction: column;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: rgba(12, 16, 22, 0.92);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+  border-radius: 16px;
   overflow: hidden;
 }
 
@@ -9344,8 +9990,8 @@ select:focus-visible {
   grid-template-columns: 80px minmax(200px, 0.9fr) minmax(320px, 2fr) minmax(200px, 1fr);
   gap: 12px;
   padding: 10px 14px;
-  background: var(--panel2);
-  border-bottom: 1px solid var(--border);
+  background: rgba(10, 12, 18, 0.95);
+  border-bottom: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
   font-size: 10px;
   font-weight: 700;
   color: var(--muted);
@@ -9364,7 +10010,7 @@ select:focus-visible {
   gap: 12px;
   padding: 12px 14px;
   border: none;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -9377,7 +10023,7 @@ select:focus-visible {
 }
 
 .notesTableRow:hover {
-  background: var(--panel2);
+  background: rgba(18, 22, 30, 0.7);
 }
 
 .notesTableRow.active {
@@ -9423,11 +10069,12 @@ select:focus-visible {
 
 .notesTableTag {
   padding: 2px 6px;
-  background: var(--panel2);
+  background: rgba(18, 22, 30, 0.8);
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
   border-radius: 4px;
   font-size: 10px;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--text);
   white-space: nowrap;
 }
 
@@ -9480,11 +10127,6 @@ select:focus-visible {
 /* Dark theme adjustments */
 :root[data-theme='dark'] .notesCard:hover {
   box-shadow: 0 8px 20px rgba(0,0,0,0.25);
-}
-
-:root[data-theme='dark'] .notesCardDark:hover {
-  border-color: rgba(216, 224, 0, 0.7);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
 }
 
 :root[data-theme='dark'] .notesTable {
@@ -9762,7 +10404,7 @@ select:focus-visible {
   padding: 2px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: var(--panel2);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
 }
 
 .segBtn {
@@ -9777,7 +10419,7 @@ select:focus-visible {
 }
 
 .segBtn.active {
-  background: var(--accentMid);
+  background: var(--accentSoft);
   color: var(--text);
 }
 
@@ -10505,7 +11147,7 @@ select:focus-visible {
 .dashCard {
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: linear-gradient(180deg, var(--panel), rgba(255, 255, 255, 0.9));
+  background: var(--panel);
   padding: 12px;
   overflow: hidden;
   box-shadow: 0 18px 32px rgba(15, 23, 42, 0.08);
@@ -10598,7 +11240,7 @@ select:focus-visible {
 }
 
 :root[data-theme='dark'] .dashCard {
-  background: linear-gradient(180deg, rgba(11, 16, 32, 0.98), rgba(11, 16, 32, 0.9));
+  background: var(--glass);
   box-shadow: 0 18px 32px rgba(0, 0, 0, 0.3);
 }
 
@@ -11230,9 +11872,9 @@ select:focus-visible {
 }
 
 .goalChip.active {
-  color: #D95D39;
-  border-color: rgba(217, 93, 57, 0.35);
-  box-shadow: 0 10px 18px rgba(217, 93, 57, 0.12);
+  color: var(--accent);
+  border-color: var(--accentBorder);
+  box-shadow: 0 10px 18px var(--glowSoft);
 }
 
 .goalChipMeta {
@@ -11297,9 +11939,9 @@ select:focus-visible {
 }
 
 .goalPlanAssistToggle.active {
-  color: #D95D39;
-  border-color: rgba(217, 93, 57, 0.4);
-  box-shadow: 0 10px 18px rgba(217, 93, 57, 0.12);
+  color: var(--accent);
+  border-color: var(--accentBorder);
+  box-shadow: 0 10px 18px var(--glowSoft);
 }
 
 .goalSectionMeta {
@@ -11592,7 +12234,7 @@ select:focus-visible {
   width: 100%;
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   padding: 8px 10px;
   font-size: 12px;
   font-weight: 600;
@@ -11608,7 +12250,7 @@ select:focus-visible {
 
 .goalPlanAssistOutput {
   min-height: 120px;
-  background: rgba(255, 255, 255, 0.9);
+  background: color-mix(in srgb, var(--glass3) 70%, transparent);
   resize: vertical;
 }
 
@@ -11647,7 +12289,7 @@ select:focus-visible {
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--panel);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   font-size: 11px;
   font-weight: 800;
   color: var(--text);
@@ -11666,30 +12308,30 @@ select:focus-visible {
 }
 
 .goalPlanAssistBtn.primary {
-  background: rgba(217, 93, 57, 0.18);
-  border-color: rgba(217, 93, 57, 0.4);
-  color: #D95D39;
+  background: var(--accentSoft);
+  border-color: var(--accentBorder);
+  color: var(--accent);
 }
 
 .goalPlanEditor {
   min-height: 240px;
   width: 100%;
   border-radius: 16px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--glass);
   padding: 14px 16px;
   font-size: 12px;
   font-weight: 600;
   line-height: 1.6;
   color: var(--text);
   resize: vertical;
-  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadowSoft);
 }
 
 .goalPlanOutline {
   border-radius: 16px;
   border: 1px dashed var(--border);
-  background: rgba(255, 255, 255, 0.7);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   padding: 12px;
   display: grid;
   gap: 8px;
@@ -11943,7 +12585,7 @@ select:focus-visible {
   position: relative;
   height: var(--plan-track-h);
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(217, 93, 57, 0.12) 1px, transparent 1px);
+  background: var(--glass2);
   background-size: calc(100% / var(--goal-plan-grid, 6)) 100%;
 }
 
@@ -11952,8 +12594,8 @@ select:focus-visible {
   top: var(--plan-bar-pad);
   bottom: var(--plan-bar-pad);
   border-radius: 999px;
-  background: rgba(217, 93, 57, 0.7);
-  box-shadow: 0 6px 14px rgba(217, 93, 57, 0.2);
+  background: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 6px 14px var(--glowSoft);
 }
 
 .goalPlanTimelineRow.event .goalPlanTimelineBar {
@@ -11979,7 +12621,7 @@ select:focus-visible {
 }
 
 .goalPlanTimelineRow.empty .goalPlanTimelineTrack {
-  background: none;
+  background: var(--glass2);
   border: 1px dashed rgba(17, 24, 39, 0.16);
 }
 
@@ -12219,23 +12861,23 @@ select:focus-visible {
   padding: 14px 16px;
   border-radius: 18px;
   border: 1px solid transparent;
-  background: rgba(255, 255, 255, 0.6);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   display: grid;
   gap: 8px;
   transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease, background 120ms ease;
 }
 
 .goalListItem:hover {
-  border-color: rgba(17, 24, 39, 0.08);
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 16px 26px rgba(15, 23, 42, 0.08);
+  border-color: var(--border2);
+  background: color-mix(in srgb, var(--glass3) 70%, transparent);
+  box-shadow: var(--shadowSoft);
   transform: translateY(-1px);
 }
 
 .goalListItem.active {
-  border-color: rgba(217, 93, 57, 0.35);
-  background: #fff;
-  box-shadow: 0 18px 30px rgba(217, 93, 57, 0.15);
+  border-color: var(--accentBorder);
+  background: var(--accentSoft);
+  box-shadow: 0 18px 30px var(--glowSoft);
 }
 
 .goalListTitleRow {
@@ -12256,7 +12898,7 @@ select:focus-visible {
 }
 
 .goalListItem.active .goalListTitle {
-  color: #D95D39;
+  color: var(--accent);
 }
 
 .goalListMeta {
@@ -12319,8 +12961,8 @@ select:focus-visible {
 }
 
 .goalCard.active {
-  border-color: rgba(217, 93, 57, 0.35);
-  box-shadow: 0 18px 30px rgba(217, 93, 57, 0.12);
+  border-color: var(--accentBorder);
+  box-shadow: 0 18px 30px var(--glowSoft);
 }
 
 .goalCardHeader {
@@ -12607,8 +13249,8 @@ select:focus-visible {
 }
 
 .habitRowCard.active {
-  border-color: rgba(217, 93, 57, 0.35);
-  box-shadow: 0 18px 30px rgba(217, 93, 57, 0.12);
+  border-color: var(--accentBorder);
+  box-shadow: 0 18px 30px var(--glowSoft);
 }
 
 .habitRowInfo {
@@ -12848,6 +13490,39 @@ select:focus-visible {
   border-top: 1px solid var(--border);
 }
 
+.mdContextMenu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 180px;
+  background: var(--panel2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 6px 0;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.12),
+    0 1px 4px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.mdContextMenu button {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  text-align: left;
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.mdContextMenu button:hover {
+  background: var(--accentSoft);
+}
+
 /* ─────────────────────────────────────────────────────────────
    Current Time Indicator (Now Line)
    ───────────────────────────────────────────────────────────── */
@@ -12869,18 +13544,18 @@ select:focus-visible {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #D95D39;
+  background: var(--accent);
   flex-shrink: 0;
   margin-left: -5px;
-  box-shadow: 0 0 6px rgba(217, 93, 57, 0.5);
+  box-shadow: 0 0 6px var(--glow);
 }
 
 .tmNowLine,
 .agNowLine {
   flex: 1;
   height: 2px;
-  background: #D95D39;
-  box-shadow: 0 0 4px rgba(217, 93, 57, 0.4);
+  background: var(--accent);
+  box-shadow: 0 0 4px var(--glowSoft);
 }
 
 /* Active Session Banner */

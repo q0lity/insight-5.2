@@ -1,11 +1,11 @@
-export type ThemePreference = 'system' | 'light' | 'dark' | 'warm' | 'olive' | 'oliveOrange' | 'roseGold'
-export type ResolvedTheme = 'light' | 'dark' | 'warm' | 'olive' | 'oliveOrange' | 'roseGold'
+export type ThemePreference = 'system' | 'light' | 'dark' | 'midnight' | 'warm' | 'olive' | 'oliveOrange' | 'roseGold'
+export type ResolvedTheme = 'light' | 'dark' | 'midnight' | 'warm' | 'olive' | 'oliveOrange' | 'roseGold'
 
 const STORAGE_KEY = 'insight5.ui.theme.v2'
 export const THEME_CHANGED_EVENT = 'insight5.theme.changed'
 
-const VALID_THEMES: ThemePreference[] = ['system', 'light', 'dark', 'warm', 'olive', 'oliveOrange', 'roseGold']
-const DARK_THEMES: ResolvedTheme[] = ['dark', 'olive', 'oliveOrange', 'roseGold']
+const VALID_THEMES: ThemePreference[] = ['system', 'light', 'dark', 'midnight', 'warm', 'olive', 'oliveOrange', 'roseGold']
+const DARK_THEMES: ResolvedTheme[] = ['dark', 'midnight', 'olive', 'oliveOrange', 'roseGold']
 
 export function getSystemTheme(): ResolvedTheme {
   try {
@@ -39,7 +39,7 @@ export function loadThemePreference(): ThemePreference {
   } catch {
     // ignore
   }
-  return 'system'
+  return 'midnight'
 }
 
 export function saveThemePreference(pref: ThemePreference) {
@@ -66,6 +66,7 @@ export const THEME_LABELS: Record<ThemePreference, string> = {
   system: 'System',
   light: 'Light',
   dark: 'Dark',
+  midnight: 'Midnight',
   warm: 'Warm',
   olive: 'Olive',
   oliveOrange: 'Olive Orange',
@@ -75,7 +76,8 @@ export const THEME_LABELS: Record<ThemePreference, string> = {
 // Theme preview colors for UI
 export const THEME_PREVIEWS: Record<Exclude<ThemePreference, 'system'>, { bg: string; surface: string; accent: string }> = {
   light: { bg: '#FFFFFF', surface: '#F8F9FA', accent: '#D95D39' },
-  dark: { bg: '#0B1020', surface: '#141a2a', accent: '#D95D39' },
+  dark: { bg: '#0B0D10', surface: '#12161D', accent: '#D95D39' },
+  midnight: { bg: '#0A0A0B', surface: '#121316', accent: '#D8E000' },
   warm: { bg: '#F2F0ED', surface: '#FFFFFF', accent: '#D95D39' },
   olive: { bg: '#2B2A24', surface: '#383630', accent: '#9CA77A' },
   oliveOrange: { bg: '#2B2A24', surface: '#383630', accent: '#D95D39' },

@@ -1,0 +1,205 @@
+=== AUTO-BUILD PROGRESS ===
+
+Project: Parsing Engine Analysis and Optimization
+Workspace: insight-5.2
+Started: 2026-01-13
+
+Workflow Type: feature
+Rationale: This task involves both analysis of existing code and implementation of new parsing logic enhancements. The scope includes analyzing current architecture, identifying gaps, and implementing optimizations for entity classification, auto-linking, and action triggers.
+
+Session 1 (Planner):
+- Conducted deep codebase investigation (Phase 0)
+- Read and analyzed 10+ key files
+- Created implementation_plan.json
+- Phases: 8
+- Total subtasks: 19
+- Created init.sh
+
+=== CODEBASE INVESTIGATION FINDINGS ===
+
+Key Patterns Discovered:
+
+1. DUAL-PARSER ARCHITECTURE:
+   - Rule-based: apps/desktop/src/nlp/natural.ts (chrono-node + regex)
+   - LLM-based: apps/desktop/src/nlp/llm-parse.ts (OpenAI GPT-4.1-mini)
+
+2. CLASSIFIER PATTERN:
+   ```typescript
+   ClassifierRule = { entityClass, patterns: RegExp[], weight: number }
+   ```
+
+3. CONFIDENCE TIER SYSTEM:
+   - HIGH (>= 0.85): Auto-apply without confirmation
+   - MEDIUM (>= 0.50): Suggest to user
+   - LOW (< 0.50): Require explicit confirmation
+
+4. EXISTING CONTEXT LOADERS:
+   - habit-context.ts: matchHabitFuzzy() exists
+   - project-context.ts: matchProjectFuzzy() exists
+   - Both need wiring to confidence-based decisions
+
+=== IDENTIFIED GAPS ===
+
+1. NO HABIT COMPLETION DETECTION
+   - Habits defined but no "I did X" → check off logic
+   - matchHabitFuzzy exists but not wired to completion action
+
+2. MISSING NOTES ENTITY
+   - Notes captured as event notes, not standalone entity
+   - No 'note' entity class in classifier
+
+3. CONFIDENCE NOT USED FOR AUTO-LINKING
+   - Confidence tiers defined in thresholds.ts
+   - Not wired to project auto-linking decisions
+
+4. CLASSIFIER MISSING ENTITY CLASSES
+   - Has: workout, meal, sleep, transport, shopping, social, tracker, task, event
+   - Missing: habit, note
+
+=== PHASE SUMMARY ===
+
+Phase 1 - Analysis & Documentation: 2 subtasks
+  - Create analysis document
+  - Document confidence tier system
+  Depends on: none
+
+Phase 2 - Type Definitions: 2 subtasks
+  - Add HabitCompletion and NoteEntity types
+  - Add 'habit' and 'note' to EntityClass
+  Depends on: phase-1
+
+Phase 3 - Classifier Enhancement: 3 subtasks
+  - Add habit completion patterns
+  - Add note entity patterns
+  - Add habit_completion intent
+  Depends on: phase-2
+
+Phase 4 - Habit Completion Context: 2 subtasks
+  - Add detectHabitCompletion function
+  - Add completion confidence scoring
+  Depends on: phase-3
+
+Phase 5 - Project Auto-Linking: 2 subtasks (can run parallel with phase-7)
+  - Add autoLinkProject function
+  - Add LinkDecision type with tier behavior
+  Depends on: phase-3
+
+Phase 6 - Desktop Rule-Based Parser: 3 subtasks
+  - Integrate habit completion into natural.ts
+  - Add note extraction
+  - Add ParsedNote type
+  Depends on: phase-4, phase-5
+
+Phase 7 - Desktop LLM Parser: 3 subtasks (can run parallel with phase-5)
+  - Update LLM prompt for habits
+  - Add note entity to schema
+  - Add LlmParsedHabitCompletion type
+  Depends on: phase-4
+
+Phase 8 - Integration Testing: 4 subtasks
+  - Habit completion flow E2E
+  - Project auto-linking E2E
+  - Note entity creation E2E
+  - 5 entity type classification verification
+  Depends on: phase-6, phase-7
+
+=== SERVICES INVOLVED ===
+
+- parser (primary): Core parsing package
+  Path: packages/parser
+  Key dirs: src/pipeline/, src/confidence/, src/context/
+
+- desktop (primary): NLP implementation
+  Path: apps/desktop
+  Port: 5174
+  Key dirs: src/nlp/
+
+=== PARALLELISM ANALYSIS ===
+
+- Max parallel phases: 2
+- Parallel groups:
+  - phase-5 (project-linking) + phase-7 (llm-parser) can run together
+- Recommended workers: 1 (due to file dependencies)
+- Speedup estimate: 1.2x
+
+=== STARTUP COMMAND ===
+
+To continue building this spec, run:
+
+  source auto-claude/.venv/bin/activate && python auto-claude/run.py --spec 001 --parallel 1
+
+Or manually start development environment:
+
+  chmod +x .auto-claude/specs/001*/init.sh && ./.auto-claude/specs/001*/init.sh
+
+=== KEY FILES TO MODIFY ===
+
+packages/parser/src/types.ts
+  - Add HabitCompletionEvent type
+  - Add NoteEntity type
+  - Add 'habit' | 'note' to EntityClass
+
+packages/parser/src/pipeline/classifier.ts
+  - Add habit classification rules
+  - Add note classification rules
+  - Add habit_completion intent
+
+packages/parser/src/context/habit-context.ts
+  - Add detectHabitCompletion()
+  - Add confidence scoring for matches
+
+packages/parser/src/context/project-context.ts
+  - Add autoLinkProject()
+  - Add LinkDecision type
+
+apps/desktop/src/nlp/natural.ts
+  - Integrate habit completion
+  - Add note extraction
+
+apps/desktop/src/nlp/llm-parse.ts
+  - Update system prompt
+  - Add habit/note types
+
+=== END SESSION 1 (PLANNER) ===
+
+Status: Planning Complete
+Next: Implementation by Coder Agent
+
+=== SESSION 2 (CODER - PHASE 8 INTEGRATION) ===
+
+Date: 2026-01-13
+
+Subtask 8-1: Integration test for habit completion flow
+Status: Completed
+
+Files Created:
+- apps/desktop/src/__tests__/integration/habit-completion-flow.test.ts
+  - Comprehensive integration test suite (300+ lines)
+  - Tests end-to-end habit completion flow
+  - Tests fuzzy matching, confidence scoring
+  - Tests multiple habit completions
+  - Tests edge cases and normalization
+
+- apps/desktop/vitest.config.ts
+  - Vitest configuration for integration tests
+  - Node environment for parser testing
+
+Files Modified:
+- apps/desktop/package.json
+  - Added vitest dev dependency
+  - Added test scripts: test, test:watch, test:integration
+
+Test Coverage:
+- detectHabitCompletion() function
+- matchHabitFuzzy() function
+- calculateMatchConfidence() function
+- parseCaptureNatural() for habit detection
+- parseCaptureWithBlocks() for block-level habit detection
+- Confidence tier scoring (HIGH/MEDIUM/LOW)
+- Multiple habit completions in compound statements
+- Edge cases: empty context, ambiguous input, special characters
+
+To Run Tests:
+  cd apps/desktop && npm install && npm run test:integration
+
+=== END SESSION 2 ===

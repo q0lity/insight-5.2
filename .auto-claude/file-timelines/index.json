@@ -1,0 +1,21 @@
+{
+  "files": [
+    "apps/desktop/src/App.tsx",
+    "packages/shared/src/models.ts",
+    ".auto-claude-security.json",
+    ".auto-claude-status",
+    ".claude_settings.json",
+    ".gitignore",
+    "apps/desktop/src/App.css",
+    "apps/desktop/src/markdown/note-items.ts",
+    "apps/desktop/package.json",
+    "apps/desktop/src/assistant/storage.ts",
+    "apps/desktop/src/openai.ts",
+    "apps/desktop/src/ui/icons.tsx",
+    "apps/desktop/src/storage/calendar.ts",
+    "apps/desktop/src/workspace/views/notes.tsx",
+    "apps/desktop/src/workspace/views/ticktick-tasks.tsx",
+    "package-lock.json"
+  ],
+  "last_updated": "2026-01-13T13:08:30.987111"
+}

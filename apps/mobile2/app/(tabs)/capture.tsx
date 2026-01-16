@@ -13,6 +13,7 @@ import { useSession } from '@/src/state/session';
 import { createTask } from '@/src/storage/tasks';
 import { createTrackerLog } from '@/src/storage/trackers';
 import { getEvent, startEvent, stopEvent, updateEvent } from '@/src/storage/events';
+import { calculateHabitPoints, listHabits, type HabitDef } from '@/src/storage/habits';
 import { autoCategorize, detectIntent, formatSegmentsPreview, parseCapture } from '@/src/lib/schema';
 import { parseCaptureNatural, type ParsedEvent } from '@/src/lib/nlp/natural';
 import { estimateWorkoutCalories, parseMealFromText, parseWorkoutFromText } from '@/src/lib/health';
@@ -577,6 +578,43 @@ function toTagTokenFromLabel(raw: string) {
   return slug ? `#${slug}` : '';
 }
 
+function normalizeMatchKey(text: string) {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function matchHabitForText(habits: HabitDef[], text: string) {
+  const normalized = normalizeMatchKey(text);
+  if (!normalized) return null;
+  for (const habit of habits) {
+    const nameKey = normalizeMatchKey(habit.name);
+    if (!nameKey) continue;
+    const words = nameKey.split(' ').filter(Boolean);
+    if (!words.length) continue;
+    const hasAll = words.every((word) => normalized.includes(word));
+    if (hasAll) return habit;
+  }
+  return null;
+}
+
+function inferEmbeddedParentHint(text: string) {
+  const match = text.match(/\b(?:during|while)\s+(?:my|the|a|an)?\s*([a-z][\w\s-]{0,40})/i);
+  if (!match?.[1]) return null;
+  const raw = match[1]
+    .split(/\b(?:and then|then|also|but)\b/i)[0]
+    ?.split(/[,.]/)[0]
+    ?.trim();
+  if (!raw) return null;
+  return normalizeMatchKey(raw);
+}
+
+function isImmediateAction(text: string) {
+  return /\b(right now|now|starting|start(?:ing)?|about to|gonna|going to)\b/i.test(text);
+}
+
+function isHabitCompletion(text: string) {
+  return /\b(just|done|finished|completed)\b/i.test(text) || /\b(brushed|flossed|shaved|ate|drank|took)\b/i.test(text);
+}
+
 function deriveKeywordTag(title: string, category?: string | null, subcategory?: string | null) {
   const stop = new Set(['the', 'a', 'an', 'with', 'and', 'for', 'to', 'from', 'at', 'in', 'on', 'of', 'my']);
   const base = title
@@ -937,16 +975,19 @@ function applyDurationOverride(startAt: number, endAt: number, kind: ParsedEvent
 function inferTrackerKeyFromText(title: string, tags?: string[] | null) {
   const tagSet = new Set((tags ?? []).map((tag) => normalizeTagName(tag)));
   const text = `${title} ${[...tagSet].join(' ')}`.toLowerCase();
-  const candidates = ['mood', 'energy', 'stress', 'pain', 'sleep', 'workout', 'period', 'bored', 'water'];
+  const candidates = ['mood', 'energy', 'stress', 'pain', 'sleep', 'workout', 'period', 'bored', 'water', 'anxiety', 'fear', 'cramps'];
   for (const key of candidates) {
     if (tagSet.has(key)) return key;
   }
   if (/\bmood\b/.test(text)) return 'mood';
-  if (/\b(happy|sad|angry|anxious|depressed|excited|great|good|okay|ok)\b/.test(text)) return 'mood';
+  if (/\b(happy|sad|angry|depressed|excited|great|good|okay|ok)\b/.test(text)) return 'mood';
   if (/\benergy\b/.test(text)) return 'energy';
   if (/\b(tired|exhausted|drained|wired|energized)\b/.test(text)) return 'energy';
   if (/\bstress\b/.test(text)) return 'stress';
-  if (/\b(stressed|overwhelmed|anxious)\b/.test(text)) return 'stress';
+  if (/\b(stressed|overwhelmed)\b/.test(text)) return 'stress';
+  if (/\b(anxious|anxiety|nervous|panic)\b/.test(text)) return 'anxiety';
+  if (/\b(scared|fear|afraid|terrified)\b/.test(text)) return 'fear';
+  if (/\b(cramps|cramping)\b/.test(text)) return 'cramps';
   if (/\bpain\b/.test(text)) return 'pain';
   if (/\bsleep\b/.test(text)) return 'sleep';
   if (/\bworkout\b/.test(text)) return 'workout';
@@ -1699,6 +1740,7 @@ export default function CaptureScreen() {
       const normalized = normalizeCaptureText(captureText);
       const parsed = parseCapture(normalized);
       const natural = parseCaptureNatural(normalized, nowMs);
+      const habits = await listHabits();
 
       const fm = (frontmatter ?? {}) as Record<string, unknown>;
       const fmTags = toStringList(fm.tags).map((tag) => normalizeTagName(tag)).filter(Boolean);
@@ -1795,7 +1837,7 @@ export default function CaptureScreen() {
       const workoutStartSignal = /\b(going to|gonna|start(?:ing)?|begin(?:ning)?|about to)\b.*\b(work\s*out|workout)\b/.test(lowerText);
       const workoutEndSignal = /\b(done|finished|ended|stop(?:ping)?)\b.*\b(work\s*out|workout)\b/.test(lowerText);
       const boredSignal = /\b(bored|boredom|boring)\b/.test(lowerText);
-      const moodWordMatch = lowerText.match(/\b(?:i'm|i am|feeling|feel)\s+(?:really\s+)?(happy|great|good|okay|ok|sad|down|depressed|angry|anxious|stressed|meh)\b/);
+      const moodWordMatch = lowerText.match(/\b(?:i'm|i am|feeling|feel)\s+(?:really\s+)?(happy|great|good|okay|ok|sad|down|depressed|angry|meh)\b/);
       const moodWord = moodWordMatch?.[1] ?? null;
       const moodScaleMap: Record<string, number> = {
         happy: 8,
@@ -1807,8 +1849,6 @@ export default function CaptureScreen() {
         down: 3,
         depressed: 2,
         angry: 3,
-        anxious: 4,
-        stressed: 4,
         meh: 4,
       };
       const moodValue = moodWord ? moodScaleMap[moodWord] ?? null : null;
@@ -1824,7 +1864,15 @@ export default function CaptureScreen() {
         ratingNear('energy') ??
         (/\b(energized|wired)\b/.test(lowerText) ? 8 : /\b(tired|exhausted|drained)\b/.test(lowerText) ? 3 : null);
       const stressValue =
-        ratingNear('stress') ?? (/\b(stressed|overwhelmed|anxious)\b/.test(lowerText) ? 7 : /\b(calm|relaxed)\b/.test(lowerText) ? 2 : null);
+        ratingNear('stress') ?? (/\b(stressed|overwhelmed)\b/.test(lowerText) ? 7 : /\b(calm|relaxed)\b/.test(lowerText) ? 2 : null);
+      const anxietyValue =
+        ratingNear('anxiety') ??
+        (/\b(anxious|nervous|panic|panicked)\b/.test(lowerText) ? 6 : null);
+      const fearValue =
+        ratingNear('fear') ??
+        (/\b(scared|afraid|fearful|terrified)\b/.test(lowerText) ? 7 : null);
+      const crampsValue =
+        ratingNear('cramps') ?? (/\b(cramps|cramping|period cramps)\b/.test(lowerText) ? 6 : null);
 
       if (periodStartSignal || periodEndSignal) tagNames.add('period');
       if (painSignal || painHealedSignal) tagNames.add('pain');
@@ -1843,6 +1891,9 @@ export default function CaptureScreen() {
       if (moodValue != null) tagNames.add('mood');
       if (energyValue != null) tagNames.add('energy');
       if (stressValue != null) tagNames.add('stress');
+      if (anxietyValue != null) tagNames.add('anxiety');
+      if (fearValue != null) tagNames.add('fear');
+      if (crampsValue != null) tagNames.add('cramps');
 
       const implicitPeople = extractImplicitPeople(normalized);
       const implicitPlaces = extractImplicitPlaces(normalized);
@@ -1888,13 +1939,81 @@ export default function CaptureScreen() {
 
       let primaryEventId: string | null = null;
       const groupedEvents = groupParsedEvents(natural.events);
+      const embeddedCandidates: Array<ParsedEvent & { parentHint?: string | null }> = [];
+      const primaryCandidates: Array<ParsedEvent & { parentHint?: string | null }> = [];
       for (const event of groupedEvents) {
+        const hint = event.parentHint ?? inferEmbeddedParentHint(event.sourceText ?? '');
+        if (hint) embeddedCandidates.push({ ...event, parentHint: hint });
+        else primaryCandidates.push(event);
+      }
+
+      const createdEventIds = new Map<string, string>();
+      const habitNoteLines: string[] = [];
+      for (const event of primaryCandidates) {
         const kind = (event.kind ?? 'event') as ParsedEvent['kind'];
         if (kind === 'log') continue;
         const baseText = `${event.title ?? ''}\n${event.notes ?? ''}\n${(event.tags ?? []).join(' ')}`.trim();
         const autoImportance = event.importance ?? importanceOverride ?? inferImportanceFromText(baseText) ?? capture.importance ?? 5;
         const autoDifficulty = event.difficulty ?? difficultyOverride ?? inferDifficultyFromText(baseText) ?? capture.difficulty ?? 5;
         const autoCharacter = uniqStrings([...inferCharacterFromText(baseText, event.tags ?? []), ...(capture.character ?? [])]);
+        const locationHint = event.location ?? pickLocationForText(baseText) ?? capture.location ?? null;
+        const habitMatch = matchHabitForText(habits, `${event.title ?? ''} ${event.sourceText ?? ''} ${baseText}`);
+        const habitLog = habitMatch ? isHabitCompletion(event.sourceText ?? event.title ?? '') : false;
+        const habitTrackerKey = habitMatch ? `habit:${habitMatch.id}` : null;
+        const nextKind = habitLog ? 'log' : kind;
+        const { mergedTags: mergedEventTags, inferred } = finalizeCategorizedTags({
+          title: event.title,
+          tags: event.tags ?? [],
+          location: locationHint,
+          includeGlobals: true,
+          globalTags: allTagTokens,
+          categoryOverride,
+          subcategoryOverride,
+          rules: activeRules,
+        });
+        const mergedEventTagTokens = uniqStrings([
+          ...mergedEventTags,
+          ...(habitMatch?.tags ?? []).map((tag) => normalizeHashTag(tag)).filter(Boolean),
+        ]);
+        const times = applyDurationOverride(event.startAt ?? nowMs, event.endAt ?? nowMs + 5 * 60 * 1000, nextKind, {
+          durationOverride,
+          explicitTimeInCapture,
+        });
+        const nextNotes = maybeSegmentNotes(event.notes ?? '', times.startAt, times.endAt) || event.notes || normalized;
+        if (habitMatch) habitNoteLines.push(habitMatch.name);
+        const created = await startEvent({
+          title: event.title || 'Event',
+          kind: nextKind,
+          startAt: times.startAt,
+          endAt: event.openEnded && !habitLog ? null : Math.max(times.endAt, times.startAt + 5 * 60 * 1000),
+          notes: nextNotes,
+          tags: mergedEventTagTokens.map(normalizeTagName),
+          contexts: mergedContexts,
+          people: cleanPeopleList(event.people ?? uniqStrings([...personMentions, ...mergedPeople])),
+          skills: uniqStrings([...(event.skills ?? []), ...(capture.skills ?? [])]),
+          character: autoCharacter,
+          location: locationHint,
+          category: habitMatch?.category ?? inferred.category,
+          subcategory: habitMatch?.subcategory ?? inferred.subcategory,
+          estimateMinutes: event.estimateMinutes ?? durationOverride ?? Math.round((times.endAt - times.startAt) / (60 * 1000)),
+          importance: habitMatch?.importance ?? autoImportance,
+          difficulty: habitMatch?.difficulty ?? autoDifficulty,
+          goal: habitMatch?.goal ?? event.goal ?? goalOverride ?? capture.goal ?? null,
+          project: habitMatch?.project ?? event.project ?? projectOverride ?? capture.project ?? null,
+          trackerKey: habitTrackerKey,
+          points: habitMatch ? calculateHabitPoints(habitMatch, event.estimateMinutes ?? durationOverride ?? null) : null,
+          parentEventId: habitLog && primaryEventId ? primaryEventId : null,
+        });
+        createdEventIds.set(normalizeMatchKey(event.title ?? ''), created.id);
+        if (!primaryEventId && created.kind !== 'log' && created.kind !== 'episode') primaryEventId = created.id;
+      }
+
+      for (const event of embeddedCandidates) {
+        const parentHint = event.parentHint ? normalizeMatchKey(event.parentHint) : null;
+        const parentId = parentHint ? createdEventIds.get(parentHint) ?? null : null;
+        const baseText = `${event.title ?? ''}\n${event.notes ?? ''}\n${(event.tags ?? []).join(' ')}`.trim();
+        const autoImportance = event.importance ?? importanceOverride ?? inferImportanceFromText(baseText) ?? capture.importance ?? 5;
+        const autoDifficulty = event.difficulty ?? difficultyOverride ?? inferDifficultyFromText(baseText) ?? capture.difficulty ?? 5;
         const locationHint = event.location ?? pickLocationForText(baseText) ?? capture.location ?? null;
         const { mergedTags: mergedEventTags, inferred } = finalizeCategorizedTags({
           title: event.title,
@@ -1906,22 +2025,21 @@ export default function CaptureScreen() {
           subcategoryOverride,
           rules: activeRules,
         });
-        const times = applyDurationOverride(event.startAt ?? nowMs, event.endAt ?? nowMs + 5 * 60 * 1000, kind, {
+        const times = applyDurationOverride(event.startAt ?? nowMs, event.endAt ?? nowMs + 5 * 60 * 1000, 'episode', {
           durationOverride,
           explicitTimeInCapture,
         });
-        const nextNotes = maybeSegmentNotes(event.notes ?? '', times.startAt, times.endAt) || event.notes || normalized;
-        const created = await startEvent({
+        await startEvent({
           title: event.title || 'Event',
-          kind,
+          kind: parentId ? 'episode' : 'event',
           startAt: times.startAt,
           endAt: Math.max(times.endAt, times.startAt + 5 * 60 * 1000),
-          notes: nextNotes,
+          notes: event.notes ?? '',
           tags: mergedEventTags.map(normalizeTagName),
           contexts: mergedContexts,
           people: cleanPeopleList(event.people ?? uniqStrings([...personMentions, ...mergedPeople])),
           skills: uniqStrings([...(event.skills ?? []), ...(capture.skills ?? [])]),
-          character: autoCharacter,
+          character: uniqStrings([...inferCharacterFromText(baseText, event.tags ?? []), ...(capture.character ?? [])]),
           location: locationHint,
           category: inferred.category,
           subcategory: inferred.subcategory,
@@ -1930,8 +2048,15 @@ export default function CaptureScreen() {
           difficulty: autoDifficulty,
           goal: event.goal ?? goalOverride ?? capture.goal ?? null,
           project: event.project ?? projectOverride ?? capture.project ?? null,
+          parentEventId: parentId,
         });
-        if (!primaryEventId) primaryEventId = created.id;
+      }
+
+      if (primaryEventId && habitNoteLines.length) {
+        const primary = await getEvent(primaryEventId);
+        const habitLines = habitNoteLines.map((name) => `- ${name}`);
+        const mergedNotes = primary?.notes?.trim().length ? `${primary.notes}\n${habitLines.join('\n')}` : habitLines.join('\n');
+        await updateEvent(primaryEventId, { notes: mergedNotes });
       }
 
       if (!primaryEventId && parsed.activeEvent) {
@@ -1980,6 +2105,7 @@ export default function CaptureScreen() {
         project?: string | null;
         importance?: number | null;
         difficulty?: number | null;
+        scope?: 'inline' | 'global';
       }> = [];
       const seenTasks = new Set<string>();
 
@@ -2003,6 +2129,7 @@ export default function CaptureScreen() {
           project: task.project ?? null,
           importance: task.importance ?? null,
           difficulty: task.difficulty ?? null,
+          scope: task.scope,
         });
       }
 
@@ -2047,7 +2174,7 @@ export default function CaptureScreen() {
           subcategory: inferred.subcategory,
           importance: autoImportance,
           difficulty: autoDifficulty,
-          parentEventId: primaryEventId ?? null,
+          parentEventId: task.scope === 'global' ? null : primaryEventId ?? null,
         });
       }
 
@@ -2069,10 +2196,18 @@ export default function CaptureScreen() {
       if (moodValue != null && !trackerMap.has('mood')) trackerMap.set('mood', moodValue);
       if (energyValue != null && !trackerMap.has('energy')) trackerMap.set('energy', energyValue);
       if (stressValue != null && !trackerMap.has('stress')) trackerMap.set('stress', stressValue);
+      if (anxietyValue != null && !trackerMap.has('anxiety')) trackerMap.set('anxiety', anxietyValue);
+      if (fearValue != null && !trackerMap.has('fear')) trackerMap.set('fear', fearValue);
+      if (crampsValue != null && !trackerMap.has('cramps')) trackerMap.set('cramps', crampsValue);
       if (boredSignal && !trackerMap.has('bored')) trackerMap.set('bored', 7);
       const painValue = painRatingMatch?.[1] ? Number(painRatingMatch[1]) : null;
-      if (painValue != null && Number.isFinite(painValue) && !trackerMap.has('pain')) {
-        trackerMap.set('pain', painValue);
+      if (painValue != null && Number.isFinite(painValue)) {
+        const bodyPart = bodyPartMatch?.[1] ? normalizeTagName(bodyPartMatch[1]) : null;
+        if (bodyPart && !trackerMap.has(`${bodyPart}_pain`)) {
+          trackerMap.set(`${bodyPart}_pain`, painValue);
+        } else if (!trackerMap.has('pain')) {
+          trackerMap.set('pain', painValue);
+        }
       }
 
       for (const [key, value] of trackerMap.entries()) {

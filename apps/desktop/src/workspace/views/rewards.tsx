@@ -77,7 +77,7 @@ export function RewardsView(props: { events: CalendarEvent[] }) {
             <p className="text-sm text-[var(--muted)] font-semibold uppercase tracking-widest">Celebrate your consistency.</p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="px-6 py-3 bg-white/50 backdrop-blur border border-white/20 rounded-2xl shadow-sm flex items-center gap-3">
+            <div className="px-6 py-3 bg-[var(--glass2)] backdrop-blur border border-[var(--border)] rounded-2xl shadow-sm flex items-center gap-3">
                 <Icon name="bolt" size={18} className="text-[var(--accent)]" />
                 <div className="flex flex-col">
                     <span className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Gold Balance</span>
@@ -108,7 +108,7 @@ export function RewardsView(props: { events: CalendarEvent[] }) {
                             <svg className="absolute inset-0 w-32 h-32 -rotate-90">
                                 <circle 
                                     cx="64" cy="64" r="56" 
-                                    fill="none" stroke="#D95D39" strokeWidth="8" 
+                                    fill="none" stroke="var(--accent)" strokeWidth="8" 
                                     strokeDasharray={`${(1 - totals.toNext/250) * 351} 351`}
                                     strokeLinecap="round"
                                 />
@@ -160,7 +160,7 @@ export function RewardsView(props: { events: CalendarEvent[] }) {
                             </div>
                             <div className="h-2 bg-[var(--panel)] rounded-full overflow-hidden">
                                 <motion.div
-                                    className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full"
+                                    className="h-full bg-[var(--accent)] rounded-full"
                                     initial={{ width: 0 }}
                                     animate={{ width: `${((streakInfo.currentStreak % (nextMilestone.milestone - (nextMilestone.milestone === 7 ? 0 : [7,21,30,66,100,365].find(m => m < nextMilestone.milestone) || 0))) / nextMilestone.days) * 100}%` }}
                                     transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -175,7 +175,7 @@ export function RewardsView(props: { events: CalendarEvent[] }) {
                     </p>
 
                     {/* Lifetime Stats */}
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-black/5">
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[var(--border)]">
                         <div className="text-center">
                             <div className="text-lg font-black text-[var(--text)]">{streakInfo.longestStreak}</div>
                             <span className="text-[10px] font-bold text-[var(--muted)] uppercase">Longest Streak</span>
@@ -218,12 +218,12 @@ export function RewardsView(props: { events: CalendarEvent[] }) {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between pt-4 border-t border-black/5">
+                                <div className="flex items-center justify-between pt-4 border-t border-[var(--border)]">
                                     <span className="text-sm font-black text-[var(--accent)]">{it.costGold}g</span>
                                     <button 
                                         className={`px-6 py-2 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${
                                             isOwned ? 'bg-[var(--panel)] text-[var(--muted)]' : 
-                                            canBuy ? 'bg-[#1C1C1E] text-white shadow-lg hover:scale-105 active:scale-95' : 
+                                            canBuy ? 'bg-[var(--accent)] text-white shadow-[0_12px_24px_var(--glowSoft)] hover:scale-105 active:scale-95' : 
                                             'bg-black/5 text-[var(--muted)] cursor-not-allowed'
                                         }`}
                                         onClick={() => buy(it)}

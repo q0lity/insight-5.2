@@ -15,5 +15,6 @@ These appendices are part of the implementation-ready PRD package and contain th
 ## Additional PRD Docs
 - `Insight 5/PRD/WEB_TO_MOBILE_PARITY_MATRIX.md` — web-to-mobile feature parity map and gaps
 - `Insight 5/PRD/CAPTURE_PIPELINE_SPEC.md` — capture pipeline rules (live preview, offline markers, sync)
+- `Insight 5/PRD/WIREFRAME_SOURCE_OF_TRUTH.md` — canonical capture, outline, and entry detail wireframes + parser expectations
 - `Insight 5/PRD/IMPLEMENTATION_PLAN_MOBILE_CAPTURE.md` — mobile capture parity plan and milestones
 - `Insight 5/PRD/MOBILE_IMPLEMENTATION_CHECKLIST.md` — mobile parity checklist by file/module

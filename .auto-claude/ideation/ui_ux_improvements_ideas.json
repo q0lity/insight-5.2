@@ -1,0 +1,107 @@
+{
+  "ui_ux_improvements": [
+    {
+      "id": "uiux-001",
+      "type": "ui_ux_improvements",
+      "title": "Standardize Empty States with Actionable CTAs",
+      "description": "Replace basic empty state text with consistent, visually appealing empty state components that include icons, descriptive text, and clear call-to-action buttons.",
+      "rationale": "Current empty states like 'No open tasks.' and 'No habits yet. Add one in the Habits tab.' are inconsistent in styling and some lack clear next steps. Well-designed empty states reduce user confusion and encourage action.",
+      "category": "usability",
+      "affected_components": [
+        "apps/desktop/src/App.tsx",
+        "apps/desktop/src/workspace/views/habits.tsx",
+        "apps/desktop/src/workspace/views/placeholder.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "Empty states use simple inline text with classes like 'sbTasksEmpty', 'sbQuickEmpty', 'pomoPickEmpty', and 'empty'. These are visually minimal and inconsistent, with some providing guidance ('Add one in the Habits tab') while others don't ('No open tasks.').",
+      "proposed_change": "Create a reusable EmptyState component in src/ui/ that accepts props for icon, title, description, and optional CTA button. Apply consistently across all views. Example structure: centered layout with muted icon (64x64), title, helpful subtitle, and primary action button.",
+      "user_benefit": "Users immediately understand when a section is empty and know exactly what action to take next, reducing frustration and increasing feature discovery.",
+      "status": "draft",
+      "created_at": "2026-01-13T12:00:00.000Z"
+    },
+    {
+      "id": "uiux-002",
+      "type": "ui_ux_improvements",
+      "title": "Add Loading Skeletons to All Data Views",
+      "description": "Implement skeleton loading states in views that currently show nothing or basic spinners during data loading.",
+      "rationale": "The app has a comprehensive Skeleton component system (Skeleton.tsx with variants like SkeletonCard, SkeletonHabitCard, SkeletonNote, etc.) but it's not consistently used across all views. Some views like focus.tsx and health.tsx have loading states, but others lack visual feedback during data loading.",
+      "category": "performance",
+      "affected_components": [
+        "apps/desktop/src/ui/Skeleton.tsx",
+        "apps/desktop/src/workspace/views/notes.tsx",
+        "apps/desktop/src/workspace/views/trackers.tsx",
+        "apps/desktop/src/workspace/views/timeline.tsx",
+        "apps/desktop/src/workspace/views/habits.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "Views like notes.tsx, timeline.tsx, trackers.tsx, and habits.tsx don't show loading skeleton states during initial data fetch. Users see empty containers or sudden content appearance, which feels jarring.",
+      "proposed_change": "Add isLoading state to each view and wrap content with AnimatePresence. Show appropriate skeleton variant (SkeletonNote for notes, SkeletonHabitCard for habits, SkeletonEventCard for timeline) during the loading phase with smooth fade transitions.",
+      "user_benefit": "Perceived performance improves significantly. Users see immediate visual feedback that content is loading, reducing uncertainty and making the app feel faster and more polished.",
+      "status": "draft",
+      "created_at": "2026-01-13T12:01:00.000Z"
+    },
+    {
+      "id": "uiux-003",
+      "type": "ui_ux_improvements",
+      "title": "Improve Keyboard Navigation and Focus Management",
+      "description": "Enhance keyboard accessibility by adding visible focus indicators, keyboard shortcuts for common actions, and proper focus trapping in modals.",
+      "rationale": "While the app has some keyboard support (Enter key handlers, Escape for modals), focus-visible styling is limited (28 occurrences across 18 files). Power users benefit from keyboard navigation, and it's essential for accessibility.",
+      "category": "accessibility",
+      "affected_components": [
+        "apps/desktop/src/App.css",
+        "apps/desktop/src/ui/CaptureModal.tsx",
+        "apps/desktop/src/workspace/views/habits.tsx",
+        "apps/desktop/src/workspace/views/notes.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "Focus indicators exist via '--focus-ring' CSS variable and button:focus-visible styles, but many interactive elements (sidebar buttons, list items, cards) lack visible focus states. Modal focus trapping is not implemented - users can tab outside the modal.",
+      "proposed_change": "1) Add consistent focus-visible styles to all clickable elements (cards, list items, sidebar buttons) with the existing --focus-ring variable. 2) Implement focus trapping in CaptureModal and other modals using a custom hook or library. 3) Add keyboard shortcut hints in tooltips for common actions. 4) Ensure all interactive elements have tabIndex where needed.",
+      "user_benefit": "Users can navigate the entire app using only a keyboard, which is faster for power users and essential for users with motor disabilities. Clear focus indicators prevent users from losing their place.",
+      "status": "draft",
+      "created_at": "2026-01-13T12:02:00.000Z"
+    },
+    {
+      "id": "uiux-004",
+      "type": "ui_ux_improvements",
+      "title": "Enhance Error Boundary with Friendly Recovery Options",
+      "description": "Improve the ErrorBoundary component to provide more user-friendly error messages, optional error reporting, and multiple recovery options.",
+      "rationale": "The current ErrorBoundary shows 'App crashed' with a stack trace and single 'Reload' button. This is technical and intimidating for non-developers. A friendlier error UI increases user trust and helps them recover gracefully.",
+      "category": "usability",
+      "affected_components": [
+        "apps/desktop/src/ui/error-boundary.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "ErrorBoundary displays 'App crashed', 'Open DevTools Console for details', a pre-formatted stack trace, and a single 'Reload' button. The UI uses basic classes (errRoot, errCard, errTitle, etc.) without the app's polished styling.",
+      "proposed_change": "1) Replace technical messaging with friendly copy: 'Something went wrong' with a sad icon. 2) Hide stack trace by default behind a 'Show technical details' toggle for developers. 3) Add 'Try Again' (attempts to recover state), 'Go Home' (navigates to dashboard), and 'Report Issue' buttons. 4) Style using existing design tokens for consistency. 5) Consider auto-recovery for transient errors.",
+      "user_benefit": "Users feel supported rather than alarmed when errors occur. They have clear options to recover without losing their work or needing technical knowledge.",
+      "status": "draft",
+      "created_at": "2026-01-13T12:03:00.000Z"
+    },
+    {
+      "id": "uiux-005",
+      "type": "ui_ux_improvements",
+      "title": "Add Touch Target Sizing for Sidebar Button Labels",
+      "description": "Ensure all interactive elements in the sidebar and throughout the app meet the minimum 44x44px touch target guideline for better mobile/touch accessibility.",
+      "rationale": "The sidebar railBtn class uses 44x44px (good) but the label display mechanism and some chip/badge elements may have smaller touch targets. As a cross-platform app (with mobile versions), consistent touch targets improve usability.",
+      "category": "accessibility",
+      "affected_components": [
+        "apps/desktop/src/App.css",
+        "apps/desktop/src/ui/ChipInput.tsx",
+        "apps/desktop/src/workspace/views/habits.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "Rail buttons are 44x44px (good). However, elements like chip badges, toggle switches, and inline action buttons (e.g., 'captureAttachDetach' is a small X button) may fall below the 44x44px minimum recommended by WCAG for touch targets. Some control heights are defined as small as 26px (--control-h-xs).",
+      "proposed_change": "1) Audit all interactive elements for minimum 44x44px clickable area. 2) For visual elements that need to appear smaller, use padding to expand the touch target while keeping visual size compact. 3) Add a new CSS utility class for ensuring minimum touch targets. 4) Apply to chip close buttons, small toggles, and inline action buttons.",
+      "user_benefit": "Users on touch devices can tap buttons accurately without frustration. Users with motor control difficulties benefit from larger touch targets. Reduces mis-taps and accidental actions.",
+      "status": "draft",
+      "created_at": "2026-01-13T12:04:00.000Z"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2026-01-13T12:04:30.000Z",
+    "generator": "ui_ux_improvements_ideation_agent",
+    "total_ideas": 5,
+    "analysis_method": "static_code_analysis",
+    "note": "Visual verification recommended - Puppeteer MCP was not available for browser automation"
+  }
+}

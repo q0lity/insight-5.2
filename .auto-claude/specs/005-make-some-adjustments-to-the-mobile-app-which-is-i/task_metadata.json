@@ -1,0 +1,91 @@
+{
+  "sourceType": "manual",
+  "model": "opus",
+  "thinkingLevel": "high",
+  "isAutoProfile": true,
+  "phaseModels": {
+    "spec": "opus",
+    "planning": "opus",
+    "coding": "opus",
+    "qa": "opus"
+  },
+  "phaseThinking": {
+    "spec": "ultrathink",
+    "planning": "high",
+    "coding": "low",
+    "qa": "low"
+  },
+  "attachedImages": [
+    {
+      "id": "img-1768321487526-bcksp99",
+      "filename": "screenshot-1768321487526.png",
+      "mimeType": "image/png",
+      "size": 86055,
+      "path": "attachments/screenshot-1768321487526.png"
+    },
+    {
+      "id": "img-1768321498408-gcp7iky",
+      "filename": "screenshot-1768321498408.png",
+      "mimeType": "image/png",
+      "size": 28477,
+      "path": "attachments/screenshot-1768321498408.png"
+    },
+    {
+      "id": "img-1768321507059-w197i31",
+      "filename": "screenshot-1768321507059.png",
+      "mimeType": "image/png",
+      "size": 37633,
+      "path": "attachments/screenshot-1768321507059.png"
+    },
+    {
+      "id": "img-1768321516025-8xyojyg",
+      "filename": "screenshot-1768321516025.png",
+      "mimeType": "image/png",
+      "size": 97979,
+      "path": "attachments/screenshot-1768321516025.png"
+    },
+    {
+      "id": "img-1768321526572-u7v363k",
+      "filename": "screenshot-1768321526572.png",
+      "mimeType": "image/png",
+      "size": 72513,
+      "path": "attachments/screenshot-1768321526572.png"
+    },
+    {
+      "id": "img-1768321538509-3352usl",
+      "filename": "screenshot-1768321538509.png",
+      "mimeType": "image/png",
+      "size": 100894,
+      "path": "attachments/screenshot-1768321538509.png"
+    },
+    {
+      "id": "img-1768321553524-exkf3xv",
+      "filename": "screenshot-1768321553524.png",
+      "mimeType": "image/png",
+      "size": 51496,
+      "path": "attachments/screenshot-1768321553524.png"
+    },
+    {
+      "id": "img-1768321636341-i5zg5aq",
+      "filename": "screenshot-1768321636341.png",
+      "mimeType": "image/png",
+      "size": 119277,
+      "path": "attachments/screenshot-1768321636341.png"
+    },
+    {
+      "id": "img-1768321692232-c899hgl",
+      "filename": "screenshot-1768321692231.png",
+      "mimeType": "image/png",
+      "size": 65860,
+      "path": "attachments/screenshot-1768321692231.png"
+    },
+    {
+      "id": "img-1768321757825-r30ofig",
+      "filename": "screenshot-1768321757825.png",
+      "mimeType": "image/png",
+      "size": 150589,
+      "path": "attachments/screenshot-1768321757825.png"
+    }
+  ],
+  "baseBranch": "main"
+}

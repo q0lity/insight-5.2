@@ -1,0 +1,56 @@
+{
+  "sourceType": "manual",
+  "model": "opus",
+  "thinkingLevel": "high",
+  "isAutoProfile": true,
+  "phaseModels": {
+    "spec": "opus",
+    "planning": "opus",
+    "coding": "opus",
+    "qa": "opus"
+  },
+  "phaseThinking": {
+    "spec": "ultrathink",
+    "planning": "high",
+    "coding": "low",
+    "qa": "low"
+  },
+  "attachedImages": [
+    {
+      "id": "img-1768321295439-zqtdyf1",
+      "filename": "screenshot-1768321295439.png",
+      "mimeType": "image/png",
+      "size": 997950,
+      "path": "attachments/screenshot-1768321295439.png"
+    },
+    {
+      "id": "img-1768321310792-zcavrri",
+      "filename": "screenshot-1768321310792.png",
+      "mimeType": "image/png",
+      "size": 458539,
+      "path": "attachments/screenshot-1768321310792.png"
+    },
+    {
+      "id": "img-1768321325119-jofxgmk",
+      "filename": "screenshot-1768321325119.png",
+      "mimeType": "image/png",
+      "size": 70556,
+      "path": "attachments/screenshot-1768321325119.png"
+    },
+    {
+      "id": "img-1768321367297-ton7so9",
+      "filename": "screenshot-1768321367297.png",
+      "mimeType": "image/png",
+      "size": 21869,
+      "path": "attachments/screenshot-1768321367297.png"
+    },
+    {
+      "id": "img-1768321386331-vgm2ofg",
+      "filename": "screenshot-1768321386331.png",
+      "mimeType": "image/png",
+      "size": 29477,
+      "path": "attachments/screenshot-1768321386331.png"
+    }
+  ],
+  "baseBranch": "main"
+}

@@ -1,0 +1,112 @@
+{
+  "task_description": "Transform the Insight chat assistant into a production-ready, ChatGPT-style life planner with multi-modal input capabilities (voice, images, documents), intelligent database querying, and automated task/event creation.",
+  "scoped_services": ["desktop"],
+  "files_to_modify": {
+    "desktop": [
+      "apps/desktop/src/workspace/views/assistant.tsx",
+      "apps/desktop/src/openai.ts",
+      "apps/desktop/src/assistant/storage.ts",
+      "apps/desktop/src/ui/icons.tsx",
+      "apps/desktop/package.json",
+      "apps/desktop/src/App.tsx"
+    ]
+  },
+  "files_to_create": {
+    "desktop": [
+      "apps/desktop/src/hooks/useVoiceRecorder.ts",
+      "apps/desktop/src/hooks/useFileUpload.ts",
+      "apps/desktop/src/assistant/pdf-extract.ts",
+      "apps/desktop/src/assistant/image-utils.ts",
+      "apps/desktop/src/assistant/image-analysis.ts",
+      "apps/desktop/src/assistant/document-parser.ts",
+      "apps/desktop/src/assistant/db-query.ts",
+      "apps/desktop/src/assistant/planner.ts"
+    ]
+  },
+  "files_to_reference": [
+    "apps/desktop/src/openai.ts",
+    "apps/desktop/src/storage/nutrition.ts",
+    "apps/desktop/src/storage/calendar.ts",
+    "apps/desktop/src/storage/tasks.ts",
+    "apps/desktop/src/assistant/local.ts",
+    "apps/desktop/src/ui/icons.tsx",
+    "apps/desktop/src/db/insight-db.ts"
+  ],
+  "patterns": {
+    "openai_api_call": {
+      "description": "Use callOpenAiText() pattern from openai.ts with error handling and retry logic",
+      "file": "apps/desktop/src/openai.ts",
+      "key_functions": ["callOpenAiText", "openAiApiUrl", "extractResponseText"]
+    },
+    "confidence_scoring": {
+      "description": "Return confidence 0-1 scores. >0.85 auto-apply, 0.5-0.85 suggest, <0.5 clarify",
+      "file": "apps/desktop/src/storage/nutrition.ts",
+      "examples": ["confidence: 0.85 for database match", "confidence: 0.4 for keyword guess", "confidence: 0.25 for unknown"]
+    },
+    "task_creation": {
+      "description": "Use createTask() from storage/tasks.ts with title, status, tags, dueAt, scheduledAt",
+      "file": "apps/desktop/src/storage/tasks.ts",
+      "function": "createTask"
+    },
+    "event_creation": {
+      "description": "Use createEvent() from storage/calendar.ts with title, startAt, endAt, tags, kind",
+      "file": "apps/desktop/src/storage/calendar.ts",
+      "function": "createEvent"
+    },
+    "icon_pattern": {
+      "description": "SVG icons with viewBox='0 0 24 24', stroke='currentColor', strokeWidth='1.6'",
+      "file": "apps/desktop/src/ui/icons.tsx",
+      "available_icons": ["mic", "file", "plus", "sparkle", "check", "x"]
+    },
+    "chat_message": {
+      "description": "ChatMessage has id, role ('user'|'assistant'), content, createdAt",
+      "file": "apps/desktop/src/assistant/storage.ts"
+    },
+    "ui_variables": {
+      "description": "Use CSS vars: --bg, --panel, --accent, --border, --muted, --text, --accentSoft",
+      "file": "apps/desktop/src/workspace/views/assistant.tsx"
+    }
+  },
+  "existing_implementations": {
+    "chat_ui": {
+      "description": "ChatGPT-style message bubbles already implemented - needs mic/upload buttons added",
+      "file": "apps/desktop/src/workspace/views/assistant.tsx",
+      "status": "exists"
+    },
+    "openai_integration": {
+      "description": "OpenAI API wrapper with callOpenAiText(), error handling, response extraction",
+      "file": "apps/desktop/src/openai.ts",
+      "status": "needs extension for vision/whisper"
+    },
+    "local_search": {
+      "description": "Local search utilities for captures, events, tasks",
+      "file": "apps/desktop/src/assistant/local.ts",
+      "status": "exists"
+    },
+    "markdown_rendering": {
+      "description": "react-markdown with remark-gfm already configured for table support",
+      "dependencies": ["react-markdown", "remark-gfm"],
+      "status": "exists"
+    }
+  },
+  "constraints": {
+    "web_speech_api": "DO NOT USE - broken in Electron (Google blocked API key for shell environments)",
+    "pdf_parse_version": "Use v1.x API (pdfParse returns { text, numpages, info }), NOT v2",
+    "react_dropzone": "MUST spread getRootProps() on root element, not pass as props object",
+    "image_base64": "MUST prefix base64: data:image/{format};base64,{data}",
+    "whisper_limit": "Max 25MB audio file size",
+    "vision_models": "gpt-4o, gpt-4o-mini, gpt-4.1-mini support vision"
+  },
+  "dependencies_to_add": {
+    "react-dropzone": "^14.x",
+    "pdf-parse": "^1.1.1"
+  },
+  "existing_dependencies": {
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "dexie": "^4.2.1",
+    "sonner": "^2.0.7"
+  },
+  "created_at": "2026-01-13T12:01:09.372200",
+  "updated_at": "2026-01-13T17:00:00.000Z"
+}

@@ -1,0 +1,386 @@
+{
+  "integrations_researched": [
+    {
+      "name": "Markdown Editor (Obsidian-like)",
+      "type": "library",
+      "requirement": "Notes section needs an Obsidian-like markdown editor with full-screen view, headers, and transcribe button integration",
+      "verified_package": {
+        "name": "@ilz5753/rnmd",
+        "alternative_packages": [
+          "react-native-markdown-content-editor",
+          "@matheuswr89/react-native-markdown-editor",
+          "react-native-markdown-display (for rendering only)"
+        ],
+        "install_command": "npm install @ilz5753/rnmd",
+        "version": "0.3.8",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import { MarkdownEditor, MarkdownPreview } from '@ilz5753/rnmd'"
+        ],
+        "initialization": "<MarkdownEditor initialContent={content} onContentChange={handleChange} />",
+        "key_functions": [
+          "TextInput Markdown Styles (code editor-like)",
+          "Live preview with pan gesture",
+          "Search bar integration",
+          "Customizable preview render functions"
+        ],
+        "verified_against": "npm registry + Medium article"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": [
+          "react-native-gesture-handler",
+          "react-native-reanimated"
+        ]
+      },
+      "infrastructure": {
+        "requires_docker": false
+      },
+      "gotchas": [
+        "Most React Native markdown editors are for rendering, not editing",
+        "No single package provides a true Obsidian-like live WYSIWYG experience",
+        "May need to combine TextInput with markdown-display for preview",
+        "Consider using basic TextInput with syntax highlighting for simpler implementation",
+        "react-native-markdown-display may need 'punycode' polyfill: npm install punycode"
+      ],
+      "recommendation": "For a simpler, more maintainable approach, consider using the existing TextInput with react-native-markdown-display for preview mode rather than a complex WYSIWYG editor. The current app already has a similar pattern in note/[id].tsx that can be enhanced.",
+      "research_sources": [
+        "https://www.npmjs.com/package/@ilz5753/rnmd",
+        "https://medium.com/@mehdi.abdollahi3578/introducing-rnmd-the-ultimate-react-native-markdown-editor-and-viewer-6a516dc80933",
+        "https://www.npmjs.com/package/react-native-markdown-display",
+        "https://docs.expo.dev/guides/editing-richtext/"
+      ]
+    },
+    {
+      "name": "Calendar Drag-and-Drop",
+      "type": "library",
+      "requirement": "Calendar needs ability to drag and add events to specific dates",
+      "verified_package": {
+        "name": "@howljs/calendar-kit",
+        "install_command": "npm install @howljs/calendar-kit",
+        "version": "latest (supports Expo 53)",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import { CalendarBody, CalendarContainer, CalendarHeader } from '@howljs/calendar-kit'"
+        ],
+        "initialization": "<CalendarContainer allowDragToCreate={true}><CalendarHeader /><CalendarBody /></CalendarContainer>",
+        "key_functions": [
+          "allowDragToCreate - enables drag-to-create feature",
+          "onDragCreateEventStart - callback when drag starts",
+          "onDragCreateEventEnd - callback when drag ends with new event data",
+          "defaultDuration - initial duration for new events (minutes)",
+          "dragStep - time increment granularity for dragging"
+        ],
+        "verified_against": "Official documentation at howljs.github.io"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": [
+          "react-native-gesture-handler",
+          "react-native-reanimated",
+          "expo-haptics (optional for haptic feedback)"
+        ]
+      },
+      "infrastructure": {
+        "requires_docker": false
+      },
+      "gotchas": [
+        "Already have react-native-gesture-handler and react-native-reanimated installed",
+        "May require significant refactor of existing DayView/WeekView/MonthView components",
+        "The existing calendar implementation uses custom views, not a unified calendar library",
+        "Consider adding drag-to-create to existing implementation instead of replacing it"
+      ],
+      "recommendation": "The existing calendar components (DayView, WeekView, MonthView) may be simpler to enhance with basic drag gesture support using react-native-gesture-handler rather than replacing the entire calendar system. However, @howljs/calendar-kit is a solid choice if a full replacement is preferred.",
+      "research_sources": [
+        "https://howljs.github.io/react-native-calendar-kit/docs/guides/drag-to-create/",
+        "https://github.com/howljs/react-native-calendar-kit",
+        "https://www.npmjs.com/package/@howljs/calendar-kit"
+      ]
+    },
+    {
+      "name": "expo-av Recording Engine",
+      "type": "library",
+      "requirement": "Recording engine crashes when pressing front action button during recording",
+      "verified_package": {
+        "name": "expo-av",
+        "install_command": "Already installed: expo-av@~16.0.8",
+        "version": "~16.0.8",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import { Audio } from 'expo-av'"
+        ],
+        "initialization": "await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true })",
+        "key_functions": [
+          "Audio.Recording.createAsync()",
+          "recording.prepareToRecordAsync()",
+          "recording.startAsync()",
+          "recording.stopAndUnloadAsync()",
+          "recording.getURI()"
+        ],
+        "verified_against": "Expo documentation + GitHub issues"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false
+      },
+      "known_bugs": [
+        {
+          "issue": "Only one Recording object can be prepared at a given time",
+          "description": "Attempting to create a new recording too quickly after stopping causes this error",
+          "github_issue": "https://github.com/expo/expo/issues/36193",
+          "status": "Open (April 2025)",
+          "workaround": "Add delay of at least 300ms between stopAndUnloadAsync and creating new recording"
+        },
+        {
+          "issue": "Recording crashes when app goes to background",
+          "description": "iOS 13+ crashes when recording and app backgrounded",
+          "github_issue": "https://github.com/expo/expo/issues/5824",
+          "workaround": "Properly handle app state changes and stop recording before background"
+        },
+        {
+          "issue": "Recording needs minimum 300ms before stop",
+          "description": "Calling stopAndUnloadAsync too quickly after startAsync fails",
+          "github_issue": "https://github.com/expo/expo/issues/1709",
+          "workaround": "Add minimum recording duration check before allowing stop"
+        }
+      ],
+      "gotchas": [
+        "Must set allowsRecordingIOS: false after stopping to fully release audio session",
+        "Cannot call stopAndUnloadAsync immediately after startAsync (need ~300ms delay)",
+        "Try/catch is essential around all recording operations",
+        "Live Activity action button may be triggering stop too quickly",
+        "The voice.tsx file has recordingRef that may not be properly synchronized with state"
+      ],
+      "recommendation": "The crash is likely caused by the recording stop being called too quickly, possibly from an iOS Action Button or Live Activity interaction. Fix should include: 1) Add minimum duration check before stop, 2) Add proper error handling, 3) Ensure Audio.setAudioModeAsync({ allowsRecordingIOS: false }) is called after stop, 4) Add debouncing to prevent rapid stop/start cycles.",
+      "research_sources": [
+        "https://docs.expo.dev/versions/latest/sdk/audio-av/",
+        "https://github.com/expo/expo/issues/36193",
+        "https://github.com/expo/expo/issues/1709",
+        "https://github.com/expo/expo/issues/5824"
+      ]
+    },
+    {
+      "name": "Heat Map / Contribution Grid",
+      "type": "component",
+      "requirement": "Heat map boxes need better spacing across screen width for week/month views",
+      "verified_package": {
+        "name": "Custom Implementation (MobileHeatmap.tsx)",
+        "install_command": "N/A - already exists at apps/insight-mobile/src/components/MobileHeatmap.tsx",
+        "version": "N/A",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import { MobileHeatmap, type HeatmapRange } from '@/src/components/MobileHeatmap'"
+        ],
+        "initialization": "<MobileHeatmap data={heatmapData} initialRange={heatmapRange} onRangeChange={setHeatmapRange} />",
+        "key_functions": [
+          "Supports 'week', 'month', 'quarter', 'year' ranges",
+          "Uses data prop with date string keys and point values"
+        ],
+        "verified_against": "Codebase review"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false
+      },
+      "gotchas": [
+        "Component already exists - needs UI adjustment, not new integration",
+        "Box sizing should be calculated based on screen width and number of columns",
+        "Need to use Dimensions API or useWindowDimensions for responsive sizing",
+        "Different ranges (week vs month) need different box calculations"
+      ],
+      "recommendation": "This is a CSS/layout fix, not an integration. The MobileHeatmap component needs to: 1) Use useWindowDimensions to get screen width, 2) Calculate box size dynamically based on number of columns and available width, 3) Ensure consistent spacing between boxes regardless of range selection.",
+      "research_sources": [
+        "Codebase: apps/insight-mobile/src/components/MobileHeatmap.tsx"
+      ]
+    },
+    {
+      "name": "Stop Button / Session State",
+      "type": "component",
+      "requirement": "Stop button doesn't stop the timer",
+      "verified_package": {
+        "name": "Custom Implementation (session.tsx)",
+        "install_command": "N/A - state management at apps/insight-mobile/src/state/session.tsx",
+        "version": "N/A",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import { useSession } from '@/src/state/session'"
+        ],
+        "key_functions": [
+          "stopSession() - sets endAt on event and clears active state",
+          "Uses stopEvent() from storage/events.ts",
+          "Handles parent/child event relationships"
+        ],
+        "verified_against": "Codebase review"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false
+      },
+      "gotchas": [
+        "stopSession is async but called with 'void' prefix - potential race condition",
+        "Timer display continues even after session ends due to local state",
+        "Need to verify stopEvent actually persists the endAt timestamp",
+        "Focus screen has local 'now' state that updates every 100ms - independent of session state"
+      ],
+      "recommendation": "Debug by: 1) Check if stopEvent is actually being called and completing, 2) Verify the event's endAt is being set in storage, 3) Check if UI state is properly reflecting session.active becoming null, 4) Add proper await to void stopSession() calls.",
+      "research_sources": [
+        "Codebase: apps/insight-mobile/src/state/session.tsx",
+        "Codebase: apps/insight-mobile/app/focus.tsx"
+      ]
+    },
+    {
+      "name": "react-native-markdown-display",
+      "type": "library",
+      "requirement": "For rendering markdown content in notes preview",
+      "verified_package": {
+        "name": "react-native-markdown-display",
+        "alternative_packages": [
+          "@ronradtke/react-native-markdown-display",
+          "@docren/react-native-markdown"
+        ],
+        "install_command": "npm install react-native-markdown-display",
+        "version": "latest",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import Markdown from 'react-native-markdown-display'"
+        ],
+        "initialization": "<Markdown style={markdownStyles}>{content}</Markdown>",
+        "key_functions": [
+          "Renders markdown to native React Native components",
+          "Supports custom rules and styles",
+          "CommonMark compatible"
+        ],
+        "verified_against": "npm registry + GitHub"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": [
+          "punycode (may need to install: npm install punycode)"
+        ]
+      },
+      "infrastructure": {
+        "requires_docker": false
+      },
+      "gotchas": [
+        "May need punycode polyfill for React Native",
+        "Use @ronradtke fork for better React 18 / React Native 0.70+ compatibility",
+        "This is for rendering only, not editing"
+      ],
+      "recommendation": "Combine existing TextInput for editing with react-native-markdown-display for preview. This matches the pattern already used in focus.tsx for note modes (raw/transcript/outline).",
+      "research_sources": [
+        "https://www.npmjs.com/package/react-native-markdown-display",
+        "https://github.com/jonasmerlin/react-native-markdown-display"
+      ]
+    }
+  ],
+  "unverified_claims": [
+    {
+      "claim": "Front action button causes recording crash",
+      "reason": "Unable to verify if this refers to iOS Action Button (hardware), Live Activity button, or in-app UI button. The liveActivity.ts is currently a stub with no native implementation.",
+      "risk_level": "medium",
+      "investigation_needed": "Need to clarify which 'action button' is causing the crash - likely the iOS hardware Action Button on iPhone 15 Pro+, which may trigger recording actions when locked"
+    },
+    {
+      "claim": "Timer doesn't stop when stop button is pressed",
+      "reason": "Could not reproduce - appears to be a state management issue where stopSession may not be completing properly or UI is not reflecting state change",
+      "risk_level": "high",
+      "investigation_needed": "Add logging to stopSession, stopEvent, and UI components to trace the issue"
+    }
+  ],
+  "no_new_dependencies_needed": [
+    {
+      "item": "Timer font size reduction",
+      "reason": "CSS/StyleSheet change only - update activeClock style in index.tsx"
+    },
+    {
+      "item": "Tracker boxes consolidation",
+      "reason": "CSS/StyleSheet change only - update tracker card layouts"
+    },
+    {
+      "item": "Today's Pulse single line",
+      "reason": "CSS/StyleSheet change only - modify pulseRow flexDirection and styling"
+    },
+    {
+      "item": "Timeline spacing improvements",
+      "reason": "CSS/StyleSheet change only - adjust timeline block margins and gaps"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": 1,
+      "item": "Fix recording crash",
+      "description": "Add proper error handling and timing guards to voice.tsx recording logic. Ensure 300ms minimum before stop, add try/catch, and properly reset audio mode after stop."
+    },
+    {
+      "priority": 2,
+      "item": "Fix stop button",
+      "description": "Add logging to trace stopSession flow. Ensure async/await is properly handled. Check if state update is propagating correctly."
+    },
+    {
+      "priority": 3,
+      "item": "UI compaction",
+      "description": "Reduce timer font from 48px to ~32px, reduce tracker/pulse card padding, make pulse section horizontal single-row layout."
+    },
+    {
+      "priority": 4,
+      "item": "Heat map responsive sizing",
+      "description": "Use useWindowDimensions to calculate box sizes based on available width and column count per range."
+    },
+    {
+      "priority": 5,
+      "item": "Notes markdown enhancement",
+      "description": "Add react-native-markdown-display for preview mode, keep TextInput for editing. Add full-screen modal view option."
+    },
+    {
+      "priority": 6,
+      "item": "Calendar drag-and-drop",
+      "description": "Either enhance existing DayView with gesture handlers or evaluate @howljs/calendar-kit migration."
+    }
+  ],
+  "existing_dependencies_to_leverage": [
+    {
+      "name": "react-native-reanimated",
+      "version": "~4.1.1",
+      "use_for": "Gesture-based drag-and-drop for calendar events"
+    },
+    {
+      "name": "react-native-gesture-handler",
+      "version": "Installed via Expo",
+      "use_for": "Pan gestures for calendar drag-and-drop and markdown preview"
+    },
+    {
+      "name": "expo-av",
+      "version": "~16.0.8",
+      "use_for": "Already handling recording - needs bug fixes, not replacement"
+    }
+  ],
+  "context7_libraries_used": [],
+  "created_at": "2026-01-13T00:00:00Z"
+}

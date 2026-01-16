@@ -1,0 +1,85 @@
+=== AUTO-BUILD PROGRESS ===
+
+Project: ChatGPT-Style Life Planner Engine
+Workspace: .auto-claude/specs/007-so-on-the-engine-right-here-where-i-chat-so-here-l
+Started: 2026-01-13
+
+Workflow Type: feature
+Rationale: Significant feature enhancement introducing voice input, file uploads, multi-modal AI processing while extending existing OpenAI integration, chat UI, and storage systems.
+
+Session 1 (Planner):
+- Created implementation_plan.json
+- Phases: 10
+- Total subtasks: 23
+- Created init.sh
+
+Phase Summary:
+- Phase 1 (Dependencies & Types Setup): 3 subtasks, depends on []
+- Phase 2 (OpenAI Vision & Whisper API): 3 subtasks, depends on [phase-1]
+- Phase 3 (Voice Input Component): 3 subtasks, depends on [phase-2]
+- Phase 4 (File Upload Component): 4 subtasks, depends on [phase-1]
+- Phase 5 (Image Processing & Analysis): 2 subtasks, depends on [phase-2, phase-4]
+- Phase 6 (Document Processing & Entity Extraction): 2 subtasks, depends on [phase-4]
+- Phase 7 (Database Analytics Queries): 2 subtasks, depends on [phase-1]
+- Phase 8 (Conversational Task/Event Creation): 3 subtasks, depends on [phase-7]
+- Phase 9 (UI Polish & Sidebar Collapse): 3 subtasks, depends on [phase-3, phase-4]
+- Phase 10 (End-to-End Integration): 4 subtasks, depends on [phase-5, phase-6, phase-8, phase-9]
+
+Services Involved:
+- desktop: Primary service - Electron + React + Vite app on port 5174
+
+Files to Create:
+- apps/desktop/src/hooks/useVoiceRecorder.ts
+- apps/desktop/src/hooks/useFileUpload.ts
+- apps/desktop/src/assistant/pdf-extract.ts
+- apps/desktop/src/assistant/image-utils.ts
+- apps/desktop/src/assistant/image-analysis.ts
+- apps/desktop/src/assistant/document-parser.ts
+- apps/desktop/src/assistant/db-query.ts
+- apps/desktop/src/assistant/planner.ts
+
+Files to Modify:
+- apps/desktop/package.json (add react-dropzone, pdf-parse)
+- apps/desktop/src/ui/icons.tsx (add upload, paperclip icons)
+- apps/desktop/src/assistant/storage.ts (add attachment types)
+- apps/desktop/src/openai.ts (add vision & whisper functions)
+- apps/desktop/src/workspace/views/assistant.tsx (main UI overhaul)
+- apps/desktop/src/App.tsx (sidebar auto-collapse)
+
+Key Patterns to Follow:
+- OpenAI API: Use existing callOpenAiText() pattern from openai.ts
+- Confidence Scoring: 0-1 scale, >0.85 auto-apply, 0.5-0.85 suggest, <0.5 clarify
+- Entity Creation: Use createTask() from tasks.ts, createEvent() from calendar.ts
+- UI Variables: Use CSS vars (--bg, --panel, --accent, --border, --muted, --text)
+
+Critical Constraints:
+- DO NOT use Web Speech API (broken in Electron)
+- pdf-parse must use v1.x API (pdfParse returns { text, numpages, info })
+- react-dropzone: MUST spread getRootProps() on root element
+- Images MUST be base64 with MIME prefix: data:image/{format};base64,{data}
+- Whisper API max file size: 25MB
+
+Parallelism Analysis:
+- Max parallel phases: 3
+- Recommended workers: 2
+- Parallel groups:
+  - [phase-3, phase-4, phase-7] - all depend on phase-1/2, no file conflicts
+  - [phase-5, phase-6] - both depend on phase-4, create different files
+
+Verification Strategy:
+- Risk Level: High
+- Test Types: unit, integration, e2e
+- Security Scanning: Required (file upload handling)
+- Staging Deployment: Not required
+
+=== STARTUP COMMAND ===
+
+To continue building this spec, run:
+
+  source auto-claude/.venv/bin/activate && python auto-claude/run.py --spec 007 --parallel 2
+
+Or to start the dev environment manually:
+
+  cd apps/desktop && npm run dev
+
+=== END SESSION 1 ===

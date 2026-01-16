@@ -1,0 +1,120 @@
+{
+  "complexity": "complex",
+  "workflow_type": "refactor",
+  "confidence": 0.90,
+  "reasoning": "Major UI refactor across 3 platforms (React Native mobile, React web desktop, Swift iOS) with 100+ files impacted. Existing theme system needs enhancement for new design language. Critical feature parity requirement with minimal test coverage creates high risk. Desktop App.tsx is 9,049 lines - a monolithic file requiring careful refactoring.",
+
+  "analysis": {
+    "scope": {
+      "estimated_files": 150,
+      "estimated_services": 4,
+      "is_cross_cutting": true,
+      "notes": "Mobile app (121 files), desktop (92 files), Swift app (104 files), and landing page. Changes span themes, components, and styling across all platforms."
+    },
+    "integrations": {
+      "external_services": [],
+      "new_dependencies": [],
+      "research_needed": true,
+      "notes": "No new external integrations. Research needed to understand reference design patterns and how to apply them consistently across React Native/React/Swift."
+    },
+    "infrastructure": {
+      "docker_changes": false,
+      "database_changes": false,
+      "config_changes": true,
+      "notes": "Theme configuration changes required. Tailwind config updates for both mobile and desktop. Potential new color tokens and design system updates."
+    },
+    "knowledge": {
+      "patterns_exist": true,
+      "research_required": true,
+      "unfamiliar_tech": [],
+      "notes": "Existing theme system (dark/light/warm/olive modes) provides foundation. Research needed for: 1) Reference UI design interpretation, 2) Active session taskbar component design, 3) Subtask display patterns, 4) Swift UI consistency with React patterns."
+    },
+    "risk": {
+      "level": "high",
+      "concerns": [
+        "Feature parity is non-negotiable - all existing features must work",
+        "Desktop App.tsx is 9,049 lines - refactoring risk in monolithic file",
+        "Only 1 test file found - limited automated regression detection",
+        "Cross-platform consistency (React Native + React + Swift)",
+        "User explicitly stated 'really, really, really big refactor'",
+        "Active session/subtask component is a new feature addition within refactor"
+      ],
+      "notes": "High risk due to scope, minimal test coverage, and critical requirement that everything continues to work. The new active session taskbar component adds feature scope to what is primarily a visual refactor."
+    }
+  },
+
+  "recommended_phases": [
+    "discovery",
+    "requirements",
+    "research",
+    "context",
+    "spec_writing",
+    "self_critique",
+    "planning",
+    "validation"
+  ],
+
+  "flags": {
+    "needs_research": true,
+    "needs_self_critique": true,
+    "needs_infrastructure_setup": false
+  },
+
+  "validation_recommendations": {
+    "risk_level": "high",
+    "skip_validation": false,
+    "minimal_mode": false,
+    "test_types_required": ["unit", "integration", "e2e"],
+    "security_scan_required": false,
+    "staging_deployment_required": false,
+    "reasoning": "Major UI refactor with feature parity requirement demands comprehensive testing. Limited existing test coverage (only 1 test file found) means manual E2E validation is critical. No security-sensitive changes but visual regression testing across platforms is essential."
+  },
+
+  "additional_context": {
+    "platforms": {
+      "react_native_mobile": {
+        "path": "apps/insight-mobile",
+        "files": 121,
+        "framework": "Expo + NativeWind (Tailwind)"
+      },
+      "react_desktop": {
+        "path": "apps/desktop",
+        "files": 92,
+        "framework": "Vite + Tailwind",
+        "warning": "App.tsx is 9,049 lines - monolithic"
+      },
+      "swift_ios": {
+        "path": "apps/insight_swift",
+        "files": 104,
+        "framework": "Swift/SwiftUI"
+      },
+      "landing": {
+        "path": "apps/landing",
+        "framework": "Next.js + Tailwind"
+      }
+    },
+    "existing_theme_system": {
+      "modes": ["dark", "light", "warm", "olive", "oliveOrange", "roseGold"],
+      "display_sizes": ["big", "compact"],
+      "mobile_theme_file": "apps/insight-mobile/src/state/theme.tsx",
+      "desktop_theme_file": "apps/desktop/src/ui/theme.ts"
+    },
+    "reference_images": [
+      "IMG_4938.PNG",
+      "IMG_4939.PNG",
+      "IMG_4941.PNG",
+      "IMG_4942.PNG",
+      "IMG_4943.PNG",
+      "IMG_4944.PNG"
+    ],
+    "new_features_requested": [
+      "Active session taskbar-like component",
+      "Subtask breakdown display within active session",
+      "Real-time progress indicators for subtasks",
+      "Dark mode matching reference design",
+      "Warm/light mode as alternative"
+    ]
+  },
+
+  "created_at": "2025-01-13T12:55:00Z"
+}

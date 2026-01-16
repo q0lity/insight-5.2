@@ -12,6 +12,7 @@ import { estimateCalories, parseWorkoutFromText, saveWorkout } from './storage/w
 import { estimateFoodNutrition, parseMealFromText, saveMeal } from './storage/nutrition'
 import { emptySharedMeta, loadEcosystemHidden, loadTrackerDefs, saveTrackerDefs, upsertTrackerDef, type TrackerDef } from './storage/ecosystem'
 import { parseCaptureNatural, type ParsedEvent } from './nlp/natural'
+import { buildNotesFromTranscript } from './notes/parse-session'
 import { parseCaptureWithBlocksLlm, type LlmParsedEvent } from './nlp/llm-parse'
 import { estimateNutritionWithLlm } from './nlp/nutrition-estimate'
 import { loadSettings } from './assistant/storage'
@@ -23,8 +24,8 @@ import { Icon, type IconName } from './ui/icons'
 import { EVENT_COLOR_PRESETS, eventAccent } from './ui/event-visual'
 import { DISPLAY_SETTINGS_CHANGED_EVENT, loadDisplaySettings, type DisplayDensity, type EventTitleDetail } from './ui/display-settings'
 import { applyTheme, loadThemePreference, resolveTheme, saveThemePreference, THEME_CHANGED_EVENT, type ThemePreference } from './ui/theme'
-import { parseChecklistMarkdown, toggleChecklistLine } from './ui/checklist'
-import { MarkdownEditor } from './ui/markdown-editor'
+import { getChecklistMarker, parseChecklistMarkdown, setChecklistMarker, toggleChecklistLine } from './ui/checklist'
+import { MarkdownEditor, buildNotesTableMarkdown } from './ui/markdown-editor'
 import { CaptureModal } from './ui/CaptureModal'
 import { ActiveSessionBanner } from './ui/ActiveSessionBanner'
 import { Pane, type WorkspaceTab, type WorkspaceViewKey } from './workspace/pane'
@@ -558,6 +559,7 @@ function parseRatingNearText(text: string, keyword: string) {
 function inferMoodFromAdjectives(text: string) {
   const moodSignal = /\b(feel(?:ing)?|mood|looking forward|cant wait|can't wait|excited|love (?:doing|this|it))\b/i.test(text)
   if (!moodSignal) return null
+  if (/\bnot (?:feeling|doing|really)?\s*(?:great|good|well|okay|ok|amazing|awesome)\b/i.test(text)) return 3
   const moodAdjectives: Array<{ re: RegExp; value: number }> = [
     { re: /\b(amazing|awesome|fantastic|incredible)\b/i, value: 9 },
     { re: /\b(great)\b/i, value: 8 },
@@ -857,7 +859,8 @@ function savePinnedGroupOrder(order: string[]) {
 }
 
 function nextThemePref(current: ThemePreference): ThemePreference {
-  if (current === 'light') return 'dark'
+  if (current === 'light') return 'midnight'
+  if (current === 'midnight') return 'dark'
   if (current === 'dark') return 'system'
   return 'light'
 }
@@ -1138,6 +1141,25 @@ function parseTimestampedTranscript(rawText: string | null | undefined) {
   return out
 }
 
+function slugifyBlockId(raw: string) {
+  const base = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return base.slice(0, 28) || 'block'
+}
+
+function formatBlockProps(props: Record<string, string | number | null | undefined>) {
+  const entries = Object.entries(props)
+    .map(([key, value]) => {
+      if (value == null || value === '') return null
+      const text = String(value).replace(/,/g, ';')
+      return `${key}: ${text}`
+    })
+    .filter(Boolean)
+  return entries.length ? `[${entries.join(', ')}]` : ''
+}
+
 function isTextInputTarget(target: EventTarget | null) {
   const el = target as HTMLElement | null
   if (!el) return false
@@ -1308,8 +1330,10 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
   const [docOpen, setDocOpen] = useState(false)
   const [docTab, setDocTab] = useState<'notes' | 'transcript'>('notes')
   const [docMode, setDocMode] = useState<'edit' | 'outline' | 'table'>('outline')
-  const [docAutoBlocks, setDocAutoBlocks] = useState(false)
+  const [docAutoBlocks, setDocAutoBlocks] = useState(true)
   const [docTranscriptFocus, setDocTranscriptFocus] = useState<string | null>(null)
+  const docAutoBlockTimeoutRef = useRef<number | null>(null)
+  const docAutoBlockStateRef = useRef<{ key: string; transcript: string } | null>(null)
   const [themePref, setThemePref] = useState<ThemePreference>(() => loadThemePreference())
   const [eventTitleDetail, setEventTitleDetail] = useState<EventTitleDetail>(() => loadDisplaySettings().eventTitleDetail)
   const [displayDensity, setDisplayDensity] = useState<DisplayDensity>(() => loadDisplaySettings().density)
@@ -1796,6 +1820,13 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
       .trimEnd()
   }
 
+  function isDocTemplateText(text: string) {
+    const trimmed = (text ?? '').trim()
+    if (!trimmed) return false
+    if (/^---/m.test(trimmed)) return true
+    return /#\s+timeline log\b/i.test(trimmed) || /##\s+(trackers|session log)\b/i.test(trimmed)
+  }
+
   function formatDocDate(ms?: number | null) {
     if (!ms) return null
     return new Date(ms).toISOString().slice(0, 10)
@@ -1822,7 +1853,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
       .join(' ')
   }
 
-  function buildDocMetaBlock(meta: {
+  function buildDocFrontmatter(meta: {
     title?: string | null
     date?: number | null
     start?: number | null
@@ -1842,47 +1873,46 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     difficulty?: number | null
     trackerLabel?: string | null
   }) {
-    const lines: string[] = ['## Properties']
     const date = formatDocDate(meta.date)
     const start = formatDocTime(meta.start)
     const end = formatDocTime(meta.end)
-    if (date) lines.push(`- Date: ${date}`)
-    if (start || end) lines.push(`- Time: ${start ?? '—'}${end ? `–${end}` : ''}`)
-    if (meta.status) lines.push(`- Status: #status/${formatTokenValue(meta.status)}`)
-    if (meta.trackerLabel) lines.push(`- Active tracker: ${meta.trackerLabel}`)
-    if (meta.project) lines.push(`- Project: #project/${formatTokenValue(meta.project)}`)
-    if (meta.goal) lines.push(`- Goal: #goal/${formatTokenValue(meta.goal)}`)
-    if (meta.category) {
-      const tokens = [`#category/${formatTokenValue(meta.category)}`]
-      if (meta.subcategory) tokens.push(`#subcategory/${formatTokenValue(meta.subcategory)}`)
-      lines.push(`- Category: ${tokens.join(' ')}`)
-    }
-    const tagTokens = formatTokenList(meta.tags ?? [], '#')
-    if (tagTokens) lines.push(`- Tags: ${tagTokens}`)
-    const contextTokens = formatTokenList(meta.contexts ?? [], '+')
-    if (contextTokens) lines.push(`- Context: ${contextTokens}`)
-    const peopleTokens = formatTokenList(meta.people ?? [], '@')
-    if (peopleTokens) lines.push(`- People: ${peopleTokens}`)
-    if (meta.locations?.length) {
-      const locTokens = meta.locations.map((loc) => `@@${formatTokenValue(loc)}`).join(' ')
-      lines.push(`- Location: ${locTokens}`)
-    }
-    if (meta.estimateMinutes != null) lines.push(`- Estimate: ${meta.estimateMinutes}m`)
-    if (meta.importance != null || meta.urgency != null || meta.difficulty != null) {
-      lines.push(
-        `- Impact: ${meta.importance ?? '—'} | Urgency: ${meta.urgency ?? '—'} | Difficulty: ${meta.difficulty ?? '—'}`,
-      )
-    }
-    return lines.length > 1 ? lines.join('\n') : ''
+    const time = start || end ? `${start ?? '—'}${end ? `–${end}` : ''}` : null
+    const yaml: string[] = []
+    if (meta.title) yaml.push(`title: ${meta.title}`)
+    if (date) yaml.push(`date: ${date}`)
+    if (time) yaml.push(`time: ${time}`)
+    if (meta.status) yaml.push(`status: ${meta.status}`)
+    if (meta.trackerLabel) yaml.push(`tracker: ${meta.trackerLabel}`)
+    if (meta.project) yaml.push(`project: ${meta.project}`)
+    if (meta.goal) yaml.push(`goal: ${meta.goal}`)
+    if (meta.category) yaml.push(`category: ${meta.category}`)
+    if (meta.subcategory) yaml.push(`subcategory: ${meta.subcategory}`)
+    if (meta.tags?.length) yaml.push('tags:')
+    meta.tags?.forEach((tag) => yaml.push(`  - ${tag}`))
+    if (meta.contexts?.length) yaml.push('contexts:')
+    meta.contexts?.forEach((ctx) => yaml.push(`  - ${ctx}`))
+    if (meta.people?.length) yaml.push('people:')
+    meta.people?.forEach((person) => yaml.push(`  - ${person}`))
+    if (meta.locations?.length) yaml.push('locations:')
+    meta.locations?.forEach((loc) => yaml.push(`  - ${loc}`))
+    if (meta.estimateMinutes != null) yaml.push(`estimate: ${meta.estimateMinutes}m`)
+    if (meta.importance != null) yaml.push(`importance: ${meta.importance}`)
+    if (meta.urgency != null) yaml.push(`urgency: ${meta.urgency}`)
+    if (meta.difficulty != null) yaml.push(`difficulty: ${meta.difficulty}`)
+    return yaml.join('\n')
   }
 
-  function buildDocPreview(base: string, title: string | null | undefined, metaBlock: string) {
+  function buildDocPreview(base: string, title: string | null | undefined, metaBlock: string, frontmatterBlock?: string) {
     const trimmed = base.trim()
     const hasTitle = /^\s*#\s+/.test(trimmed)
+    const hasProps = /##\s+Properties/i.test(trimmed) || /\^page-props\b/i.test(trimmed)
+    const hasFrontmatter = Boolean(extractFrontmatter(trimmed).frontmatter)
     const header = title && !hasTitle ? `# ${title}\n\n` : ''
-    const meta = metaBlock ? `\n\n---\n\n${metaBlock}` : ''
-    return `${header}${trimmed}${meta}`.trim()
+    const fm = frontmatterBlock && !hasFrontmatter ? `---\n${frontmatterBlock}\n---\n\n` : ''
+    const meta = metaBlock && !hasProps && !hasFrontmatter ? `\n\n---\n\n${metaBlock}` : ''
+    return `${fm}${header}${trimmed}${meta}`.trim()
   }
+
 
   function appendMarkdownBlock(existing: string | null | undefined, block: string) {
     const trimmed = block.trim()
@@ -1899,7 +1929,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     const next = lines.map((line) => {
       const trimmed = line.trimStart()
       if (!/^[-*+]\s+/.test(trimmed)) return line
-      if (/^[-*+]\s*\[[ xX]\]\s+/.test(trimmed)) return line
+      if (/^[-*+]\s*\[[ xX><o\/-]\]\s+/.test(trimmed)) return line
       if (!/(?:\{task:[^}]+\}|\{habit:[^}]+\}|#task\b|#habit\b)/i.test(line)) return line
       const indent = line.match(/^\s*/)?.[0] ?? ''
       const rest = trimmed.replace(/^[-*+]\s+/, '')
@@ -2260,6 +2290,25 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     })
   }
 
+  function onUpdateTaskChecklistMarker(taskId: string, lineIndex: number, marker: string) {
+    const t = tasks.find((x) => x.id === taskId)
+    if (!t) return
+    const nextNotes = setChecklistMarker(t.notes ?? '', lineIndex, marker)
+    commitTask({ ...t, notes: nextNotes })
+
+    setEvents((prev) => {
+      const changed: CalendarEvent[] = []
+      const next = prev.map((e) => {
+        if (e.taskId !== taskId) return e
+        const updated = { ...e, notes: nextNotes }
+        changed.push(updated)
+        return updated
+      })
+      for (const ev of changed) void upsertEvent(ev)
+      return next
+    })
+  }
+
   function onCreateEvent(input: {
     title: string
     startAt: number
@@ -2553,6 +2602,60 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     })
   }
 
+  async function onStopNoteTask(
+    eventId: string,
+    task: {
+      tokenId: string
+      title: string
+      estimateMinutes?: number | null
+      dueAt?: number | null
+      kind?: NoteItemKind
+      rawText?: string
+      lineIndex?: number | null
+    },
+  ) {
+    const ev = events.find((e) => e.id === eventId)
+    if (!ev || !task.title) return
+    const kind = task.kind ?? 'task'
+    let workingNotes = ev.notes ?? ''
+    let rawLine = task.rawText ?? task.title
+    let tokenId = task.tokenId?.trim() ?? ''
+
+    if (!NOTE_ITEM_INLINE_RE.test(rawLine)) {
+      const ensured = ensureNoteItemTokenInNotes(workingNotes, task.lineIndex ?? null, kind, task.title)
+      if (ensured.tokenId) {
+        tokenId = ensured.tokenId
+        rawLine = ensured.line || rawLine
+        if (ensured.notes !== workingNotes) {
+          const normalized = normalizeTaskChecklistNotes(ensured.notes)
+          workingNotes = normalized
+          commitEvent({ ...ev, notes: normalized })
+        }
+      }
+    }
+    if (!tokenId) return
+
+    const sub = findNoteSubEvent(eventId, tokenId)
+    if (sub && sub.active) {
+      const now = Date.now()
+      const next = { ...sub, active: false, endAt: Math.max(sub.startAt, now) }
+      await upsertEvent(next)
+      setEvents((prev) => prev.map((e) => (e.id === next.id ? next : e)))
+    }
+
+    const activeTask =
+      tasks.find(
+        (t) =>
+          t.parentEventId === eventId &&
+          noteItemTokenId(t.notes ?? '') === tokenId &&
+          t.status === 'in_progress',
+      ) ?? null
+    if (activeTask) {
+      const updated = await upsertTask({ ...activeTask, status: 'todo' })
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+    }
+  }
+
   async function onToggleEventNoteChecklist(ev: CalendarEvent, lineIndex: number) {
     let rawLine = extractNoteItemLine(ev.notes, lineIndex)
     const baseMeta = parseNoteItemMeta(rawLine)
@@ -2575,6 +2678,160 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     let nextLine = extractNoteItemLine(nextNotes, lineIndex)
     const nextChecked = /^\s*[-*+]\s*\[[xX]\]\s+/.test(nextLine)
     if (tokenId) {
+      if (nextChecked) {
+        const endStamp = formatNoteItemTimestamp(Date.now())
+        const stamped = updateNoteItemLine(nextNotes, lineIndex, (line) => {
+          if (/\bend:[^\s}]+/.test(line)) return line
+          return upsertNoteItemMeta(line, 'end', endStamp)
+        })
+        nextNotes = stamped.notes
+        nextLine = stamped.line || nextLine
+      } else {
+        const cleaned = updateNoteItemLine(nextNotes, lineIndex, (line) => removeNoteItemMeta(line, 'end'))
+        nextNotes = cleaned.notes
+        nextLine = cleaned.line || nextLine
+      }
+    }
+
+    commitEvent({ ...ev, notes: nextNotes })
+
+    if (!inferredKind || !tokenId) return
+    const finalMeta =
+      meta ??
+      ({
+        kind: inferredKind,
+        tokenId,
+        title: deriveNoteItemTitle(nextLine),
+        estimateMinutes: null,
+        dueAt: null,
+        rawText: nextLine,
+      } as const)
+
+    const lineTokens = extractLineTokenCollections(nextLine)
+    const lineTags = lineTokens.tags.map((t) => normalizeHashTag(t))
+    const tags = uniqStrings([...(ev.tags ?? []), ...lineTags, finalMeta.kind === 'habit' ? '#habit' : '#task'])
+    const contexts = uniqStrings([...(ev.contexts ?? []), ...lineTokens.contexts])
+    const people = uniqStrings([...(ev.people ?? []), ...lineTokens.people])
+    const location = ev.location ?? (lineTokens.places.length ? lineTokens.places.join(', ') : null)
+
+    const existingSub = findNoteSubEvent(ev.id, tokenId)
+
+    if (finalMeta.kind === 'task') {
+      let target = tasks.find((t) => t.parentEventId === ev.id && noteItemTokenId(t.notes ?? '') === tokenId) ?? null
+      if (!target) {
+        const titleKey = normalizeTaskTitle(finalMeta.title)
+        const byTitle = tasks.find((t) => t.parentEventId === ev.id && normalizeTaskTitle(t.title) === titleKey) ?? null
+        if (byTitle) {
+          const updated = await upsertTask({ ...byTitle, notes: appendTokenToNotes(byTitle.notes, tokenId) })
+          setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+          target = updated
+        }
+      }
+      if (!target && nextChecked) {
+        const created = await createTask({
+          title: finalMeta.title,
+          status: 'done',
+          tags,
+          contexts,
+          people,
+          location,
+          skills: ev.skills ?? [],
+          character: ev.character ?? [],
+          entityIds: ev.entityIds ?? [],
+          parentEventId: ev.id,
+          category: ev.category ?? null,
+          subcategory: ev.subcategory ?? null,
+          importance: ev.importance ?? 5,
+          difficulty: ev.difficulty ?? 5,
+          estimateMinutes: finalMeta.estimateMinutes ?? null,
+          dueAt: finalMeta.dueAt ?? null,
+          goal: ev.goal ?? null,
+          project: ev.project ?? null,
+          sourceNoteId: ev.sourceNoteId ?? null,
+        })
+        target = await upsertTask({ ...created, notes: `token:${tokenId}` })
+        setTasks((prev) => [target!, ...prev])
+      } else if (target) {
+        const updated = await upsertTask({ ...target, status: nextChecked ? 'done' : 'todo' })
+        setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+      }
+    }
+
+    if (finalMeta.kind === 'habit') {
+      const habit = detectHabitMentions(finalMeta.title, habitDefs)[0] ?? null
+      const trackerKey = habit ? `habit:${habit.id}` : null
+
+      if (nextChecked) {
+        if (existingSub?.active) {
+          const stopped = await upsertEvent({ ...existingSub, active: false, endAt: Date.now() })
+          setEvents((prev) => prev.map((e) => (e.id === stopped.id ? stopped : e)))
+          return
+        }
+        await ensureNoteSubEvent({
+          parentEvent: ev,
+          tokenId,
+          title: finalMeta.title,
+          estimateMinutes: finalMeta.estimateMinutes ?? habit?.estimateMinutes ?? null,
+          tags,
+          contexts,
+          people,
+          location,
+          trackerKey,
+          active: false,
+          startAt: Date.now(),
+        })
+      } else if (existingSub) {
+        await deleteEvent(existingSub.id)
+        setEvents((prev) => prev.filter((e) => e.id !== existingSub.id))
+      }
+    } else if (!nextChecked && existingSub) {
+      await deleteEvent(existingSub.id)
+      setEvents((prev) => prev.filter((e) => e.id !== existingSub.id))
+    } else if (nextChecked) {
+      if (existingSub?.active) {
+        const stopped = await upsertEvent({ ...existingSub, active: false, endAt: Date.now() })
+        setEvents((prev) => prev.map((e) => (e.id === stopped.id ? stopped : e)))
+      } else if (!existingSub) {
+        await ensureNoteSubEvent({
+          parentEvent: ev,
+          tokenId,
+          title: finalMeta.title,
+          estimateMinutes: finalMeta.estimateMinutes ?? null,
+          tags,
+          contexts,
+          people,
+          location,
+          active: false,
+          startAt: Date.now(),
+        })
+      }
+    }
+  }
+
+  async function onUpdateEventNoteChecklistMarker(ev: CalendarEvent, lineIndex: number, marker: string) {
+    let rawLine = extractNoteItemLine(ev.notes, lineIndex)
+    const baseMeta = parseNoteItemMeta(rawLine)
+    const inferredKind = baseMeta?.kind ?? detectInlineItemKind(rawLine)
+    let workingNotes = ev.notes ?? ''
+    let tokenId = baseMeta?.tokenId ?? ''
+    let meta = baseMeta
+
+    if (inferredKind && (!tokenId || !NOTE_ITEM_INLINE_RE.test(rawLine))) {
+      const ensured = ensureNoteItemTokenInNotes(workingNotes, lineIndex, inferredKind, deriveNoteItemTitle(rawLine))
+      if (ensured.notes !== workingNotes) {
+        workingNotes = ensured.notes
+        rawLine = ensured.line || rawLine
+      }
+      tokenId = ensured.tokenId || tokenId
+      meta = parseNoteItemMeta(rawLine) ?? meta
+    }
+
+    const prevMarker = getChecklistMarker(rawLine)
+    let nextNotes = setChecklistMarker(workingNotes, lineIndex, marker)
+    let nextLine = extractNoteItemLine(nextNotes, lineIndex)
+    const nextChecked = marker.toLowerCase() === 'x'
+    const prevChecked = (prevMarker ?? '').toLowerCase() === 'x'
+    if (tokenId && nextChecked !== prevChecked) {
       if (nextChecked) {
         const endStamp = formatNoteItemTimestamp(Date.now())
         const stamped = updateNoteItemLine(nextNotes, lineIndex, (line) => {
@@ -3100,7 +3357,48 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
       return { notes, questions }
     }
 
-    function buildAttachedCaptureMarkdown(
+    function ensureDocTemplate(existing: string | null | undefined, nowMs: number) {
+      const base = (existing ?? '').trim()
+      if (!base) {
+        return buildNotesFromTranscript({
+          existingMarkdown: '',
+          transcript: '',
+          anchorMs: nowMs,
+          systemType: 'event',
+        })
+      }
+      return base
+    }
+
+    function appendTimelineEntry(existing: string, entry: string) {
+      const base = existing.trim()
+      if (!base) return entry.trim()
+      const lines = base.split(/\r?\n/)
+      const headerIndex = lines.findIndex((line) => /^#\s+session log\b/i.test(line) || /^##\s+session log\b/i.test(line) || /^#\s+timeline log\b/i.test(line) || /^##\s+timeline log\b/i.test(line))
+      if (headerIndex === -1) {
+        const logHeader = '## Session log'
+        return appendMarkdownBlock(base, `${logHeader}\n\n${entry.trim()}`)
+      }
+      let insertIndex = lines.length
+      for (let i = headerIndex + 1; i < lines.length; i += 1) {
+        const line = lines[i] ?? ''
+        if (/^\s*---\s*$/.test(line)) {
+          insertIndex = i
+          break
+        }
+        if (/^#{1,2}\s+/.test(line) && !/^###\s+/.test(line)) {
+          insertIndex = i
+          break
+        }
+      }
+      const before = lines.slice(0, insertIndex).join('\n').trimEnd()
+      const after = lines.slice(insertIndex).join('\n').trimStart()
+      const entryBlock = entry.trim()
+      const combined = [before, entryBlock, after].filter(Boolean).join('\n\n')
+      return combined.trim()
+    }
+
+    function buildAttachedCaptureTimelineEntry(
       nowMs: number,
       opts?: { tasks?: Array<any>; events?: Array<any> },
     ) {
@@ -3108,9 +3406,8 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
       const hh = String(d.getHours()).padStart(2, '0')
       const mm = String(d.getMinutes()).padStart(2, '0')
       const summary = summarizeCapture(captureText)
-      const segmentToken = `{seg:${makeTokenId('seg', `${hh}${mm}`)}}`
-      const noteToken = `{note:${makeTokenId('note', `${hh}${mm}`)}}`
-      const typeTag = (label: string) => toInlineToken('#', 'tag', label)
+      const entryId = `entry-${slugifyBlockId(`${hh}${mm}-${summary}`)}-${tokenCounter++}`
+      const inlineTrackers = trackerTokens.map((t) => `#${t.name}[${Math.round(t.value)}]`)
 
       const summaryLower = summary.toLowerCase()
       const headerTags = Array.from(tagNames).filter((t) => {
@@ -3127,22 +3424,6 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
       const projectToken = projectOverride ? [toInlineToken('$', 'project', projectOverride)] : []
 
       const headerTokens = [...tagTokens, ...peopleTokens, ...contextTokens, ...placeTokens, ...goalToken, ...projectToken].filter(Boolean)
-      const header = `- **${hh}:${mm}** - ${summary}${headerTokens.length ? ` ${headerTokens.join(' ')}` : ''} ${segmentToken}`
-      const noteType = typeTag('note')
-      const questionType = hasQuestionIntent(captureText) ? typeTag('question') : ''
-      const { notes: detailNotes, questions: detailQuestions } = splitNotesAndQuestions(captureText)
-
-      const lines = [header]
-
-      if (detailNotes.length) {
-        lines.push(`  - Notes ${noteToken}${noteType ? ` ${noteType}` : ''}`)
-        lines.push(...detailNotes.map((line) => `    - ${line}`))
-      }
-      if (detailQuestions.length) {
-        lines.push(`  - Questions${questionType ? ` ${questionType}` : ''}`)
-        lines.push(...detailQuestions.map((line) => `    - ${line}`))
-      }
-
       const taskSource = (opts?.tasks ?? []).filter((t) => typeof t?.title === 'string' && t.title.trim())
       const taskCandidates = taskSource.length
         ? taskSource.map((t) => ({
@@ -3160,24 +3441,62 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
             project: null,
           }))
 
-      if (taskCandidates.length) {
-        lines.push('  - Tasks')
+      const eventSource = (opts?.events ?? []).filter((e) => typeof e?.title === 'string' && e.title.trim())
+      const { notes: detailNotes, questions: detailQuestions } = splitNotesAndQuestions(captureText)
+      const hasTasks = taskCandidates.length > 0
+      const hasEvents = eventSource.length > 0
+      const hasTrackers = inlineTrackers.length > 0
+      const hasHabits = habitHits.length > 0
+      const hasMeal = Boolean(localMeal && localMeal.items?.length)
+      const hasWorkout = Boolean(localWorkout && localWorkout.exercises?.length)
+
+      const quanta: string[] = []
+      if (hasTrackers) quanta.push('tracker')
+      if (hasTasks) quanta.push('task')
+      if (hasEvents) quanta.push('event')
+      if (hasHabits) quanta.push('habit')
+      if (hasMeal) quanta.push('meal')
+      if (hasWorkout) quanta.push('workout')
+
+      const entryPropsBase: Record<string, string | number | null> = {
+        type: 'timeline',
+        time: `${hh}:${mm}`,
+        quanta: quanta.length ? quanta.join(' ') : 'note',
+      }
+      const entryProps = formatBlockProps(entryPropsBase)
+      const header = `### ⏱ ${hh}:${mm} — ${summary}${headerTokens.length ? ` ${headerTokens.join(' ')}` : ''} ^${entryId} ${entryProps}`.trim()
+
+      const lines = [header]
+
+      if (detailNotes.length) {
+        lines.push('- Notes')
+        lines.push(...detailNotes.map((line) => `  - ${line}`))
+      }
+      if (detailQuestions.length) {
+        lines.push('- Questions')
+        lines.push(...detailQuestions.map((line) => `  - ${line}`))
+      }
+
+      if (hasTasks) {
+        lines.push('- Tasks')
         for (const task of taskCandidates.slice(0, 10)) {
-          const meta: string[] = []
-          if (task.estimateMinutes != null) meta.push(`est:${Math.round(task.estimateMinutes)}m`)
-          if (task.dueAt != null) meta.push(`due:${formatDateOnly(task.dueAt)}`)
-          const token = `{task:${makeTokenId('task', task.title)}${meta.length ? ` ${meta.join(' ')}` : ''}}`
-          const taskType = typeTag('task')
+          const taskId = `task-${slugifyBlockId(task.title)}-${tokenCounter++}`
+          const timerMeta = task.estimateMinutes != null ? `{${Math.round(task.estimateMinutes)}m}` : ''
+          const taskProps = formatBlockProps({
+            type: 'task',
+            parent: `^${entryId}`,
+            timer: task.estimateMinutes != null ? `${Math.round(task.estimateMinutes)}m` : null,
+            quanta: task.estimateMinutes != null ? 'timer' : 'task',
+          })
           const chips = [
             task.goal ? toInlineToken('^', 'goal', task.goal) : '',
             task.project ? toInlineToken('$', 'project', task.project) : '',
           ].filter(Boolean).join(' ')
-          lines.push(`    - [ ] ${task.title} ${token}${taskType ? ` ${taskType}` : ''}${chips ? ` ${chips}` : ''}`)
+          lines.push(`  - [ ] ▶ ${task.title} ${timerMeta} ${chips} ^${taskId} ${taskProps}`.replace(/\s+/g, ' ').trim())
         }
       }
 
-      const eventSource = (opts?.events ?? []).filter((e) => typeof e?.title === 'string' && e.title.trim())
-      if (eventSource.length) {
+      if (hasEvents) {
         let addedHeader = false
         for (const ev of eventSource.slice(0, 6)) {
           const kind = (ev.kind as any) ?? 'event'
@@ -3186,61 +3505,77 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
           const endMs = typeof ev.endAt === 'number' ? ev.endAt : (ev.endAtIso ? new Date(ev.endAtIso).getTime() : NaN)
           if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) continue
           if (!addedHeader) {
-            lines.push('  - Events')
+            lines.push('- Events')
             addedHeader = true
           }
-          const eventMeta = [
-            `date:${formatDateOnly(startMs)}`,
-            `start:${formatTimeOnly(startMs)}`,
-            `end:${formatTimeOnly(endMs)}`,
-          ]
-          const eventToken = `{event:${makeTokenId('event', ev.title)} ${eventMeta.join(' ')}}`
-          const eventType = typeTag('event')
-          const eventTags = Array.isArray(ev.tags) ? ev.tags.map((t: string) => toInlineToken('#', 'tag', String(t).replace(/^#/, ''))) : []
-          const eventPeople = Array.isArray(ev.people) ? ev.people.map((p: string) => toInlineToken('@', 'person', String(p))) : []
-          const eventLoc = ev.location ? [toInlineToken('!', 'loc', String(ev.location))] : []
-          const eventGoal = ev.goal ? [toInlineToken('^', 'goal', String(ev.goal))] : []
-          const eventProject = ev.project ? [toInlineToken('$', 'project', String(ev.project))] : []
-          const eventChips = [eventType, ...eventTags, ...eventPeople, ...eventLoc, ...eventGoal, ...eventProject].filter(Boolean).join(' ')
-          lines.push(`    - [event] ${ev.title} ${eventToken}${eventChips ? ` ${eventChips}` : ''}`)
+          const eventId = `event-${slugifyBlockId(ev.title)}-${tokenCounter++}`
+          const eventProps = formatBlockProps({
+            type: 'event',
+            parent: `^${entryId}`,
+            start: formatTimeOnly(startMs),
+            end: formatTimeOnly(endMs),
+          })
+          lines.push(`  - ○ ${ev.title} ^${eventId} ${eventProps}`.replace(/\s+/g, ' ').trim())
         }
       }
 
-      if (trackerTokens.length) {
-        const trackerLine = trackerTokens
-          .slice(0, 4)
-          .map((t) => `#${t.name}(${Math.round(t.value)}){tracker:${makeTokenId('tracker', t.name)}}`)
-          .join(' ')
-        const trackerType = typeTag('tracker')
-        lines.push('  - Trackers')
-        lines.push(`    - ${trackerLine}${trackerType ? ` ${trackerType}` : ''}`)
+      if (hasTrackers) {
+        const trackerId = `tracker-${slugifyBlockId(`${hh}${mm}`)}-${tokenCounter++}`
+        const trackerProps: Record<string, string | number | null> = {
+          type: 'tracker',
+          parent: `^${entryId}`,
+          quanta: 'tracker',
+        }
+        trackerTokens.slice(0, 6).forEach((t) => {
+          if (!(t.name in trackerProps)) trackerProps[t.name] = Math.round(t.value)
+        })
+        const trackerLine = `${inlineTrackers.join(' ')} ^${trackerId} ${formatBlockProps(trackerProps)}`
+        lines.push('- Trackers')
+        lines.push(`  - ${trackerLine}`.replace(/\s+/g, ' ').trim())
       }
 
-      if (habitHits.length) {
-        lines.push('  - Habits')
+      if (hasHabits) {
+        lines.push('- Habits')
         for (const h of habitHits.slice(0, 4)) {
           const minutes = Math.max(5, h.estimateMinutes ?? 15)
-          const habitType = typeTag('habit')
-          lines.push(`    - [x] ${h.name} {habit:${makeTokenId('habit', h.name)} value:${minutes}m}${habitType ? ` ${habitType}` : ''}`)
+          const habitId = `habit-${slugifyBlockId(h.name)}-${tokenCounter++}`
+          const habitProps = formatBlockProps({
+            type: 'habit',
+            parent: `^${entryId}`,
+            value: `${minutes}m`,
+            quanta: 'habit',
+          })
+          lines.push(`  - [x] ${h.name} ^${habitId} ${habitProps}`.replace(/\s+/g, ' ').trim())
         }
       }
 
-      if (localMeal && localMeal.items?.length) {
+      if (hasMeal) {
         const mealTitle = localMeal.items.length === 1 ? localMeal.items[0].name : localMeal.type ?? 'Meal'
-        const mealType = typeTag('meal')
-        lines.push('  - Meal')
-        lines.push(`    - [meal] ${mealTitle} {meal:${makeTokenId('meal', mealTitle)}}${mealType ? ` ${mealType}` : ''}`)
+        const mealId = `meal-${slugifyBlockId(mealTitle)}-${tokenCounter++}`
+        const mealProps = formatBlockProps({
+          type: 'meal',
+          parent: `^${entryId}`,
+          quanta: 'meal',
+        })
+        lines.push('- Meal')
+        lines.push(`  - ${mealTitle} ^${mealId} ${mealProps}`.replace(/\s+/g, ' ').trim())
         for (const item of localMeal.items.slice(0, 5)) {
-          lines.push(`      - item: ${item.name}`)
+          lines.push(`    - item: ${item.name}`)
         }
       }
 
-      if (localWorkout && localWorkout.exercises?.length) {
-        const workoutType = typeTag('workout')
-        lines.push('  - Workout')
-        lines.push(`    - [workout] ${localWorkout.title ?? 'Workout'} {workout:${makeTokenId('workout', 'workout')}}${workoutType ? ` ${workoutType}` : ''}`)
+      if (hasWorkout) {
+        const workoutTitle = localWorkout.title ?? 'Workout'
+        const workoutId = `workout-${slugifyBlockId(workoutTitle)}-${tokenCounter++}`
+        const workoutProps = formatBlockProps({
+          type: 'workout',
+          parent: `^${entryId}`,
+          quanta: 'workout',
+        })
+        lines.push('- Workout')
+        lines.push(`  - ${workoutTitle} ^${workoutId} ${workoutProps}`.replace(/\s+/g, ' ').trim())
         for (const ex of localWorkout.exercises.slice(0, 4)) {
-          lines.push(`      - exercise: ${ex.name}`)
+          lines.push(`    - exercise: ${ex.name}`)
         }
       }
 
@@ -4705,10 +5040,16 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
           mealEventId = attached.id
           mealEvent = attached
         }
-        const noteTasks = (llm?.tasks?.length ?? 0) > 0 ? llm!.tasks : natural.tasks
-        const noteEvents = (llm?.events?.length ?? 0) > 0 ? llm!.events : natural.events
-        const block = buildAttachedCaptureMarkdown(nowMs, { tasks: noteTasks, events: noteEvents })
-        const nextNotes = normalizeTaskChecklistNotes(appendMarkdownBlock(attached.notes, block))
+        const nextNotes = normalizeTaskChecklistNotes(
+          buildNotesFromTranscript({
+            existingMarkdown: attached.notes ?? '',
+            transcript: captureText,
+            anchorMs: Number.isFinite(attached.startAt) ? attached.startAt : nowMs,
+            title: attached.title,
+            systemType: 'event',
+            sourceId: attached.id,
+          }),
+        )
         const nextTags = uniqStrings([...(attached.tags ?? []), ...allTagTokens])
         const nextPeople = uniqStrings([...(attached.people ?? []), ...personMentions])
         const nextContexts = uniqStrings([...(attached.contexts ?? []), ...allContexts])
@@ -5226,6 +5567,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
             onToggleComplete={onToggleTaskComplete}
             onMoveTask={onMoveTaskStatus}
             onUpdateTask={commitTask}
+            onRefresh={refreshAll}
           />
         )
       case 'calendar':
@@ -5396,7 +5738,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
           ? selectedTaskSourceCapture?.rawText ?? selectedTask?.notes ?? ''
           : ''
   const docTranscriptLines = useMemo(() => parseTimestampedTranscript(docTranscriptText), [docTranscriptText])
-  const docNotesPreview = useMemo(() => stripTranscriptLines(docNotesText), [docNotesText])
+  const docNotesPreview = useMemo(() => stripTranscriptLines(extractFrontmatter(docNotesText).body), [docNotesText])
   const docTokenCollections = useMemo(() => toTokenCollections(extractInlineTokens(docNotesPreview)), [docNotesPreview])
   const selectedTaskTags = selectedTask?.tags ?? []
   const selectedTaskContexts = selectedTask?.contexts ?? []
@@ -5421,7 +5763,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     const def = trackerDefs.find((t) => t.key === raw) ?? null
     return { key: raw, label: def?.label ?? raw }
   }, [habitDefs, selectedEvent?.trackerKey, trackerDefs])
-  const docMetaBlock = useMemo(() => {
+  const docFrontmatterBlock = useMemo(() => {
     const mergedTags = uniqStrings([
       ...selectedTaskTags.map((tag) => tag.replace(/^#/, '')),
       ...selectedEventTags.map((tag) => tag.replace(/^#/, '')),
@@ -5432,7 +5774,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     const mergedLocations = uniqStrings([...selectedTaskLocations, ...selectedEventLocations, ...docTokenCollections.places])
 
     if (selection.kind === 'task' && selectedTask) {
-      return buildDocMetaBlock({
+      return buildDocFrontmatter({
         title: selectedTask.title,
         date: selectedTask.dueAt ?? selectedTask.scheduledAt ?? selectedTask.createdAt,
         status: selectedTask.status,
@@ -5451,7 +5793,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
       })
     }
     if (selection.kind === 'event' && selectedEvent) {
-      return buildDocMetaBlock({
+      return buildDocFrontmatter({
         title: selectedEvent.title,
         date: selectedEvent.startAt,
         start: selectedEvent.startAt,
@@ -5493,8 +5835,14 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
   ])
   const docNotesDisplay = useMemo(() => {
     const title = selection.kind === 'task' ? selectedTask?.title : selection.kind === 'event' ? selectedEvent?.title : null
-    return buildDocPreview(docNotesPreview, title, docMetaBlock)
-  }, [docMetaBlock, docNotesPreview, selectedEvent?.title, selectedTask?.title, selection.kind])
+    return buildDocPreview(docNotesPreview, title, '', docFrontmatterBlock)
+  }, [docFrontmatterBlock, docNotesPreview, selectedEvent?.title, selectedTask?.title, selection.kind])
+  const docNotesRender = useMemo(() => extractFrontmatter(docNotesDisplay).body.trim(), [docNotesDisplay])
+  const docNotesFrontmatter = useMemo(() => extractFrontmatter(docNotesDisplay).frontmatter, [docNotesDisplay])
+  const docTableExport = useMemo(
+    () => buildNotesTableMarkdown(docNotesPreview, 'all', habitDefs.map((h) => h.name).filter(Boolean)),
+    [docNotesPreview, habitDefs],
+  )
   const docPageExport = useMemo(() => docNotesDisplay.trim(), [docNotesDisplay])
   const [nowTick, setNowTick] = useState(() => Date.now())
 
@@ -5506,8 +5854,78 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     setDocTranscriptFocus(null)
   }, [docOpen, selectionKey])
 
+  useEffect(() => {
+    const selectionKey =
+      selection.kind === 'event'
+        ? `event:${selectedEvent?.id ?? 'none'}`
+        : selection.kind === 'task'
+          ? `task:${selectedTask?.id ?? 'none'}`
+          : selection.kind === 'capture'
+            ? `capture:${selectedCapture?.id ?? 'none'}`
+            : 'none'
+    if (docAutoBlockTimeoutRef.current) {
+      window.clearTimeout(docAutoBlockTimeoutRef.current)
+      docAutoBlockTimeoutRef.current = null
+    }
+    if (!docAutoBlocks) return
+    if (!docTranscriptText.trim()) return
+    if (isDocTemplateText(docTranscriptText)) return
+    if (
+      docAutoBlockStateRef.current &&
+      docAutoBlockStateRef.current.key === selectionKey &&
+      docAutoBlockStateRef.current.transcript === docTranscriptText
+    ) {
+      return
+    }
+    docAutoBlockTimeoutRef.current = window.setTimeout(() => {
+      if (selection.kind === 'event' && selectedEvent) {
+        const formatted = buildNotesFromTranscript({
+          existingMarkdown: selectedEvent.notes ?? '',
+          transcript: docTranscriptText,
+          anchorMs: selectedEvent.startAt ?? Date.now(),
+          title: selectedEvent.title,
+          systemType: 'event',
+          sourceId: selectedEvent.id,
+        })
+        if (formatted && formatted !== selectedEvent.notes) {
+          commitEvent({ ...selectedEvent, notes: formatted })
+        }
+        docAutoBlockStateRef.current = { key: selectionKey, transcript: docTranscriptText }
+        return
+      }
+      if (selection.kind === 'task' && selectedTask) {
+        const formatted = buildNotesFromTranscript({
+          existingMarkdown: selectedTask.notes ?? '',
+          transcript: docTranscriptText,
+          anchorMs: selectedTask.scheduledAt ?? selectedTask.createdAt ?? Date.now(),
+          title: selectedTask.title,
+          systemType: 'task',
+          sourceId: selectedTask.id,
+        })
+        if (formatted && formatted !== selectedTask.notes) {
+          commitTask({ ...selectedTask, notes: formatted })
+        }
+        docAutoBlockStateRef.current = { key: selectionKey, transcript: docTranscriptText }
+      }
+    }, 500)
+    return () => {
+      if (docAutoBlockTimeoutRef.current) {
+        window.clearTimeout(docAutoBlockTimeoutRef.current)
+        docAutoBlockTimeoutRef.current = null
+      }
+    }
+  }, [
+    commitEvent,
+    commitTask,
+    docAutoBlocks,
+    docTranscriptText,
+    selection.kind,
+    selectedEvent,
+    selectedTask,
+  ])
+
   const handleExportOutline = useCallback(async () => {
-    const payload = docPageExport.trim()
+    const payload = (docMode === 'table' ? docTableExport : docPageExport).trim()
     if (!payload) {
       toast.info('No page to export.', { duration: 1500 })
       return
@@ -5518,7 +5936,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     } catch (err) {
       window.prompt('Copy page', payload)
     }
-  }, [docPageExport])
+  }, [docMode, docPageExport, docTableExport])
 
   const handleTranscriptChange = useCallback(
     (next: string) => {
@@ -5529,22 +5947,25 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
       if (selection.kind === 'event' && selectedEvent) {
         if (selectedEventSourceCapture) {
           void onUpdateCapture(selectedEventSourceCapture.id, next)
-          return
         }
-        commitEvent({ ...selectedEvent, notes: next })
+        if (!docAutoBlocks && !selectedEventSourceCapture) {
+          commitEvent({ ...selectedEvent, notes: next })
+        }
         return
       }
       if (selection.kind === 'task' && selectedTask) {
         if (selectedTaskSourceCapture) {
           void onUpdateCapture(selectedTaskSourceCapture.id, next)
-          return
         }
-        commitTask({ ...selectedTask, notes: next })
+        if (!docAutoBlocks && !selectedTaskSourceCapture) {
+          commitTask({ ...selectedTask, notes: next })
+        }
       }
     },
     [
       commitEvent,
       commitTask,
+      docAutoBlocks,
       onUpdateCapture,
       selection.kind,
       selectedCapture,
@@ -5936,8 +6357,8 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
           aria-label="Primary navigation"
           onMouseLeave={() => setRailLabelsOpen(false)}>
           <div className="flex flex-col items-center py-4 mb-4" onMouseEnter={() => setRailLabelsOpen(true)}>
-            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-black/5">
-              <Icon name="sparkle" size={16} className="text-[#D95D39]" />
+            <div className="railBrand">
+              <Icon name="sparkle" size={16} className="text-[var(--accent)]" />
             </div>
           </div>
 
@@ -7104,6 +7525,13 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                       return
                     }
                     void onToggleEventNoteChecklist(selectedEvent, lineIndex)
+                  }}
+                  onUpdateChecklistMarker={(lineIndex, marker) => {
+                    if (selectedEvent.kind === 'task' && selectedEvent.taskId) {
+                      onUpdateTaskChecklistMarker(selectedEvent.taskId, lineIndex, marker)
+                      return
+                    }
+                    void onUpdateEventNoteChecklistMarker(selectedEvent, lineIndex, marker)
                   }}
                   onStartTask={(task) => onStartNoteTask(selectedEvent.id, task)}
                   taskStateByToken={selectedEventNoteTasks}
@@ -8302,7 +8730,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                           onClick={() => setDocAutoBlocks((prev) => !prev)}>
                           Auto Blocks
                         </button>
-                        {docTab === 'notes' && docMode === 'outline' ? (
+                        {docTab === 'notes' && (docMode === 'outline' || docMode === 'table') ? (
                           <button className="docExportBtn" type="button" onClick={handleExportOutline}>
                             Export
                           </button>
@@ -8316,10 +8744,12 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                     {docTab === 'notes' ? (
                       <MarkdownEditor
                         value={docNotesText}
-                        previewValue={docNotesDisplay}
+                        previewValue={docNotesRender}
                         tableValue={docNotesPreview}
+                        frontmatter={docNotesFrontmatter}
                         onChange={(next) => commitTask({ ...selectedTask, notes: next })}
                         onToggleChecklist={(lineIndex) => onToggleTaskChecklistItem(selectedTask.id, lineIndex)}
+                        onUpdateChecklistMarker={(lineIndex, marker) => onUpdateTaskChecklistMarker(selectedTask.id, lineIndex, marker)}
                         placeholder="Write markdown notes…"
                         ariaLabel="Task notes (markdown)"
                         mode={docMode}
@@ -8424,7 +8854,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                           onClick={() => setDocAutoBlocks((prev) => !prev)}>
                           Auto Blocks
                         </button>
-                        {docTab === 'notes' && docMode === 'outline' ? (
+                        {docTab === 'notes' && (docMode === 'outline' || docMode === 'table') ? (
                           <button className="docExportBtn" type="button" onClick={handleExportOutline}>
                             Export
                           </button>
@@ -8438,8 +8868,9 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                     {docTab === 'notes' ? (
                       <MarkdownEditor
                         value={docNotesText}
-                        previewValue={docNotesDisplay}
+                        previewValue={docNotesRender}
                         tableValue={docNotesPreview}
+                        frontmatter={docNotesFrontmatter}
                         onChange={(next) => commitEvent({ ...selectedEvent, notes: next })}
                         onToggleChecklist={(lineIndex) => {
                           if (selectedEvent.kind === 'task' && selectedEvent.taskId) {
@@ -8448,7 +8879,15 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                           }
                           void onToggleEventNoteChecklist(selectedEvent, lineIndex)
                         }}
+                        onUpdateChecklistMarker={(lineIndex, marker) => {
+                          if (selectedEvent.kind === 'task' && selectedEvent.taskId) {
+                            onUpdateTaskChecklistMarker(selectedEvent.taskId, lineIndex, marker)
+                            return
+                          }
+                          void onUpdateEventNoteChecklistMarker(selectedEvent, lineIndex, marker)
+                        }}
                         onStartTask={(task) => onStartNoteTask(selectedEvent.id, task)}
+                        onStopTask={(task) => onStopNoteTask(selectedEvent.id, task)}
                         taskStateByToken={selectedEventNoteTasks}
                         nowMs={nowTick}
                         placeholder="Write markdown notes…"

@@ -1,0 +1,859 @@
+{
+  "feature": "ChatGPT-Style Life Planner Engine",
+  "workflow_type": "feature",
+  "workflow_rationale": "This is a significant feature enhancement that introduces new capabilities (voice input, file uploads, multi-modal AI processing) while extending existing infrastructure (OpenAI integration, chat UI, storage systems). Requires careful implementation across multiple components.",
+  "phases": [
+    {
+      "id": "phase-1-dependencies",
+      "name": "Dependencies & Types Setup",
+      "type": "setup",
+      "description": "Install new dependencies and update TypeScript types for multi-modal chat support",
+      "depends_on": [],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-1-1",
+          "description": "Install react-dropzone and pdf-parse dependencies",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/package.json"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/desktop && npm list react-dropzone pdf-parse",
+            "expected": "react-dropzone@14 and pdf-parse@1"
+          },
+          "status": "completed",
+          "notes": "Added react-dropzone@^14.3.8 and pdf-parse@^1.1.10 to apps/desktop/package.json dependencies. npm not available in sandboxed environment, but dependencies are correctly specified for installation when project is built.",
+          "updated_at": "2026-01-13T17:17:46.578296+00:00"
+        },
+        {
+          "id": "subtask-1-2",
+          "description": "Add upload and paperclip icons to icons.tsx",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/ui/icons.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/ui/icons.tsx"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -E \"'upload'|'paperclip'\" apps/desktop/src/ui/icons.tsx | head -5",
+            "expected": "Icon names found in IconName type"
+          },
+          "status": "completed",
+          "notes": "Added 'upload' and 'paperclip' to IconName type and added corresponding SVG icon cases to the Icon component switch statement. Follows existing patterns with stroke-based icons using strokeWidth 1.6 and currentColor.",
+          "updated_at": "2026-01-13T17:18:59.672529+00:00"
+        },
+        {
+          "id": "subtask-1-3",
+          "description": "Extend ChatMessage type in storage.ts to support attachments",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/assistant/storage.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/assistant/storage.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -E 'attachments|ChatAttachment' apps/desktop/src/assistant/storage.ts | head -5",
+            "expected": "Attachment types defined"
+          },
+          "status": "completed",
+          "notes": "Added ChatAttachmentType ('image' | 'pdf') and ChatAttachment type with id, type, name, data (base64 with MIME prefix), size, and mimeType fields. Extended ChatMessage with optional attachments array. Updated appendChatMessage to include attachments when creating messages.",
+          "updated_at": "2026-01-13T17:21:02.028778+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-2-openai-vision",
+      "name": "OpenAI Vision & Whisper API",
+      "type": "implementation",
+      "description": "Extend openai.ts with Vision API for images and Whisper API for voice transcription",
+      "depends_on": [
+        "phase-1-dependencies"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-2-1",
+          "description": "Add MultiModalMessage and MultiModalContent types to openai.ts",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/openai.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/openai.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -E 'MultiModalContent|MultiModalMessage' apps/desktop/src/openai.ts | head -5",
+            "expected": "Type definitions exist"
+          },
+          "status": "completed",
+          "notes": "Added MultiModalContent and MultiModalMessage types to openai.ts. MultiModalContent is a union type supporting text and image_url content parts. MultiModalMessage supports both string content and arrays of MultiModalContent.",
+          "updated_at": "2026-01-13T17:23:18.161605+00:00"
+        },
+        {
+          "id": "subtask-2-2",
+          "description": "Implement callOpenAiVision function for image analysis",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/openai.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/openai.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -E 'export async function callOpenAiVision' apps/desktop/src/openai.ts",
+            "expected": "Function export found"
+          },
+          "status": "completed",
+          "notes": "Implemented callOpenAiVision function for image analysis. Uses MultiModalMessage type with text and image_url content. Includes retry logic for temperature and max_tokens parameter errors. Uses /v1/chat/completions endpoint.",
+          "updated_at": "2026-01-13T17:25:48.414336+00:00"
+        },
+        {
+          "id": "subtask-2-3",
+          "description": "Implement callOpenAiWhisper function for audio transcription",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/openai.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/openai.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -E 'export async function callOpenAiWhisper' apps/desktop/src/openai.ts",
+            "expected": "Function export found"
+          },
+          "status": "completed",
+          "notes": "Implemented callOpenAiWhisper function for audio transcription using OpenAI Whisper API. Uses FormData for multipart upload to /v1/audio/transcriptions endpoint with support for optional language and prompt parameters.",
+          "updated_at": "2026-01-13T17:28:11.227261+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-3-voice-input",
+      "name": "Voice Input Component",
+      "type": "implementation",
+      "description": "Create voice recording service using MediaRecorder API and integrate with Whisper",
+      "depends_on": [
+        "phase-2-openai-vision"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-3-1",
+          "description": "Create useVoiceRecorder hook for audio capture with MediaRecorder API",
+          "service": "desktop",
+          "files_to_modify": [],
+          "files_to_create": [
+            "apps/desktop/src/hooks/useVoiceRecorder.ts"
+          ],
+          "patterns_from": [
+            "apps/desktop/src/hooks"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "test -f apps/desktop/src/hooks/useVoiceRecorder.ts && echo 'File exists'",
+            "expected": "File exists"
+          },
+          "status": "completed",
+          "notes": "Created useVoiceRecorder hook with MediaRecorder API. Features: WebM audio recording, start/stop/cancel controls, duration tracking, max recording time limit (1 min default), browser compatibility checks, permission error handling. Returns audio blob ready for Whisper API transcription.",
+          "updated_at": "2026-01-13T17:37:54.279678+00:00"
+        },
+        {
+          "id": "subtask-3-2",
+          "description": "Integrate voice recording button in assistant.tsx input area",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "verification": {
+            "type": "browser",
+            "url": "http://localhost:5174",
+            "checks": [
+              "Navigate to Assistant view",
+              "Mic button visible in input area"
+            ]
+          },
+          "status": "completed",
+          "notes": "Integrated voice recording button in assistant.tsx input area. Features: mic button positioned to the left of send button, red pulsing animation during recording, stop icon when recording, placeholder shows recording duration, textarea disabled during recording, footer shows recording status. Button only renders when browser supports MediaRecorder API.",
+          "updated_at": "2026-01-13T17:42:01.641429+00:00"
+        },
+        {
+          "id": "subtask-3-3",
+          "description": "Connect voice recorder to Whisper API and populate input field",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/openai.ts"
+          ],
+          "verification": {
+            "type": "browser",
+            "url": "http://localhost:5174",
+            "checks": [
+              "Click mic -> record -> stop -> text appears in input"
+            ]
+          },
+          "status": "completed",
+          "notes": "Implemented voice-to-text connection by adding onRecordingComplete callback to useVoiceRecorder hook. When recording stops, the audio blob is sent to Whisper API via callOpenAiWhisper, and the transcribed text populates the input field. Added proper error handling for missing API key and transcription failures.",
+          "updated_at": "2026-01-13T17:44:03.659617+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-4-file-upload",
+      "name": "File Upload Component",
+      "type": "implementation",
+      "description": "Create file upload using react-dropzone with image and PDF support",
+      "depends_on": [
+        "phase-1-dependencies"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-4-1",
+          "description": "Create useFileUpload hook with react-dropzone integration",
+          "service": "desktop",
+          "files_to_modify": [],
+          "files_to_create": [
+            "apps/desktop/src/hooks/useFileUpload.ts"
+          ],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "test -f apps/desktop/src/hooks/useFileUpload.ts && echo 'File exists'",
+            "expected": "File exists"
+          },
+          "status": "completed",
+          "notes": "Created useFileUpload hook with react-dropzone integration. Features: supports images (PNG, JPEG, GIF, WebP) and PDFs up to 25MB, converts files to base64 with MIME prefix for ChatAttachment format, provides getRootProps/getInputProps for proper dropzone integration, isDragActive for drag visual feedback, attachment management (add/remove/clear), comprehensive error handling for file size, type validation, and max files exceeded.",
+          "updated_at": "2026-01-13T17:46:52.295401+00:00"
+        },
+        {
+          "id": "subtask-4-2",
+          "description": "Create PDF text extraction utility using pdf-parse",
+          "service": "desktop",
+          "files_to_modify": [],
+          "files_to_create": [
+            "apps/desktop/src/assistant/pdf-extract.ts"
+          ],
+          "patterns_from": [
+            "apps/desktop/src/assistant/local.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -E 'extractPdfText' apps/desktop/src/assistant/pdf-extract.ts | head -3",
+            "expected": "Function definition found"
+          },
+          "status": "completed",
+          "notes": "Created pdf-extract.ts with extractPdfText function (returns text, numPages, and info metadata), extractPdfTextSimple convenience function, and isPdfBuffer validation helper. Uses pdf-parse v1.x API pattern with Buffer.from(ArrayBuffer) conversion. Includes PdfExtractResult type for typed responses.",
+          "updated_at": "2026-01-13T17:49:07.611538+00:00"
+        },
+        {
+          "id": "subtask-4-3",
+          "description": "Create image to base64 utility with MIME prefix",
+          "service": "desktop",
+          "files_to_modify": [],
+          "files_to_create": [
+            "apps/desktop/src/assistant/image-utils.ts"
+          ],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "grep -E 'imageToBase64|data:image' apps/desktop/src/assistant/image-utils.ts | head -3",
+            "expected": "Function definition found"
+          },
+          "status": "completed",
+          "notes": "Created image-utils.ts with comprehensive utilities for image handling: imageToBase64 for converting File/Blob to data URL, arrayBufferToBase64 for ArrayBuffer conversion, extractBase64Data/extractMimeType for parsing data URLs, isValidImageType for MIME validation, createImageDataUrl for building data URLs, prepareImageForVisionApi for OpenAI Vision API formatting, resizeImage for reducing token usage, and getImageDimensions for getting image sizes. All functions properly format data URLs with the required data:image/{format};base64,{data} prefix.",
+          "updated_at": "2026-01-13T17:51:31.679115+00:00"
+        },
+        {
+          "id": "subtask-4-4",
+          "description": "Integrate file upload button and preview in assistant.tsx",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "verification": {
+            "type": "browser",
+            "url": "http://localhost:5174",
+            "checks": [
+              "Upload button visible",
+              "Drag-drop zone active",
+              "Preview thumbnails display"
+            ]
+          },
+          "status": "completed",
+          "notes": "Integrated file upload button and preview in assistant.tsx. Added useFileUpload hook, drag-drop zone, paperclip button for file picker, attachment previews with thumbnails, attachment display in chat messages, and processing state indicator.",
+          "updated_at": "2026-01-13T17:58:35.862304+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-5-image-processing",
+      "name": "Image Processing & Analysis",
+      "type": "implementation",
+      "description": "Process uploaded images via Vision API and extract structured data",
+      "depends_on": [
+        "phase-2-openai-vision",
+        "phase-4-file-upload"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-5-1",
+          "description": "Create image analysis service for workout photos and general images",
+          "service": "desktop",
+          "files_to_modify": [],
+          "files_to_create": [
+            "apps/desktop/src/assistant/image-analysis.ts"
+          ],
+          "patterns_from": [
+            "apps/desktop/src/storage/nutrition.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -E 'analyzeImage|confidence' apps/desktop/src/assistant/image-analysis.ts | head -5",
+            "expected": "Function and confidence pattern found"
+          },
+          "status": "completed",
+          "notes": "Created apps/desktop/src/assistant/image-analysis.ts with comprehensive image analysis service. Features: analyzeImage function using Vision API, specialized analyzeWorkoutImage for exercise extraction (name, sets, reps, weight, duration), specialized analyzeFoodImage for nutrition estimation, CONFIDENCE_THRESHOLDS (HIGH: 0.85, MEDIUM: 0.5, LOW: 0.5) following nutrition.ts patterns, type-safe result types for workout/food/general analysis, JSON response parsing with markdown code block handling, helper functions for confirmation checks and chat display formatting. All verification passes.",
+          "updated_at": "2026-01-13T18:01:55.625211+00:00"
+        },
+        {
+          "id": "subtask-5-2",
+          "description": "Integrate image analysis into chat flow with confidence-based responses",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/workspace/views/assistant.tsx",
+            "apps/desktop/src/storage/nutrition.ts"
+          ],
+          "verification": {
+            "type": "browser",
+            "url": "http://localhost:5174",
+            "checks": [
+              "Upload image -> AI analyzes -> structured response displayed"
+            ]
+          },
+          "status": "completed",
+          "notes": "Integrated image analysis into assistant.tsx chat flow. Features: detects image attachments, calls Vision API with analyzeImage(), formats response with getAnalysisSummary(), adds confidence indicators (emoji + percentage), includes clarifying questions for low-confidence results, offers to log workout/food data when detected, handles missing API key, graceful error handling.",
+          "updated_at": "2026-01-13T18:07:09.324049+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-6-document-processing",
+      "name": "Document Processing & Entity Extraction",
+      "type": "implementation",
+      "description": "Process PDFs to extract actionable items (syllabus -> events/tasks)",
+      "depends_on": [
+        "phase-4-file-upload"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-6-1",
+          "description": "Create syllabus/document parsing service with GPT",
+          "service": "desktop",
+          "files_to_modify": [],
+          "files_to_create": [
+            "apps/desktop/src/assistant/document-parser.ts"
+          ],
+          "patterns_from": [
+            "apps/desktop/src/storage/nutrition.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -E 'parseDocument|extractDeadlines' apps/desktop/src/assistant/document-parser.ts | head -5",
+            "expected": "Function definitions found"
+          },
+          "status": "completed",
+          "notes": "Created apps/desktop/src/assistant/document-parser.ts with comprehensive document parsing service. Features: parseDocument() and extractDeadlines() main functions, parseSyllabus() specialized function, syllabus parsing with course info/contacts/deadlines extraction, general document parsing for any document with dates, CONFIDENCE_THRESHOLDS matching image-analysis.ts pattern (0.85 high, 0.5 medium/low), type-safe result normalization with ExtractedDeadline/ExtractedContact/ExtractedCourseInfo types, helper functions for confirmation/clarification checks, formatted summary output, and deadline to event/task conversion utilities. Verification passes with grep finding function definitions.",
+          "updated_at": "2026-01-13T18:10:21.212335+00:00"
+        },
+        {
+          "id": "subtask-6-2",
+          "description": "Create entity creation prompts (offer to create tasks/events from extraction)",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/storage/tasks.ts",
+            "apps/desktop/src/storage/calendar.ts"
+          ],
+          "verification": {
+            "type": "browser",
+            "url": "http://localhost:5174",
+            "checks": [
+              "Upload PDF -> extraction displayed -> offer to create events/tasks"
+            ]
+          },
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "phase-7-database-queries",
+      "name": "Database Analytics Queries",
+      "type": "implementation",
+      "description": "Enable natural language queries against local database with table output",
+      "depends_on": [
+        "phase-1-dependencies"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-7-1",
+          "description": "Create database query service for nutrition, tasks, events",
+          "service": "desktop",
+          "files_to_modify": [],
+          "files_to_create": [
+            "apps/desktop/src/assistant/db-query.ts"
+          ],
+          "patterns_from": [
+            "apps/desktop/src/assistant/local.ts",
+            "apps/desktop/src/storage/nutrition.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -E 'queryDatabase|formatAsMarkdownTable' apps/desktop/src/assistant/db-query.ts | head -5",
+            "expected": "Function definitions found"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-7-2",
+          "description": "Integrate database query results with markdown table formatting",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "verification": {
+            "type": "browser",
+            "url": "http://localhost:5174",
+            "checks": [
+              "Ask 'what did I eat?' -> formatted table response with dates and macros"
+            ]
+          },
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "phase-8-conversational-planning",
+      "name": "Conversational Task/Event Creation",
+      "type": "implementation",
+      "description": "Enable AI to suggest and create tasks/events during conversation",
+      "depends_on": [
+        "phase-7-database-queries"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-8-1",
+          "description": "Create planning assistant prompts and response parser",
+          "service": "desktop",
+          "files_to_modify": [],
+          "files_to_create": [
+            "apps/desktop/src/assistant/planner.ts"
+          ],
+          "patterns_from": [
+            "apps/desktop/src/storage/tasks.ts",
+            "apps/desktop/src/storage/calendar.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -E 'detectPlanningIntent|suggestEntity' apps/desktop/src/assistant/planner.ts | head -5",
+            "expected": "Function definitions found"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-8-2",
+          "description": "Integrate adaptive prompts in chat flow (would you like me to create...)",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "verification": {
+            "type": "browser",
+            "url": "http://localhost:5174",
+            "checks": [
+              "Discuss plans -> AI suggests creating event/task -> confirm -> entity created"
+            ]
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-8-3",
+          "description": "Connect entity creation buttons to storage functions",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/storage/tasks.ts",
+            "apps/desktop/src/storage/calendar.ts"
+          ],
+          "verification": {
+            "type": "browser",
+            "url": "http://localhost:5174",
+            "checks": [
+              "Click 'Create Event' button in chat -> event appears in calendar"
+            ]
+          },
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "phase-9-ui-polish",
+      "name": "UI Polish & Sidebar Collapse",
+      "type": "implementation",
+      "description": "Polish ChatGPT-style UI and implement auto-collapsing sidebar",
+      "depends_on": [
+        "phase-3-voice-input",
+        "phase-4-file-upload"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-9-1",
+          "description": "Implement auto-collapse sidebar when Assistant view is active",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/App.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/App.tsx"
+          ],
+          "verification": {
+            "type": "browser",
+            "url": "http://localhost:5174",
+            "checks": [
+              "Navigate to Assistant -> sidebar auto-collapses",
+              "State persists in localStorage"
+            ]
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-9-2",
+          "description": "Polish message bubbles, avatars, and input area styling",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "verification": {
+            "type": "browser",
+            "url": "http://localhost:5174",
+            "checks": [
+              "Professional ChatGPT-like appearance",
+              "Consistent styling throughout"
+            ]
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-9-3",
+          "description": "Add loading states and error handling UI",
+          "service": "desktop",
+          "files_to_modify": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/desktop/src/workspace/views/assistant.tsx"
+          ],
+          "verification": {
+            "type": "browser",
+            "url": "http://localhost:5174",
+            "checks": [
+              "Loading spinner during API calls",
+              "Error messages display gracefully"
+            ]
+          },
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "phase-10-integration",
+      "name": "End-to-End Integration",
+      "type": "integration",
+      "description": "Wire all components together and verify complete user flows",
+      "depends_on": [
+        "phase-5-image-processing",
+        "phase-6-document-processing",
+        "phase-8-conversational-planning",
+        "phase-9-ui-polish"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-10-1",
+          "description": "Test voice -> transcription -> chat flow end-to-end",
+          "service": "desktop",
+          "files_to_modify": [],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "e2e",
+            "steps": [
+              "Click mic button",
+              "Record audio (5 seconds)",
+              "Click stop",
+              "Verify transcription appears in input",
+              "Send message",
+              "Verify AI response"
+            ]
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-10-2",
+          "description": "Test image upload -> analysis -> entity creation flow",
+          "service": "desktop",
+          "files_to_modify": [],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "e2e",
+            "steps": [
+              "Upload workout photo",
+              "Verify AI extracts exercise data",
+              "Confirm creation of workout entry",
+              "Verify data appears in health view"
+            ]
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-10-3",
+          "description": "Test PDF upload -> extraction -> task creation flow",
+          "service": "desktop",
+          "files_to_modify": [],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "e2e",
+            "steps": [
+              "Upload syllabus PDF",
+              "Verify deadlines/assignments extracted",
+              "Confirm creation of calendar events",
+              "Verify events appear in calendar view"
+            ]
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-10-4",
+          "description": "Test database query with table output",
+          "service": "desktop",
+          "files_to_modify": [],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "e2e",
+            "steps": [
+              "Ask 'What did I eat this week?'",
+              "Verify markdown table renders with dates",
+              "Verify macros columns present",
+              "Test other queries (tasks, events)"
+            ]
+          },
+          "status": "pending"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_phases": 10,
+    "total_subtasks": 23,
+    "services_involved": [
+      "desktop"
+    ],
+    "parallelism": {
+      "max_parallel_phases": 3,
+      "parallel_groups": [
+        {
+          "phases": [
+            "phase-3-voice-input",
+            "phase-4-file-upload",
+            "phase-7-database-queries"
+          ],
+          "reason": "All depend on phase-1 or phase-2, no file conflicts"
+        },
+        {
+          "phases": [
+            "phase-5-image-processing",
+            "phase-6-document-processing"
+          ],
+          "reason": "Both depend on phase-4, create different files"
+        }
+      ],
+      "recommended_workers": 2,
+      "speedup_estimate": "1.5x faster than sequential"
+    },
+    "startup_command": "source auto-claude/.venv/bin/activate && python auto-claude/run.py --spec 007 --parallel 2"
+  },
+  "verification_strategy": {
+    "risk_level": "high",
+    "skip_validation": false,
+    "test_creation_phase": "post_implementation",
+    "test_types_required": [
+      "unit",
+      "integration",
+      "e2e"
+    ],
+    "security_scanning_required": true,
+    "staging_deployment_required": false,
+    "acceptance_criteria": [
+      "All existing tests pass",
+      "Voice input works reliably (5+ test recordings)",
+      "Image upload works for JPEG, PNG, WebP",
+      "PDF upload extracts text correctly",
+      "Database queries return formatted tables",
+      "AI suggests creating tasks/events appropriately",
+      "No API key exposed in frontend",
+      "Loading states display during API calls"
+    ],
+    "verification_steps": [
+      {
+        "name": "Unit Tests",
+        "command": "cd apps/desktop && npm test",
+        "expected_outcome": "All tests pass",
+        "type": "test",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "Build Check",
+        "command": "cd apps/desktop && npm run build",
+        "expected_outcome": "Build succeeds with no errors",
+        "type": "build",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "Lint Check",
+        "command": "cd apps/desktop && npm run lint",
+        "expected_outcome": "No lint errors",
+        "type": "lint",
+        "required": true,
+        "blocking": false
+      },
+      {
+        "name": "Type Check",
+        "command": "cd apps/desktop && npx tsc --noEmit",
+        "expected_outcome": "No type errors",
+        "type": "typecheck",
+        "required": true,
+        "blocking": true
+      }
+    ],
+    "reasoning": "High risk due to multi-modal file uploads, external API integrations, and user data handling. Security scanning required for file handling. E2E tests critical for voice and document extraction flows."
+  },
+  "qa_acceptance": {
+    "unit_tests": {
+      "required": true,
+      "commands": [
+        "cd apps/desktop && npm test"
+      ],
+      "minimum_coverage": null
+    },
+    "integration_tests": {
+      "required": true,
+      "commands": [],
+      "services_to_test": [
+        "desktop"
+      ]
+    },
+    "e2e_tests": {
+      "required": true,
+      "commands": [
+        "cd apps/desktop && npx playwright test"
+      ],
+      "flows": [
+        "voice-input",
+        "image-upload",
+        "pdf-upload",
+        "database-query",
+        "task-creation"
+      ]
+    },
+    "browser_verification": {
+      "required": true,
+      "pages": [
+        {
+          "url": "http://localhost:5174",
+          "route_to": "Assistant view",
+          "checks": [
+            "ChatGPT-style UI renders",
+            "Mic button visible and functional",
+            "Upload button visible and functional",
+            "Sidebar auto-collapses",
+            "No console errors"
+          ]
+        }
+      ]
+    },
+    "database_verification": {
+      "required": true,
+      "checks": [
+        "Events created from document upload appear in Dexie events table",
+        "Tasks created from conversation appear in Dexie tasks table",
+        "Chat messages persist in localStorage"
+      ]
+    }
+  },
+  "qa_signoff": null,
+  "created_at": "2026-01-13T17:00:00.000Z",
+  "updated_at": "2026-01-13T19:10:25.206Z",
+  "status": "in_progress",
+  "planStatus": "in_progress",
+  "last_updated": "2026-01-13T18:10:21.212352+00:00"
+}

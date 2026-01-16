@@ -3,6 +3,14 @@ import { Alert, Image, Pressable, type PressableStateCallbackType, ScrollView, S
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import type { ImagePickerAsset } from 'expo-image-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioRecorder,
+  useAudioRecorderState,
+} from 'expo-audio';
 
 import { Text, View } from '@/components/Themed';
 import { useTheme } from '@/src/state/theme';
@@ -14,7 +22,6 @@ import { getEvent, startEvent, stopEvent, updateEvent } from '@/src/storage/even
 import { autoCategorize, detectIntent, formatSegmentsPreview, parseCapture } from '@/src/lib/schema';
 import { parseCaptureNatural, type ParsedEvent } from '@/src/lib/nlp/natural';
 import { estimateWorkoutCalories, parseMealFromText, parseWorkoutFromText } from '@/src/lib/health';
-import { getRecordingOptions } from '@/src/lib/audio';
 import { invokeCaptureParse } from '@/src/supabase/functions';
 import { upsertTranscriptSegment } from '@/src/supabase/segments';
 import { uploadCaptureAudio } from '@/src/supabase/storage';
@@ -59,21 +66,23 @@ function formatClock(ms: number) {
 }
 
 const TIMESTAMP_LINE_RE = /^\[\d{2}:\d{2}(?::\d{2})?\]\s*$/;
-type Recording = import('expo-av').Audio.Recording;
+const RECORDING_AUDIO_MODE = {
+  playsInSilentMode: true,
+  interruptionMode: 'duckOthers',
+  allowsRecording: true,
+  shouldPlayInBackground: false,
+  allowsBackgroundRecording: false,
+} as const;
+const IDLE_AUDIO_MODE = {
+  playsInSilentMode: true,
+  interruptionMode: 'mixWithOthers',
+  allowsRecording: false,
+  shouldPlayInBackground: false,
+  allowsBackgroundRecording: false,
+} as const;
 
 let cachedImagePicker: typeof import('expo-image-picker') | null = null;
 let cachedLocation: typeof import('expo-location') | null = null;
-let cachedAudio: typeof import('expo-av') | null = null;
-
-function getAudioModule() {
-  if (cachedAudio) return cachedAudio;
-  try {
-    cachedAudio = require('expo-av');
-    return cachedAudio;
-  } catch {
-    return null;
-  }
-}
 
 function getImagePickerModule() {
   if (cachedImagePicker) return cachedImagePicker;
@@ -993,13 +1002,15 @@ export default function CaptureScreen() {
   const router = useRouter();
   const { eventId: eventIdParam } = useLocalSearchParams<{ eventId?: string | string[] }>();
   const appendEventId = Array.isArray(eventIdParam) ? eventIdParam[0] : eventIdParam;
+  const insets = useSafeAreaInsets();
   const [rawText, setRawText] = useState('');
   const [noteMode, setNoteMode] = useState<'raw' | 'transcript' | 'outline'>('raw');
   const [saving, setSaving] = useState(false);
   const [attachments, setAttachments] = useState<CaptureAttachment[]>([]);
   const [transcriptionProvider, setTranscriptionProvider] = useState<'supabase' | 'whisper'>('supabase');
-  const [recording, setRecording] = useState<Recording | null>(null);
   const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'processing'>('idle');
+  const [extendedMode, setExtendedMode] = useState(false);
+  const [attachedEventTitle, setAttachedEventTitle] = useState<string | null>(null);
   const [importance, setImportance] = useState(5);
   const [difficulty, setDifficulty] = useState(5);
   const [manualTags, setManualTags] = useState<string[]>([]);
@@ -1029,6 +1040,8 @@ export default function CaptureScreen() {
   const rawTextRef = useRef('');
   const { palette, sizes, isDark } = useTheme();
   const { active, startSession, stopSession } = useSession();
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(audioRecorder);
   const elapsedMs = active ? now - active.startedAt : 0;
   const remainingMs = useMemo(() => {
     if (!active) return null;
@@ -1099,6 +1112,21 @@ export default function CaptureScreen() {
     if (!parsed.segments.length) return normalizeCaptureText(rawText);
     return formatSegmentsPreview(parsed.segments);
   }, [rawText]);
+  const outlineStats = useMemo(() => {
+    if (!rawText.trim()) {
+      return { segments: 0, notes: 0, events: 0, tasks: 0 };
+    }
+    const normalized = normalizeCaptureText(rawText);
+    const parsed = parseCapture(normalized);
+    const segments = parsed.segments.length || countSegments(normalized) || 1;
+    const events = parsed.futureEvents.length + (parsed.activeEvent ? 1 : 0);
+    return {
+      segments,
+      notes: segments,
+      events,
+      tasks: parsed.tasks.length,
+    };
+  }, [rawText]);
 
   const eventPreview = useMemo(() => {
     if (!rawText.trim()) return null;
@@ -1140,6 +1168,28 @@ export default function CaptureScreen() {
   useEffect(() => {
     void refreshInbox();
   }, [refreshInbox]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!appendEventId) {
+      setAttachedEventTitle(null);
+      return;
+    }
+    void getEvent(appendEventId)
+      .then((event) => {
+        if (!cancelled) {
+          setAttachedEventTitle(event?.title ?? 'Event');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAttachedEventTitle('Event');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [appendEventId]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -1499,24 +1549,20 @@ export default function CaptureScreen() {
 
   const toggleRecording = async () => {
     if (recordingState === 'processing' || isRecordingStartingRef.current) return;
-    const Audio = getAudioModule()?.Audio;
-    const recordingOptions = getRecordingOptions();
-    if (!Audio?.requestPermissionsAsync || !Audio?.Recording || !recordingOptions) {
-      Alert.alert('Recording unavailable', 'Audio recording is not available in this build.');
-      return;
-    }
-    if (recording) {
+    if (recordingState === 'recording') {
       setRecordingState('processing');
       try {
-        await recording.stopAndUnloadAsync();
-        const uri = recording.getURI();
+        await audioRecorder.stop();
+        const uri = audioRecorder.uri;
         if (uri) {
           addAudioAttachment(uri, transcriptionProvider);
         }
       } catch {
         Alert.alert('Recording failed', 'Unable to stop the recording.');
       } finally {
-        setRecording(null);
+        if (!recorderState.isRecording) {
+          await setAudioModeAsync(IDLE_AUDIO_MODE);
+        }
         setRecordingState('idle');
       }
       return;
@@ -1524,19 +1570,19 @@ export default function CaptureScreen() {
 
     isRecordingStartingRef.current = true;
     try {
-      const permission = await Audio.requestPermissionsAsync();
+      const permission = await AudioModule.requestRecordingPermissionsAsync();
       if (!permission.granted) {
         Alert.alert('Microphone permission needed', 'Enable mic access to record audio.');
         return;
       }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const next = new Audio.Recording();
-      await next.prepareToRecordAsync(recordingOptions);
-      await next.startAsync();
-      setRecording(next);
+      await setAudioModeAsync(RECORDING_AUDIO_MODE);
+      await audioRecorder.prepareToRecordAsync(RecordingPresets.HIGH_QUALITY);
+      audioRecorder.record({});
       setRecordingState('recording');
-    } catch {
-      Alert.alert('Recording failed', 'Unable to start audio recording.');
+    } catch (err) {
+      console.error('Audio recording start failed', err);
+      const message = err instanceof Error ? err.message : 'Unable to start audio recording.';
+      Alert.alert('Recording failed', message);
       setRecordingState('idle');
     } finally {
       isRecordingStartingRef.current = false;

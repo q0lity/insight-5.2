@@ -1,0 +1,43 @@
+{
+  "sourceType": "manual",
+  "model": "opus",
+  "thinkingLevel": "ultrathink",
+  "isAutoProfile": false,
+  "phaseModels": {
+    "spec": "opus",
+    "planning": "opus",
+    "coding": "opus",
+    "qa": "opus"
+  },
+  "phaseThinking": {
+    "spec": "ultrathink",
+    "planning": "ultrathink",
+    "coding": "ultrathink",
+    "qa": "ultrathink"
+  },
+  "attachedImages": [
+    {
+      "id": "img-1768325025882-gikf3o4",
+      "filename": "screenshot-1768325025882.png",
+      "mimeType": "image/png",
+      "size": 603992,
+      "path": "attachments/screenshot-1768325025882.png"
+    },
+    {
+      "id": "img-1768325063084-wo160ve",
+      "filename": "screenshot-1768325063084.png",
+      "mimeType": "image/png",
+      "size": 75220,
+      "path": "attachments/screenshot-1768325063084.png"
+    },
+    {
+      "id": "img-1768325799305-r7w3eoc",
+      "filename": "screenshot-1768325799305.png",
+      "mimeType": "image/png",
+      "size": 686531,
+      "path": "attachments/screenshot-1768325799305.png"
+    }
+  ],
+  "baseBranch": "main",
+  "requireReviewBeforeCoding": true
+}

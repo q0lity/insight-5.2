@@ -23,9 +23,9 @@ export function ReflectionsView() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[var(--panel)] text-[var(--text)] font-['Figtree'] overflow-hidden">
+    <div className="flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
       {/* Header with Segmented Control */}
-      <div className="px-10 pt-12 pb-8 bg-[var(--panel)]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8">
+      <div className="px-10 pt-12 pb-8 bg-[var(--bg)]/80 backdrop-blur-xl sticky top-0 z-10 space-y-8">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-5xl font-black tracking-tighter text-gradient shiny-text">Thoughts</h1>
@@ -34,18 +34,18 @@ export function ReflectionsView() {
           <button 
             onClick={handleGenerate}
             disabled={isGenerating}
-            className={`flex items-center gap-3 px-8 py-3 bg-[#D95D39] text-white rounded-[20px] font-black uppercase tracking-widest shadow-2xl shadow-[#D95D39]/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 border-beam`}
+            className={`flex items-center gap-3 px-8 py-3 bg-[var(--accent)] border border-[var(--accentBorder)] text-white rounded-[20px] font-black uppercase tracking-widest shadow-[0_16px_32px_var(--glowSoft)] transition-all hover:scale-105 active:scale-95 disabled:opacity-50 border-beam`}
           >
             <Icon name="sparkle" className={isGenerating ? 'animate-spin' : ''} />
             {isGenerating ? 'Synthesizing...' : 'Reflect Now'}
           </button>
         </div>
 
-        <div className="flex p-1.5 bg-[var(--panel)]/40 backdrop-blur border border-[var(--border)] rounded-[22px] shadow-sm w-fit">
+        <div className="flex p-1.5 bg-[var(--glass2)] backdrop-blur border border-[var(--border)] rounded-[22px] shadow-sm w-fit">
           <button
             onClick={() => setViewMode('reflections')}
             className={`px-10 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-[18px] transition-all ${
-              viewMode === 'reflections' ? 'bg-[var(--panel)] shadow-xl text-[var(--text)] scale-[1.02]' : 'text-[var(--muted)] hover:text-[var(--text)]'
+              viewMode === 'reflections' ? 'bg-[var(--glass3)] shadow-xl text-[var(--text)] scale-[1.02]' : 'text-[var(--muted)] hover:text-[var(--text)]'
             }`}
           >
             Reflections
@@ -53,7 +53,7 @@ export function ReflectionsView() {
           <button
             onClick={() => setViewMode('archive')}
             className={`px-10 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-[18px] transition-all ${
-              viewMode === 'archive' ? 'bg-[var(--panel)] shadow-xl text-[var(--text)] scale-[1.02]' : 'text-[var(--muted)] hover:text-[var(--text)]'
+              viewMode === 'archive' ? 'bg-[var(--glass3)] shadow-xl text-[var(--text)] scale-[1.02]' : 'text-[var(--muted)] hover:text-[var(--text)]'
             }`}
           >
             Archive
@@ -71,12 +71,11 @@ export function ReflectionsView() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="glassCard relative overflow-hidden"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--accent)]/5 to-transparent animate-shimmer" 
-                     style={{ backgroundSize: '200% 100%' }} />
-                <div className="h-10 w-64 bg-[var(--panel)] rounded-xl mb-6 animate-pulse" />
+                <div className="absolute inset-0 bg-[var(--glass2)]/40" />
+                <div className="h-10 w-64 bg-[var(--glass2)] rounded-xl mb-6 animate-pulse" />
                 <div className="space-y-3">
-                  <div className="h-5 w-full bg-[var(--panel)] rounded-lg animate-pulse" />
-                  <div className="h-5 w-5/6 bg-[var(--panel)] rounded-lg animate-pulse" />
+                  <div className="h-5 w-full bg-[var(--glass2)] rounded-lg animate-pulse" />
+                  <div className="h-5 w-5/6 bg-[var(--glass2)] rounded-lg animate-pulse" />
                 </div>
                 <div className="mt-10 flex gap-2">
                   <span className="text-[var(--accent)] font-bold text-sm flex items-center gap-2">
@@ -149,12 +148,12 @@ export function ReflectionsView() {
               <div className="px-6 pt-8 pb-4 flex items-center justify-between">
                 <button
                   onClick={() => setSelectedReflection(null)}
-                  className="w-10 h-10 rounded-full bg-[var(--panel)] shadow-md flex items-center justify-center text-[var(--text)]"
+                  className="w-10 h-10 rounded-full bg-[var(--glass2)] shadow-md flex items-center justify-center text-[var(--text)]"
                 >
                   <Icon name="chevronDown" />
                 </button>
                 <div className="flex gap-3">
-                  <button className="px-4 py-2 bg-[var(--panel)] rounded-full font-bold text-sm shadow-sm border border-[var(--border)]">
+                  <button className="px-4 py-2 bg-[var(--glass2)] rounded-full font-bold text-sm shadow-sm border border-[var(--border)]">
                     Share
                   </button>
                   <button className="px-4 py-2 bg-[var(--accent)] text-white rounded-full font-bold text-sm shadow-lg shadow-[var(--accent)]/20">
@@ -180,11 +179,11 @@ export function ReflectionsView() {
                   {selectedReflection.themes.map((theme) => (
                     <div key={theme.title} className="space-y-8">
                       <div className="flex items-center gap-4">
-                          <div className="h-px flex-1 bg-gradient-to-r from-transparent to-[var(--border)]" />
+                          <div className="h-px flex-1 bg-[var(--border)]" />
                           <h2 className="text-sm font-bold tracking-[0.2em] text-[var(--accent)] uppercase text-center">
                           {theme.title}
                           </h2>
-                          <div className="h-px flex-1 bg-gradient-to-l from-transparent to-[var(--border)]" />
+                          <div className="h-px flex-1 bg-[var(--border)]" />
                       </div>
                       <div className="max-w-2xl mx-auto">
                         <p className="text-2xl font-serif leading-[1.6] text-[var(--text)] first-letter:text-5xl first-letter:font-bold first-letter:mr-3 first-letter:float-left first-letter:text-[var(--accent)]">

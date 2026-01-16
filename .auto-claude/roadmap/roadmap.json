@@ -1,0 +1,881 @@
+{
+  "id": "roadmap-2026-01-13",
+  "project_name": "Insight 5",
+  "version": "1.0",
+  "vision": "The easiest journal to use (voice-first) with the most powerful analytics (structured, queryable life database)",
+  "target_audience": {
+    "primary": "ADHD adults who struggle with manual journaling/tracking and want voice-first capture with gamification to stay motivated",
+    "secondary": [
+      "Quantified self enthusiasts tracking mood, health, and productivity metrics",
+      "Busy professionals who want frictionless life logging",
+      "Fitness and health trackers wanting unified workout/nutrition/mood logging",
+      "Knowledge workers seeking timeline-based personal analytics"
+    ]
+  },
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "Foundation & Revenue",
+      "description": "Critical stabilization, monetization, and D1 retention fixes to ensure business viability and user trust",
+      "order": 1,
+      "status": "planned",
+      "features": [
+        "feature-1",
+        "feature-2",
+        "feature-3",
+        "feature-4",
+        "feature-5",
+        "feature-6",
+        "feature-7"
+      ],
+      "milestones": [
+        {
+          "id": "milestone-1-1",
+          "title": "Revenue Generation Ready",
+          "description": "Users can subscribe to premium features and app is legally compliant for App Store",
+          "features": [
+            "feature-1",
+            "feature-2"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-1-2",
+          "title": "Data Safety Guaranteed",
+          "description": "User data syncs bidirectionally - no risk of data loss from lost devices",
+          "features": [
+            "feature-3",
+            "feature-4"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-1-3",
+          "title": "First-Run Experience Complete",
+          "description": "New users can onboard successfully and understand the app's value within 2 minutes",
+          "features": [
+            "feature-5",
+            "feature-6",
+            "feature-7"
+          ],
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "id": "phase-2",
+      "name": "Core Experience Enhancement",
+      "description": "Complete the MVP feature set and address critical competitor pain points to deliver differentiated value",
+      "order": 2,
+      "status": "planned",
+      "features": [
+        "feature-8",
+        "feature-9",
+        "feature-10",
+        "feature-11",
+        "feature-12",
+        "feature-13",
+        "feature-14"
+      ],
+      "milestones": [
+        {
+          "id": "milestone-2-1",
+          "title": "100% Offline Reliable",
+          "description": "Voice capture works offline with guaranteed sync when connectivity returns",
+          "features": [
+            "feature-8"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-2-2",
+          "title": "Habit System Complete",
+          "description": "Full habit creation and management on mobile matches desktop functionality",
+          "features": [
+            "feature-9",
+            "feature-10"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-2-3",
+          "title": "AI Insights Active",
+          "description": "Users receive meaningful AI-generated reflections and pattern insights",
+          "features": [
+            "feature-11",
+            "feature-12"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-2-4",
+          "title": "External Integration",
+          "description": "Google Calendar sync enables schedule-aware capture and planning",
+          "features": [
+            "feature-13",
+            "feature-14"
+          ],
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "id": "phase-3",
+      "name": "Growth & Differentiation",
+      "description": "Build competitive moats through advanced features, performance, and developer infrastructure",
+      "order": 3,
+      "status": "planned",
+      "features": [
+        "feature-15",
+        "feature-16",
+        "feature-17",
+        "feature-18",
+        "feature-19",
+        "feature-20",
+        "feature-21"
+      ],
+      "milestones": [
+        {
+          "id": "milestone-3-1",
+          "title": "Development Excellence",
+          "description": "CI/CD pipeline with test coverage enables confident, rapid releases",
+          "features": [
+            "feature-15",
+            "feature-16",
+            "feature-17"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-3-2",
+          "title": "Performance Optimized",
+          "description": "Focus mode and calendar views perform smoothly without excessive re-renders",
+          "features": [
+            "feature-18",
+            "feature-19"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-3-3",
+          "title": "Quantified Self Champion",
+          "description": "Life Tracker rivals Nomie with advanced visualizations and correlations",
+          "features": [
+            "feature-20",
+            "feature-21"
+          ],
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "id": "phase-4",
+      "name": "Future Vision",
+      "description": "Long-term features for market expansion and platform maturity",
+      "order": 4,
+      "status": "planned",
+      "features": [
+        "feature-22",
+        "feature-23",
+        "feature-24",
+        "feature-25"
+      ],
+      "milestones": [
+        {
+          "id": "milestone-4-1",
+          "title": "Platform Ecosystem",
+          "description": "Apple Watch capture and widget support extend voice-first capture to new surfaces",
+          "features": [
+            "feature-22",
+            "feature-23"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-4-2",
+          "title": "Data Liberation",
+          "description": "Full data export ensures users own their life data forever",
+          "features": [
+            "feature-24",
+            "feature-25"
+          ],
+          "status": "planned"
+        }
+      ]
+    }
+  ],
+  "features": [
+    {
+      "id": "feature-1",
+      "title": "Subscription System & Payment Processing",
+      "description": "Implement in-app purchases and subscription management for premium features. Include free tier with limits, monthly and annual plans, and payment processing via App Store and Play Store.",
+      "rationale": "Critical business viability - solo developer needs revenue within 2 weeks to sustain development. Monetization is the highest priority constraint.",
+      "priority": "must",
+      "complexity": "high",
+      "impact": "high",
+      "phase_id": "phase-1",
+      "dependencies": [],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Users can view subscription plans with pricing",
+        "Users can purchase monthly or annual subscription",
+        "Premium features are gated for free users with clear upgrade prompts",
+        "Subscription status syncs across devices",
+        "Users can manage/cancel subscription through native app store flow"
+      ],
+      "user_stories": [
+        "As a committed user, I want to subscribe to premium so that I can unlock advanced features and support development",
+        "As a free user, I want to understand what premium offers so that I can decide if it's worth upgrading"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-2",
+      "title": "Privacy Policy & Terms of Service",
+      "description": "Create legally compliant privacy policy and terms of service documents. Include data collection practices, third-party services (OpenAI, Supabase), user rights, and compliance with GDPR/CCPA.",
+      "rationale": "Required for App Store submission and builds user trust. Day One users cite trust issues (pain-2-1) - transparency is competitive advantage.",
+      "priority": "must",
+      "complexity": "low",
+      "impact": "high",
+      "phase_id": "phase-1",
+      "dependencies": [],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Privacy policy accessible in app and on landing page",
+        "Terms of service accessible in app and on landing page",
+        "Documents cover data collection, storage, and third-party processing",
+        "Documents are App Store compliant",
+        "Users must accept ToS during onboarding"
+      ],
+      "user_stories": [
+        "As a privacy-conscious user, I want to understand how my data is handled so that I can trust the app with my personal journal",
+        "As a user in the EU, I want GDPR-compliant data handling so that my rights are protected"
+      ],
+      "competitor_insight_ids": [
+        "pain-2-1",
+        "pain-6-2"
+      ]
+    },
+    {
+      "id": "feature-3",
+      "title": "Bidirectional Sync with Conflict Resolution",
+      "description": "Implement full bidirectional sync between local storage and Supabase with intelligent conflict resolution. Ensure no data loss when editing on multiple devices.",
+      "rationale": "Critical for data safety - users lose trust when data disappears. Day One (pain-2-1), Tiimo (pain-3-5), and Habitica (pain-1-2) all lost users due to sync/data issues.",
+      "priority": "must",
+      "complexity": "high",
+      "impact": "high",
+      "phase_id": "phase-1",
+      "dependencies": [],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Changes on mobile sync to desktop within 30 seconds",
+        "Changes on desktop sync to mobile within 30 seconds",
+        "Conflicting edits are resolved with last-write-wins or user choice",
+        "Sync errors are surfaced clearly with retry options",
+        "Full sync status is visible to users"
+      ],
+      "user_stories": [
+        "As a multi-device user, I want my entries to sync automatically so that I never lose my journal data",
+        "As a user who lost a device, I want my data safe in the cloud so that I can recover on a new device"
+      ],
+      "competitor_insight_ids": [
+        "pain-2-1",
+        "pain-3-5",
+        "pain-1-2"
+      ]
+    },
+    {
+      "id": "feature-4",
+      "title": "Sync Preferences & Multipliers to Supabase",
+      "description": "Extend bidirectional sync to include user preferences and goal multipliers. Currently these are local-only and lost on device change.",
+      "rationale": "Part of complete data sync story - users expect all settings to follow them across devices. Addresses technical debt identified in discovery.",
+      "priority": "must",
+      "complexity": "medium",
+      "impact": "medium",
+      "phase_id": "phase-1",
+      "dependencies": [
+        "feature-3"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "User preferences sync between devices",
+        "Goal importance multipliers sync between devices",
+        "Theme and notification settings sync",
+        "Settings changes propagate within 30 seconds"
+      ],
+      "user_stories": [
+        "As a multi-device user, I want my preferences synced so that my experience is consistent everywhere",
+        "As a user setting up a new device, I want my multipliers preserved so I don't have to reconfigure goals"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-5",
+      "title": "First-Run Onboarding Flow",
+      "description": "Create guided onboarding that teaches voice capture, demonstrates AI parsing, and shows gamification value within 2 minutes. Include sample capture, dashboard tour, and initial habit setup.",
+      "rationale": "Current 80%+ D1 churn risk due to no onboarding. Users need to understand voice-first value immediately. Notion (pain-4-2) and Obsidian (pain-5-1) lose ADHD users to complexity - Insight must show simplicity instantly.",
+      "priority": "must",
+      "complexity": "medium",
+      "impact": "high",
+      "phase_id": "phase-1",
+      "dependencies": [],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "New users see onboarding flow on first launch",
+        "Onboarding demonstrates voice capture with example",
+        "Onboarding shows AI parsing result",
+        "Onboarding explains XP and gamification",
+        "Users can skip onboarding if desired",
+        "Onboarding completes in under 2 minutes"
+      ],
+      "user_stories": [
+        "As a new user, I want to quickly understand how voice capture works so that I can start journaling immediately",
+        "As an ADHD user, I want a simple intro so that I don't feel overwhelmed before I even start"
+      ],
+      "competitor_insight_ids": [
+        "pain-4-2",
+        "pain-5-1",
+        "pain-4-1"
+      ]
+    },
+    {
+      "id": "feature-6",
+      "title": "Analytics & Error Tracking",
+      "description": "Implement analytics (usage patterns, feature adoption) and error tracking (crashes, API failures) to understand user behavior and fix issues proactively.",
+      "rationale": "Currently flying blind - cannot improve what you cannot measure. Critical for understanding D7 retention and identifying friction points.",
+      "priority": "must",
+      "complexity": "medium",
+      "impact": "medium",
+      "phase_id": "phase-1",
+      "dependencies": [],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Crash reports captured and logged",
+        "API failures tracked with context",
+        "Key user actions tracked (voice capture, habit logging, etc.)",
+        "Funnel analysis possible (onboarding, feature adoption)",
+        "Privacy-respecting implementation (no personal content)"
+      ],
+      "user_stories": [
+        "As a developer, I want to see crash reports so that I can fix bugs before users report them",
+        "As a developer, I want usage analytics so that I can prioritize features users actually use"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-7",
+      "title": "Welcome Email Sequence",
+      "description": "Send automated email sequence to new users: welcome email with tips, day 3 check-in, day 7 feature highlight. Encourage engagement and reduce early churn.",
+      "rationale": "Supports onboarding with persistent reminders outside the app. Helps D7 retention goal of 40%.",
+      "priority": "should",
+      "complexity": "low",
+      "impact": "medium",
+      "phase_id": "phase-1",
+      "dependencies": [
+        "feature-5"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Welcome email sent on account creation",
+        "Day 3 email with voice capture tips",
+        "Day 7 email highlighting underused features",
+        "Users can unsubscribe from emails",
+        "Email templates match app branding"
+      ],
+      "user_stories": [
+        "As a new user, I want helpful tips via email so that I remember to use the app and learn its features",
+        "As a busy user, I want reminders outside the app so that I build a journaling habit"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-8",
+      "title": "Offline Capture Queue",
+      "description": "Enable voice capture when offline with guaranteed sync when connectivity returns. Store recordings locally with metadata, transcribe and parse when online.",
+      "rationale": "100% offline reliability is a success metric. AudioNotes (pain-8-1) lost users due to unreliable offline. Local-first architecture makes this achievable.",
+      "priority": "must",
+      "complexity": "medium",
+      "impact": "high",
+      "phase_id": "phase-2",
+      "dependencies": [
+        "feature-3"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Voice capture works without network connection",
+        "Offline recordings stored locally with timestamp and duration",
+        "Queue status visible to users",
+        "Automatic transcription and parsing when online",
+        "Failed items can be retried manually",
+        "No recordings lost due to connectivity issues"
+      ],
+      "user_stories": [
+        "As a commuter, I want to capture voice notes in the subway so that I don't lose thoughts when offline",
+        "As a traveler, I want offline journaling so that I can track my trip without data roaming"
+      ],
+      "competitor_insight_ids": [
+        "pain-8-1",
+        "pain-1-2"
+      ]
+    },
+    {
+      "id": "feature-9",
+      "title": "Complete Mobile Habit Creation Form",
+      "description": "Finish the incomplete habit creation form on mobile to match desktop functionality. Include all habit types, scheduling options, and goal settings.",
+      "rationale": "Mobile is the primary capture device - incomplete features frustrate users. Feature parity critical when Day One (pain-2-2) users complain about Android gaps.",
+      "priority": "must",
+      "complexity": "low",
+      "impact": "medium",
+      "phase_id": "phase-2",
+      "dependencies": [],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "All habit types available on mobile (daily, weekly, timed)",
+        "Scheduling options work (time of day, days of week)",
+        "Goal and target settings functional",
+        "Form validation matches desktop",
+        "Habit creation success rate matches desktop"
+      ],
+      "user_stories": [
+        "As a mobile-first user, I want to create habits on my phone so that I don't need my computer for setup",
+        "As an ADHD user, I want to create a habit when motivated so that I capture the impulse immediately"
+      ],
+      "competitor_insight_ids": [
+        "pain-2-2",
+        "pain-3-4"
+      ]
+    },
+    {
+      "id": "feature-10",
+      "title": "Voice-Created Habits",
+      "description": "Allow users to create new habits through voice commands. AI parses intent and creates properly configured habit with sensible defaults.",
+      "rationale": "Extends voice-first philosophy to habit creation. Tiimo users (pain-3-1) cite complex input as why they quit - voice eliminates this entirely.",
+      "priority": "should",
+      "complexity": "medium",
+      "impact": "high",
+      "phase_id": "phase-2",
+      "dependencies": [
+        "feature-9"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "User can say 'Create a habit to drink water every morning'",
+        "AI parses habit name, schedule, and type",
+        "Reasonable defaults applied for missing info",
+        "User can confirm or edit AI-suggested habit",
+        "Works for common habit patterns (daily, weekly, timed)"
+      ],
+      "user_stories": [
+        "As an ADHD user, I want to speak new habits into existence so that I capture motivation instantly",
+        "As a voice-first user, I want habit creation to match capture simplicity so that setup isn't a barrier"
+      ],
+      "competitor_insight_ids": [
+        "pain-3-1",
+        "pain-4-1"
+      ]
+    },
+    {
+      "id": "feature-11",
+      "title": "AI Reflections & Weekly Synthesis",
+      "description": "Generate AI-powered weekly reflections summarizing activities, mood patterns, and achievements. Replace stub implementation with functional synthesis.",
+      "rationale": "Differentiator vs Apple Journal (pain-6-5) and AudioNotes (pain-8-4) which lack insights. ADHD users need external processing help.",
+      "priority": "should",
+      "complexity": "medium",
+      "impact": "high",
+      "phase_id": "phase-2",
+      "dependencies": [],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Weekly summary generated from captured data",
+        "Highlights achievements and XP earned",
+        "Notes mood/energy patterns if tracked",
+        "Suggests focus areas for next week",
+        "Accessible from dashboard and timeline"
+      ],
+      "user_stories": [
+        "As an ADHD user, I want the app to summarize my week so that I can see progress without manual review",
+        "As a quantified self user, I want pattern insights so that I understand what affects my mood and energy"
+      ],
+      "competitor_insight_ids": [
+        "pain-6-5",
+        "pain-8-4"
+      ]
+    },
+    {
+      "id": "feature-12",
+      "title": "Mood-Activity Correlation Dashboard",
+      "description": "Show correlations between captured activities and tracked mood/energy levels. Help users discover what activities improve or hurt their wellbeing.",
+      "rationale": "Addresses pain point #5 (difficulty correlating mood/energy with activities). Fills market gap-6 - no app does this with voice-captured data.",
+      "priority": "should",
+      "complexity": "medium",
+      "impact": "high",
+      "phase_id": "phase-2",
+      "dependencies": [
+        "feature-11"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Dashboard shows mood/energy trends over time",
+        "Activities associated with high/low mood highlighted",
+        "Weekly/monthly view options",
+        "Clear visualizations (not just numbers)",
+        "Actionable insights surfaced"
+      ],
+      "user_stories": [
+        "As someone managing my mental health, I want to see what affects my mood so that I can do more of what helps",
+        "As a quantified self user, I want correlations discovered automatically so that I don't have to analyze manually"
+      ],
+      "competitor_insight_ids": [
+        "pain-6-5"
+      ]
+    },
+    {
+      "id": "feature-13",
+      "title": "Google Calendar Bidirectional Sync",
+      "description": "Implement the currently-stubbed Google Calendar integration. Pull events for context-aware parsing and optionally push captured events back to calendar.",
+      "rationale": "Currently returns 501 Not Implemented. Calendar context makes AI parsing smarter. Busy professionals (secondary persona) need calendar integration.",
+      "priority": "should",
+      "complexity": "high",
+      "impact": "medium",
+      "phase_id": "phase-2",
+      "dependencies": [
+        "feature-3"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Users can connect Google Calendar",
+        "Calendar events visible in Tiimo-style view",
+        "Voice capture uses calendar context for parsing",
+        "Optional: captured events can sync to calendar",
+        "OAuth flow handles token refresh"
+      ],
+      "user_stories": [
+        "As a professional, I want my calendar events in Insight so that I have a unified view of my day",
+        "As a time-blind user, I want calendar integration so that scheduled events appear in my timeline"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-14",
+      "title": "Apple Health Integration",
+      "description": "Import workout, sleep, and activity data from Apple Health. Correlate with mood and manual entries for complete quantified self picture.",
+      "rationale": "Health trackers are secondary persona. Apple's walled garden approach (pain-6-2) locks data - we should pull it free for analysis.",
+      "priority": "could",
+      "complexity": "medium",
+      "impact": "medium",
+      "phase_id": "phase-2",
+      "dependencies": [],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Users can connect Apple Health on iOS",
+        "Workout data imported automatically",
+        "Sleep data imported if available",
+        "Data appears in timeline and correlations",
+        "Permission flow is clear and privacy-respecting"
+      ],
+      "user_stories": [
+        "As a fitness tracker, I want my workout data in Insight so that I can see fitness impact on mood",
+        "As a sleep-aware user, I want sleep data imported so that I can correlate rest with productivity"
+      ],
+      "competitor_insight_ids": [
+        "pain-6-2"
+      ]
+    },
+    {
+      "id": "feature-15",
+      "title": "Comprehensive Test Suite",
+      "description": "Increase test coverage from 5% to 60%+ with unit tests for core logic, integration tests for sync, and E2E tests for critical flows.",
+      "rationale": "Tiimo (pain-3-3) and Habitica (pain-1-2) suffer from bug cycles. Tests enable confident releases without regression roulette.",
+      "priority": "should",
+      "complexity": "high",
+      "impact": "medium",
+      "phase_id": "phase-3",
+      "dependencies": [],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Core logic (XP calculation, streak tracking) has 90%+ coverage",
+        "Sync layer has integration tests",
+        "Critical user flows have E2E tests",
+        "Overall coverage reaches 60%",
+        "Tests run in CI pipeline"
+      ],
+      "user_stories": [
+        "As a developer, I want comprehensive tests so that I can ship features without fear of breaking existing functionality",
+        "As a user, I want a stable app so that bugs don't interrupt my journaling habit"
+      ],
+      "competitor_insight_ids": [
+        "pain-3-3",
+        "pain-1-2"
+      ]
+    },
+    {
+      "id": "feature-16",
+      "title": "CI/CD Pipeline with Automated Releases",
+      "description": "Build complete CI/CD pipeline: automated tests on PR, staging deployment, production release automation for mobile and desktop.",
+      "rationale": "Currently missing - manual releases slow iteration and risk errors. Enables rapid response to bug reports.",
+      "priority": "should",
+      "complexity": "medium",
+      "impact": "medium",
+      "phase_id": "phase-3",
+      "dependencies": [
+        "feature-15"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Tests run automatically on pull requests",
+        "Staging environment receives automatic deploys",
+        "Production releases automated with approval gate",
+        "Mobile builds (iOS/Android) automated",
+        "Desktop builds (Mac/Windows) automated"
+      ],
+      "user_stories": [
+        "As a developer, I want automated releases so that I can ship updates quickly and safely",
+        "As a developer, I want PR checks so that broken code doesn't reach main branch"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-17",
+      "title": "Feature Flags for Safe Rollouts",
+      "description": "Implement feature flag system for gradual rollouts and A/B testing. Enable safe deployment of risky features with kill switch capability.",
+      "rationale": "Enables safe iteration without risking all users. Critical for solo developer managing risk across platforms.",
+      "priority": "could",
+      "complexity": "medium",
+      "impact": "medium",
+      "phase_id": "phase-3",
+      "dependencies": [
+        "feature-16"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Feature flags can be toggled remotely",
+        "Flags support percentage rollouts",
+        "Kill switch can disable feature instantly",
+        "Flag state syncs across app restart",
+        "Clear developer documentation for flag usage"
+      ],
+      "user_stories": [
+        "As a developer, I want feature flags so that I can test new features with a subset of users",
+        "As a developer, I want a kill switch so that I can disable broken features without a new release"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-18",
+      "title": "Focus View Performance Optimization",
+      "description": "Optimize Focus view that currently updates every 400ms causing excessive re-renders. Implement efficient timer updates.",
+      "rationale": "Performance impacts user experience, especially on older devices. ADHD users need smooth experience to stay focused.",
+      "priority": "should",
+      "complexity": "low",
+      "impact": "medium",
+      "phase_id": "phase-3",
+      "dependencies": [],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Timer updates efficiently (requestAnimationFrame or similar)",
+        "CPU usage reduced by 50%+ during focus sessions",
+        "No visible jank or stuttering",
+        "Battery impact minimized on mobile"
+      ],
+      "user_stories": [
+        "As a user in a focus session, I want smooth timer updates so that the app doesn't distract me",
+        "As a mobile user, I want efficient updates so that my battery lasts through long sessions"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-19",
+      "title": "Calendar View Memoization",
+      "description": "Optimize calendar view that currently recalculates on every render. Implement proper memoization for efficient updates.",
+      "rationale": "Calendar view is frequently used - performance directly impacts daily experience. Technical debt flagged in discovery.",
+      "priority": "should",
+      "complexity": "low",
+      "impact": "medium",
+      "phase_id": "phase-3",
+      "dependencies": [],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Calendar only recalculates when data changes",
+        "Navigation between days/weeks is instant",
+        "Drag-drop operations remain smooth",
+        "Memory usage stable during extended use"
+      ],
+      "user_stories": [
+        "As a daily user, I want fast calendar navigation so that checking my schedule is effortless",
+        "As an ADHD user, I want instant visual feedback so that I don't lose focus waiting for updates"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-20",
+      "title": "Advanced Life Tracker Correlations",
+      "description": "Enhance Life Tracker with automatic correlation detection between tracked variables. Show when tracked behaviors affect each other.",
+      "rationale": "Fills Nomie gap (pain-7-1) with enhanced analytics. Quantified self users want to discover patterns without manual analysis.",
+      "priority": "could",
+      "complexity": "high",
+      "impact": "high",
+      "phase_id": "phase-3",
+      "dependencies": [
+        "feature-12"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Automatic correlation detection between trackers",
+        "Significant correlations highlighted in dashboard",
+        "Time-lagged correlations detected (e.g., coffee → sleep)",
+        "Statistical confidence shown for correlations",
+        "Correlations explainable in plain language"
+      ],
+      "user_stories": [
+        "As a quantified self user, I want automatic correlation detection so that I discover patterns I'd miss manually",
+        "As a health-conscious user, I want to understand behavior impacts so that I can optimize my lifestyle"
+      ],
+      "competitor_insight_ids": [
+        "pain-7-1"
+      ]
+    },
+    {
+      "id": "feature-21",
+      "title": "Life Tracker CSV Import from Nomie",
+      "description": "Enable import of Nomie export files to capture former Nomie users seeking a replacement. Smooth migration path.",
+      "rationale": "Nomie discontinuation (pain-7-1, pain-7-2) left users stranded. Direct import removes migration barrier.",
+      "priority": "could",
+      "complexity": "medium",
+      "impact": "medium",
+      "phase_id": "phase-3",
+      "dependencies": [],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Nomie CSV export format recognized",
+        "Trackers mapped to Life Tracker equivalents",
+        "Historical data imported with timestamps",
+        "Data validation and error handling",
+        "Import preview before confirmation"
+      ],
+      "user_stories": [
+        "As a former Nomie user, I want to import my data so that I don't lose years of tracking history",
+        "As a quantified self enthusiast, I want migration tools so that switching apps isn't painful"
+      ],
+      "competitor_insight_ids": [
+        "pain-7-1",
+        "pain-7-2"
+      ]
+    },
+    {
+      "id": "feature-22",
+      "title": "Apple Watch Voice Capture",
+      "description": "Enable voice capture directly from Apple Watch for ultimate frictionless logging. Sync recordings to phone for processing.",
+      "rationale": "Extends voice-first to the wrist - fastest possible capture. Tiimo has Watch support (competitor strength) - match and exceed it.",
+      "priority": "could",
+      "complexity": "high",
+      "impact": "medium",
+      "phase_id": "phase-4",
+      "dependencies": [
+        "feature-8"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Voice capture complication on Watch face",
+        "Recordings sync to phone for processing",
+        "Quick habit logging from Watch",
+        "XP and streak status visible on Watch",
+        "Reliable operation even with phone not nearby"
+      ],
+      "user_stories": [
+        "As an Apple Watch user, I want to capture thoughts from my wrist so that I never miss a fleeting idea",
+        "As a runner, I want to log my workout via Watch so that I don't have to pull out my phone"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-23",
+      "title": "iOS Home Screen Widget",
+      "description": "Create iOS widgets for quick habit logging, capture button, and streak/XP status. Enable glanceable engagement.",
+      "rationale": "Reduces friction further - don't even need to open app. Addresses 'out of sight out of mind' issue (pain-4-3) for ADHD users.",
+      "priority": "could",
+      "complexity": "medium",
+      "impact": "medium",
+      "phase_id": "phase-4",
+      "dependencies": [],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Small widget shows streak and XP",
+        "Medium widget shows today's habits with quick toggle",
+        "Large widget shows timeline preview",
+        "Tap on widget opens relevant screen",
+        "Widgets update reliably in background"
+      ],
+      "user_stories": [
+        "As an ADHD user, I want habits visible on my home screen so that I remember to do them",
+        "As a streak-motivated user, I want to see my streak without opening the app so that I stay motivated"
+      ],
+      "competitor_insight_ids": [
+        "pain-4-3"
+      ]
+    },
+    {
+      "id": "feature-24",
+      "title": "Full Data Export (YAML/Markdown)",
+      "description": "Enable complete data export in human-readable formats (YAML, Markdown). Ensure users own their data forever, even if they leave.",
+      "rationale": "Addresses Apple Journal (pain-6-2) and Day One (pain-2-1) data lock-in concerns. Differentiator for privacy-conscious users.",
+      "priority": "should",
+      "complexity": "medium",
+      "impact": "medium",
+      "phase_id": "phase-4",
+      "dependencies": [],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Export all entries in Markdown format",
+        "Export structured data in YAML",
+        "Export includes all metadata (dates, tags, trackers)",
+        "Export is complete and lossless",
+        "Files are organized by date/type"
+      ],
+      "user_stories": [
+        "As a data ownership advocate, I want to export everything so that I'm never locked in",
+        "As an Obsidian user, I want Markdown export so that I can use my journal data elsewhere"
+      ],
+      "competitor_insight_ids": [
+        "pain-6-2",
+        "pain-2-1"
+      ]
+    },
+    {
+      "id": "feature-25",
+      "title": "Import from Day One / Obsidian",
+      "description": "Enable import from popular journaling apps to ease migration. Support Day One JSON export and Obsidian markdown vault.",
+      "rationale": "Day One users frustrated with post-acquisition quality decline (pain-2-4) need migration path. Lower switching costs.",
+      "priority": "could",
+      "complexity": "high",
+      "impact": "medium",
+      "phase_id": "phase-4",
+      "dependencies": [
+        "feature-24"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Day One JSON export format supported",
+        "Obsidian markdown files importable",
+        "Entries parsed with dates and tags preserved",
+        "Import preview with mapping options",
+        "Media attachments handled where possible"
+      ],
+      "user_stories": [
+        "As a Day One refugee, I want to import my journal so that I don't lose years of entries",
+        "As an Obsidian user, I want to try Insight without losing my existing notes"
+      ],
+      "competitor_insight_ids": [
+        "pain-2-4"
+      ]
+    }
+  ],
+  "metadata": {
+    "created_at": "2026-01-13T16:00:00Z",
+    "updated_at": "2026-01-13T21:23:27.514Z",
+    "generated_by": "roadmap_features agent",
+    "prioritization_framework": "MoSCoW",
+    "competitor_analysis_used": true,
+    "competitor_insights_linked": 34,
+    "features_addressing_competitor_pain_points": 18
+  }
+}

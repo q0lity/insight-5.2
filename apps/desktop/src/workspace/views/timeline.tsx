@@ -74,18 +74,18 @@ function TimelineEventBlock(props: {
 }) {
   const { item, onClick, showLine, index } = props
   const isEvent = item.kind === 'event'
-  const color = isEvent ? item.color : '#D95D39'
+  const color = isEvent ? item.color : 'var(--accent)'
   const icon = isEvent ? item.icon : 'mic' as IconName
   const isActive = isEvent && item.active
 
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
-        duration: 0.35,
-        delay: Math.min(index * 0.04, 0.4),
+        duration: 0.4,
+        delay: Math.min(index * 0.05, 0.5),
         ease: [0.23, 1, 0.32, 1]
       }}
       className="relative"
@@ -95,7 +95,7 @@ function TimelineEventBlock(props: {
       <div className="flex items-center" style={{ minHeight: '200px' }}>
         {/* Left column - Time */}
         <div className="w-[140px] flex-shrink-0 pr-8 text-right">
-          <span className="text-[22px] font-bold text-[var(--text)] tracking-tight tabular-nums">
+          <span className="text-[24px] font-bold text-[var(--text)] tracking-tight tabular-nums">
             {formatTime(item.at)}
           </span>
         </div>
@@ -104,14 +104,14 @@ function TimelineEventBlock(props: {
         <div className="w-[100px] flex-shrink-0 flex items-center justify-center">
           {/* Node */}
           <motion.div
-            whileHover={{ scale: 1.05 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            className="relative flex items-center justify-center w-20 rounded-[28px] bg-[var(--panel2)] border-[3px] transition-all duration-200 z-10 py-6"
+            whileHover={{ scale: 1.02, y: -3 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            className="relative flex items-center justify-center w-20 rounded-[28px] bg-[var(--panel2)] border-[4px] transition-all duration-200 z-10 py-6"
             style={{
               borderColor: color,
               boxShadow: isActive
-                ? `0 0 0 6px ${hexToRgba(color, 0.15)}`
-                : `0 4px 16px rgba(0,0,0,0.06)`,
+                ? `0 0 0 8px ${hexToRgba(color, 0.20)}, 0 6px 24px ${hexToRgba(color, 0.35)}`
+                : `0 6px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
               color: color,
             }}
           >
@@ -139,15 +139,16 @@ function TimelineEventBlock(props: {
         {/* Right column - Content Card */}
         <div className="flex-1 flex items-center pl-6">
           <motion.button
-            whileHover={{ scale: 1.01, y: -2 }}
+            whileHover={{ scale: 1.02, y: -3 }}
             whileTap={{ scale: 0.995 }}
             onClick={onClick}
-            className="bg-[var(--panel2)] rounded-2xl border border-[var(--border)] p-6 text-left focus:outline-none transition-shadow duration-200 hover:shadow-lg"
-            style={{ minHeight: '180px', width: '380px' }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            className="bg-[var(--panel2)] rounded-2xl border-2 border-[var(--border2)] p-6 text-left transition-all duration-200 hover:border-[var(--accentBorder)] hover:shadow-[0_8px_32px_rgba(216,224,0,0.12)]"
+            style={{ minHeight: '200px', width: '420px' }}
           >
           {/* Title */}
           <h3
-            className="text-[20px] font-bold leading-tight tracking-tight"
+            className="text-[22px] font-bold leading-tight tracking-tight"
             style={{ color }}
           >
             {item.title}
@@ -163,7 +164,7 @@ function TimelineEventBlock(props: {
 
           {/* Category & Subcategory */}
           {isEvent && item.category && (
-            <p className="mt-3 text-[15px] text-[var(--muted)] font-medium">
+            <p className="mt-3 text-[16px] text-[var(--muted)] font-medium">
               {item.category}{item.subcategory ? ` · ${item.subcategory}` : ''}
             </p>
           )}
@@ -174,7 +175,7 @@ function TimelineEventBlock(props: {
               {item.tags.slice(0, 6).map((tag) => (
                 <span
                   key={tag}
-                  className="px-3 py-1 text-[13px] font-semibold rounded-lg bg-[var(--border)] text-[var(--muted)]"
+                  className="px-3 py-1 text-[14px] font-bold rounded-lg bg-[var(--border)] text-[var(--muted)]"
                 >
                   {tag}
                 </span>
@@ -202,12 +203,13 @@ function TimelineEventBlock(props: {
       {/* Vertical line - positioned absolutely to span full height */}
       {showLine && (
         <div
-          className="absolute bg-[var(--border2)]"
+          className="absolute"
           style={{
             left: '190px',
             top: 0,
             bottom: 0,
-            width: '2px',
+            width: '3px',
+            background: 'linear-gradient(180deg, var(--border2) 0%, var(--border) 50%, var(--border2) 100%)',
             zIndex: 0
           }}
         />
@@ -246,13 +248,13 @@ function DaySection(props: {
       }}
     >
       {/* Day Header */}
-      <div className="relative flex" style={{ minHeight: '100px' }}>
+      <div className="relative flex pt-3" style={{ minHeight: '120px' }}>
         {/* Left column - Day info */}
         <div className="w-[140px] flex-shrink-0 pr-8 text-right pt-2">
-          <h2 className={`text-[28px] font-black tracking-tight leading-none ${isToday ? 'text-[var(--accent)]' : 'text-[var(--text)]'}`}>
+          <h2 className={`text-[32px] font-black tracking-tight leading-none ${isToday ? 'text-[var(--accent)]' : 'text-[var(--text)]'}`}>
             {isToday ? 'Today' : dayOfWeek}
           </h2>
-          <p className={`text-[28px] font-black tracking-tight mt-1 ${isToday ? 'text-[var(--accent)]' : 'text-[var(--muted)]'}`}>
+          <p className={`text-[32px] font-black tracking-tight mt-1 ${isToday ? 'text-[var(--accent)]' : 'text-[var(--muted)]'}`}>
             {monthDay}
           </p>
         </div>
@@ -261,7 +263,7 @@ function DaySection(props: {
         <div className="w-[100px] flex-shrink-0 flex flex-col items-center relative">
           {/* Top line - connects from previous section */}
           {!isFirst && (
-            <div className="w-[2px] h-6 bg-[var(--border2)]" />
+            <div className="w-[3px] h-6 bg-[var(--border2)]" />
           )}
           {isFirst && <div className="h-6" />}
 
@@ -270,7 +272,7 @@ function DaySection(props: {
             className="w-20 rounded-[28px] py-6 flex items-center justify-center z-10 transition-all duration-200"
             style={{
               backgroundColor: isToday ? 'var(--accent)' : 'var(--border)',
-              boxShadow: isToday ? '0 6px 24px rgba(217, 93, 57, 0.3)' : 'none',
+              boxShadow: isToday ? '0 6px 24px var(--glow)' : 'none',
             }}
           >
             <span
@@ -282,7 +284,7 @@ function DaySection(props: {
           </div>
 
           {/* Bottom line - connects to first item */}
-          <div className="w-[2px] flex-1 bg-[var(--border2)]" style={{ minHeight: '24px' }} />
+          <div className="w-[3px] flex-1 bg-[var(--border2)]" style={{ minHeight: '32px' }} />
         </div>
 
         {/* Right column - Moment count */}
@@ -404,11 +406,11 @@ export function TimelineView(props: {
     <div className="flex flex-col h-full w-full overflow-hidden bg-[var(--bg)]">
       {/* Header */}
       {!props.hideHeader && (
-        <div className="flex-shrink-0 px-12 py-8 border-b border-[var(--border)]">
+        <div className="flex-shrink-0 px-12 py-10 border-b border-[var(--border)] backdrop-blur-xl bg-[var(--panelAlpha)]">
           {/* Title row */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h1 className="text-[32px] font-black text-[var(--text)] tracking-tight">
+              <h1 className="text-[36px] font-black text-[var(--text)] tracking-tight">
                 Timeline
               </h1>
 
@@ -433,10 +435,10 @@ export function TimelineView(props: {
                 <button
                   key={mode}
                   onClick={() => setFilterMode(mode)}
-                  className={`px-5 py-2 text-[14px] font-semibold rounded-lg transition-all duration-200 ${
+                  className={`px-5 py-2 text-[14px] font-semibold rounded-lg border-2 border-transparent transition-all duration-200 ${
                     filterMode === mode
-                      ? 'bg-[var(--panel2)] text-[var(--text)] shadow-sm'
-                      : 'text-[var(--muted)] hover:text-[var(--text)]'
+                      ? 'bg-[var(--panel2)] text-[var(--text)] shadow-lg border-[var(--accent)]'
+                      : 'text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--border)]'
                   }`}
                 >
                   {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -454,7 +456,7 @@ export function TimelineView(props: {
                   onClick={() => props.onToggleTag(t)}
                   className={`px-4 py-2 rounded-lg text-[14px] font-semibold whitespace-nowrap transition-all duration-200 ${
                     props.activeTagFilters.includes(t)
-                      ? 'bg-[var(--text)] text-[var(--bg)]'
+                      ? 'bg-[var(--accent)] text-[#0A0A0B] font-bold shadow-md'
                       : 'bg-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]'
                   }`}
                 >
@@ -508,7 +510,7 @@ export function TimelineView(props: {
               ))}
 
               {/* Bottom breathing room */}
-              <div className="h-24" />
+              <div className="h-32" />
             </div>
           )}
         </AnimatePresence>

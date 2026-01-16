@@ -1,0 +1,103 @@
+{
+  "complexity": "standard",
+  "workflow_type": "feature",
+  "confidence": 0.85,
+  "reasoning": "This is an enhancement to an existing parsing engine (llm-parse.ts - 943 lines) with established patterns. The codebase already has confidence scoring, pattern learning, and habit systems. The task requires integrating these existing systems rather than building new infrastructure. No new external dependencies or infrastructure changes are needed.",
+
+  "analysis": {
+    "scope": {
+      "estimated_files": 10,
+      "estimated_services": 2,
+      "is_cross_cutting": true,
+      "notes": "Primary changes to llm-parse.ts, learning/context.ts, storage/entities.ts, shared/models.ts. Will also touch UI components for task pane updates. Changes span parser, storage, and UI layers."
+    },
+    "integrations": {
+      "external_services": [],
+      "new_dependencies": [],
+      "research_needed": true,
+      "notes": "No new external services needed. Uses existing OpenAI integration. Research needed to understand habit context integration and how to wire habit definitions into the parser flow."
+    },
+    "infrastructure": {
+      "docker_changes": false,
+      "database_changes": false,
+      "config_changes": true,
+      "notes": "No Docker or database schema changes needed. Habits already stored via events with trackerKey. May need new env vars for feature flags (e.g., ENABLE_HABIT_AUTO_CHECK)."
+    },
+    "knowledge": {
+      "patterns_exist": true,
+      "research_required": true,
+      "unfamiliar_tech": [],
+      "notes": "Strong existing patterns: confidence.ts (0.5 suggest/0.8 auto-apply thresholds), context.ts (pattern hints), habit-context.ts (habit loading). Need to study how these integrate with main parser flow."
+    },
+    "risk": {
+      "level": "medium",
+      "concerns": [
+        "Changing categorization logic could mis-classify existing inputs",
+        "Auto-checking habits needs robust habit name matching",
+        "Project auto-linking needs careful confidence calibration",
+        "Performance impact of loading habit definitions during parsing"
+      ],
+      "notes": "Risk is moderate - parsing is a core feature and changes could affect all user input. Need comprehensive testing of categorization rules."
+    }
+  },
+
+  "recommended_phases": [
+    "discovery",
+    "requirements",
+    "research",
+    "context",
+    "spec_writing",
+    "planning",
+    "validation"
+  ],
+
+  "flags": {
+    "needs_research": true,
+    "needs_self_critique": false,
+    "needs_infrastructure_setup": false
+  },
+
+  "validation_recommendations": {
+    "risk_level": "medium",
+    "skip_validation": false,
+    "minimal_mode": false,
+    "test_types_required": ["unit", "integration"],
+    "security_scan_required": false,
+    "staging_deployment_required": false,
+    "reasoning": "Parser changes affect core user input handling. Unit tests needed for categorization logic (task vs event vs habit vs note vs tracker). Integration tests needed to verify end-to-end parsing flow and habit check-off behavior. No security concerns as no auth/payment code involved."
+  },
+
+  "key_findings": {
+    "existing_parser": {
+      "file": "apps/desktop/src/nlp/llm-parse.ts",
+      "lines": 943,
+      "current_outputs": ["tasks", "events", "workouts", "meals"],
+      "missing_outputs": ["habits", "notes (as distinct entity)", "trackers (structured)"]
+    },
+    "confidence_system": {
+      "file": "apps/desktop/src/learning/confidence.ts",
+      "suggest_threshold": 0.5,
+      "auto_apply_threshold": 0.8,
+      "status": "Already implemented, can be reused for project auto-linking"
+    },
+    "habit_system": {
+      "mobile": "apps/insight-mobile/src/storage/habits.ts",
+      "context": "packages/parser/src/context/habit-context.ts",
+      "status": "Exists but not integrated into main parser flow",
+      "tracking_method": "Events with trackerKey: habit:{habitId}"
+    },
+    "entity_types": {
+      "current": ["tag", "person", "place"],
+      "database_tables": ["notes", "tasks", "events", "workouts", "meals", "patterns"]
+    }
+  },
+
+  "implementation_hints": {
+    "categorization_strategy": "Extend LLM prompt to explicitly classify entity_type: task|event|note|tracker|habit. Use habit context to match habit names for auto-check.",
+    "habit_integration": "Load habit definitions via habit-context.ts at parse time. Match user input against habit names. When match found, create tracker event with trackerKey.",
+    "project_auto_linking": "Use existing confidence system. When project keywords detected, check confidence >= 0.8 for auto-apply, >= 0.5 for suggestion.",
+    "task_pane_update": "Parser already extracts: title, notes, people, location, project, goal, importance, difficulty. Ensure all fields propagate to task storage."
+  },
+
+  "created_at": "2026-01-13T00:00:00.000Z"
+}

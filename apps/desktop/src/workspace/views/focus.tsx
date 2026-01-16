@@ -221,7 +221,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
     return getEventDurationMinutes(activeSubEvent)
   }, [activeSubEvent, tick])
 
-  const accent = parentEvent ? eventAccent(parentEvent) : { color: '#D95D39', icon: 'calendar' as const }
+  const accent = parentEvent ? eventAccent(parentEvent) : { color: 'var(--accent)', icon: 'calendar' as const }
   const parentPoints = useMemo(() => {
     if (!parentEvent) return 0
     const base = basePoints(parentEvent.importance, parentEvent.difficulty)
@@ -233,7 +233,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-[var(--panel)]">
+      <div className="flex items-center justify-center h-full bg-[var(--bg)]">
         <div className="text-[var(--muted)] font-bold animate-pulse">Loading...</div>
       </div>
     )
@@ -242,7 +242,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
   // No active event
   if (!parentEvent) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-[var(--panel)] text-center p-8">
+      <div className="flex flex-col items-center justify-center h-full bg-[var(--bg)] text-center p-8">
         <div className="w-24 h-24 rounded-full bg-[var(--border)] flex items-center justify-center mb-6">
           <Icon name="coffee" className="w-12 h-12 text-[var(--muted)]" />
         </div>
@@ -256,9 +256,9 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[var(--panel)] font-['Figtree']">
+    <div className="flex flex-col h-full bg-[var(--bg)] font-['Figtree']">
       {/* Header */}
-      <div className="px-6 pt-8 pb-4 border-b border-[#E5E5EA]">
+      <div className="px-6 pt-8 pb-4 border-b border-[var(--border)]">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">
             Active Session
@@ -275,11 +275,11 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl border border-[#E5E5EA] shadow-sm overflow-hidden"
+          className="bg-[var(--glass2)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden"
         >
           {/* Parent Header */}
           <div
-            className="p-6 border-b border-[#E5E5EA]"
+            className="p-6 border-b border-[var(--border)]"
             style={{ backgroundColor: hexToRgba(accent.color, 0.05) }}
           >
             <div className="flex items-start gap-4">
@@ -337,7 +337,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                 {parentEvent.tags.map((tag, i) => (
                   <span
                     key={i}
-                    className="px-2 py-0.5 bg-white rounded-full text-xs font-bold"
+                    className="px-2 py-0.5 bg-[var(--glass2)] rounded-full text-xs font-bold"
                     style={{ color: accent.color }}
                   >
                     {tag.startsWith('#') ? tag : `#${tag}`}
@@ -351,14 +351,14 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
           <div className="p-4 flex items-center gap-3">
             <button
               onClick={() => onOpenCapture?.(parentEvent.id)}
-              className="flex items-center gap-2 px-4 py-2 bg-[var(--panel)] rounded-xl text-sm font-bold text-[var(--text)] hover:bg-[var(--border)] transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--glass2)] rounded-xl text-sm font-bold text-[var(--text)] hover:bg-[var(--glass3)] transition-colors"
             >
               <Icon name="mic" size={16} />
               Add Note
             </button>
             <button
               onClick={() => setShowSubEventForm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-xl text-sm font-bold text-blue-600 hover:bg-blue-100 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500/15 rounded-xl text-sm font-bold text-blue-600 hover:bg-blue-500/20 transition-colors"
             >
               <Icon name="plus" size={16} />
               Start Sub-Activity
@@ -381,7 +381,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="bg-white rounded-2xl border border-blue-200 shadow-sm overflow-hidden"
+              className="bg-[var(--glass2)] rounded-2xl border border-blue-200 shadow-sm overflow-hidden"
             >
               <div className="p-4">
                 <h3 className="text-sm font-bold text-[var(--text)] mb-3">Start Sub-Activity</h3>
@@ -391,7 +391,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                     value={newSubEventTitle}
                     onChange={(e) => setNewSubEventTitle(e.target.value)}
                     placeholder="What are you working on?"
-                    className="flex-1 px-4 py-2 bg-[var(--panel)] rounded-xl text-sm font-medium placeholder-[#8E8E93] outline-none focus:ring-2 focus:ring-blue-300"
+                    className="flex-1 px-4 py-2 bg-[var(--glass2)] rounded-xl text-sm font-medium placeholder-[var(--muted)] outline-none focus:ring-2 focus:ring-blue-300"
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleStartSubEvent()
@@ -401,13 +401,13 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                   <button
                     onClick={handleStartSubEvent}
                     disabled={!newSubEventTitle.trim()}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-bold disabled:opacity-50"
+                    className="px-4 py-2 bg-blue-500/150 text-white rounded-xl text-sm font-bold disabled:opacity-50"
                   >
                     Start
                   </button>
                   <button
                     onClick={() => setShowSubEventForm(false)}
-                    className="px-4 py-2 bg-[var(--panel)] text-[var(--muted)] rounded-xl text-sm font-bold hover:bg-[var(--border)]"
+                    className="px-4 py-2 bg-[var(--glass2)] text-[var(--muted)] rounded-xl text-sm font-bold hover:bg-[var(--glass3)]"
                   >
                     Cancel
                   </button>
@@ -424,7 +424,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="bg-white rounded-2xl border-2 border-blue-300 shadow-lg overflow-hidden"
+              className="bg-[var(--glass2)] rounded-2xl border-2 border-blue-300 shadow-lg overflow-hidden"
             >
               <div className="p-5" style={{ backgroundColor: hexToRgba('#3B82F6', 0.05) }}>
                 <div className="flex items-center justify-between mb-3">
@@ -434,12 +434,12 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                   <motion.div
                     animate={{ opacity: [1, 0.5, 1] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
-                    className="w-2 h-2 rounded-full bg-blue-500"
+                    className="w-2 h-2 rounded-full bg-blue-500/150"
                   />
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/20 text-blue-600 flex items-center justify-center">
                     <Icon name="play" size={20} />
                   </div>
                   <div className="flex-1">
@@ -458,7 +458,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                 <div className="flex items-center gap-3 mt-4">
                   <button
                     onClick={() => onOpenCapture?.(activeSubEvent.id)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-[var(--text)] hover:bg-[var(--panel)] transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-[var(--glass2)] rounded-lg text-xs font-bold text-[var(--text)] hover:bg-[var(--glass2)] transition-colors"
                   >
                     <Icon name="mic" size={14} />
                     Note
@@ -466,7 +466,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                   <div className="flex-1" />
                   <button
                     onClick={handleStopSubEvent}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600 transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/150 text-white rounded-lg text-xs font-bold hover:bg-blue-600 transition-colors"
                   >
                     <Icon name="check" size={14} />
                     Complete
@@ -491,9 +491,9 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                   key={sub.id}
                   onClick={() => onSelectEvent?.(sub.id)}
                   whileHover={{ x: 4 }}
-                  className="w-full flex items-center gap-3 p-3 bg-white rounded-xl border border-[#E5E5EA] text-left hover:shadow-sm transition-shadow"
+                  className="w-full flex items-center gap-3 p-3 bg-[var(--glass2)] rounded-xl border border-[var(--border)] text-left hover:shadow-sm transition-shadow"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-[var(--panel)] text-[var(--muted)] flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--glass2)] text-[var(--muted)] flex items-center justify-center">
                     <Icon name="check" size={16} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -531,7 +531,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${taskStats.percentComplete}%` }}
-                className="h-full bg-green-500 rounded-full"
+                className="h-full bg-green-500/150 rounded-full"
               />
             </div>
           )}
@@ -543,7 +543,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="bg-white rounded-xl border border-green-200 p-3"
+                className="bg-[var(--glass2)] rounded-xl border border-green-200 p-3"
               >
                 <div className="flex gap-2">
                   <input
@@ -551,7 +551,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                     value={newTaskTitle}
                     onChange={(e) => setNewTaskTitle(e.target.value)}
                     placeholder="What needs to be done?"
-                    className="flex-1 px-3 py-1.5 bg-[var(--panel)] rounded-lg text-sm font-medium placeholder-[#8E8E93] outline-none focus:ring-2 focus:ring-green-300"
+                    className="flex-1 px-3 py-1.5 bg-[var(--glass2)] rounded-lg text-sm font-medium placeholder-[var(--muted)] outline-none focus:ring-2 focus:ring-green-300"
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleCreateTask()
@@ -561,13 +561,13 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                   <button
                     onClick={handleCreateTask}
                     disabled={!newTaskTitle.trim()}
-                    className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold disabled:opacity-50"
+                    className="px-3 py-1.5 bg-green-500/150 text-white rounded-lg text-xs font-bold disabled:opacity-50"
                   >
                     Add
                   </button>
                   <button
                     onClick={() => setShowTaskForm(false)}
-                    className="px-3 py-1.5 bg-[var(--panel)] text-[var(--muted)] rounded-lg text-xs font-bold"
+                    className="px-3 py-1.5 bg-[var(--glass2)] text-[var(--muted)] rounded-lg text-xs font-bold"
                   >
                     Cancel
                   </button>
@@ -583,13 +583,13 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-white rounded-xl border-2 border-green-300 p-4"
+                className="bg-[var(--glass2)] rounded-xl border-2 border-green-300 p-4"
               >
                 <div className="flex items-center gap-3">
                   <motion.div
                     animate={{ scale: [1, 1.1, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="w-8 h-8 rounded-lg bg-green-100 text-green-600 flex items-center justify-center"
+                    className="w-8 h-8 rounded-lg bg-green-500/150/20 text-green-600 flex items-center justify-center"
                   >
                     <Icon name="play" size={16} />
                   </motion.div>
@@ -602,13 +602,13 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handlePauseTask(activeTask.id)}
-                      className="px-3 py-1.5 bg-[var(--panel)] text-[var(--muted)] rounded-lg text-xs font-bold hover:bg-[var(--border)]"
+                      className="px-3 py-1.5 bg-[var(--glass2)] text-[var(--muted)] rounded-lg text-xs font-bold hover:bg-[var(--glass3)]"
                     >
                       Pause
                     </button>
                     <button
                       onClick={() => handleCompleteTask(activeTask.id)}
-                      className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600"
+                      className="px-3 py-1.5 bg-green-500/150 text-white rounded-lg text-xs font-bold hover:bg-green-600"
                     >
                       Done
                     </button>
@@ -636,16 +636,16 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                     animate={{ opacity: 1, x: 0 }}
                     className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                       task.status === 'done'
-                        ? 'bg-[var(--panel)]/50 border-[#E5E5EA]'
-                        : 'bg-white border-[#E5E5EA] hover:border-green-200'
+                        ? 'bg-[var(--glass2)] border-[var(--border)]'
+                        : 'bg-[var(--glass2)] border-[var(--border)] hover:border-green-200'
                     }`}
                   >
                     <button
                       onClick={() => task.status === 'done' ? null : handleCompleteTask(task.id)}
                       className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
                         task.status === 'done'
-                          ? 'bg-green-500 border-green-500 text-white'
-                          : 'border-[#E5E5EA] hover:border-green-400'
+                          ? 'bg-green-500/150 border-green-500 text-white'
+                          : 'border-[var(--border)] hover:border-green-400'
                       }`}
                     >
                       {task.status === 'done' && <Icon name="check" size={12} />}
@@ -660,7 +660,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
                     {task.status === 'todo' && (
                       <button
                         onClick={() => handleStartTask(task.id)}
-                        className="px-2 py-1 text-xs font-bold text-green-600 hover:bg-green-50 rounded-lg"
+                        className="px-2 py-1 text-xs font-bold text-green-600 hover:bg-green-500/15 rounded-lg"
                       >
                         Start
                       </button>
@@ -689,7 +689,7 @@ export function FocusView({ onOpenCapture, onSelectEvent }: FocusViewProps) {
             <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">
               Session Notes
             </h3>
-            <div className="bg-white rounded-xl border border-[#E5E5EA] p-4">
+            <div className="bg-[var(--glass2)] rounded-xl border border-[var(--border)] p-4">
               <p className="text-sm text-[var(--text)] whitespace-pre-wrap line-clamp-6">
                 {parentEvent.notes}
               </p>

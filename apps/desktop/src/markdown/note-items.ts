@@ -14,7 +14,7 @@ const NOTE_ITEM_TOKEN_RE = /\{(task|habit):([^\s}]+)([^}]*)\}/
 const ESTIMATE_RE = /\best\s*:\s*(\d+)\s*m\b/i
 const VALUE_RE = /\bvalue\s*:\s*(\d+)\s*m\b/i
 const DUE_RE = /\bdue\s*:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\b/i
-const CHECKLIST_RE = /^\s*[-*+]\s*\[[ xX]\]\s+/
+const CHECKLIST_RE = /^\s*[-*+]\s*\[[ xX><o\/-]\]\s+/
 const TASK_HINT_RE = /(^|\s)#task\b/i
 const HABIT_HINT_RE = /(^|\s)#habit\b/i
 
@@ -53,7 +53,7 @@ function hashString(raw: string) {
 
 function cleanTaskTitle(raw: string) {
   return raw
-    .replace(/^[-*+]\s*\[[ xX]\]\s*/i, '')
+    .replace(/^[-*+]\s*\[[^\]]\]\s*/i, '')
     .replace(/^[-*+]\s+/, '')
     .replace(/\s+#(?:task|habit)\b/gi, '')
     .trim()

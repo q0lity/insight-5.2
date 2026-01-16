@@ -1,0 +1,529 @@
+{
+  "project_context": {
+    "project_name": "Insight 5",
+    "project_type": "Voice-first journaling/tracking mobile app with gamification",
+    "target_audience": "ADHD adults who struggle with manual journaling/tracking and want voice-first capture with gamification to stay motivated"
+  },
+  "competitors": [
+    {
+      "id": "competitor-1",
+      "name": "Habitica",
+      "url": "https://habitica.com",
+      "description": "Gamified habit and task management app that treats life like an RPG with rewards and punishments",
+      "relevance": "high",
+      "pain_points": [
+        {
+          "id": "pain-1-1",
+          "description": "Punitive HP loss system demotivates ADHD users - missing dailies causes HP damage which creates shame spirals rather than motivation",
+          "source": "Habitica Wiki ADHD Guide, GitHub issues #3238, #5808",
+          "severity": "high",
+          "frequency": "Very common - core mechanic affects all users",
+          "opportunity": "Insight's XP-only non-punitive gamification directly addresses this - rewards without punishment"
+        },
+        {
+          "id": "pain-1-2",
+          "description": "Mobile app has persistent quality problems - phantom food, health loss bugs, tasks disappearing, broken bug reporting",
+          "source": "Trustpilot reviews, JustUseApp.com problem reports",
+          "severity": "high",
+          "frequency": "Common - multiple users report app becoming 'unusable'",
+          "opportunity": "Reliable local-first architecture with offline support"
+        },
+        {
+          "id": "pain-1-3",
+          "description": "Cheating is too easy - no verification system means users only accountable to themselves, reducing effectiveness",
+          "source": "ChoosingTherapy.com app review",
+          "severity": "medium",
+          "frequency": "Moderate",
+          "opportunity": "Voice capture creates natural friction and authenticity"
+        },
+        {
+          "id": "pain-1-4",
+          "description": "Psychological dependency - when users stop, normal activities feel harder because rewards devalued intrinsic motivation",
+          "source": "Medium article 'My Brain Sucks'",
+          "severity": "medium",
+          "frequency": "Reported by long-term users",
+          "opportunity": "XP system that complements rather than replaces intrinsic motivation"
+        },
+        {
+          "id": "pain-1-5",
+          "description": "Complex and confusing - users struggle understanding points/rewards system even after tutorials",
+          "source": "Trustpilot reviews, ChoosingTherapy.com",
+          "severity": "medium",
+          "frequency": "Common among new users",
+          "opportunity": "Simpler gamification with clear XP rules and visual progress"
+        }
+      ],
+      "strengths": [
+        "Strong community and social features (guilds, parties)",
+        "RPG mechanics appeal to gamers",
+        "Free tier with substantial features",
+        "Cross-platform availability"
+      ],
+      "market_position": "Market leader in gamified habit tracking with 4M+ users, but known for punitive mechanics that alienate ADHD users"
+    },
+    {
+      "id": "competitor-2",
+      "name": "Day One",
+      "url": "https://dayoneapp.com",
+      "description": "Premium journaling app with rich media support, encryption, and cross-platform sync",
+      "relevance": "high",
+      "pain_points": [
+        {
+          "id": "pain-2-1",
+          "description": "Data loss and sync reliability issues destroyed trust for some users - moved away from iCloud due to problems",
+          "source": "MPU Talk forums, Day One forums",
+          "severity": "high",
+          "frequency": "Multiple reports over years",
+          "opportunity": "Local-first architecture with conflict resolution and data ownership"
+        },
+        {
+          "id": "pain-2-2",
+          "description": "Android app is buggy and feature-incomplete compared to iOS - entries deleted, features missing",
+          "source": "ChoosingTherapy.com, Google Play Store reviews",
+          "severity": "high",
+          "frequency": "Very common for Android users",
+          "opportunity": "React Native ensures feature parity across platforms"
+        },
+        {
+          "id": "pain-2-3",
+          "description": "Search is broken - finds entries but doesn't highlight or navigate to the search term location",
+          "source": "Day One Forums 'Urgent Feedback' thread",
+          "severity": "medium",
+          "frequency": "Reported by power users",
+          "opportunity": "Better search with timeline filtering and context"
+        },
+        {
+          "id": "pain-2-4",
+          "description": "Post-Automattic acquisition quality decline - lackluster updates, UI changes without substance",
+          "source": "Day One Forums, MPU Talk 'Is Day One Deteriorating'",
+          "severity": "medium",
+          "frequency": "Growing concern among long-term users",
+          "opportunity": "Solo developer with aligned incentives, responsive to user needs"
+        },
+        {
+          "id": "pain-2-5",
+          "description": "Typing-focused requires manual data entry - no voice-first capture or AI parsing",
+          "source": "Product positioning analysis",
+          "severity": "high",
+          "frequency": "Core product limitation",
+          "opportunity": "Voice-first capture is 10x faster than typing"
+        }
+      ],
+      "strengths": [
+        "Beautiful design and UX",
+        "End-to-end encryption option",
+        "Rich media support (photos, videos, audio)",
+        "On This Day memory features",
+        "Apple ecosystem integration"
+      ],
+      "market_position": "Premium journaling market leader (4.8 stars, 92K reviews iOS) but typing-focused and facing quality concerns post-acquisition"
+    },
+    {
+      "id": "competitor-3",
+      "name": "Tiimo",
+      "url": "https://tiimoapp.com",
+      "description": "Visual day planner and scheduler designed specifically for ADHD and autism, with visual timers",
+      "relevance": "high",
+      "pain_points": [
+        {
+          "id": "pain-3-1",
+          "description": "Too complex to input events/tasks - endless customization options create friction for quick capture",
+          "source": "Write-Mind.blog 'Why I Stopped Using Tiimo'",
+          "severity": "high",
+          "frequency": "Primary reason users abandon the app",
+          "opportunity": "Voice capture eliminates input complexity entirely"
+        },
+        {
+          "id": "pain-3-2",
+          "description": "Routine timer moves ahead even when items incomplete - causes feelings of defeat for ADHD users who can't estimate time",
+          "source": "Write-Mind.blog, user reviews",
+          "severity": "high",
+          "frequency": "Common complaint from ADHD users",
+          "opportunity": "Flexible timers without rigid schedules, non-punitive approach"
+        },
+        {
+          "id": "pain-3-3",
+          "description": "Perpetual bug cycle - each update fixes bugs but introduces new ones, 'one step forward two steps back'",
+          "source": "JustUseApp.com reviews",
+          "severity": "medium",
+          "frequency": "Ongoing issue",
+          "opportunity": "Thorough testing and stable releases"
+        },
+        {
+          "id": "pain-3-4",
+          "description": "No true Android app - just a web wrapper that frustrated users wanting mobile convenience",
+          "source": "Write-Mind.blog",
+          "severity": "medium",
+          "frequency": "Deal-breaker for Android users",
+          "opportunity": "Native React Native app for both platforms"
+        },
+        {
+          "id": "pain-3-5",
+          "description": "Schedule/data disappeared unexpectedly - user lost 3 hours of work including medical appointments",
+          "source": "Trustpilot reviews",
+          "severity": "high",
+          "frequency": "Isolated but severe reports",
+          "opportunity": "Local-first ensures data never lost, offline reliability"
+        }
+      ],
+      "strengths": [
+        "Visual countdown timers are unique differentiator",
+        "Designed specifically for neurodivergent users",
+        "Won iPhone App of the Year 2025",
+        "Visual day overview helpful for time blindness",
+        "Apple Watch support"
+      ],
+      "market_position": "Leading ADHD-focused visual planner (500K+ users) but struggles with complexity and reliability"
+    },
+    {
+      "id": "competitor-4",
+      "name": "Notion",
+      "url": "https://notion.so",
+      "description": "All-in-one workspace for notes, docs, wikis, and project management with extensive customization",
+      "relevance": "medium",
+      "pain_points": [
+        {
+          "id": "pain-4-1",
+          "description": "Endless customization trap - ADHD users spend days perfecting dashboards and templates but never actually use them",
+          "source": "Glassdoor Community, Fishbowl, YourADHDone.com",
+          "severity": "high",
+          "frequency": "Extremely common ADHD complaint",
+          "opportunity": "Pre-built views that work out of the box, no setup required"
+        },
+        {
+          "id": "pain-4-2",
+          "description": "Too complex - 30% of ADHD users cite complexity as a hurdle, requires extensive learning",
+          "source": "NotionAvenue.co, Deskpage.io",
+          "severity": "high",
+          "frequency": "Major barrier to adoption",
+          "opportunity": "Simple, focused interface - voice in, structured data out"
+        },
+        {
+          "id": "pain-4-3",
+          "description": "Out of sight out of mind - information hidden behind clicks/tabs might as well not exist for ADHD brains",
+          "source": "Multiple ADHD productivity articles",
+          "severity": "high",
+          "frequency": "Core UX problem for ADHD users",
+          "opportunity": "Timeline-based views keep everything visible and chronological"
+        },
+        {
+          "id": "pain-4-4",
+          "description": "Maintenance burden - complex systems become unusable once bloated, users restart cycle repeatedly",
+          "source": "Zettelkasten Forum, Indie Hackers",
+          "severity": "medium",
+          "frequency": "Long-term user problem",
+          "opportunity": "AI parsing handles organization automatically"
+        }
+      ],
+      "strengths": [
+        "Extremely flexible and customizable",
+        "Strong database and relation features",
+        "Good collaboration tools",
+        "Active template community",
+        "Cross-platform with web access"
+      ],
+      "market_position": "Dominant productivity workspace but actively harms ADHD users with complexity"
+    },
+    {
+      "id": "competitor-5",
+      "name": "Obsidian",
+      "url": "https://obsidian.md",
+      "description": "Local-first markdown knowledge base with linking, graph views, and extensive plugin ecosystem",
+      "relevance": "medium",
+      "pain_points": [
+        {
+          "id": "pain-5-1",
+          "description": "Complex setup overwhelms ADHD users - advice explicitly says 'skip complicated setups, they'll make your life worse'",
+          "source": "ADHD ftw blog, Obsidian Forum ADHD threads",
+          "severity": "high",
+          "frequency": "Universal ADHD concern",
+          "opportunity": "Zero-config voice capture that just works"
+        },
+        {
+          "id": "pain-5-2",
+          "description": "Plugin rabbit hole - trying plugins one at a time is recommended but ADHD users get lost in possibilities",
+          "source": "AutisticAsFxxk.com Obsidian guide",
+          "severity": "medium",
+          "frequency": "Common new user trap",
+          "opportunity": "All features built-in, no plugins needed"
+        },
+        {
+          "id": "pain-5-3",
+          "description": "Systems become unmaintainable - ADHD users build systems that fail within weeks/months when interest shifts",
+          "source": "Obsidian Forum 'maintainable second brain for ADHD'",
+          "severity": "high",
+          "frequency": "Cycle reported by many ADHD users",
+          "opportunity": "AI handles organization, no manual system maintenance"
+        },
+        {
+          "id": "pain-5-4",
+          "description": "Requires typing/manual entry - no voice-first workflow despite being otherwise powerful",
+          "source": "Product positioning analysis",
+          "severity": "high",
+          "frequency": "Core product limitation",
+          "opportunity": "Voice capture removes typing friction entirely"
+        }
+      ],
+      "strengths": [
+        "Local-first with full data ownership",
+        "Markdown format is portable",
+        "Powerful linking and graph visualization",
+        "Extensive plugin ecosystem",
+        "Active community"
+      ],
+      "market_position": "Power user's knowledge base but too complex for ADHD without significant adaptation"
+    },
+    {
+      "id": "competitor-6",
+      "name": "Apple Journal",
+      "url": "https://www.apple.com/ios/journal/",
+      "description": "Apple's built-in journaling app with iOS integration and suggestion prompts",
+      "relevance": "medium",
+      "pain_points": [
+        {
+          "id": "pain-6-1",
+          "description": "No search functionality - can't find past entries, just filtering by media type",
+          "source": "Medium article 'Missing Core Functions', Tom's Guide review",
+          "severity": "high",
+          "frequency": "Most cited missing feature",
+          "opportunity": "Full-text search with timeline filtering"
+        },
+        {
+          "id": "pain-6-2",
+          "description": "No data export - entries locked in the app with no portability",
+          "source": "Multiple reviews, Chris Duke blog",
+          "severity": "high",
+          "frequency": "Deal-breaker for data ownership advocates",
+          "opportunity": "YAML/Markdown export, full data portability"
+        },
+        {
+          "id": "pain-6-3",
+          "description": "Limited platform availability - no Mac app initially, features vary by device",
+          "source": "Apple Community forums, Medium reviews",
+          "severity": "medium",
+          "frequency": "Major complaint at launch",
+          "opportunity": "Desktop and mobile apps with feature parity"
+        },
+        {
+          "id": "pain-6-4",
+          "description": "Cursor jumps and formatting bugs - editing is frustrating with text jumping around",
+          "source": "Apple Community discussions",
+          "severity": "medium",
+          "frequency": "Common editing complaint",
+          "opportunity": "Stable text editing experience"
+        },
+        {
+          "id": "pain-6-5",
+          "description": "No analytics or insights - just stores entries without helping understand patterns",
+          "source": "Product positioning analysis",
+          "severity": "high",
+          "frequency": "Core product limitation",
+          "opportunity": "AI-powered insights, mood/activity correlation, dashboards"
+        }
+      ],
+      "strengths": [
+        "Free and built into iOS",
+        "Deep iOS integration (suggestions from Photos, Workouts, etc.)",
+        "Simple and clean interface",
+        "End-to-end encryption",
+        "No subscription required"
+      ],
+      "market_position": "Default option for iOS users but severely limited in features and analytics"
+    },
+    {
+      "id": "competitor-7",
+      "name": "Nomie (Discontinued)",
+      "url": "https://nomie.app",
+      "description": "Quantified self tracking app for mood, habits, and custom metrics - shut down February 2023",
+      "relevance": "high",
+      "pain_points": [
+        {
+          "id": "pain-7-1",
+          "description": "App discontinued - users lost their tracking tool with no maintained successor",
+          "source": "Nomie.app shutdown notice, AlternativeTo.net",
+          "severity": "high",
+          "frequency": "Affected all users",
+          "opportunity": "Insight's Life Tracker module fills this exact gap"
+        },
+        {
+          "id": "pain-7-2",
+          "description": "Data portability concerns - users had to export before shutdown or lose everything",
+          "source": "Beeminder Forum, Nomie community",
+          "severity": "high",
+          "frequency": "Universal concern",
+          "opportunity": "Local-first with export ensures data survives any service"
+        }
+      ],
+      "strengths": [
+        "Flexible custom tracker creation",
+        "Privacy-focused local storage",
+        "Open source (Nomie 6)",
+        "Simple tap-to-track interface"
+      ],
+      "market_position": "Was beloved by quantified self community - discontinuation left major market gap"
+    },
+    {
+      "id": "competitor-8",
+      "name": "AudioNotes / Voice Journaling Apps",
+      "url": "https://audionotes.app",
+      "description": "Voice-to-text note taking apps with AI transcription and summarization",
+      "relevance": "high",
+      "pain_points": [
+        {
+          "id": "pain-8-1",
+          "description": "Offline recording unreliable - lost voice recordings that couldn't be transcribed, 'alpha phase' quality",
+          "source": "NerdyMomoCat blog review of Voicenotes, Google Play reviews",
+          "severity": "high",
+          "frequency": "Common Android complaint",
+          "opportunity": "Reliable offline capture queue with guaranteed sync"
+        },
+        {
+          "id": "pain-8-2",
+          "description": "Transcription only - converts voice to text but doesn't parse into structured data (tasks, events, habits)",
+          "source": "Product comparison analysis",
+          "severity": "high",
+          "frequency": "Core product limitation",
+          "opportunity": "AI parsing creates structured, queryable data from voice"
+        },
+        {
+          "id": "pain-8-3",
+          "description": "No gamification or motivation features - just note capture without engagement mechanics",
+          "source": "Product comparison analysis",
+          "severity": "medium",
+          "frequency": "Missing feature category",
+          "opportunity": "XP, streaks, and achievements drive daily engagement"
+        },
+        {
+          "id": "pain-8-4",
+          "description": "No analytics or insights - transcribes but doesn't help understand patterns in captured data",
+          "source": "Product comparison analysis",
+          "severity": "medium",
+          "frequency": "Missing feature category",
+          "opportunity": "Dashboards, reports, and pattern detection from voice data"
+        }
+      ],
+      "strengths": [
+        "Voice-first capture (shared strength)",
+        "AI transcription accuracy",
+        "Quick capture workflow",
+        "Cross-platform availability"
+      ],
+      "market_position": "Emerging voice note category but focused on transcription, not structured life tracking"
+    }
+  ],
+  "market_gaps": [
+    {
+      "id": "gap-1",
+      "description": "No voice-first app that parses speech into structured, queryable data (events, tasks, habits, trackers)",
+      "affected_competitors": ["competitor-2", "competitor-6", "competitor-8"],
+      "opportunity_size": "high",
+      "suggested_feature": "Core differentiator - AI parsing voice to unified data model is Insight's primary value proposition"
+    },
+    {
+      "id": "gap-2",
+      "description": "No gamified productivity app with non-punitive mechanics for ADHD users",
+      "affected_competitors": ["competitor-1"],
+      "opportunity_size": "high",
+      "suggested_feature": "XP-only system (no HP loss) with streaks that encourage without shame spirals"
+    },
+    {
+      "id": "gap-3",
+      "description": "Nomie discontinuation left quantified self community without a flexible personal tracker",
+      "affected_competitors": ["competitor-7"],
+      "opportunity_size": "medium",
+      "suggested_feature": "Life Tracker module with heatmaps, charts, and custom metrics fills this gap"
+    },
+    {
+      "id": "gap-4",
+      "description": "No ADHD-focused app that eliminates setup/customization burden with AI-powered organization",
+      "affected_competitors": ["competitor-3", "competitor-4", "competitor-5"],
+      "opportunity_size": "high",
+      "suggested_feature": "Zero-config capture where AI handles categorization and structuring"
+    },
+    {
+      "id": "gap-5",
+      "description": "No journaling app with true data ownership/portability AND cloud sync",
+      "affected_competitors": ["competitor-2", "competitor-6"],
+      "opportunity_size": "medium",
+      "suggested_feature": "Local-first with YAML/Markdown export plus optional cloud sync"
+    },
+    {
+      "id": "gap-6",
+      "description": "No app correlating voice-captured life events with mood/energy patterns",
+      "affected_competitors": ["competitor-2", "competitor-6", "competitor-8"],
+      "opportunity_size": "high",
+      "suggested_feature": "Analytics that show relationships between activities and wellbeing"
+    }
+  ],
+  "insights_summary": {
+    "top_pain_points": [
+      "Punitive gamification (HP loss) causes shame spirals for ADHD users (Habitica)",
+      "Excessive complexity and customization traps waste time instead of helping (Notion, Obsidian)",
+      "Manual text entry is friction that kills journaling habits",
+      "Data loss and sync reliability erodes trust (Day One, Tiimo)",
+      "Apps designed for neurotypical brains don't work for ADHD users",
+      "No search or analytics to derive insights from captured data (Apple Journal)",
+      "Quantified self community lost Nomie with no adequate replacement"
+    ],
+    "differentiator_opportunities": [
+      "Voice-first capture (10x faster than typing) with AI parsing to structured data",
+      "Non-punitive XP gamification - rewards without punishment",
+      "Zero-config operation - AI handles organization, no setup needed",
+      "Local-first with full data ownership AND cloud sync",
+      "Unified data model making everything queryable (events, tasks, habits, trackers)",
+      "ADHD-first design philosophy throughout UX",
+      "Fill Nomie gap for quantified self community"
+    ],
+    "market_trends": [
+      "Voice-first interfaces gaining traction (AudioNotes, Voicenotes, LID emerging)",
+      "ADHD/neurodivergent-focused apps becoming a distinct category (Tiimo won App of Year)",
+      "Distrust of cloud-only solutions driving local-first interest",
+      "AI parsing and summarization expected in productivity tools",
+      "Gamification fatigue with punitive mechanics",
+      "Users seeking simplicity over feature bloat",
+      "Cross-platform parity expectations (Android users frustrated by iOS-first apps)"
+    ]
+  },
+  "research_metadata": {
+    "search_queries_used": [
+      "Habitica complaints problems reddit 2024 2025",
+      "Day One journal app complaints issues reddit",
+      "Tiimo app ADHD reviews complaints problems",
+      "voice journaling app alternatives 2024 2025",
+      "Notion too complex overwhelming ADHD complaints reddit",
+      "Habitica punitive damage HP loss demotivating ADHD",
+      "Obsidian too complicated setup ADHD productivity",
+      "ADHD productivity app problems frustrations 2024",
+      "Nomie app discontinued alternative quantified self tracking",
+      "Apple Journal app limitations frustrations missing features",
+      "AudioNotes app reviews complaints voice journal"
+    ],
+    "sources_consulted": [
+      "Trustpilot reviews (Habitica, Tiimo)",
+      "JustUseApp.com reviews and problem reports",
+      "ChoosingTherapy.com app reviews",
+      "Day One Forums",
+      "MPU Talk (Mac Power Users) forums",
+      "Habitica Wiki ADHD guides",
+      "GitHub issues (Habitica, Day One)",
+      "Glassdoor/Fishbowl community discussions",
+      "Medium articles (ADHD productivity, app reviews)",
+      "Write-Mind.blog",
+      "Obsidian Forums ADHD threads",
+      "Apple Community discussions",
+      "Product Hunt reviews",
+      "AlternativeTo.net",
+      "Beeminder Forum",
+      "Tom's Guide reviews",
+      "NerdyMomoCat.github.io app reviews"
+    ],
+    "limitations": [
+      "Reddit-specific searches returned limited direct results; used aggregator sites instead",
+      "Some competitor reviews are from 2023-2024, may not reflect latest updates",
+      "Nomie research limited as app is discontinued",
+      "Voice journaling is emerging category with limited comparative data",
+      "Could not access App Store/Play Store reviews directly via web search"
+    ]
+  },
+  "created_at": "2026-01-13T15:45:00Z"
+}

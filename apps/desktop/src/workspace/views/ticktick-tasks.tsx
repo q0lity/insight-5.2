@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { Task, TaskStatus } from '../../storage/tasks'
 import { pointsForTask } from '../../scoring/points'
+import { parseChecklistMarkdown } from '../../ui/checklist'
 import { Icon } from '../../ui/icons'
 import { KanbanView } from './kanban'
 
@@ -76,13 +77,9 @@ function numberOrNull(value: string) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-function taskProgress(task: Task) {
-  if (task.status === 'done') return 100
-  if (task.status === 'in_progress') return 70
-  if (task.estimateMinutes != null) {
-    return Math.max(20, Math.min(90, Math.round(task.estimateMinutes / 2)))
-  }
-  return 25
+function checklistProgressPercent(checked: number, total: number) {
+  if (total <= 0) return 0
+  return Math.max(0, Math.min(100, Math.round((checked / total) * 100)))
 }
 
 export function TickTickTasksView(props: {
@@ -93,11 +90,12 @@ export function TickTickTasksView(props: {
   onToggleComplete: (taskId: string) => void
   onMoveTask: (taskId: string, status: TaskStatus) => void
   onUpdateTask: (task: Task) => void
+  onRefresh?: () => void
 }) {
   const [filter, setFilter] = useState<TaskFilterKey>('inbox')
   const [q, setQ] = useState('')
   const [draft, setDraft] = useState('')
-  const [layout, setLayout] = useState<'table' | 'kanban' | 'cards'>('table')
+  const [layout, setLayout] = useState<'table' | 'kanban' | 'cards'>('kanban')
 
   const now = Date.now()
   const todayStart = startOfDayMs(new Date(now))
@@ -147,12 +145,23 @@ export function TickTickTasksView(props: {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
-      <div className="px-10 pt-10 pb-6 bg-[var(--bg)]/80 backdrop-blur-xl sticky top-0 z-10 max-w-7xl mx-auto w-full">
+    <div className="tasksPage">
+      <div className="tasksTopBar">
+        <div className="tasksTopLeft">
+          <div className="tasksTopDot" />
+          <div className="tasksTopTitle">insight-5.2</div>
+        </div>
+        <button className="tasksTopRefresh" type="button" onClick={props.onRefresh}>
+          <Icon name="bolt" size={14} />
+          Refresh Tasks
+        </button>
+      </div>
+
+      <div className="tasksHeader">
         <div className="taskToolbar">
           <div className="taskTitleBlock">
-            <h1 className="text-3xl font-extrabold tracking-tight">Tasks</h1>
-            <p className="text-sm text-[var(--muted)] font-semibold uppercase tracking-widest">Master your flow.</p>
+            <h1 className="taskPageTitle">Tasks</h1>
+            <p className="taskPageSubtitle">Master your flow.</p>
           </div>
 
           <div className="taskFilterGroup">
@@ -172,7 +181,7 @@ export function TickTickTasksView(props: {
             </div>
 
             <div className="taskFilterSearch">
-              <Icon name="dots" size={14} />
+              <Icon name="search" size={14} />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -234,7 +243,7 @@ export function TickTickTasksView(props: {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-10 pb-32 max-w-7xl mx-auto w-full">
+      <div className="tasksBody">
         {layout === 'kanban' ? (
           <KanbanView
             tasks={filtered}
@@ -246,10 +255,14 @@ export function TickTickTasksView(props: {
           <div className="taskCardGrid">
             <AnimatePresence mode="popLayout">
               {filtered.map((t) => {
-                const progress = taskProgress(t)
-                const activeDots = Math.max(1, Math.round((progress / 100) * 8))
+                const checklist = parseChecklistMarkdown(t.notes)
+                const completed = checklist.filter((item) => item.checked).length
+                const total = checklist.length
+                const progress = total ? checklistProgressPercent(completed, total) : null
+                const activeDots = progress != null ? Math.max(1, Math.round((progress / 100) * 8)) : 0
                 const statusLabel =
                   t.status === 'done' ? 'Done' : t.status === 'in_progress' ? 'In Progress' : 'Todo'
+                const startLabel = t.status === 'done' ? 'Done' : t.status === 'in_progress' ? 'Resume' : 'Start'
                 return (
                   <motion.div
                     key={t.id}
@@ -258,7 +271,7 @@ export function TickTickTasksView(props: {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 12 }}
                     className={`taskCard ${props.selectedTaskId === t.id ? 'active' : ''}`}
-                    style={{ ['--progress' as any]: `${progress}%` }}
+                    style={{ ['--progress' as any]: `${progress ?? 0}%` }}
                     onClick={() => props.onSelectTask(t.id)}
                   >
                     <div className="taskCardHeader">
@@ -283,32 +296,47 @@ export function TickTickTasksView(props: {
                         </span>
                       ))}
                     </div>
-                    <div className="taskCardProgress">
-                      <div className="taskCardProgressLabel">Progress</div>
-                      <div className="taskCardProgressValue">{progress}%</div>
-                      <div className="taskCardProgressBar">
-                        <span />
+                    {progress != null ? (
+                      <div className="taskCardProgress">
+                        <div className="taskCardProgressLabel">Subtasks</div>
+                        <div className="taskCardProgressValue">{progress}%</div>
+                        <div className="taskCardProgressBar">
+                          <span />
+                        </div>
+                        <div className="taskCardDots">
+                          {Array.from({ length: 8 }).map((_, i) => (
+                            <span key={`${t.id}_dot_${i}`} className={i < activeDots ? 'active' : ''} />
+                          ))}
+                        </div>
+                        <div className="taskCardSubtasks">
+                          {checklist.slice(0, 3).map((item) => (
+                            <div
+                              key={`${t.id}_sub_${item.lineIndex}`}
+                              className={item.checked ? 'taskCardSubtask done' : 'taskCardSubtask'}
+                            >
+                              <Icon name={item.checked ? 'check' : 'dots'} size={12} />
+                              <span>{item.text}</span>
+                            </div>
+                          ))}
+                          {total > 3 ? <div className="taskCardSubtaskMore">+{total - 3} more</div> : null}
+                        </div>
                       </div>
-                      <div className="taskCardDots">
-                        {Array.from({ length: 8 }).map((_, i) => (
-                          <span key={`${t.id}_dot_${i}`} className={i < activeDots ? 'active' : ''} />
-                        ))}
-                      </div>
-                    </div>
+                    ) : null}
                     <div className="taskCardFooter">
                       <div className="taskCardMeta">
-                        <Icon name="bolt" size={14} />
+                        <Icon name="calendar" size={14} />
                         <span>{t.dueAt ? formatShortDate(t.dueAt) : 'No due date'}</span>
                       </div>
                       <button
                         type="button"
                         className="taskCardAction"
+                        disabled={t.status === 'done'}
                         onClick={(e) => {
                           e.stopPropagation()
-                          props.onSelectTask(t.id)
+                          if (t.status !== 'done') props.onMoveTask(t.id, 'in_progress')
                         }}
                       >
-                        Recover
+                        {startLabel}
                       </button>
                     </div>
                   </motion.div>

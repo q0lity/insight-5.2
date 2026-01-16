@@ -1,0 +1,10 @@
+{
+  "discovered_files": {
+    "apps/desktop/src/markdown/note-items.ts": {
+      "description": "Front matter parsing utility added: parseFrontMatter(), hasFrontMatter(), stripFrontMatter(). Parses YAML metadata between --- delimiters. Handles strings, numbers, booleans, nulls, and arrays (inline and YAML-style).",
+      "category": "markdown",
+      "discovered_at": "2026-01-13T16:25:09.909164+00:00"
+    }
+  },
+  "last_updated": "2026-01-13T16:25:09.909181+00:00"
+}

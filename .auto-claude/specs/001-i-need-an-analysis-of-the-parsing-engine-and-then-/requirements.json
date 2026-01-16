@@ -1,0 +1,4 @@
+{
+  "task_description": "I need an analysis of the, parsing engine, and then I need it to be optimized to know when to parse things into tasks, events, notes, trackers, and habits. Okay? And this is the other thing. So when I say that, it's like if I do a habit and, if I say I did a habit, it's gonna check it off on the box. If I said I did a task, it's gonna update on the task pane with all the information that is there. You know, if it's related to a project, it's gonna auto link that project within, like, levels of confidence interviews. So the first thing I need you to do is I need you to do the analysis. And I need you to and I need you to make it robust and production ready. So the first thing is I need you to do is to analyze it. And then the second thing I need you to do is to, like, make a plan to improve it. So what is your plan?",
+  "workflow_type": "feature"
+}

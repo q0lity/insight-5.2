@@ -1,0 +1,48 @@
+{
+  "file_path": ".auto-claude-security.json",
+  "main_branch_history": [],
+  "task_views": {
+    "002-i-need-these-to-be-analyzed-and-i-need-the-pages-t": {
+      "task_id": "002-i-need-these-to-be-analyzed-and-i-need-the-pages-t",
+      "branch_point": {
+        "commit_hash": "223b6906c6e567162b9c4367984c6ffbc6ed28e6",
+        "content": "",
+        "timestamp": "2026-01-13T11:38:54.774343"
+      },
+      "worktree_state": {
+        "content": "{\n  \"base_commands\": [\n    \".\",\n    \"[\",\n    \"[[\",\n    \"ag\",\n    \"awk\",\n    \"basename\",\n    \"bash\",\n    \"bc\",\n    \"break\",\n    \"cat\",\n    \"cd\",\n    \"chmod\",\n    \"clear\",\n    \"cmp\",\n    \"column\",\n    \"comm\",\n    \"command\",\n    \"continue\",\n    \"cp\",\n    \"curl\",\n    \"cut\",\n    \"date\",\n    \"df\",\n    \"diff\",\n    \"dig\",\n    \"dirname\",\n    \"du\",\n    \"echo\",\n    \"egrep\",\n    \"env\",\n    \"eval\",\n    \"exec\",\n    \"exit\",\n    \"expand\",\n    \"export\",\n    \"expr\",\n    \"false\",\n    \"fd\",\n    \"fgrep\",\n    \"file\",\n    \"find\",\n    \"fmt\",\n    \"fold\",\n    \"gawk\",\n    \"gh\",\n    \"git\",\n    \"grep\",\n    \"gunzip\",\n    \"gzip\",\n    \"head\",\n    \"help\",\n    \"host\",\n    \"iconv\",\n    \"id\",\n    \"jobs\",\n    \"join\",\n    \"jq\",\n    \"kill\",\n    \"killall\",\n    \"less\",\n    \"let\",\n    \"ln\",\n    \"ls\",\n    \"lsof\",\n    \"man\",\n    \"mkdir\",\n    \"mktemp\",\n    \"more\",\n    \"mv\",\n    \"nl\",\n    \"paste\",\n    \"pgrep\",\n    \"ping\",\n    \"pkill\",\n    \"popd\",\n    \"printenv\",\n    \"printf\",\n    \"ps\",\n    \"pushd\",\n    \"pwd\",\n    \"read\",\n    \"readlink\",\n    \"realpath\",\n    \"reset\",\n    \"return\",\n    \"rev\",\n    \"rg\",\n    \"rm\",\n    \"rmdir\",\n    \"sed\",\n    \"seq\",\n    \"set\",\n    \"sh\",\n    \"shuf\",\n    \"sleep\",\n    \"sort\",\n    \"source\",\n    \"split\",\n    \"stat\",\n    \"tail\",\n    \"tar\",\n    \"tee\",\n    \"test\",\n    \"time\",\n    \"timeout\",\n    \"touch\",\n    \"tr\",\n    \"tree\",\n    \"true\",\n    \"type\",\n    \"uname\",\n    \"unexpand\",\n    \"uniq\",\n    \"unset\",\n    \"unzip\",\n    \"watch\",\n    \"wc\",\n    \"wget\",\n    \"whereis\",\n    \"which\",\n    \"whoami\",\n    \"xargs\",\n    \"yes\",\n    \"yq\",\n    \"zip\",\n    \"zsh\"\n  ],\n  \"stack_commands\": [\n    \"ar\",\n    \"clang\",\n    \"clang++\",\n    \"cmake\",\n    \"composer\",\n    \"g++\",\n    \"gcc\",\n    \"ipython\",\n    \"jupyter\",\n    \"ld\",\n    \"make\",\n    \"meson\",\n    \"ninja\",\n    \"nm\",\n    \"node\",\n    \"notebook\",\n    \"npm\",\n    \"npx\",\n    \"objdump\",\n    \"pdb\",\n    \"php\",\n    \"pip\",\n    \"pip3\",\n    \"pipx\",\n    \"pudb\",\n    \"python\",\n    \"python3\",\n    \"strip\",\n    \"supabase\",\n    \"swift\",\n    \"swiftc\",\n    \"ts-node\",\n    \"tsc\",\n    \"tsx\",\n    \"xcodebuild\"\n  ],\n  \"script_commands\": [\n    \"bun\",\n    \"npm\",\n    \"pnpm\",\n    \"yarn\"\n  ],\n  \"custom_commands\": [],\n  \"detected_stack\": {\n    \"languages\": [\n      \"python\",\n      \"javascript\",\n      \"typescript\",\n      \"php\",\n      \"c\",\n      \"swift\"\n    ],\n    \"package_managers\": [\n      \"npm\"\n    ],\n    \"frameworks\": [],\n    \"databases\": [],\n    \"infrastructure\": [],\n    \"cloud_providers\": [\n      \"supabase\"\n    ],\n    \"code_quality_tools\": [],\n    \"version_managers\": []\n  },\n  \"custom_scripts\": {\n    \"npm_scripts\": [\n      \"dev:mobile\",\n      \"dev:mobile2\",\n      \"dev:mobile4\",\n      \"dev:desktop\"\n    ],\n    \"make_targets\": [],\n    \"poetry_scripts\": [],\n    \"cargo_aliases\": [],\n    \"shell_scripts\": []\n  },\n  \"project_dir\": \"/Users/dg/Desktop/insight-5.2/.auto-claude/worktrees/tasks/002-i-need-these-to-be-analyzed-and-i-need-the-pages-t\",\n  \"created_at\": \"2026-01-13T12:36:33.881706\",\n  \"project_hash\": \"24b5f503aac335821bf96d4750495bf3\"\n}",
+        "last_modified": "2026-01-13T13:07:29.869310"
+      },
+      "task_intent": {
+        "title": "002-i-need-these-to-be-analyzed-and-i-need-the-pages-t",
+        "description": "",
+        "from_plan": false
+      },
+      "commits_behind_main": 3,
+      "status": "active",
+      "merged_at": null
+    },
+    "007-so-on-the-engine-right-here-where-i-chat-so-here-l": {
+      "task_id": "007-so-on-the-engine-right-here-where-i-chat-so-here-l",
+      "branch_point": {
+        "commit_hash": "223b6906c6e567162b9c4367984c6ffbc6ed28e6",
+        "content": "",
+        "timestamp": "2026-01-13T12:35:10.658231"
+      },
+      "worktree_state": {
+        "content": "{\n  \"base_commands\": [\n    \".\",\n    \"[\",\n    \"[[\",\n    \"ag\",\n    \"awk\",\n    \"basename\",\n    \"bash\",\n    \"bc\",\n    \"break\",\n    \"cat\",\n    \"cd\",\n    \"chmod\",\n    \"clear\",\n    \"cmp\",\n    \"column\",\n    \"comm\",\n    \"command\",\n    \"continue\",\n    \"cp\",\n    \"curl\",\n    \"cut\",\n    \"date\",\n    \"df\",\n    \"diff\",\n    \"dig\",\n    \"dirname\",\n    \"du\",\n    \"echo\",\n    \"egrep\",\n    \"env\",\n    \"eval\",\n    \"exec\",\n    \"exit\",\n    \"expand\",\n    \"export\",\n    \"expr\",\n    \"false\",\n    \"fd\",\n    \"fgrep\",\n    \"file\",\n    \"find\",\n    \"fmt\",\n    \"fold\",\n    \"gawk\",\n    \"gh\",\n    \"git\",\n    \"grep\",\n    \"gunzip\",\n    \"gzip\",\n    \"head\",\n    \"help\",\n    \"host\",\n    \"iconv\",\n    \"id\",\n    \"jobs\",\n    \"join\",\n    \"jq\",\n    \"kill\",\n    \"killall\",\n    \"less\",\n    \"let\",\n    \"ln\",\n    \"ls\",\n    \"lsof\",\n    \"man\",\n    \"mkdir\",\n    \"mktemp\",\n    \"more\",\n    \"mv\",\n    \"nl\",\n    \"paste\",\n    \"pgrep\",\n    \"ping\",\n    \"pkill\",\n    \"popd\",\n    \"printenv\",\n    \"printf\",\n    \"ps\",\n    \"pushd\",\n    \"pwd\",\n    \"read\",\n    \"readlink\",\n    \"realpath\",\n    \"reset\",\n    \"return\",\n    \"rev\",\n    \"rg\",\n    \"rm\",\n    \"rmdir\",\n    \"sed\",\n    \"seq\",\n    \"set\",\n    \"sh\",\n    \"shuf\",\n    \"sleep\",\n    \"sort\",\n    \"source\",\n    \"split\",\n    \"stat\",\n    \"tail\",\n    \"tar\",\n    \"tee\",\n    \"test\",\n    \"time\",\n    \"timeout\",\n    \"touch\",\n    \"tr\",\n    \"tree\",\n    \"true\",\n    \"type\",\n    \"uname\",\n    \"unexpand\",\n    \"uniq\",\n    \"unset\",\n    \"unzip\",\n    \"watch\",\n    \"wc\",\n    \"wget\",\n    \"whereis\",\n    \"which\",\n    \"whoami\",\n    \"xargs\",\n    \"yes\",\n    \"yq\",\n    \"zip\",\n    \"zsh\"\n  ],\n  \"stack_commands\": [\n    \"ar\",\n    \"clang\",\n    \"clang++\",\n    \"cmake\",\n    \"g++\",\n    \"gcc\",\n    \"ipython\",\n    \"jupyter\",\n    \"ld\",\n    \"make\",\n    \"meson\",\n    \"ninja\",\n    \"nm\",\n    \"node\",\n    \"notebook\",\n    \"npm\",\n    \"npx\",\n    \"objdump\",\n    \"pdb\",\n    \"pip\",\n    \"pip3\",\n    \"pipx\",\n    \"pudb\",\n    \"python\",\n    \"python3\",\n    \"strip\",\n    \"supabase\",\n    \"swift\",\n    \"swiftc\",\n    \"ts-node\",\n    \"tsc\",\n    \"tsx\",\n    \"xcodebuild\"\n  ],\n  \"script_commands\": [\n    \"bun\",\n    \"npm\",\n    \"pnpm\",\n    \"yarn\"\n  ],\n  \"custom_commands\": [],\n  \"detected_stack\": {\n    \"languages\": [\n      \"python\",\n      \"javascript\",\n      \"typescript\",\n      \"c\",\n      \"swift\"\n    ],\n    \"package_managers\": [\n      \"npm\"\n    ],\n    \"frameworks\": [],\n    \"databases\": [],\n    \"infrastructure\": [],\n    \"cloud_providers\": [\n      \"supabase\"\n    ],\n    \"code_quality_tools\": [],\n    \"version_managers\": []\n  },\n  \"custom_scripts\": {\n    \"npm_scripts\": [\n      \"dev:mobile\",\n      \"dev:mobile2\",\n      \"dev:mobile4\",\n      \"dev:desktop\"\n    ],\n    \"make_targets\": [],\n    \"poetry_scripts\": [],\n    \"cargo_aliases\": [],\n    \"shell_scripts\": []\n  },\n  \"project_dir\": \"/Users/dg/Desktop/insight-5.2/.auto-claude/worktrees/tasks/007-so-on-the-engine-right-here-where-i-chat-so-here-l\",\n  \"created_at\": \"2026-01-13T12:16:28.471514\",\n  \"project_hash\": \"2b769cf277d2475fcdcbe7f20ecc2e5f\"\n}",
+        "last_modified": "2026-01-13T12:35:11.756909"
+      },
+      "task_intent": {
+        "title": "007-so-on-the-engine-right-here-where-i-chat-so-here-l",
+        "description": "",
+        "from_plan": false
+      },
+      "commits_behind_main": 3,
+      "status": "active",
+      "merged_at": null
+    }
+  },
+  "created_at": "2026-01-13T11:38:54.774397",
+  "last_updated": "2026-01-13T12:35:10.738709"
+}

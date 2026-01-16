@@ -1,3 +1,5 @@
+import { GlassPanel } from '@/components/ui/glass-panel'
+
 export function PlaceholderView(props: { title: string; subtitle?: string }) {
   return (
     <div className="page">
@@ -7,10 +9,9 @@ export function PlaceholderView(props: { title: string; subtitle?: string }) {
           <div className="subhead">{props.subtitle ?? 'Coming soon.'}</div>
         </div>
       </div>
-      <div className="glassCard">
+      <GlassPanel glow>
         <div className="empty">Placeholder.</div>
-      </div>
+      </GlassPanel>
     </div>
   )
 }
-

@@ -292,7 +292,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
           <div className="flex items-center gap-4">
             <div className="flex-1 max-w-md relative">
               <input
-                className="w-full h-10 bg-white/50 border border-black/5 rounded-2xl px-10 text-sm font-medium focus:bg-white focus:shadow-md transition-all outline-none"
+                className="w-full h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-10 text-sm font-medium focus:bg-[var(--glass3)] focus:shadow-[0_10px_24px_var(--glowSoft)] transition-all outline-none backdrop-blur"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Define a new habit..."
@@ -309,7 +309,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
               onClick={() => {
                 commitHabitDraft()
               }}
-              className="h-10 px-6 bg-[#D95D39] text-white rounded-2xl font-bold shadow-lg shadow-[#D95D39]/20 hover:scale-105 active:scale-95 transition-all"
+              className="h-10 px-6 bg-[var(--accent)] border border-[var(--accentBorder)] text-white rounded-2xl font-bold shadow-[0_12px_24px_var(--glowSoft)] hover:scale-105 active:scale-95 transition-all"
             >
               Add Habit
             </button>
@@ -479,17 +479,17 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
 
                 <div className="flex gap-2">
                   <button
-                    className="flex-1 h-10 rounded-2xl bg-[#CF423C]/10 text-[#CF423C] text-xs font-bold hover:bg-[#CF423C] hover:text-white transition-all"
+                    className="flex-1 h-10 rounded-2xl bg-[#CF423C]/15 text-[#CF423C] text-xs font-bold hover:bg-[#CF423C] hover:text-white transition-all"
                     onClick={() => void logHabit(selected, 'negative')}>
                     − Miss
                   </button>
                   <button
-                    className="flex-1 h-10 rounded-2xl bg-[#3D8856]/10 text-[#3D8856] text-xs font-bold hover:bg-[#3D8856] hover:text-white transition-all"
+                    className="flex-1 h-10 rounded-2xl bg-[#3D8856]/15 text-[#3D8856] text-xs font-bold hover:bg-[#3D8856] hover:text-white transition-all"
                     onClick={() => void logHabit(selected, 'positive')}>
                     + Done
                   </button>
                   <button
-                    className="h-10 px-3 rounded-2xl bg-white/70 text-[var(--text)] text-xs font-bold border border-black/5 hover:bg-[var(--panel)] transition-all"
+                    className="h-10 px-3 rounded-2xl bg-[var(--glass2)] text-[var(--text)] text-xs font-bold border border-[var(--border)] hover:bg-[var(--glass3)] transition-all"
                     onClick={() => props.onOpenReports?.(selected.id)}>
                     Analytics
                   </button>
@@ -497,7 +497,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
 
                 <div className="flex gap-2">
                   <button
-                    className="flex-1 h-10 rounded-2xl bg-[#CF423C]/10 text-[#CF423C] text-xs font-bold hover:bg-[#CF423C] hover:text-white transition-all"
+                    className="flex-1 h-10 rounded-2xl bg-[#CF423C]/15 text-[#CF423C] text-xs font-bold hover:bg-[#CF423C] hover:text-white transition-all"
                     onClick={() => removeHabit(selected.id)}
                   >
                     Remove habit
@@ -514,21 +514,21 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                 <div className="space-y-3">
                   <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Category</label>
                   <input
-                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    className="w-full h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium"
                     value={selected.category ?? ''}
                     onChange={(e) => updateHabit(selected.id, { category: e.target.value.trim() || null })}
                     placeholder="Personal, Health, Work…"
                   />
                   <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Subcategory</label>
                   <input
-                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    className="w-full h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium"
                     value={selected.subcategory ?? ''}
                     onChange={(e) => updateHabit(selected.id, { subcategory: e.target.value.trim() || null })}
                     placeholder="Morning routine, Strength…"
                   />
                   <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Tags</label>
                   <input
-                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    className="w-full h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium"
                     value={selected.tags.join(' ')}
                     onChange={(e) => updateHabit(selected.id, { tags: parseTagInput(e.target.value) })}
                     onKeyDown={(e) => {
@@ -540,42 +540,42 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                   />
                   <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Context</label>
                   <input
-                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    className="w-full h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium"
                     value={selected.contexts.join(', ')}
                     onChange={(e) => updateHabit(selected.id, { contexts: parseCommaInput(e.target.value) })}
                     placeholder="at computer, at gym"
                   />
                   <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">People</label>
                   <input
-                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    className="w-full h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium"
                     value={selected.people.join(', ')}
                     onChange={(e) => updateHabit(selected.id, { people: parseCommaInput(e.target.value) })}
                     placeholder="Mom, Alex"
                   />
                   <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Location</label>
                   <input
-                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    className="w-full h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium"
                     value={selected.location ?? ''}
                     onChange={(e) => updateHabit(selected.id, { location: e.target.value.trim() || null })}
                     placeholder="Home, Gym"
                   />
                   <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Goal</label>
                   <input
-                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    className="w-full h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium"
                     value={selected.goal ?? ''}
                     onChange={(e) => updateHabit(selected.id, { goal: e.target.value.trim() || null })}
                     placeholder="Get shredded"
                   />
                   <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Project</label>
                   <input
-                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    className="w-full h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium"
                     value={selected.project ?? ''}
                     onChange={(e) => updateHabit(selected.id, { project: e.target.value.trim() || null })}
                     placeholder="Workout plan"
                   />
                   <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Skills</label>
                   <input
-                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    className="w-full h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium"
                     value={selected.skills.join(', ')}
                     onChange={(e) =>
                       updateHabit(selected.id, {
@@ -601,21 +601,21 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                   />
                   <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Estimate (min)</label>
                   <input
-                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    className="w-full h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium"
                     value={selected.estimateMinutes ?? ''}
                     onChange={(e) => updateHabit(selected.id, { estimateMinutes: numberOrNull(e.target.value) })}
                     placeholder="15"
                   />
                   <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Schedule</label>
                   <input
-                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    className="w-full h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium"
                     value={selected.schedule ?? ''}
                     onChange={(e) => updateHabit(selected.id, { schedule: e.target.value })}
                     placeholder="Mon/Wed/Fri · 7:00 AM"
                   />
                   <label className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Target per week</label>
                   <input
-                    className="w-full h-10 bg-white/60 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                    className="w-full h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium"
                     value={selected.targetPerWeek ?? ''}
                     onChange={(e) => updateHabit(selected.id, { targetPerWeek: numberOrNull(e.target.value) })}
                     placeholder="4"
@@ -646,7 +646,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                       return (
                         <button
                           key={c}
-                          className={active ? 'px-3 py-1 rounded-full bg-[#D95D39]/10 text-[var(--accent)] text-[10px] font-bold' : 'px-3 py-1 rounded-full bg-[var(--panel)] text-[var(--muted)] text-[10px] font-bold'}
+                          className={active ? 'px-3 py-1 rounded-full bg-[var(--accentSoft)] text-[var(--accent)] text-[10px] font-bold' : 'px-3 py-1 rounded-full bg-[var(--glass2)] text-[var(--muted)] text-[10px] font-bold'}
                           onClick={() => {
                             const next = active ? selected.character.filter((x) => x !== c) : [...selected.character, c]
                             updateHabit(selected.id, { character: next })
@@ -662,7 +662,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                     {(['positive', 'negative', 'both'] as const).map((p) => (
                       <button
                         key={p}
-                        className={selected.polarity === p ? 'px-3 py-1 rounded-full bg-[#1C1C1E] text-white text-[10px] font-bold uppercase' : 'px-3 py-1 rounded-full bg-[var(--panel)] text-[var(--muted)] text-[10px] font-bold uppercase'}
+                        className={selected.polarity === p ? 'px-3 py-1 rounded-full bg-[var(--accent)] text-white text-[10px] font-bold uppercase' : 'px-3 py-1 rounded-full bg-[var(--glass2)] text-[var(--muted)] text-[10px] font-bold uppercase'}
                         onClick={() => updateHabit(selected.id, { polarity: p })}
                       >
                         {p}
@@ -675,7 +675,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
               <div className="pageHero p-6 flex flex-col gap-4 text-center">
                 <div className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Create a new habit</div>
                 <input
-                  className="w-full h-10 bg-white/70 border border-black/5 rounded-2xl px-4 text-sm font-medium"
+                  className="w-full h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium"
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {
@@ -685,7 +685,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
                   placeholder="Habit name..."
                 />
                 <button
-                  className="h-10 rounded-2xl bg-[#D95D39] text-white text-xs font-bold"
+                  className="h-10 rounded-2xl bg-[var(--accent)] border border-[var(--accentBorder)] text-white text-xs font-bold"
                   onClick={() => commitHabitDraft()}
                 >
                   Add habit

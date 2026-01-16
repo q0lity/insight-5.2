@@ -1,0 +1,91 @@
+=== AUTO-BUILD PROGRESS ===
+
+Project: Obsidian-Style Note View with Google Docs Navigation
+Workspace: /Users/dg/Desktop/insight-5.2
+Started: 2026-01-13
+
+Workflow Type: feature
+Rationale: This is a substantial UI overhaul that adds new components (heading navigation sidebar, timestamp column, front matter renderer) while transforming the visual appearance of existing markdown rendering. It requires creating new React components, CSS styling, and integrating with existing markdown parsing infrastructure.
+
+Session 1 (Planner):
+- Created implementation_plan.json
+- Phases: 6
+- Total subtasks: 17
+- Created init.sh
+- Updated context.json with patterns and conventions
+
+Phase Summary:
+- Phase 1 (Markdown Infrastructure): 2 subtasks, depends on []
+  - Heading extraction utility
+  - Front matter parsing utility
+
+- Phase 2 (Obsidian CSS Styles): 5 subtasks, depends on []
+  - 3-column layout CSS
+  - Heading tree navigation CSS
+  - Front matter display CSS
+  - Obsidian chip styling
+  - Title typography CSS
+
+- Phase 3 (React Components): 5 subtasks, depends on [phase-1, phase-2]
+  - HeadingSidebar component
+  - FrontMatterDisplay component
+  - TimestampColumn component
+  - Enhanced MarkdownView with heading IDs
+  - ObsidianNoteView wrapper component
+
+- Phase 4 (Subtask Play Button Integration): 1 subtask, depends on [phase-3]
+  - Enhanced play button styling
+
+- Phase 5 (Notes View Integration): 3 subtasks, depends on [phase-4]
+  - Integrate ObsidianNoteView into NotesView
+  - Scroll-to-heading functionality
+  - Tag click filtering
+
+- Phase 6 (Polish and Edge Cases): 4 subtasks, depends on [phase-5]
+  - No headings placeholder
+  - Invalid YAML handling
+  - Long heading truncation
+  - Dark theme support
+
+Services Involved:
+- desktop: Primary service (React + Vite + TypeScript)
+  - Main files: notes.tsx, markdown.tsx, App.css, note-items.ts
+
+Parallelism Analysis:
+- Max parallel phases: 2
+- Recommended workers: 1
+- Parallel groups: [phase-1-infrastructure, phase-2-css] can run in parallel
+
+Key Patterns to Follow:
+- Markdown: ReactMarkdown with remarkGfm plugin
+- Chips: mdChip mdChip-{kind} CSS class pattern
+- Icons: Icon component from ui/icons.tsx
+- Play buttons: tmPlay tmPlayCompact classes
+- CSS variables: --accent, --text, --border, --panel, --muted
+
+Files to Modify:
+1. apps/desktop/src/markdown/note-items.ts (utilities)
+2. apps/desktop/src/App.css (styles)
+3. apps/desktop/src/ui/markdown.tsx (components)
+4. apps/desktop/src/workspace/views/notes.tsx (integration)
+5. apps/desktop/src/ui/ChipInput.tsx (chip styling)
+
+Reference Files:
+- apps/desktop/src/workspace/views/tiimo-day.tsx (play buttons, segments)
+- apps/desktop/src/ui/icons.tsx (icon usage)
+- apps/desktop/src/ui/checklist.ts (checkbox parsing)
+- packages/shared/src/notes.ts (text extraction)
+
+=== STARTUP COMMAND ===
+
+To continue building this spec, run:
+
+  source auto-claude/.venv/bin/activate && python auto-claude/run.py --spec 002 --parallel 1
+
+Or to start the dev server manually:
+
+  cd apps/desktop && npm run dev:web
+
+The app will be available at: http://localhost:5174
+
+=== END SESSION 1 ===

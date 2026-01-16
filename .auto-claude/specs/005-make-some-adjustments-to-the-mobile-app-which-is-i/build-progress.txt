@@ -1,0 +1,168 @@
+=== AUTO-BUILD PROGRESS ===
+
+Project: Mobile App UI/UX Improvements and Bug Fixes
+Spec Number: 005
+Workspace: insight-5.2
+Started: 2026-01-13
+
+Workflow Type: feature
+Rationale: Task combines critical bug fixes (recording crash, stop button) with multiple UI
+           enhancements and new features (markdown editor, calendar drag-and-drop). The
+           comprehensive scope qualifies this as a feature implementation workflow.
+
+================================================================================
+SESSION 1 (Planner): COMPLETED
+================================================================================
+
+Deliverables Created:
+- implementation_plan.json (7 phases, 14 subtasks)
+- context.json (updated with critical findings and patterns)
+- init.sh (Expo dev server startup script)
+- build-progress.txt (this file)
+
+Phase Summary:
+- Phase 1 (Critical Bug Fixes): 2 subtasks - Recording crash fix, Stop button fix
+- Phase 2 (UI Compaction): 4 subtasks - Timer, tracker, pulse, capture buttons
+- Phase 3 (Heatmap): 1 subtask - Box spacing fix for all views
+- Phase 4 (Timeline): 1 subtask - Visual polish
+- Phase 5 (Markdown Notes): 3 subtasks - Preview toggle, fullscreen, note creation
+- Phase 6 (Calendar Drag): 3 subtasks - DayView, WeekView, callbacks
+- Phase 7 (Integration): 1 subtask - Full verification
+
+Services Involved:
+- insight-mobile: React Native + Expo mobile app (all changes)
+
+Critical Files Identified:
+1. apps/insight-mobile/app/voice.tsx - Recording engine (crash fix)
+2. apps/insight-mobile/src/state/session.tsx - Stop button functionality
+3. apps/insight-mobile/app/(tabs)/index.tsx - Dashboard UI compaction
+4. apps/insight-mobile/src/components/MobileHeatmap.tsx - Heatmap spacing
+5. apps/insight-mobile/app/timeline.tsx - Timeline polish
+6. apps/insight-mobile/app/note/[id].tsx - Markdown preview + fullscreen
+7. apps/insight-mobile/src/components/calendar/DayView.tsx - Drag-to-create
+8. apps/insight-mobile/src/components/calendar/WeekView.tsx - Drag-to-create
+
+Key Patterns Found:
+- Theme: useTheme() returns { palette, sizes, isDark }
+- Recording: expo-av requires 300ms minimum between stop/start
+- Responsive: useWindowDimensions() for layout calculations
+- Markdown: SimpleMarkdown.tsx component already exists
+
+Parallelism Analysis:
+- Max parallel phases: 3 (phases 2, 3, 4 can run concurrently)
+- Recommended workers: 2
+- Speedup estimate: 1.5x faster than sequential
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+To continue building this spec, run:
+
+  source auto-claude/.venv/bin/activate && python auto-claude/run.py --spec 005 --parallel 2
+
+Or start manually:
+  1. cd apps/insight-mobile
+  2. npm install
+  3. npx expo start
+
+Implementation Order:
+1. Phase 1: Critical bugs (blocking - must complete first)
+2. Phase 2-4: UI changes (can run in parallel after Phase 1)
+3. Phase 5-6: New features (after Phase 2)
+4. Phase 7: Integration testing (after all phases complete)
+
+================================================================================
+SUBTASK STATUS TRACKER
+================================================================================
+
+Phase 1 - Critical Bug Fixes:
+  [X] subtask-1-1: Fix recording engine crash (300ms check + iOS cleanup) - COMPLETED
+  [X] subtask-1-2: Verify and fix stop button functionality - COMPLETED
+
+Phase 2 - UI Compaction:
+  [ ] subtask-2-1: Reduce timer font size
+  [ ] subtask-2-2: Consolidate tracker section
+  [ ] subtask-2-3: Single-line pulse display
+  [ ] subtask-2-4: Larger capture buttons
+
+Phase 3 - Heatmap:
+  [ ] subtask-3-1: Fix heatmap cell spacing
+
+Phase 4 - Timeline:
+  [ ] subtask-4-1: Timeline visual polish
+
+Phase 5 - Markdown Notes:
+  [ ] subtask-5-1: Markdown preview toggle
+  [ ] subtask-5-2: Fullscreen note view
+  [ ] subtask-5-3: Note creation flow
+
+Phase 6 - Calendar Drag:
+  [ ] subtask-6-1: DayView drag-to-create
+  [ ] subtask-6-2: WeekView drag-to-create
+  [ ] subtask-6-3: Calendar event creation
+
+Phase 7 - Integration:
+  [ ] subtask-7-1: Full integration testing
+
+================================================================================
+VERIFICATION CHECKLIST
+================================================================================
+
+Critical (Blocking):
+[ ] Recording doesn't crash on rapid stop/start
+[ ] iOS Action Button doesn't crash app
+[ ] Stop button reliably stops sessions
+
+UI Changes:
+[ ] Timer font noticeably smaller
+[ ] Tracker section ~50% less vertical space
+[ ] Pulse displays in single line
+[ ] Capture buttons larger and easier to tap
+[ ] Heatmap fills width in all views
+[ ] Timeline has improved spacing
+
+New Features:
+[ ] Notes have markdown preview toggle
+[ ] Notes have fullscreen mode
+[ ] Calendar supports drag-to-create events
+
+=== END SESSION 1 ===
+
+================================================================================
+SESSION 2 (Coder): SUBTASK 1-2 COMPLETED
+================================================================================
+
+Date: 2026-01-13
+Subtask: subtask-1-2 - Verify and fix stop button functionality
+
+Changes Made:
+- apps/mobile4/src/state/session.tsx:
+  - Added useRef import
+  - Added isStoppingRef to prevent multiple simultaneous stop calls (debouncing)
+  - Improved stopSession function with:
+    * Early return if already stopping
+    * Explicit handling for when there's no active session
+    * Try/catch error handling to ensure state cleanup on errors
+    * Awaiting endLiveActivity() calls for proper sequencing
+    * Finally block to reset isStoppingRef.current
+
+Verification:
+- Stop button in index.tsx was already correctly wired: onPress={() => void stopSession()}
+- The stopSession function now properly:
+  1. Prevents rapid double-clicks from causing issues
+  2. Calls stopEvent to update storage with endAt and active=false
+  3. Checks for parent event that should become active
+  4. Clears active state and ends Live Activity
+  5. Handles errors gracefully
+
+IMPORTANT DISCOVERY:
+The actual mobile app directory is apps/mobile4, NOT apps/insight-mobile as referenced
+in the spec. The files were found at:
+- apps/mobile4/src/state/session.tsx (session state)
+- apps/mobile4/app/(tabs)/index.tsx (dashboard with stop button)
+- apps/mobile4/src/native/liveActivity.ts (Live Activity patterns)
+
+Commit: auto-claude: subtask-1-2 - Verify and fix stop button functionality in session state
+
+=== END SESSION 2 ===

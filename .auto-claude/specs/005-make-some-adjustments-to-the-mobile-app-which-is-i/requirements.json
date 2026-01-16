@@ -1,0 +1,56 @@
+{
+  "task_description": "Make some adjustments to the mobile app, which is I need you to make the font, like, smaller on the time, because, obviously, this is not like this is way too big. When I press stop, it's not stopping. So, these capture events need to be bigger. And then today's pulse needs to be needs to be all 1 line. The overview of the Havoc Gantt is or sorry, of the heat map. This is like the boxes need to be spaced out across the screen, and it needs to, like, look better. Like, it needs it needs to be kinda like this width, but it needs to be it needs to be it needs to be that width, but, like, the boxes need to fit. So, yeah, like, you need to adjust, like, the weeks and month views and all that kind of stuff because, the boxes need to fit. Now the upcoming tasks I like because if I press start, boom, it goes right to it. I love that. So that's good. But we see in the notes here that I need to fill out. I need to be able to fill out in the same way that I'm describing the changes that I want you to make in the notes section. I want you to be able to fill that out so that it's So, yeah, I need to be able to like, you need to have a plus button there that I can add features to. And I needed to, you know, have the same view, like, almost like an Obsidian page. If I maximize it, it's gonna kinda, look like this. But if you have, because this is an Obsidian page right here. Know, it's gonna look like a markdown document if I press the maximize button or the transcribe, and it's gonna go to note button. So and then it's gonna make, you know, the headers and everything like that that so that you have more Need to have that fixed. And then, the other thing is to Know, so it has the timer up here. It has that. It has the points that I'm getting for that. Right? And, that's all good. I need this box to be, like it just needs to be more compacted. Like, it's not it's too big. So, yeah, so I needed to, like, be able like, the app needs to be able to open a page and This, like, tracker section needs to be, like the these boxes are huge. I need it to look, like, consolidated. Okay? Same thing with the timeline. Like, I need it to be, like, spaced and prettier and, like, all that kind of stuff. So, the calendar is looking good, but I need to be able to drag and add events to the calendar. And the most important thing is that when I press the front action button, the, the recording stops and the app crashes. So I need that recording engine to work. So those are all big things.",
+  "workflow_type": "feature",
+  "attached_images": [
+    {
+      "filename": "screenshot-1768321487526.png",
+      "path": "attachments/screenshot-1768321487526.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321498408.png",
+      "path": "attachments/screenshot-1768321498408.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321507059.png",
+      "path": "attachments/screenshot-1768321507059.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321516025.png",
+      "path": "attachments/screenshot-1768321516025.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321526572.png",
+      "path": "attachments/screenshot-1768321526572.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321538509.png",
+      "path": "attachments/screenshot-1768321538509.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321553524.png",
+      "path": "attachments/screenshot-1768321553524.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321636341.png",
+      "path": "attachments/screenshot-1768321636341.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321692231.png",
+      "path": "attachments/screenshot-1768321692231.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321757825.png",
+      "path": "attachments/screenshot-1768321757825.png",
+      "description": ""
+    }
+  ]
+}

@@ -274,13 +274,13 @@ export function LifeTrackerDashboard(props: {
           <div className="flex items-center gap-4">
             <button 
               onClick={props.onRefresh}
-              className="w-10 h-10 rounded-full bg-white border border-black/5 flex items-center justify-center text-[var(--muted)] hover:text-[var(--accent)] transition-colors shadow-sm"
+              className="w-10 h-10 rounded-full bg-[var(--glass2)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] hover:text-[var(--accent)] transition-colors shadow-sm"
             >
               <Icon name="bolt" size={18} />
             </button>
             <button 
               onClick={props.onOpenCapture}
-              className="h-12 px-6 bg-[#D95D39] text-white rounded-2xl font-bold shadow-lg shadow-[#D95D39]/20 hover:scale-105 active:scale-95 transition-all"
+              className="h-12 px-6 bg-[var(--accent)] border border-[var(--accentBorder)] text-white rounded-2xl font-bold shadow-[0_12px_24px_var(--glowSoft)] hover:scale-105 active:scale-95 transition-all"
             >
               + Log Metric
             </button>
@@ -288,14 +288,14 @@ export function LifeTrackerDashboard(props: {
         </div>
 
         <div className="flex items-center gap-8">
-            <div className="flex items-center gap-4 bg-white/40 backdrop-blur border border-white/20 p-1.5 rounded-2xl">
+            <div className="flex items-center gap-4 bg-[var(--glass2)] backdrop-blur border border-[var(--border)] p-1.5 rounded-2xl">
                 <div className="px-3 text-[10px] font-black uppercase text-[var(--muted)]">Columns</div>
                 <div className="flex gap-1">
                     {[1, 2, 3, 4].map(n => (
                         <button 
                             key={n}
                             onClick={() => setLtColumns(n)}
-                            className={`w-8 h-8 rounded-xl font-bold text-xs transition-all ${ltColumns === n ? 'bg-white shadow-md text-[var(--text)]' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
+                            className={`w-8 h-8 rounded-xl font-bold text-xs transition-all ${ltColumns === n ? 'bg-[var(--glass3)] shadow-md text-[var(--text)]' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
                         >
                             {n}
                         </button>
@@ -317,7 +317,7 @@ export function LifeTrackerDashboard(props: {
                 </button>
               </div>
             </div>
-            <LtLineAreaChart points={toSeriesPoints(stressSeries)} color="#D95D39" />
+            <LtLineAreaChart points={toSeriesPoints(stressSeries)} color="var(--accent)" />
           </div>
 
           {/* Energy Level */}
@@ -338,7 +338,7 @@ export function LifeTrackerDashboard(props: {
               {QUICK_TRACKERS.map((t) => (
                 <button
                   key={t.id}
-                  className="flex flex-col items-center gap-2 p-4 bg-[var(--panel)] rounded-2xl hover:bg-[var(--panel)] hover:shadow-xl hover:scale-105 transition-all group"
+                  className="flex flex-col items-center gap-2 p-4 bg-[var(--glass2)] rounded-2xl hover:bg-[var(--glass3)] hover:shadow-xl hover:scale-105 transition-all group"
                   onClick={() => {
                     const next = props.captureDraft.trim().length === 0 ? t.tokenHint : `${props.captureDraft.trim()} ${t.tokenHint}`
                     props.setCaptureDraft(next)
@@ -366,53 +366,53 @@ export function LifeTrackerDashboard(props: {
             {!activeWorkout ? (
               <div className="flex gap-3">
                 <input
-                  className="flex-1 h-12 bg-[var(--panel)] border-none rounded-2xl px-6 text-sm font-medium outline-none focus:ring-4 focus:ring-[#D95D39]/5 transition-all"
+                  className="flex-1 h-12 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-6 text-sm font-medium outline-none focus:ring-4 focus:ring-[var(--accentSoft)] transition-all"
                   value={workoutTitle}
                   onChange={(e) => setWorkoutTitle(e.target.value)}
                   placeholder="Push Day, Morning Yoga..."
                 />
-                <button className="h-12 px-8 bg-[#1C1C1E] text-white rounded-2xl font-bold text-sm shadow-xl hover:scale-105 transition-all" onClick={startWorkout}>
+                <button className="h-12 px-8 bg-[var(--accent)] border border-[var(--accentBorder)] text-white rounded-2xl font-bold text-sm shadow-[0_12px_24px_var(--glowSoft)] hover:scale-105 transition-all" onClick={startWorkout}>
                   Start
                 </button>
               </div>
             ) : (
               <div className="space-y-8">
-                <div className="flex items-center justify-between p-6 bg-[var(--panel)] rounded-[32px]">
+                <div className="flex items-center justify-between p-6 bg-[var(--glass2)] rounded-[32px] border border-[var(--border)]">
                   <div>
                     <h4 className="text-xl font-bold text-[var(--text)]">{activeWorkout.title}</h4>
                     <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Started {new Date(activeWorkout.startedAt).toLocaleTimeString()}</p>
                   </div>
-                  <button className="h-10 px-6 bg-[#D95D39] text-white rounded-xl font-bold text-xs shadow-lg" onClick={endWorkout}>
+                  <button className="h-10 px-6 bg-[var(--accent)] border border-[var(--accentBorder)] text-white rounded-xl font-bold text-xs shadow-[0_10px_20px_var(--glowSoft)]" onClick={endWorkout}>
                     Finish Session
                   </button>
                 </div>
 
                 <div className="space-y-4">
                     {activeWorkout.exercises.map((ex) => (
-                        <div key={ex.id} className="p-6 bg-white rounded-3xl border border-black/5 shadow-sm space-y-4">
+                        <div key={ex.id} className="p-6 bg-[var(--glass2)] rounded-3xl border border-[var(--border)] shadow-sm space-y-4">
                             <div className="flex justify-between items-center">
                                 <span className="font-bold text-[var(--text)]">{ex.name}</span>
                                 <button onClick={() => removeExercise(ex.id)} className="text-[var(--muted)] hover:text-[#CF423C]">×</button>
                             </div>
                             <div className="grid grid-cols-4 gap-3">
                                 {ex.sets.map((s, idx) => (
-                                    <div key={s.id} className="p-3 bg-[var(--panel)] rounded-xl flex flex-col items-center relative group">
+                                    <div key={s.id} className="p-3 bg-[var(--glass2)] rounded-xl flex flex-col items-center relative group border border-[var(--border)]">
                                         <span className="text-[8px] font-bold text-[var(--muted)] uppercase">Set {idx + 1}</span>
                                         <span className="text-xs font-black">{s.reps} × {s.weight}lb</span>
                                         <button onClick={() => removeSet(ex.id, s.id)} className="absolute -top-1 -right-1 w-4 h-4 bg-[#CF423C] text-white rounded-full text-[8px] opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                                     </div>
                                 ))}
                                 <div className="col-span-2 flex gap-2">
-                                    <input className="w-1/3 h-10 bg-[var(--panel)] border-none rounded-xl px-3 text-xs font-bold text-center" placeholder="Reps" value={setDrafts[ex.id]?.reps ?? ''} onChange={(e) => setSetDrafts((prev) => ({ ...prev, [ex.id]: { reps: e.target.value, weight: prev[ex.id]?.weight ?? '' } }))} />
-                                    <input className="w-1/3 h-10 bg-[var(--panel)] border-none rounded-xl px-3 text-xs font-bold text-center" placeholder="Lb" value={setDrafts[ex.id]?.weight ?? ''} onChange={(e) => setSetDrafts((prev) => ({ ...prev, [ex.id]: { reps: prev[ex.id]?.reps ?? '', weight: e.target.value } }))} />
-                                    <button className="flex-1 h-10 bg-[#1C1C1E] text-white rounded-xl font-bold text-[10px]" onClick={() => addSetToExercise(ex.id)}>Add Set</button>
+                                    <input className="w-1/3 h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-xl px-3 text-xs font-bold text-center" placeholder="Reps" value={setDrafts[ex.id]?.reps ?? ''} onChange={(e) => setSetDrafts((prev) => ({ ...prev, [ex.id]: { reps: e.target.value, weight: prev[ex.id]?.weight ?? '' } }))} />
+                                    <input className="w-1/3 h-10 bg-[var(--glass2)] border border-[var(--border)] rounded-xl px-3 text-xs font-bold text-center" placeholder="Lb" value={setDrafts[ex.id]?.weight ?? ''} onChange={(e) => setSetDrafts((prev) => ({ ...prev, [ex.id]: { reps: prev[ex.id]?.reps ?? '', weight: e.target.value } }))} />
+                                    <button className="flex-1 h-10 bg-[var(--glass3)] border border-[var(--border)] text-white rounded-xl font-bold text-[10px]" onClick={() => addSetToExercise(ex.id)}>Add Set</button>
                                 </div>
                             </div>
                         </div>
                     ))}
                     <div className="flex gap-2">
-                        <input className="flex-1 h-12 bg-[var(--panel)] border-none rounded-2xl px-6 text-sm font-medium" placeholder="Add exercise (e.g. Squat)" value={exerciseDraft} onChange={(e) => setExerciseDraft(e.target.value)} />
-                        <button className="h-12 px-6 bg-[var(--panel)] text-[var(--text)] rounded-2xl font-bold text-xs" onClick={() => addExerciseToWorkout(exerciseDraft)}>+ Exercise</button>
+                        <input className="flex-1 h-12 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-6 text-sm font-medium" placeholder="Add exercise (e.g. Squat)" value={exerciseDraft} onChange={(e) => setExerciseDraft(e.target.value)} />
+                        <button className="h-12 px-6 bg-[var(--glass3)] border border-[var(--border)] text-[var(--text)] rounded-2xl font-bold text-xs" onClick={() => addExerciseToWorkout(exerciseDraft)}>+ Exercise</button>
                     </div>
                 </div>
               </div>

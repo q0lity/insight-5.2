@@ -1,0 +1,84 @@
+{
+  "task_description": "Mobile app UI/UX improvements and bug fixes for Insight mobile app",
+  "scoped_services": ["insight-mobile"],
+  "files_to_modify": {
+    "insight-mobile": [
+      "app/voice.tsx",
+      "src/state/session.tsx",
+      "app/(tabs)/index.tsx",
+      "src/components/MobileHeatmap.tsx",
+      "app/timeline.tsx",
+      "app/notes.tsx",
+      "app/note/[id].tsx",
+      "src/components/calendar/DayView.tsx",
+      "src/components/calendar/WeekView.tsx",
+      "src/components/calendar/MonthView.tsx",
+      "app/(tabs)/calendar.tsx"
+    ]
+  },
+  "files_to_reference": [
+    "app/focus.tsx",
+    "src/components/TrackerHeatMap.tsx",
+    "src/components/SimpleMarkdown.tsx",
+    "src/storage/events.ts",
+    "src/native/liveActivity.ts",
+    "app/capture.tsx"
+  ],
+  "patterns": {
+    "theme_pattern": "All styling uses useTheme() hook returning { palette, sizes, isDark }. No hardcoded colors.",
+    "session_pattern": "Session state managed via useSession() hook from SessionProvider context",
+    "responsive_pattern": "Use useWindowDimensions() for responsive layouts, calculate sizes from screen width",
+    "recording_pattern": "expo-av Recording with isStartingRef guard, requires 300ms minimum between stop/start",
+    "component_pattern": "Functional components with hooks, styled via StyleSheet.create() with theme variables"
+  },
+  "existing_implementations": {
+    "markdown_renderer": {
+      "description": "SimpleMarkdown.tsx already exists with heading, code, blockquote, list, paragraph support",
+      "file": "src/components/SimpleMarkdown.tsx",
+      "usage": "Use for markdown preview in notes, no new package needed"
+    },
+    "heatmap": {
+      "description": "MobileHeatmap.tsx uses useWindowDimensions for responsive cell sizing",
+      "file": "src/components/MobileHeatmap.tsx",
+      "issue": "Cell size caps leave gaps on some screen widths"
+    },
+    "session_management": {
+      "description": "SessionProvider handles active session state, Live Activity integration",
+      "file": "src/state/session.tsx",
+      "methods": ["startSession", "stopSession", "updateNotes", "setLocked", "updateMetrics"]
+    },
+    "calendar_views": {
+      "description": "DayView, WeekView, MonthView components with time grid rendering",
+      "files": ["src/components/calendar/DayView.tsx", "src/components/calendar/WeekView.tsx", "src/components/calendar/MonthView.tsx"],
+      "issue": "No drag-to-create functionality, needs gesture handling"
+    }
+  },
+  "critical_findings": {
+    "recording_crash_analysis": {
+      "file": "app/voice.tsx",
+      "issue": "stopRecording doesn't enforce 300ms minimum duration, no iOS audio mode cleanup",
+      "fix_required": "Add recordingStartTimeRef, check duration before stop, call setAudioModeAsync({ allowsRecordingIOS: false }) after stop"
+    },
+    "timer_styling": {
+      "file": "app/(tabs)/index.tsx",
+      "issue": "activeClock style has fontSize: 48, needs reduction to ~32-36",
+      "line": 948
+    },
+    "pulse_layout": {
+      "file": "app/(tabs)/index.tsx",
+      "issue": "pulseCard uses vertical layout, needs horizontal single-line display",
+      "section": "pulseSection around line 563"
+    },
+    "heatmap_spacing": {
+      "file": "src/components/MobileHeatmap.tsx",
+      "issue": "Cell size calculation caps at fixed sizes (44, 36, 16, 10px) which may leave gaps",
+      "fix_approach": "Remove or adjust caps to fill available width properly"
+    }
+  },
+  "dependencies_available": {
+    "expo-av": "Recording and audio playback",
+    "react-native-gesture-handler": "Already installed - use for drag-to-create",
+    "react-native-reanimated": "Already installed - use for animations"
+  },
+  "created_at": "2026-01-13T12:00:00.000Z"
+}

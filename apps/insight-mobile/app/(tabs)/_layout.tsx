@@ -90,7 +90,7 @@ function InsightTabBar({ state, navigation }: BottomTabBarProps) {
       <View style={styles.tabRow}>
         <View style={styles.tabGroup}>{leftTabs.map(renderTab)}</View>
         <Pressable
-          onPress={() => router.push('/voice')}
+          onPress={() => router.push('/capture')}
           onPressIn={() =>
             Animated.timing(rotateAnim, {
               toValue: 1,

@@ -381,7 +381,7 @@ export function SettingsView() {
               />
             </div>
             {authError ? (
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#CF423C' }}>{authError}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--destructive)' }}>{authError}</div>
             ) : null}
             {authStatus ? (
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>{authStatus}</div>
@@ -411,7 +411,7 @@ export function SettingsView() {
               Theme
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 10 }}>
-              {(['dark', 'light', 'warm', 'olive', 'oliveOrange'] as const).map((theme) => {
+              {(['dark', 'midnight', 'light', 'warm', 'olive', 'oliveOrange', 'roseGold'] as const).map((theme) => {
                 const preview = THEME_PREVIEWS[theme]
                 const isActive = themePref === theme
                 return (
@@ -514,7 +514,7 @@ export function SettingsView() {
                     width: 22,
                     height: 22,
                     borderRadius: 11,
-                    background: '#fff',
+                    background: 'var(--glass3)',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                     transform: themePref === 'system' ? 'translateX(18px)' : 'translateX(0)',
                     transition: 'transform 150ms ease',

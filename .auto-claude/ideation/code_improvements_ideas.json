@@ -1,0 +1,116 @@
+{
+  "code_improvements": [
+    {
+      "id": "ci-001",
+      "type": "code_improvements",
+      "title": "Add Points Calculation for Workouts and Meals",
+      "description": "Extend the gamification scoring system to include workouts and meals, allowing users to earn points for fitness and nutrition activities using the same importance/difficulty mechanics as events and tasks.",
+      "rationale": "The scoring pattern already exists in apps/desktop/src/scoring/points.ts with pointsForEvent() and pointsForTask(). Both workouts and meals have importance/difficulty fields in their data models (visible in db/insight-db.ts). This is a direct pattern extension.",
+      "builds_upon": ["scoring/points.ts pointsForEvent()", "scoring/points.ts pointsForTask()", "Workout and Meal data models with importance/difficulty"],
+      "estimated_effort": "trivial",
+      "affected_files": [
+        "apps/desktop/src/scoring/points.ts",
+        "apps/insight-mobile/src/utils/points.ts"
+      ],
+      "existing_patterns": [
+        "basePoints(importance, difficulty) calculation",
+        "pointsForMinutes() with multipliers",
+        "recordActivity() for streak tracking"
+      ],
+      "implementation_approach": "Add pointsForWorkout(workout: Workout) and pointsForMeal(meal: Meal) functions following the exact same pattern as pointsForEvent. Use basePoints() for importance×difficulty, calculate duration from workout/meal timestamps, apply multipliers via multiplierFor(goal, project), and call recordActivity() for streak tracking.",
+      "status": "draft",
+      "created_at": "2026-01-13T11:55:00.000Z"
+    },
+    {
+      "id": "ci-002",
+      "type": "code_improvements",
+      "title": "Add Skeleton Loading Components to Mobile App",
+      "description": "Port the comprehensive skeleton loading state system from the desktop app to mobile, providing consistent loading UI for habits, events, cards, and stats across the mobile experience.",
+      "rationale": "Desktop has a mature Skeleton component system (apps/desktop/src/ui/Skeleton.tsx) with 9 variants: Skeleton, SkeletonText, SkeletonCard, SkeletonHabitCard, SkeletonEventCard, SkeletonNote, SkeletonStatsGrid, SkeletonProgressCard, and SkeletonView. Mobile has no equivalent loading states, but has the same UI patterns (HabitCard, event cards) that would benefit from skeleton states.",
+      "builds_upon": ["apps/desktop/src/ui/Skeleton.tsx", "Mobile component architecture (HabitCard, etc.)", "Mobile theme system (useTheme)"],
+      "estimated_effort": "small",
+      "affected_files": [
+        "apps/insight-mobile/src/components/Skeleton.tsx (new)",
+        "apps/insight-mobile/src/components/HabitCard.tsx",
+        "apps/insight-mobile/app/(tabs)/index.tsx"
+      ],
+      "existing_patterns": [
+        "framer-motion/Animated View for animations",
+        "useTheme() for theming",
+        "Rounded corners and panel backgrounds from HabitCard patterns"
+      ],
+      "implementation_approach": "Create apps/insight-mobile/src/components/Skeleton.tsx using React Native's Animated API for pulse animation. Follow desktop's component structure but adapt to React Native Views. Replace CSS with StyleSheet, use theme palette colors. Start with SkeletonHabitCard since habits view already exists.",
+      "status": "draft",
+      "created_at": "2026-01-13T11:55:00.000Z"
+    },
+    {
+      "id": "ci-003",
+      "type": "code_improvements",
+      "title": "Move Streak Utilities to Shared Package",
+      "description": "Consolidate the duplicated streak calculation logic from both desktop (apps/desktop/src/scoring/streaks.ts) and mobile (apps/insight-mobile/src/utils/streaks.ts) into the shared package for consistent behavior and reduced code duplication.",
+      "rationale": "Both platforms implement nearly identical streak logic: getStreakMultiplier(), checkMilestone(), getStreakMessage(), daysToNextMilestone(). The shared package (@insight/shared) already exists and is imported by both apps. This duplication increases maintenance burden and risks behavioral drift.",
+      "builds_upon": ["packages/shared/src/ package structure", "apps/desktop/src/scoring/streaks.ts", "apps/insight-mobile/src/utils/streaks.ts"],
+      "estimated_effort": "small",
+      "affected_files": [
+        "packages/shared/src/streaks.ts (new)",
+        "packages/shared/src/index.ts",
+        "apps/desktop/src/scoring/streaks.ts",
+        "apps/insight-mobile/src/utils/streaks.ts"
+      ],
+      "existing_patterns": [
+        "Shared package exports in packages/shared/src/index.ts",
+        "Type definitions exported from shared",
+        "Platform-agnostic utility functions"
+      ],
+      "implementation_approach": "Extract pure calculation functions (getStreakMultiplier, checkMilestone, getStreakMessage, daysToNextMilestone, getLevelUpMessage) to packages/shared/src/streaks.ts. Keep storage-dependent functions (loadStreakData, saveStreakData, recordActivity) in platform-specific files. Update both apps to import shared functions.",
+      "status": "draft",
+      "created_at": "2026-01-13T11:55:00.000Z"
+    },
+    {
+      "id": "ci-004",
+      "type": "code_improvements",
+      "title": "Add Data Export Functionality",
+      "description": "Add JSON and CSV export capabilities for user data (events, tasks, habits, workouts, meals) allowing users to backup their data or migrate to other systems.",
+      "rationale": "Storage modules already have well-defined list() functions that return typed arrays (listEvents, listTasks, listHabits, etc.). All data models have clear TypeScript interfaces. No export capability currently exists, but the data access patterns are established.",
+      "builds_upon": ["apps/desktop/src/storage/calendar.ts listEvents()", "apps/desktop/src/storage/tasks.ts listTasks()", "All storage modules with list functions"],
+      "estimated_effort": "medium",
+      "affected_files": [
+        "apps/desktop/src/storage/export.ts (new)",
+        "apps/desktop/src/ui/SettingsModal.tsx",
+        "apps/insight-mobile/src/storage/export.ts (new)"
+      ],
+      "existing_patterns": [
+        "listEvents(), listTasks(), listHabits() data access pattern",
+        "TypeScript interfaces for all data types",
+        "SettingsModal for user preferences"
+      ],
+      "implementation_approach": "Create export.ts with exportToJson(dataType) and exportToCsv(dataType) functions. Use existing list*() functions to gather data. For JSON, serialize with JSON.stringify. For CSV, flatten nested objects and generate rows. Add export buttons to SettingsModal. On mobile, use Share API to export files.",
+      "status": "draft",
+      "created_at": "2026-01-13T11:55:00.000Z"
+    },
+    {
+      "id": "ci-005",
+      "type": "code_improvements",
+      "title": "Add Pattern Learning System to Mobile",
+      "description": "Port the adaptive pattern learning system from desktop to mobile, enabling smart auto-categorization and suggestions based on user behavior patterns.",
+      "rationale": "Desktop has a complete learning system in apps/desktop/src/learning/ with: collector.ts (pattern collection), confidence.ts (scoring), context.ts (context building), enricher.ts (auto-enrichment), keywords.ts (text analysis), patterns.ts (CRUD for patterns). Mobile has no equivalent but would benefit from the same intelligent suggestions. Mobile already has Supabase integration for data sync.",
+      "builds_upon": ["apps/desktop/src/learning/ (full system)", "Mobile storage infrastructure", "Supabase sync patterns on mobile"],
+      "estimated_effort": "large",
+      "affected_files": [
+        "apps/insight-mobile/src/learning/patterns.ts (new)",
+        "apps/insight-mobile/src/learning/enricher.ts (new)",
+        "apps/insight-mobile/src/learning/context.ts (new)",
+        "apps/insight-mobile/app/(tabs)/capture.tsx"
+      ],
+      "existing_patterns": [
+        "Pattern storage with confidence scores",
+        "recordAccept/recordReject feedback loop",
+        "enrichEvent() for auto-applying learned patterns",
+        "buildPatternContext() for analyzing input"
+      ],
+      "implementation_approach": "Start by porting patterns.ts for basic pattern CRUD using AsyncStorage (matching mobile's storage pattern). Then port context.ts and enricher.ts for the auto-suggestion capability. Integrate into capture.tsx to suggest categories/tags based on learned patterns. Use confidence thresholds from desktop (0.7 auto-apply, 0.4 suggest).",
+      "status": "draft",
+      "created_at": "2026-01-13T11:55:00.000Z"
+    }
+  ]
+}

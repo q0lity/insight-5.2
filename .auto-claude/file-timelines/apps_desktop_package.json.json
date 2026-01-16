@@ -1,0 +1,28 @@
+{
+  "file_path": "apps/desktop/package.json",
+  "main_branch_history": [],
+  "task_views": {
+    "007-so-on-the-engine-right-here-where-i-chat-so-here-l": {
+      "task_id": "007-so-on-the-engine-right-here-where-i-chat-so-here-l",
+      "branch_point": {
+        "commit_hash": "223b6906c6e567162b9c4367984c6ffbc6ed28e6",
+        "content": "{\n  \"name\": \"desktop\",\n  \"private\": true,\n  \"version\": \"0.0.0\",\n  \"type\": \"module\",\n  \"main\": \"electron/main.cjs\",\n  \"scripts\": {\n    \"dev\": \"concurrently -k \\\"vite --host 127.0.0.1 --port 5174\\\" \\\"wait-on http://127.0.0.1:5174 && ELECTRON_START_URL=http://127.0.0.1:5174 electron .\\\"\",\n    \"dev:web\": \"vite --host 127.0.0.1 --port 5174\",\n    \"build\": \"tsc -b && vite build\",\n    \"lint\": \"eslint .\",\n    \"preview\": \"vite preview\"\n  },\n  \"dependencies\": {\n    \"@insight/shared\": \"file:../../packages/shared\",\n    \"@radix-ui/react-dropdown-menu\": \"^2.1.16\",\n    \"@radix-ui/react-scroll-area\": \"^1.2.10\",\n    \"@radix-ui/react-separator\": \"^1.1.8\",\n    \"@radix-ui/react-slot\": \"^1.2.3\",\n    \"@radix-ui/react-tabs\": \"^1.1.13\",\n    \"@radix-ui/react-toggle\": \"^1.1.10\",\n    \"@radix-ui/react-toggle-group\": \"^1.1.11\",\n    \"@supabase/supabase-js\": \"^2.87.1\",\n    \"chrono-node\": \"^2.9.0\",\n    \"class-variance-authority\": \"^0.7.1\",\n    \"clsx\": \"^2.1.1\",\n    \"dexie\": \"^4.2.1\",\n    \"framer-motion\": \"^12.23.26\",\n    \"react\": \"^19.2.0\",\n    \"react-dom\": \"^19.2.0\",\n    \"react-markdown\": \"^10.1.0\",\n    \"remark-gfm\": \"^4.0.1\",\n    \"sonner\": \"^2.0.7\",\n    \"tailwind-merge\": \"^3.4.0\"\n  },\n  \"devDependencies\": {\n    \"@eslint/js\": \"^9.39.1\",\n    \"@tailwindcss/postcss\": \"^4.1.18\",\n    \"@types/node\": \"^24.10.1\",\n    \"@types/react\": \"^19.2.5\",\n    \"@types/react-dom\": \"^19.2.3\",\n    \"@vitejs/plugin-react\": \"^5.1.1\",\n    \"autoprefixer\": \"^10.4.23\",\n    \"concurrently\": \"^9.2.1\",\n    \"electron\": \"^39.2.7\",\n    \"eslint\": \"^9.39.1\",\n    \"eslint-plugin-react-hooks\": \"^7.0.1\",\n    \"eslint-plugin-react-refresh\": \"^0.4.24\",\n    \"globals\": \"^16.5.0\",\n    \"playwright\": \"^1.57.0\",\n    \"postcss\": \"^8.5.6\",\n    \"tailwindcss\": \"^4.1.18\",\n    \"tailwindcss-animate\": \"^1.0.7\",\n    \"tsx\": \"^4.21.0\",\n    \"tw-animate-css\": \"^1.4.0\",\n    \"typescript\": \"~5.9.3\",\n    \"typescript-eslint\": \"^8.46.4\",\n    \"vite\": \"^7.2.4\",\n    \"wait-on\": \"^9.0.3\"\n  }\n}\n",
+        "timestamp": "2026-01-13T12:35:10.658231"
+      },
+      "worktree_state": {
+        "content": "{\n  \"name\": \"desktop\",\n  \"private\": true,\n  \"version\": \"0.0.0\",\n  \"type\": \"module\",\n  \"main\": \"electron/main.cjs\",\n  \"scripts\": {\n    \"dev\": \"concurrently -k \\\"vite --host 127.0.0.1 --port 5174\\\" \\\"wait-on http://127.0.0.1:5174 && ELECTRON_START_URL=http://127.0.0.1:5174 electron .\\\"\",\n    \"dev:web\": \"vite --host 127.0.0.1 --port 5174\",\n    \"build\": \"tsc -b && vite build\",\n    \"lint\": \"eslint .\",\n    \"preview\": \"vite preview\"\n  },\n  \"dependencies\": {\n    \"@insight/shared\": \"file:../../packages/shared\",\n    \"@radix-ui/react-dropdown-menu\": \"^2.1.16\",\n    \"@radix-ui/react-scroll-area\": \"^1.2.10\",\n    \"@radix-ui/react-separator\": \"^1.1.8\",\n    \"@radix-ui/react-slot\": \"^1.2.3\",\n    \"@radix-ui/react-tabs\": \"^1.1.13\",\n    \"@radix-ui/react-toggle\": \"^1.1.10\",\n    \"@radix-ui/react-toggle-group\": \"^1.1.11\",\n    \"@supabase/supabase-js\": \"^2.87.1\",\n    \"chrono-node\": \"^2.9.0\",\n    \"class-variance-authority\": \"^0.7.1\",\n    \"clsx\": \"^2.1.1\",\n    \"dexie\": \"^4.2.1\",\n    \"framer-motion\": \"^12.23.26\",\n    \"pdf-parse\": \"^1.1.10\",\n    \"react\": \"^19.2.0\",\n    \"react-dom\": \"^19.2.0\",\n    \"react-dropzone\": \"^14.3.8\",\n    \"react-markdown\": \"^10.1.0\",\n    \"remark-gfm\": \"^4.0.1\",\n    \"sonner\": \"^2.0.7\",\n    \"tailwind-merge\": \"^3.4.0\"\n  },\n  \"devDependencies\": {\n    \"@eslint/js\": \"^9.39.1\",\n    \"@tailwindcss/postcss\": \"^4.1.18\",\n    \"@types/node\": \"^24.10.1\",\n    \"@types/react\": \"^19.2.5\",\n    \"@types/react-dom\": \"^19.2.3\",\n    \"@vitejs/plugin-react\": \"^5.1.1\",\n    \"autoprefixer\": \"^10.4.23\",\n    \"concurrently\": \"^9.2.1\",\n    \"electron\": \"^39.2.7\",\n    \"eslint\": \"^9.39.1\",\n    \"eslint-plugin-react-hooks\": \"^7.0.1\",\n    \"eslint-plugin-react-refresh\": \"^0.4.24\",\n    \"globals\": \"^16.5.0\",\n    \"playwright\": \"^1.57.0\",\n    \"postcss\": \"^8.5.6\",\n    \"tailwindcss\": \"^4.1.18\",\n    \"tailwindcss-animate\": \"^1.0.7\",\n    \"tsx\": \"^4.21.0\",\n    \"tw-animate-css\": \"^1.4.0\",\n    \"typescript\": \"~5.9.3\",\n    \"typescript-eslint\": \"^8.46.4\",\n    \"vite\": \"^7.2.4\",\n    \"wait-on\": \"^9.0.3\"\n  }\n}\n",
+        "last_modified": "2026-01-13T12:35:11.821307"
+      },
+      "task_intent": {
+        "title": "007-so-on-the-engine-right-here-where-i-chat-so-here-l",
+        "description": "",
+        "from_plan": false
+      },
+      "commits_behind_main": 3,
+      "status": "active",
+      "merged_at": null
+    }
+  },
+  "created_at": "2026-01-13T12:35:11.148555",
+  "last_updated": "2026-01-13T12:35:11.258628"
+}

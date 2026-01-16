@@ -1,0 +1,30 @@
+{
+  "discovered_files": {
+    "apps/desktop/src/workspace/views/dashboard.tsx": {
+      "description": "Contains the canonical filter pattern implementation (lines 279-437, 1064-1122). Uses FilterType = 'all' | 'category' | 'tag' | 'person' | 'place' with filterType and selectedFilters state. currentFilterOptions memo switches on filterType. Filter UI at lines 1064-1122 shows type buttons and filter chips.",
+      "category": "pattern",
+      "discovered_at": "2026-01-13T16:34:23.318811+00:00"
+    },
+    "apps/desktop/src/App.tsx": {
+      "description": "Detail panel state variables are defined around lines 1260-1330. The new detailNotesFilter state was added at line 1268 to support multi-select item types (event, task, note, habit, tracker). Uses array type for multi-select pattern following dashboard.tsx selectedFilters pattern.",
+      "category": "state-management",
+      "discovered_at": "2026-01-13T16:42:32.295857+00:00"
+    },
+    "packages/shared/src/models.ts": {
+      "description": "CalendarEvent type definition at line 198-231. CalendarEventKind = 'event' | 'task' | 'log' | 'episode' at line 88. Currently uses single 'kind' field - needs 'kinds' array for multi-select support.",
+      "category": "data-model",
+      "discovered_at": "2026-01-13T16:34:23.516983+00:00"
+    },
+    "apps/desktop/src/workspace/views/ticktick-tasks.tsx": {
+      "description": "Task filtering pattern: Uses filterType ('all'|'category'|'tag'|'person'|'place') and selectedFilters array. When filterType is not 'all' and selectedFilters has values, tasks are filtered in useMemo using switch statement. Same pattern as dashboard.tsx lines 413-424.",
+      "category": "pattern",
+      "discovered_at": "2026-01-13T16:58:19.857368+00:00"
+    },
+    "./src/App.tsx": {
+      "description": "Multi-select item types implemented at lines 6687-6717. Toggle buttons for EVENT/TASK allow items to have multiple kinds simultaneously. Uses selectedEvent.kinds array with backward compat to selectedEvent.kind.",
+      "category": "feature",
+      "discovered_at": "2026-01-13T17:14:49.183194+00:00"
+    }
+  },
+  "last_updated": "2026-01-13T17:14:49.183216+00:00"
+}

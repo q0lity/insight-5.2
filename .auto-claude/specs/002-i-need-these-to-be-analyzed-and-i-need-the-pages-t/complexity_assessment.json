@@ -1,0 +1,102 @@
+{
+  "complexity": "standard",
+  "workflow_type": "feature",
+  "confidence": 0.80,
+  "reasoning": "Large UI redesign touching 10-15+ files across note views and components, but all within a single service. Core patterns for markdown parsing, checkboxes, and chips already exist in the codebase. No external integrations or infrastructure changes needed - primarily CSS/component work to match Obsidian styling from screenshots.",
+
+  "analysis": {
+    "scope": {
+      "estimated_files": 15,
+      "estimated_services": 1,
+      "is_cross_cutting": true,
+      "notes": "Will touch notes.tsx, focus.tsx, new sidebar component, new timestamp column component, markdown renderer updates, CSS/styling files. Changes span across UI layer but contained to desktop app frontend."
+    },
+    "integrations": {
+      "external_services": [],
+      "new_dependencies": [],
+      "research_needed": false,
+      "notes": "No external APIs or services. Obsidian-style is purely CSS/visual. Existing react-markdown and markdown parsing utilities are already in the codebase."
+    },
+    "infrastructure": {
+      "docker_changes": false,
+      "database_changes": false,
+      "config_changes": false,
+      "notes": "No infrastructure changes needed. All changes are frontend UI components and styling."
+    },
+    "knowledge": {
+      "patterns_exist": true,
+      "research_required": false,
+      "unfamiliar_tech": [],
+      "notes": "Codebase already has: markdown schema parsing (schema.ts), checklist handling (checklist.ts), chip/tag components (ChipInput.tsx), and extensive Obsidian plugins in plugins/ folder that can serve as reference. User provided 6 screenshots as visual reference for styling targets."
+    },
+    "risk": {
+      "level": "medium",
+      "concerns": [
+        "Breaking existing note editing/viewing functionality",
+        "Ensuring markdown export compatibility with Obsidian format",
+        "Preserving working checkbox toggle functionality",
+        "Performance with heading extraction for sidebar",
+        "Responsive layout with new 3-column design (sidebar + timestamps + content)"
+      ],
+      "notes": "UI redesign has moderate risk - need to preserve existing functionality (task extraction, checkbox toggling, tag filtering) while adding new layout components."
+    }
+  },
+
+  "recommended_phases": [
+    "discovery",
+    "requirements",
+    "context",
+    "spec_writing",
+    "planning",
+    "validation"
+  ],
+
+  "flags": {
+    "needs_research": false,
+    "needs_self_critique": false,
+    "needs_infrastructure_setup": false
+  },
+
+  "validation_recommendations": {
+    "risk_level": "medium",
+    "skip_validation": false,
+    "minimal_mode": false,
+    "test_types_required": ["unit", "integration"],
+    "security_scan_required": false,
+    "staging_deployment_required": false,
+    "reasoning": "UI redesign affecting note display and editing. Unit tests needed for heading extraction logic and markdown parsing changes. Integration tests for checkbox toggle, tag filtering, and markdown export functionality. No security concerns as this is purely frontend visual changes."
+  },
+
+  "key_components_identified": {
+    "existing_to_modify": [
+      "apps/desktop/src/workspace/views/notes.tsx - Main notes explorer view",
+      "apps/desktop/src/workspace/views/focus.tsx - Active session view with tasks",
+      "apps/desktop/src/markdown/schema.ts - Markdown parsing and segment extraction",
+      "apps/desktop/src/ui/ChipInput.tsx - Tag/chip component styling",
+      "apps/desktop/src/ui/checklist.ts - Checkbox toggle logic"
+    ],
+    "new_to_create": [
+      "HeadingSidebar component - Google Docs-style heading navigation",
+      "TimestampColumn component - Timestamps correlated with sections",
+      "ObsidianMarkdownRenderer component - Styled markdown with front matter",
+      "SubtaskSection component - Nested tasks with play buttons",
+      "Obsidian-themed CSS/styling"
+    ],
+    "reference_materials": [
+      "6 screenshots showing Obsidian styling targets",
+      "plugins/ folder with Obsidian plugin patterns",
+      "Existing markdown parsing in schema.ts"
+    ]
+  },
+
+  "visual_requirements_summary": {
+    "from_screenshot_1": "Current app interface with colorful tags - reference for existing tag styling",
+    "from_screenshot_2": "Current app with Time/Title/Note/Tags columns - shows existing layout",
+    "from_screenshot_3": "Obsidian dark theme with clickable tags, checkboxes, formatted headings",
+    "from_screenshot_4": "Obsidian task status dropdown (checkbox states)",
+    "from_screenshot_5": "Obsidian front matter with YAML metadata, dividers at top",
+    "from_screenshot_6": "Obsidian left sidebar with hierarchical heading navigation (TOC)"
+  },
+
+  "created_at": "2025-01-13T00:00:00.000Z"
+}

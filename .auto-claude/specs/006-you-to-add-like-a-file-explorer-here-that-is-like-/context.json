@@ -1,0 +1,48 @@
+{
+  "task_description": "Add Activity Explorer sidebar component with taxonomy hierarchy and enhance autofill to use the learning/enricher system",
+  "scoped_services": ["desktop", "shared"],
+  "files_to_modify": {
+    "desktop": [
+      "apps/desktop/src/App.tsx",
+      "apps/desktop/src/App.css"
+    ]
+  },
+  "files_to_reference": [
+    "packages/shared/src/taxonomy.ts",
+    "apps/desktop/src/learning/enricher.ts",
+    "apps/desktop/src/learning/context.ts",
+    "apps/desktop/src/ui/MetaEditor.tsx"
+  ],
+  "patterns": {
+    "sidebar_collapsible": "Use useState<boolean> for each collapsible section (e.g., explorerPinnedOpen). Toggle with setX(v => !v). Persist to localStorage with key pattern 'insight5.explorer.*.v1'",
+    "sidebar_css": "CSS classes: .sbSection, .sbSectionHead, .sbSectionToggle, .sbSectionTitleInline, .sbTree, .sbTreeBtn",
+    "icon_chevron": "Use Icon component: <Icon name={open ? 'chevronDown' : 'chevronRight'} size={16} />",
+    "taxonomy_structure": "STARTER_TAXONOMY is Array<{category: string, subcategories: string[]}>. Access via categoriesFromStarter() and subcategoriesFromStarter(category)"
+  },
+  "existing_implementations": {
+    "taxonomy": {
+      "file": "packages/shared/src/taxonomy.ts",
+      "exports": ["STARTER_TAXONOMY", "StarterTaxonomy", "categoriesFromStarter", "subcategoriesFromStarter"]
+    },
+    "enricher": {
+      "file": "apps/desktop/src/learning/enricher.ts",
+      "exports": ["enrichEvent", "enrichTask", "hasLearnedPatterns", "previewEnrichment"],
+      "usage": "enrichEvent(event, inputText) returns {enriched, suggestions, autoApplied, context}"
+    },
+    "autofill_current": {
+      "file": "apps/desktop/src/App.tsx",
+      "functions": ["autoFillEventFromText", "autoFillComposerFromText"],
+      "current_behavior": "Uses inferCategorySubcategoryLoose() for rule-based inference",
+      "enhancement_needed": "Integrate enrichEvent() for pattern-based autofill"
+    }
+  },
+  "key_locations_in_app_tsx": {
+    "autofill_event_function": "~line 1839",
+    "autofill_composer_function": "~line 1863",
+    "sidebar_section_start": "~line 5944",
+    "autofill_button_event": "~line 6894",
+    "autofill_button_composer": "~line 7604",
+    "useState_declarations": "~line 1351"
+  },
+  "created_at": "2026-01-13T12:00:00.000Z"
+}

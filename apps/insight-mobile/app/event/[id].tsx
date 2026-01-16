@@ -586,7 +586,7 @@ export default function EventDetailScreen() {
           style={[styles.appendButton, { backgroundColor: palette.tint }]}
           onPress={() => {
             if (!eventId) return;
-            router.push(`/voice?eventId=${encodeURIComponent(eventId)}`);
+            router.push(`/capture?eventId=${encodeURIComponent(eventId)}`);
           }}>
           <InsightIcon name="plus" size={18} color="#FFFFFF" />
         </Pressable>
@@ -666,7 +666,7 @@ export default function EventDetailScreen() {
                 style={styles.sendButton}
                 onPress={() => {
                   if (!eventId) return;
-                  router.push(`/voice?eventId=${eventId}`);
+                  router.push(`/capture?eventId=${eventId}`);
                 }}>
                 <InsightIcon name="plus" size={16} color={palette.tint} />
               </Pressable>

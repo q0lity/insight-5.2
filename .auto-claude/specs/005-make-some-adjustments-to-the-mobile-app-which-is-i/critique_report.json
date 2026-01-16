@@ -1,0 +1,89 @@
+{
+  "critique_completed": true,
+  "issues_found": [
+    {
+      "severity": "high",
+      "category": "completeness",
+      "description": "Missing requirement: User explicitly said 'capture events need to be bigger' but this was not addressed in the original spec",
+      "location": "Task Scope, Functional Requirements, Success Criteria sections",
+      "fix_applied": "Added 'Increase size of capture event buttons' to task checklist, created new Functional Requirement #6, added to Success Criteria #5, added E2E test for capture button size",
+      "verified": true
+    },
+    {
+      "severity": "high",
+      "category": "accuracy",
+      "description": "Spec implied using react-native-markdown-display for notes preview, but SimpleMarkdown.tsx already exists in codebase and should be used instead",
+      "location": "Files to Reference, Functional Requirements, Implementation Notes",
+      "fix_applied": "Updated Files to Reference to highlight SimpleMarkdown.tsx as EXISTING component, added DON'T rule against installing react-native-markdown-display, updated Requirement #9 to specify using SimpleMarkdown.tsx",
+      "verified": true
+    },
+    {
+      "severity": "medium",
+      "category": "accuracy",
+      "description": "Recording crash source was stated as 'iOS Action Button' but research.json flagged this as an unverified claim - could be Action Button, Live Activity, or in-app button",
+      "location": "Recording Safety Pattern section, line ~153",
+      "fix_applied": "Added NOTE acknowledging uncertainty: 'Recording crash source is not 100% verified - could be iOS Action Button (hardware), Live Activity button, or in-app UI button. Investigation may be needed.'",
+      "verified": true
+    },
+    {
+      "severity": "medium",
+      "category": "completeness",
+      "description": "Recording safety code example was incomplete - missing recordingStartTime tracking and proper try/catch/finally structure",
+      "location": "Recording Safety Pattern code block, lines 104-147",
+      "fix_applied": "Rewrote code example to include recordingStartTimeRef, complete try/catch/finally block, proper Audio.setAudioModeAsync cleanup, and recording state management",
+      "verified": true
+    },
+    {
+      "severity": "medium",
+      "category": "completeness",
+      "description": "Files to Reference was missing capture.tsx file which contains capture event button patterns",
+      "location": "Files to Reference table",
+      "fix_applied": "Added 'app/capture.tsx | Capture event button layout patterns' to reference files",
+      "verified": true
+    },
+    {
+      "severity": "low",
+      "category": "consistency",
+      "description": "Inconsistent terminology: 'heat map' vs 'heatmap' used interchangeably throughout document",
+      "location": "Throughout document (Task Scope, Requirements, Edge Cases, Success Criteria, QA Tests)",
+      "fix_applied": "Standardized to 'heatmap' (single word) throughout the document to match component name MobileHeatmap.tsx",
+      "verified": true
+    },
+    {
+      "severity": "low",
+      "category": "consistency",
+      "description": "Functional Requirements numbering was incorrect - had duplicate #7 and #8",
+      "location": "Functional Requirements section, lines 222-234",
+      "fix_applied": "Renumbered requirements to be sequential (1-10) after adding capture button requirement",
+      "verified": true
+    },
+    {
+      "severity": "low",
+      "category": "completeness",
+      "description": "Edge cases missing consideration for capture button tap area/accessibility",
+      "location": "Edge Cases section",
+      "fix_applied": "Added edge case #6: 'Capture button tap area - Ensure larger buttons have adequate tap targets for accessibility'",
+      "verified": true
+    }
+  ],
+  "issues_fixed": true,
+  "no_issues_found": false,
+  "critique_summary": "Found 8 issues in the spec (2 high, 3 medium, 3 low severity). The most significant were: (1) a missing user requirement about capture event buttons being too small, and (2) suggesting a new npm package when SimpleMarkdown.tsx already exists in the codebase. The recording crash fix code example was also incomplete and the crash source uncertainty from research was not acknowledged. All issues have been fixed in spec.md.",
+  "confidence_level": "high",
+  "recommendations": [
+    "During implementation, investigate the exact trigger for recording crash (iOS Action Button vs Live Activity vs in-app) by adding logging to identify the call source",
+    "Consider adding minimum tap target size (44x44pt per iOS HIG) to capture buttons as an explicit requirement",
+    "The SimpleMarkdown.tsx component is already comprehensive - verify it meets all Obsidian-like preview needs before implementation"
+  ],
+  "validation_checks": {
+    "all_file_paths_verified": true,
+    "existing_dependencies_confirmed": [
+      "expo-av@~16.0.8",
+      "react-native-reanimated@~4.1.1",
+      "nativewind@^4.2.1"
+    ],
+    "no_new_dependencies_needed": true,
+    "code_examples_complete": true
+  },
+  "created_at": "2026-01-13T12:15:00.000Z"
+}

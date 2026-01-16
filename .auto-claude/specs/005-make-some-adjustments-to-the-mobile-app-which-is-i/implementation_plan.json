@@ -1,0 +1,668 @@
+{
+  "feature": "Mobile App UI/UX Improvements and Bug Fixes",
+  "workflow_type": "feature",
+  "workflow_rationale": "This task combines critical bug fixes (recording crash, stop button) with multiple UI enhancements and new features (markdown editor, calendar drag-and-drop). While bugs are highest priority, the comprehensive scope of UI changes and feature additions qualifies this as a feature implementation workflow.",
+  "created_at": "2026-01-13T16:31:51.613Z",
+  "updated_at": "2026-01-13T19:10:33.008Z",
+  "status": "in_progress",
+  "planStatus": "in_progress",
+  "phases": [
+    {
+      "id": "phase-1-critical-bugs",
+      "name": "Critical Bug Fixes",
+      "type": "implementation",
+      "description": "Fix the recording engine crash and stop button functionality - highest priority blocking issues",
+      "depends_on": [],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-1-1",
+          "description": "Fix recording engine crash - add 300ms minimum duration check, debouncing, and proper iOS audio mode cleanup",
+          "service": "insight-mobile",
+          "files_to_modify": [
+            "apps/insight-mobile/app/voice.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/insight-mobile/src/lib/audio.ts"
+          ],
+          "implementation_details": {
+            "add_ref": "recordingStartTimeRef = useRef<number>(0) to track recording start time",
+            "modify_startRecording": "Set recordingStartTimeRef.current = Date.now() when recording starts",
+            "modify_stopRecording": "1) Check if duration < 300ms and wait if needed, 2) Add try/catch around stopAndUnloadAsync, 3) Call Audio.setAudioModeAsync({ allowsRecordingIOS: false }) after stop, 4) Handle errors gracefully without crash"
+          },
+          "verification": {
+            "type": "manual",
+            "instructions": "1. Start recording 2. Immediately press stop or iOS action button 3. App should NOT crash 4. Recording should stop gracefully or wait for minimum duration"
+          },
+          "status": "completed",
+          "notes": "Fixed recording engine crash by adding: 1) 300ms minimum duration check before stopping, 2) debouncing via isStoppingRef to prevent multiple simultaneous stop attempts, 3) recordingStartTimeRef to track recording start time, 4) proper iOS audio mode cleanup (allowsRecordingIOS: false) after stopping and on unmount/cancel, 5) graceful error handling with try/catch. Changes made to apps/mobile4/app/voice.tsx.",
+          "updated_at": "2026-01-13T17:05:13.249741+00:00"
+        },
+        {
+          "id": "subtask-1-2",
+          "description": "Verify and fix stop button functionality in session state to properly stop timer and end Live Activity",
+          "service": "insight-mobile",
+          "files_to_modify": [
+            "apps/insight-mobile/src/state/session.tsx",
+            "apps/insight-mobile/app/(tabs)/index.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/insight-mobile/src/native/liveActivity.ts"
+          ],
+          "implementation_details": {
+            "verify_stopSession": "Ensure stopEvent and endLiveActivity are called properly",
+            "verify_ui_binding": "Ensure Stop button in index.tsx calls stopSession correctly",
+            "add_logging": "Add console.log statements to trace stop flow for debugging"
+          },
+          "verification": {
+            "type": "manual",
+            "instructions": "1. Start a session from dashboard 2. Press Stop button 3. Timer should stop, session should end, UI should show 'No active event'"
+          },
+          "status": "completed",
+          "notes": "Fixed stop button functionality in session state by: 1) Added debouncing via isStoppingRef to prevent multiple simultaneous stop calls, 2) Added explicit handling for when there's no active session to stop, 3) Added try/catch error handling to ensure state is cleaned up even on errors, 4) Changed endLiveActivity calls to await where appropriate for proper sequencing. The stop button in index.tsx was already correctly wired to call stopSession(). Changes made to apps/mobile4/src/state/session.tsx.",
+          "updated_at": "2026-01-13T17:09:16.169806+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-2-ui-compaction",
+      "name": "UI Compaction and Layout",
+      "type": "implementation",
+      "description": "Compact the dashboard UI - reduce timer font, consolidate tracker boxes, single-line pulse, larger capture buttons",
+      "depends_on": [
+        "phase-1-critical-bugs"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-2-1",
+          "description": "Reduce timer font size and compact the active session card",
+          "service": "insight-mobile",
+          "files_to_modify": [
+            "apps/insight-mobile/app/(tabs)/index.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/insight-mobile/app/focus.tsx"
+          ],
+          "implementation_details": {
+            "reduce_font": "Change activeClock fontSize from 48 to ~32-36",
+            "compact_card": "Reduce padding and gap in activeCard styles",
+            "maintain_readability": "Ensure timer remains readable on all screen sizes"
+          },
+          "verification": {
+            "type": "browser",
+            "url": "exp://localhost:8081/",
+            "checks": [
+              "Timer font is noticeably smaller",
+              "Active session card is more compact",
+              "All text remains readable"
+            ]
+          },
+          "status": "completed",
+          "notes": "Reduced timer font size from 48px to 32px. Compacted active session card by reducing padding (24→16), gap (12→8), border radius (32→20), and shadow. Adjusted title font (22→18px) and XP display font (20→16px). All text remains readable while taking up less vertical space.",
+          "updated_at": "2026-01-13T17:12:13.712007+00:00"
+        },
+        {
+          "id": "subtask-2-2",
+          "description": "Consolidate tracker section boxes to take less vertical space",
+          "service": "insight-mobile",
+          "files_to_modify": [
+            "apps/insight-mobile/app/(tabs)/index.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "implementation_details": {
+            "reduce_padding": "Reduce padding in trackerCard and related sections",
+            "consolidate_rows": "Combine tracker visualizations into more compact layout",
+            "reduce_gaps": "Reduce gap values between tracker elements"
+          },
+          "verification": {
+            "type": "browser",
+            "url": "exp://localhost:8081/",
+            "checks": [
+              "Tracker section uses ~50% less vertical space",
+              "All tracker data still visible",
+              "No overlapping elements"
+            ]
+          },
+          "status": "completed",
+          "notes": "Consolidated tracker section boxes to take ~50% less vertical space by: 1) Removed TrackerPieChart component (accessible via \"See All\" button), 2) Reduced trackerCard padding from 20 to 12 and gap from 20 to 8, 3) Reduced border radius from 24 to 16, 4) Made tracker chips more compact with smaller fonts (9px label, 11px value), 5) Simplified chip styling with tintLight background. The heatmap remains fully visible and all tracker data is still accessible.",
+          "updated_at": "2026-01-13T17:15:55.205674+00:00"
+        },
+        {
+          "id": "subtask-2-3",
+          "description": "Convert Today's Pulse display to single horizontal line",
+          "service": "insight-mobile",
+          "files_to_modify": [
+            "apps/insight-mobile/app/(tabs)/index.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "implementation_details": {
+            "change_layout": "Modify pulseCard to use flexDirection: 'row' with single row of stats",
+            "adjust_sizing": "Make stat items flex: 1 to distribute evenly",
+            "reduce_height": "Remove extra padding and gap to minimize vertical footprint"
+          },
+          "verification": {
+            "type": "browser",
+            "url": "exp://localhost:8081/",
+            "checks": [
+              "Pulse stats (Events, Tracked, Top Category) display in single row",
+              "No multi-line layout",
+              "Stats remain readable"
+            ]
+          },
+          "status": "completed",
+          "notes": "Converted Today's Pulse display from a card layout with stacked rows to a single horizontal inline row. All pulse stats (Events, Tracked, Top Category, Mood, Energy) now display in compact chips on a single line using flexDirection: 'row'. Reduced visual footprint while maintaining readability.",
+          "updated_at": "2026-01-13T17:18:08.983386+00:00"
+        },
+        {
+          "id": "subtask-2-4",
+          "description": "Increase size of capture event buttons for better tappability",
+          "service": "insight-mobile",
+          "files_to_modify": [
+            "apps/insight-mobile/app/(tabs)/index.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/insight-mobile/app/capture.tsx"
+          ],
+          "implementation_details": {
+            "increase_size": "Increase paddingHorizontal and paddingVertical on quickActionChip",
+            "increase_icon": "Increase icon size in quick actions",
+            "add_hit_slop": "Consider adding hitSlop for better touch targets"
+          },
+          "verification": {
+            "type": "browser",
+            "url": "exp://localhost:8081/",
+            "checks": [
+              "Capture buttons are visually larger",
+              "Easy to tap on first try",
+              "Still fits in available width"
+            ]
+          },
+          "status": "completed",
+          "notes": "Increased size of capture event buttons for better tappability by: 1) Increased button heights from 40px to 48px for active session buttons and suggestion buttons, 2) Increased font sizes from 12-13px to 14-16px across all capture buttons, 3) Added hitSlop (8px all sides) to all buttons for extended tap areas, 4) Increased padding on Start Session button (24/12 → 28/14) and task Start button (14/8 → 18/10), 5) Standardized border radius to 14px for consistent look. All changes applied to: activeButton (Open/Stop), startBtn (Start Session), suggestionButton (Snooze 10m/Start), and taskStartBtn (task Start).",
+          "updated_at": "2026-01-13T17:23:12.007866+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-3-heatmap",
+      "name": "Heatmap Spacing Fixes",
+      "type": "implementation",
+      "description": "Fix heatmap box spacing to properly fill screen width across all view types (week/month/quarter/year)",
+      "depends_on": [
+        "phase-1-critical-bugs"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-3-1",
+          "description": "Fix heatmap cell size calculation to properly fill available width without gaps",
+          "service": "insight-mobile",
+          "files_to_modify": [
+            "apps/insight-mobile/src/components/MobileHeatmap.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/insight-mobile/src/components/TrackerHeatMap.tsx"
+          ],
+          "implementation_details": {
+            "adjust_calculation": "Remove or raise cell size caps to allow cells to fill width",
+            "recalculate_gaps": "Ensure gap calculations account for actual number of weeks",
+            "test_all_views": "Verify week, month, quarter, year views all render correctly"
+          },
+          "verification": {
+            "type": "browser",
+            "url": "exp://localhost:8081/",
+            "checks": [
+              "Week view: boxes fill width evenly",
+              "Month view: boxes fill width evenly",
+              "Quarter/Year views: boxes visible without overflow"
+            ]
+          },
+          "status": "completed",
+          "notes": "Fixed heatmap cell size calculation by: 1) Using consistent cellGap values in both calculation and render, 2) Removing caps for week/month views so cells fill width exactly, 3) Using fixed small sizes for quarter/year with horizontal scroll, 4) Adding gap to day labels column for alignment, 5) Fixed month labels row width calculation. Note: actual path is apps/mobile4 not apps/insight-mobile as specified in subtask.",
+          "updated_at": "2026-01-13T17:30:49.575752+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-4-timeline",
+      "name": "Timeline Visual Polish",
+      "type": "implementation",
+      "description": "Improve timeline spacing and visual appearance",
+      "depends_on": [
+        "phase-1-critical-bugs"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-4-1",
+          "description": "Improve timeline item spacing and visual hierarchy",
+          "service": "insight-mobile",
+          "files_to_modify": [
+            "apps/insight-mobile/app/timeline.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "implementation_details": {
+            "adjust_spacing": "Tighten spacing between timeline items while maintaining visual separation",
+            "improve_hierarchy": "Enhance visual distinction between day headers and items",
+            "polish_cards": "Refine itemCard padding and border styling"
+          },
+          "verification": {
+            "type": "browser",
+            "url": "exp://localhost:8081/timeline",
+            "checks": [
+              "Timeline items have consistent spacing",
+              "Visual hierarchy is clear",
+              "Overall appearance is polished"
+            ]
+          },
+          "status": "completed",
+          "notes": "Improved timeline item spacing and visual hierarchy by: 1) Added styled day headers showing formatted dates (Today/Yesterday/weekday+date) with event count badges, 2) Added category-aware accent colors and icons for different event types (work, gym, food, sleep, social, etc.), 3) Added vertical timeline indicator line connecting events within each day for visual continuity, 4) Improved event row layout with time column, icon column with accent coloring, and content column, 5) Added duration display with accent-colored text, 6) Enhanced range selector chips with cleaner styling, 7) Added empty state with icon and message, 8) Reduced spacing between items for more compact display while maintaining visual separation, 9) Made back button more visually consistent. All changes follow the existing theme system (palette, sizes) and patterns from index.tsx.",
+          "updated_at": "2026-01-13T17:42:02.715719+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-5-markdown-notes",
+      "name": "Markdown Notes Editor",
+      "type": "implementation",
+      "description": "Implement Obsidian-like markdown editing with preview toggle and full-screen view using existing SimpleMarkdown component",
+      "depends_on": [
+        "phase-2-ui-compaction"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-5-1",
+          "description": "Add markdown preview toggle to note detail screen using existing SimpleMarkdown component",
+          "service": "insight-mobile",
+          "files_to_modify": [
+            "apps/insight-mobile/app/note/[id].tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/insight-mobile/src/components/SimpleMarkdown.tsx"
+          ],
+          "implementation_details": {
+            "add_state": "Add isPreview useState to toggle between edit and preview modes",
+            "add_toggle_button": "Add Preview/Edit toggle button in header",
+            "render_preview": "When isPreview, render SimpleMarkdown component instead of TextInput"
+          },
+          "verification": {
+            "type": "browser",
+            "url": "exp://localhost:8081/note/[id]",
+            "checks": [
+              "Toggle button visible in header",
+              "Edit mode shows TextInput",
+              "Preview mode renders markdown with headers, lists, code"
+            ]
+          },
+          "status": "completed",
+          "notes": "Added markdown preview toggle to note detail screen by: 1) Created SimpleMarkdown component in src/components/SimpleMarkdown.tsx with support for headers, bold, inline code, links, lists (unordered, numbered, checkbox), code blocks, blockquotes, horizontal rules, and images, 2) Modified app/note/[id].tsx to add isPreview state and Preview/Edit toggle button in header, 3) Edit mode shows TextInput for markdown editing, Preview mode renders markdown using SimpleMarkdown component, 4) Added 'eye' and 'edit' icons to InsightIcon component. All styling uses theme-aware palette colors.",
+          "updated_at": "2026-01-13T17:47:45.050439+00:00"
+        },
+        {
+          "id": "subtask-5-2",
+          "description": "Add full-screen/maximize view for note editing",
+          "service": "insight-mobile",
+          "files_to_modify": [
+            "apps/insight-mobile/app/note/[id].tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "implementation_details": {
+            "add_fullscreen_state": "Add isFullscreen useState",
+            "add_maximize_button": "Add maximize/minimize button in header",
+            "fullscreen_layout": "When fullscreen, hide meta cards and expand editor to fill screen"
+          },
+          "verification": {
+            "type": "browser",
+            "url": "exp://localhost:8081/note/[id]",
+            "checks": [
+              "Maximize button visible",
+              "Full-screen mode hides metadata",
+              "Editor fills available space",
+              "Can exit full-screen"
+            ]
+          },
+          "status": "completed",
+          "notes": "Added full-screen/maximize view for note editing by: 1) Added isFullscreen state to toggle between normal and fullscreen modes, 2) Added maximize/minimize icons to InsightIcon component, 3) Added maximize button in header next to preview toggle, 4) In fullscreen mode: back button exits fullscreen, metadata card and token rows are hidden, editor/preview fills available space with flex: 1, 5) Fullscreen mode works in both edit and preview modes. Changes made to apps/mobile4/app/note/[id].tsx and apps/mobile4/src/components/InsightIcon.tsx.",
+          "updated_at": "2026-01-13T17:50:47.249790+00:00"
+        },
+        {
+          "id": "subtask-5-3",
+          "description": "Ensure notes list plus button and note creation flow works correctly",
+          "service": "insight-mobile",
+          "files_to_modify": [
+            "apps/insight-mobile/app/notes.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "implementation_details": {
+            "verify_plus_button": "Ensure handleNewNote creates note and navigates correctly",
+            "improve_empty_state": "Enhance empty state messaging and create button visibility"
+          },
+          "verification": {
+            "type": "browser",
+            "url": "exp://localhost:8081/notes",
+            "checks": [
+              "Plus button visible in header",
+              "Tapping plus creates new note",
+              "Navigates to note detail for editing"
+            ]
+          },
+          "status": "completed",
+          "notes": "Added plus button to notes list header. Tapping the plus button creates a new inbox capture with starter markdown content ('# New Note\\n\\nStart writing here...') and navigates to the note detail screen for immediate editing. Includes isCreating state to prevent double-tap issues and visual disabled state during note creation.",
+          "updated_at": "2026-01-13T17:56:38.538962+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-6-calendar-drag",
+      "name": "Calendar Drag-to-Create",
+      "type": "implementation",
+      "description": "Add drag-and-drop functionality to create events on calendar views",
+      "depends_on": [
+        "phase-2-ui-compaction"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-6-1",
+          "description": "Add drag-to-create gesture handling to DayView calendar component",
+          "service": "insight-mobile",
+          "files_to_modify": [
+            "apps/insight-mobile/src/components/calendar/DayView.tsx",
+            "apps/insight-mobile/app/(tabs)/calendar.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/insight-mobile/src/storage/events.ts"
+          ],
+          "implementation_details": {
+            "add_gesture_handler": "Use react-native-gesture-handler PanGestureHandler or Pressable with long-press",
+            "track_drag_position": "Calculate start time from Y position on hour grid",
+            "track_drag_end": "Calculate end time from drag release position",
+            "callback_to_parent": "Add onDragCreate prop to pass created event data to calendar.tsx"
+          },
+          "verification": {
+            "type": "browser",
+            "url": "exp://localhost:8081/calendar",
+            "checks": [
+              "Can long-press on time slot",
+              "Dragging shows visual feedback",
+              "Releasing creates event with correct time range"
+            ]
+          },
+          "status": "completed",
+          "notes": "Added drag-to-create gesture handling to DayView calendar component: 1) Added long-press detection (500ms) to start drag mode, 2) Track drag start/end Y positions with scroll offset compensation, 3) Show visual feedback overlay with dashed border and time range display during drag, 4) Times rounded to 15-minute intervals for cleaner events, 5) Create event using startEvent from events.ts on drag release, 6) Navigate to event detail page for editing after creation, 7) Disable ScrollView scrolling during drag to prevent conflicts. Implementation uses React Native's responder system (onStartShouldSetResponder, onResponderGrant, etc.) for touch handling.",
+          "updated_at": "2026-01-13T18:03:41.870901+00:00"
+        },
+        {
+          "id": "subtask-6-2",
+          "description": "Add drag-to-create to WeekView calendar component",
+          "service": "insight-mobile",
+          "files_to_modify": [
+            "apps/insight-mobile/src/components/calendar/WeekView.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/insight-mobile/src/components/calendar/DayView.tsx"
+          ],
+          "implementation_details": {
+            "same_pattern": "Apply same gesture handling pattern as DayView",
+            "account_for_columns": "Calculate day column from X position in addition to time from Y"
+          },
+          "verification": {
+            "type": "browser",
+            "url": "exp://localhost:8081/calendar",
+            "checks": [
+              "Can drag to create in WeekView",
+              "Correct day column detected",
+              "Event created with correct date and time"
+            ]
+          },
+          "status": "completed",
+          "notes": "Added drag-to-create gesture handling to WeekView calendar component: 1) Added xToDayIndex helper to determine which day column was touched based on X position, 2) Added dragDayIndex state to track selected day during drag, 3) Updated minutesToDate to accept optional baseDate parameter for creating events on specific dates, 4) Updated handleDragCreate to create events on the correct date for Week view, 5) Extended touch handlers (handleTouchStart, handleTouchMove, handleTouchEnd) to work for both Day and Week views, 6) Added visual overlay (weekDragOverlay) showing selected time range in the correct day column with start/end times, 7) Week grid now has touch responder handlers for drag-to-create. Changes made to apps/mobile4/app/(tabs)/calendar.tsx.",
+          "updated_at": "2026-01-13T18:13:08.485440+00:00"
+        },
+        {
+          "id": "subtask-6-3",
+          "description": "Wire up calendar drag-to-create callbacks and event creation in calendar.tsx",
+          "service": "insight-mobile",
+          "files_to_modify": [
+            "apps/insight-mobile/app/(tabs)/calendar.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/insight-mobile/src/storage/events.ts"
+          ],
+          "implementation_details": {
+            "add_handler": "Create handleDragCreate function to receive drag event data",
+            "create_event": "Use startEvent from events.ts to create the event",
+            "refresh_list": "Call refreshEvents to update calendar view",
+            "optional_modal": "Consider showing quick edit modal for event title"
+          },
+          "verification": {
+            "type": "e2e",
+            "steps": [
+              "Open calendar in Day view",
+              "Long-press and drag on time slot",
+              "Release drag",
+              "Verify event appears in calendar",
+              "Verify event saved to storage"
+            ]
+          },
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "phase-7-integration",
+      "name": "Integration and Final Verification",
+      "type": "integration",
+      "description": "Verify all changes work together, run tests, and ensure no regressions",
+      "depends_on": [
+        "phase-3-heatmap",
+        "phase-4-timeline",
+        "phase-5-markdown-notes",
+        "phase-6-calendar-drag"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-7-1",
+          "description": "Full integration testing of all changes",
+          "all_services": true,
+          "files_to_modify": [],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "e2e",
+            "steps": [
+              "Start app fresh, verify dashboard loads",
+              "Test recording start/stop multiple times rapidly - no crash",
+              "Verify timer font is smaller and readable",
+              "Verify tracker section is compacted",
+              "Verify pulse is single line",
+              "Verify capture buttons are larger",
+              "Check heatmap in week/month/quarter/year views",
+              "Navigate to timeline, verify improved spacing",
+              "Create and edit a note with markdown, toggle preview",
+              "Use full-screen note mode",
+              "Drag to create event on calendar",
+              "Verify no console errors throughout"
+            ]
+          },
+          "status": "pending"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_phases": 7,
+    "total_subtasks": 14,
+    "services_involved": [
+      "insight-mobile"
+    ],
+    "parallelism": {
+      "max_parallel_phases": 3,
+      "parallel_groups": [
+        {
+          "phases": [
+            "phase-2-ui-compaction",
+            "phase-3-heatmap",
+            "phase-4-timeline"
+          ],
+          "reason": "All depend only on phase-1, different file sets, no conflicts"
+        }
+      ],
+      "recommended_workers": 2,
+      "speedup_estimate": "1.5x faster than sequential - phases 2/3/4 can run in parallel"
+    },
+    "startup_command": "source auto-claude/.venv/bin/activate && python auto-claude/run.py --spec 005 --parallel 2"
+  },
+  "verification_strategy": {
+    "risk_level": "high",
+    "skip_validation": false,
+    "test_creation_phase": "post_implementation",
+    "test_types_required": [
+      "unit",
+      "integration",
+      "e2e"
+    ],
+    "security_scanning_required": false,
+    "staging_deployment_required": false,
+    "acceptance_criteria": [
+      "Recording engine no longer crashes on rapid stop/start",
+      "Stop button reliably stops sessions",
+      "Timer font is noticeably smaller",
+      "Tracker section uses less vertical space",
+      "Today's Pulse displays in single line",
+      "Capture buttons are larger and easier to tap",
+      "Heatmap boxes fill screen width properly",
+      "Timeline has improved spacing",
+      "Notes support markdown preview toggle",
+      "Calendar supports drag-to-create events",
+      "No console errors in development",
+      "All existing tests still pass"
+    ],
+    "verification_steps": [
+      {
+        "name": "Recording Stability Test",
+        "command": "Manual: Start/stop recording rapidly 10 times",
+        "expected_outcome": "No crashes, graceful handling",
+        "type": "manual",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "iOS Action Button Test",
+        "command": "Manual: Use iOS action button during recording",
+        "expected_outcome": "No crash, recording stops or continues",
+        "type": "manual",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "UI Visual Verification",
+        "command": "Manual: Screenshot comparison of dashboard",
+        "expected_outcome": "Timer smaller, tracker compact, pulse single-line",
+        "type": "browser",
+        "required": true,
+        "blocking": false
+      },
+      {
+        "name": "Heatmap View Test",
+        "command": "Manual: Toggle through week/month/quarter/year views",
+        "expected_outcome": "Boxes fill width without overflow or large gaps",
+        "type": "browser",
+        "required": true,
+        "blocking": false
+      }
+    ],
+    "reasoning": "High risk due to critical recording crash bug fix combined with multiple UI changes. The recording engine fix needs thorough manual testing since automated testing of audio behavior is difficult. UI changes require visual verification."
+  },
+  "qa_acceptance": {
+    "unit_tests": {
+      "required": false,
+      "commands": [],
+      "minimum_coverage": null,
+      "notes": "No existing unit test infrastructure detected in insight-mobile"
+    },
+    "integration_tests": {
+      "required": false,
+      "commands": [],
+      "services_to_test": [
+        "insight-mobile"
+      ],
+      "notes": "Manual integration testing via Expo dev server"
+    },
+    "e2e_tests": {
+      "required": true,
+      "commands": [],
+      "flows": [
+        "recording-lifecycle",
+        "session-stop",
+        "note-creation",
+        "calendar-drag-create"
+      ]
+    },
+    "browser_verification": {
+      "required": true,
+      "pages": [
+        {
+          "url": "exp://localhost:8081/",
+          "checks": [
+            "Timer compact",
+            "Tracker compact",
+            "Pulse single-line",
+            "Capture buttons larger"
+          ]
+        },
+        {
+          "url": "exp://localhost:8081/notes",
+          "checks": [
+            "Plus button works",
+            "Note list displays"
+          ]
+        },
+        {
+          "url": "exp://localhost:8081/note/[id]",
+          "checks": [
+            "Markdown preview toggle",
+            "Full-screen mode"
+          ]
+        },
+        {
+          "url": "exp://localhost:8081/calendar",
+          "checks": [
+            "Drag-to-create works",
+            "Events saved"
+          ]
+        },
+        {
+          "url": "exp://localhost:8081/timeline",
+          "checks": [
+            "Improved spacing",
+            "Visual polish"
+          ]
+        }
+      ]
+    },
+    "database_verification": {
+      "required": false,
+      "checks": []
+    }
+  },
+  "qa_signoff": null,
+  "last_updated": "2026-01-13T18:13:08.485455+00:00"
+}

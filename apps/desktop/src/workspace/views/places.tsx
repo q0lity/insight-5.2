@@ -53,7 +53,7 @@ export function PlacesView(props: { events: CalendarEvent[]; onSelectEvent: (id:
             <p className="text-sm text-[var(--muted)] font-semibold">Analyze your environmental productivity.</p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="px-4 py-2 bg-[var(--panel)]/50 backdrop-blur border border-white/20 rounded-full shadow-sm flex items-center gap-2">
+            <div className="px-4 py-2 bg-[var(--glass2)] backdrop-blur border border-[var(--border)] rounded-full shadow-sm flex items-center gap-2">
                 <Icon name="pin" size={14} className="text-[var(--accent)]" />
                 <span className="text-xs font-bold">{places.length} Locations</span>
             </div>
@@ -63,7 +63,7 @@ export function PlacesView(props: { events: CalendarEvent[]; onSelectEvent: (id:
         <div className="flex items-center gap-6">
           <div className="flex-1 max-w-md relative">
             <input 
-              className="w-full h-11 bg-[var(--panel)]/50 border border-black/5 rounded-2xl px-10 text-sm font-medium focus:bg-[var(--panel)] focus:shadow-md transition-all outline-none"
+              className="w-full h-11 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-10 text-sm font-medium focus:bg-[var(--glass3)] focus:shadow-[0_10px_24px_var(--glowSoft)] transition-all outline-none"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search places..."
@@ -85,7 +85,7 @@ export function PlacesView(props: { events: CalendarEvent[]; onSelectEvent: (id:
                   key={p.name}
                   layout
                   onClick={() => setActive(p.name)}
-                  className={`text-left p-4 rounded-[28px] border-2 transition-all flex flex-col gap-2 group ${active === p.name ? 'bg-[var(--panel)] border-[#D95D39]/30 shadow-xl' : 'bg-[var(--panel)]/40 border-transparent hover:bg-[var(--panel)]/60 hover:border-black/5'}`}
+                  className={`text-left p-4 rounded-[28px] border-2 transition-all flex flex-col gap-2 group ${active === p.name ? 'bg-[var(--glass3)] border-[var(--accentBorder)] shadow-xl' : 'bg-[var(--glass2)] border-transparent hover:bg-[var(--glass3)] hover:border-[var(--border)]'}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
@@ -95,11 +95,11 @@ export function PlacesView(props: { events: CalendarEvent[]; onSelectEvent: (id:
                     <span className="text-[10px] font-bold text-[var(--muted)] opacity-60">{p.lastAt ? new Date(p.lastAt).toLocaleDateString() : ''}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 px-2 py-1 bg-[var(--panel)] rounded-lg">
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-[var(--glass2)] rounded-lg">
                         <Icon name="bolt" size={10} className="text-[var(--accent)]" />
                         <span className="text-[10px] font-bold text-[var(--text)]">{p.points.toFixed(1)}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 px-2 py-1 bg-[var(--panel)] rounded-lg">
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-[var(--glass2)] rounded-lg">
                         <Icon name="calendar" size={10} className="text-[var(--accent)]" />
                         <span className="text-[10px] font-bold text-[var(--text)]">{Math.round(p.minutes)}m</span>
                     </div>
@@ -117,7 +117,7 @@ export function PlacesView(props: { events: CalendarEvent[]; onSelectEvent: (id:
               </div>
             ) : (
               <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="px-10 py-8 border-b border-black/5 flex items-center justify-between bg-[var(--panel)]/50 backdrop-blur-sm">
+                <div className="px-10 py-8 border-b border-[var(--border)] flex items-center justify-between bg-[var(--glass2)] backdrop-blur-sm">
                   <div className="space-y-1">
                     <h2 className="text-xl font-bold tracking-tight">{active}</h2>
                     <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Environment Activity</p>
@@ -126,10 +126,10 @@ export function PlacesView(props: { events: CalendarEvent[]; onSelectEvent: (id:
 
                 <div className="flex-1 overflow-y-auto px-10 py-8 space-y-6">
                   {activeEvents.map((e) => (
-                    <button key={e.id} className="block w-full max-w-[33%] min-h-[96px] text-left p-6 bg-[var(--panel)] rounded-2xl border border-transparent hover:border-[#D95D39]/20 hover:bg-[var(--panel)] hover:shadow-lg transition-all group" onClick={() => props.onSelectEvent(e.id)}>
+                    <button key={e.id} className="block w-full max-w-[33%] min-h-[96px] text-left p-6 bg-[var(--glass2)] rounded-2xl border border-[var(--border)] hover:border-[var(--accentBorder)] hover:bg-[var(--glass3)] hover:shadow-lg transition-all group" onClick={() => props.onSelectEvent(e.id)}>
                       <div className="flex justify-between items-start mb-3">
                         <h4 className="font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">{e.title}</h4>
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-[var(--panel)] rounded-md shadow-sm uppercase tracking-tighter">{new Date(e.startAt).toLocaleDateString()}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-[var(--glass2)] rounded-md shadow-sm uppercase tracking-tighter">{new Date(e.startAt).toLocaleDateString()}</span>
                       </div>
                       <div className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">
                         {(e.category ?? 'Uncategorized')}{e.subcategory ? ` · ${e.subcategory}` : ''} · {pointsForEventSafe(e).toFixed(1)} pts

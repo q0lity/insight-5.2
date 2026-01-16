@@ -9,7 +9,12 @@
     "dev:web": "vite --host 127.0.0.1 --port 5174",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:notes": "tsx scripts/notes-tests.ts",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug"
   },
   "dependencies": {
     "@insight/shared": "file:../../packages/shared",
@@ -29,15 +34,22 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",
+    "rehype-autolink-headings": "^7.1.0",
     "rehype-highlight": "^7.0.2",
+    "rehype-katex": "^7.0.1",
+    "rehype-slug": "^6.0.0",
     "remark-breaks": "^4.0.0",
+    "remark-emoji": "^5.0.2",
     "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4.1.18",
+    "@types/katex": "^0.16.8",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",

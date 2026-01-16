@@ -1,0 +1,16 @@
+{
+  "task_description": "So on the engine right here where I chat, so here, like, this needs to look more like a, chat GPT engine, and it needs to, autocollapse the vault so that it's just like a a chat screen. Okay? And it needs to work. So here's my parameters for success. It needs to be able to evaluate anything that I have in my database, look at it analytically, and, you know, give me, like, queries. Like, what did I eat for the past? What were my macros? And it, like, lays it out as, like, a Chat GPT style table. So if you need to get, like, an off you know, like, a repo that is going to have the if you need to give it a repo that is gonna have the all of those features there, like, you know, make it good because, like, this looks corny right now, and I need it to look more professional. And then in addition to that, like, let's say that, like, I'm having a chat GPT style conversation, like, or a codec style conversation. I need to be able to say, like, hey. This is what I'm thinking about doing, and, like, I'm making plans. So, like, whereas I list, like, what I'm doing in the, thing, this thing can make, like, tasks, events. Like, you know, I should have an upload button so that if I upload, like, a syllabus or, like, things that I have going on, then I'm gonna be able to, you know, make those into calendar events, tasks, like, when does this thing do? So, like, for example, if I was a student and I uploaded a syllabus, you know, it's gonna have, like, those events there, like, when I have my tasks, stuff like that. So I want you to be able to do that via this, and it's kind of like a planner. And so I want you to think robustly for a production ready, like, kind of planner event where I can ask things, upload things like images, documents, whatever, and then it's gonna be able to, like, port that. Like, you know, maybe, like, for example, if I uploaded a picture of a workout, you know, it's gonna take that data from the photo and then say, okay. You did this, this, this, this, and that. And then it can ask clarifying questions if it doesn't have a confidence interval. But, like, that's the magic of the chat that I really, really need to have. Well, I can talk to this thing, you know, and say, hey. Like, I'm having a and the same thing that works with ChatGPT. Like, it has it. But, like, first off, I need you to update the interface. Second, I need you to update the functionality. You know, if I check like, if I hit the, like, the microphone button like you do on a chat GPT, it's like, oh, I can list, like, all these things that I'm, like, thinking about. And then, you know, it will have, like, an adaptive, like, framework to, like, hey. Like, you know, do you want this added as an event or, like, you know, whatever? And, like, you can just kinda talk it through with it. So it's kind of like a life planner.",
+  "workflow_type": "feature",
+  "attached_images": [
+    {
+      "filename": "screenshot-1768323020895.png",
+      "path": "attachments/screenshot-1768323020895.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768323166199.png",
+      "path": "attachments/screenshot-1768323166199.png",
+      "description": ""
+    }
+  ]
+}

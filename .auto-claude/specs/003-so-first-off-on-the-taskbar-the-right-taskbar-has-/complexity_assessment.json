@@ -1,0 +1,93 @@
+{
+  "complexity": "standard",
+  "workflow_type": "feature",
+  "confidence": 0.85,
+  "reasoning": "This is a UI enhancement task with 3 distinct features: (1) right panel property parity with calendar, (2) multi-select type selector, and (3) filter selectors across views. All patterns already exist in the codebase (MetaEditor, ToggleGroup, filter chips in notes.tsx). No external integrations or infrastructure changes, but touches multiple components across the desktop app.",
+
+  "analysis": {
+    "scope": {
+      "estimated_files": 8,
+      "estimated_services": 1,
+      "is_cross_cutting": true,
+      "notes": "Changes affect right panel (MetaEditor), type selector component, and filter bars across multiple views (tasks, notes, etc.). All within the desktop app service."
+    },
+    "integrations": {
+      "external_services": [],
+      "new_dependencies": [],
+      "research_needed": false,
+      "notes": "No external integrations needed. Uses existing Radix UI ToggleGroup which already supports multi-select (type='multiple')."
+    },
+    "infrastructure": {
+      "docker_changes": false,
+      "database_changes": false,
+      "config_changes": false,
+      "notes": "Pure UI changes. No database schema modifications required. The data model (CalendarEvent, Task, etc.) already supports multiple types/tags."
+    },
+    "knowledge": {
+      "patterns_exist": true,
+      "research_required": false,
+      "unfamiliar_tech": [],
+      "notes": "Existing patterns: MetaEditor.tsx shows property editing, notes.tsx shows filter bar implementation, toggle-group.tsx is already set up with Radix UI. All required patterns are established in the codebase."
+    },
+    "risk": {
+      "level": "low",
+      "concerns": [
+        "Ensuring consistent filter behavior across all views",
+        "Type multi-select may require data model review if items need to store multiple types"
+      ],
+      "notes": "Low risk since we're extending existing patterns. Main consideration is ensuring the multi-select type changes propagate correctly."
+    }
+  },
+
+  "recommended_phases": [
+    "discovery",
+    "requirements",
+    "context",
+    "spec_writing",
+    "planning",
+    "validation"
+  ],
+
+  "flags": {
+    "needs_research": false,
+    "needs_self_critique": false,
+    "needs_infrastructure_setup": false
+  },
+
+  "validation_recommendations": {
+    "risk_level": "medium",
+    "skip_validation": false,
+    "minimal_mode": false,
+    "test_types_required": ["unit", "integration"],
+    "security_scan_required": false,
+    "staging_deployment_required": false,
+    "reasoning": "UI changes across multiple views require integration testing to ensure filter behavior is consistent. Unit tests for the multi-select toggle logic. No security concerns as this is UI-only with no auth or data handling changes."
+  },
+
+  "task_breakdown": {
+    "feature_1_right_panel_parity": {
+      "description": "Ensure right taskbar details panel has all properties matching calendar events",
+      "estimated_files": ["apps/desktop/src/ui/MetaEditor.tsx", "apps/desktop/src/App.tsx"],
+      "complexity": "low",
+      "notes": "MetaEditor already has most properties. Need to verify parity and add any missing fields."
+    },
+    "feature_2_multiselect_type": {
+      "description": "Convert EVENT/TASK/NOTE/HABIT/TRACKER selector from single-select to multi-select",
+      "estimated_files": ["apps/desktop/src/App.tsx", "apps/desktop/src/components/ui/toggle-group.tsx"],
+      "complexity": "medium",
+      "notes": "Radix ToggleGroup supports type='multiple'. Need to update state handling and potentially data model if items need to store multiple types."
+    },
+    "feature_3_filter_selectors": {
+      "description": "Add category/tag/property selector columns across views (tasks, notes, etc.)",
+      "estimated_files": [
+        "apps/desktop/src/workspace/views/notes.tsx",
+        "apps/desktop/src/workspace/views/ticktick-tasks.tsx",
+        "apps/desktop/src/App.tsx"
+      ],
+      "complexity": "medium",
+      "notes": "notes.tsx already has filter bar pattern. Need to extract as reusable component and apply across other views."
+    }
+  },
+
+  "created_at": "2025-01-13T19:00:00.000Z"
+}

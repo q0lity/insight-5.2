@@ -751,7 +751,7 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
               </div>
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 {timeByCategory.map((x, i) => {
-                  const colors = ['#D95D39', '#5B5F97', '#488B86', '#1C1C1E', '#8E8E93', '#CF423C', '#3D8856', '#FCECE8']
+                  const colors = ['var(--accent)', '#5B5F97', '#488B86', 'var(--text)', 'var(--muted)', '#CF423C', '#3D8856', '#FCECE8']
                   return (
                     <div key={x.key} className="flex items-center gap-3">
                       <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: colors[i % colors.length] }} />
@@ -793,7 +793,7 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
         element: (
           <div className={compact ? 'space-y-2' : 'space-y-4'}>
             <div className={compact ? 'py-1' : 'py-4'}>
-              <LtLineAreaChart points={toSeries(timeSeries)} color="#D95D39" />
+              <LtLineAreaChart points={toSeries(timeSeries)} color="var(--accent)" />
             </div>
             <p className="text-xs font-black uppercase tracking-[0.3em] text-center opacity-50" style={{ color: 'var(--muted)' }}>
               {isoDate(rangeStart)} — {isoDate(rangeEnd - 1)}

@@ -1,0 +1,35 @@
+{
+  "sourceType": "manual",
+  "model": "opus",
+  "thinkingLevel": "high",
+  "isAutoProfile": true,
+  "phaseModels": {
+    "spec": "opus",
+    "planning": "opus",
+    "coding": "opus",
+    "qa": "opus"
+  },
+  "phaseThinking": {
+    "spec": "ultrathink",
+    "planning": "high",
+    "coding": "low",
+    "qa": "low"
+  },
+  "attachedImages": [
+    {
+      "id": "img-1768323020895-b84s8l7",
+      "filename": "screenshot-1768323020895.png",
+      "mimeType": "image/png",
+      "size": 563475,
+      "path": "attachments/screenshot-1768323020895.png"
+    },
+    {
+      "id": "img-1768323166199-0mqwvti",
+      "filename": "screenshot-1768323166199.png",
+      "mimeType": "image/png",
+      "size": 10861,
+      "path": "attachments/screenshot-1768323166199.png"
+    }
+  ],
+  "baseBranch": "main"
+}

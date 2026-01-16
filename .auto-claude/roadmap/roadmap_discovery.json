@@ -1,0 +1,152 @@
+{
+  "project_name": "Insight 5",
+  "project_type": "mobile-app",
+  "tech_stack": {
+    "primary_language": "TypeScript",
+    "frameworks": [
+      "React Native/Expo (Mobile)",
+      "React/Vite (Desktop)",
+      "Electron (Desktop packaging)",
+      "Next.js (Landing page)",
+      "Supabase (Backend)"
+    ],
+    "key_dependencies": [
+      "@supabase/supabase-js",
+      "expo",
+      "expo-router",
+      "expo-av",
+      "react-native",
+      "dexie",
+      "framer-motion",
+      "tailwindcss",
+      "radix-ui",
+      "chrono-node"
+    ]
+  },
+  "target_audience": {
+    "primary_persona": "ADHD adults who struggle with manual journaling/tracking and want voice-first capture with gamification to stay motivated",
+    "secondary_personas": [
+      "Quantified self enthusiasts tracking mood, health, and productivity metrics",
+      "Busy professionals who want frictionless life logging",
+      "Fitness and health trackers wanting unified workout/nutrition/mood logging",
+      "Knowledge workers seeking timeline-based personal analytics"
+    ],
+    "pain_points": [
+      "Traditional journaling and tracking apps require too much manual data entry",
+      "Punitive gamification (like Habitica) causes shame spirals for ADHD users",
+      "Data is scattered across multiple apps without unified insights",
+      "Voice apps don't understand context or produce structured data",
+      "Difficulty correlating mood/energy patterns with activities"
+    ],
+    "goals": [
+      "Capture life events, tasks, habits, and trackers primarily via voice",
+      "Get instant insights from dashboards and views without cleanup",
+      "Maintain motivation through non-punitive XP-based gamification",
+      "Track time, habits, and workouts with minimal friction",
+      "Understand patterns between activities and mood/energy"
+    ],
+    "usage_context": "Throughout the day on mobile (quick voice captures) and desktop (review, analytics, planning). Users speak their life events and let AI parse into structured data for later analysis."
+  },
+  "product_vision": {
+    "one_liner": "The easiest journal to use (voice-first) with the most powerful analytics (structured, queryable life database)",
+    "problem_statement": "Manual data entry kills journaling and tracking habits. People want insights about their life but hate typing entries. Existing apps either require too much effort (Notion, Obsidian) or punish users for missing habits (Habitica), creating shame instead of motivation.",
+    "value_proposition": "Voice-first capture with AI parsing turns 30-second voice notes into structured events, tasks, habits, and trackers. Non-punitive XP gamification rewards without punishment. Local-first architecture ensures data ownership and offline reliability. Unified data model makes everything queryable.",
+    "success_metrics": [
+      "Capture latency under 5 seconds (online)",
+      "100% offline capture reliability",
+      "Users can answer 'what did I do yesterday' using views without cleanup",
+      "Daily engagement through capture streaks and XP accumulation",
+      "D7 retention above 40%",
+      "Net Promoter Score above 50 in ADHD community"
+    ]
+  },
+  "current_state": {
+    "maturity": "mvp",
+    "existing_features": [
+      "Voice capture with Whisper transcription and GPT parsing",
+      "Dashboard with daily overview, XP ring, streaks, and active timers",
+      "Habits with streaks, quick logging, and timed sessions",
+      "Goals with importance multipliers (0.1x-3.0x XP)",
+      "Timeline with chronological event feed and filters",
+      "Tiimo-style visual day/week calendar with drag-drop",
+      "Focus mode with active session timer and XP calculation",
+      "Reports with category breakdown and time filtering",
+      "Health module with workouts and nutrition tracking",
+      "Life Tracker (Nomie-style) with heatmaps and charts",
+      "Notes inbox with tag extraction and search",
+      "Assistant with local search and LLM fallback",
+      "Auth with email and OAuth (Google, Apple, Azure)",
+      "Supabase sync with local-first IndexedDB/AsyncStorage",
+      "Mobile app with 25 screens (96% working)",
+      "Desktop app with 22 views (82% working)",
+      "XP/gamification system with levels and achievements"
+    ],
+    "known_gaps": [
+      "No bidirectional sync (data loss risk if device lost)",
+      "No monetization or subscription system",
+      "No onboarding flow (80%+ D1 churn risk)",
+      "No analytics/error tracking (flying blind)",
+      "Google Calendar sync returns 501 (not implemented)",
+      "Reflections/AI synthesis is a stub",
+      "Habit creation form incomplete on mobile",
+      "No offline capture queue",
+      "No conflict resolution in sync layer"
+    ],
+    "technical_debt": [
+      "Test coverage at approximately 5%",
+      "Missing CI/CD pipeline",
+      "Missing staging environment",
+      "No feature flags for safe rollouts",
+      "Multipliers not synced to Supabase",
+      "Preferences not synced to Supabase",
+      "Focus view updates every 400ms (performance)",
+      "Calendar recalculates on render (performance)",
+      "Missing privacy policy and terms of service"
+    ]
+  },
+  "competitive_context": {
+    "alternatives": [
+      "Habitica (gamified habit tracker with punitive mechanics)",
+      "Day One (journaling app, typing-focused)",
+      "Notion (all-in-one workspace, high friction)",
+      "Obsidian (markdown knowledge base, complex setup)",
+      "Apple Journal (simple journaling, limited analytics)",
+      "Nomie (quantified self, discontinued)",
+      "Tiimo (visual scheduling, ADHD-focused)"
+    ],
+    "differentiators": [
+      "Voice-first capture (10x faster than typing)",
+      "AI parsing to structured data (unique in market)",
+      "Non-punitive gamification (no HP loss, XP only)",
+      "Adaptive learning improves parsing over time",
+      "Unified data model (events, tasks, habits, trackers)",
+      "Local-first with full data ownership/portability",
+      "YAML/Markdown format for interoperability"
+    ],
+    "market_position": "Occupies unique quadrant of high gamification + low friction (voice-first). Positioned as 'the productivity app built for brains that work differently' targeting ADHD community first. TAM approximately $22B across habit tracking, digital journaling, and quantified self markets.",
+    "competitor_pain_points": [],
+    "competitor_analysis_available": false
+  },
+  "constraints": {
+    "technical": [
+      "Single-user per account (no collaboration in MVP)",
+      "Supabase is canonical source of truth",
+      "No client-side LLM keys (all model calls server-side)",
+      "iOS requires App Store approval and privacy policy",
+      "Offline parsing not supported (capture offline, parse online)"
+    ],
+    "resources": [
+      "Solo developer project",
+      "Limited budget for external services",
+      "Need to ship monetization within 2 weeks to sustain development"
+    ],
+    "dependencies": [
+      "OpenAI Whisper API for transcription",
+      "OpenAI GPT-4.1 for parsing",
+      "Supabase for backend (Postgres, Storage, Edge Functions)",
+      "Expo for mobile app distribution",
+      "Electron for desktop packaging"
+    ]
+  },
+  "created_at": "2026-01-13T15:30:00Z"
+}

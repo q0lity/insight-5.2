@@ -1,0 +1,40 @@
+{
+  "discovered_files": {
+    "apps/desktop/src/nlp/": {
+      "description": "Parsing engine uses dual-parser architecture: natural.ts (rule-based, fast, regex patterns, chrono-node) + llm-parse.ts (GPT-4.1-mini, complex NLU). Rule-based handles time parsing, patterns; LLM handles ambiguous input with pattern injection from learning system.",
+      "category": "architecture",
+      "discovered_at": "2026-01-13T16:42:15.963890+00:00"
+    },
+    "apps/desktop/src/learning/": {
+      "description": "Adaptive learning system with confidence-based auto-apply. Thresholds: 0.8+ auto-apply, 0.5-0.8 suggest, <0.5 ignore. Patterns learned from user behavior (accepts/rejects) with time decay over 30 days.",
+      "category": "architecture",
+      "discovered_at": "2026-01-13T16:42:15.984893+00:00"
+    },
+    "packages/parser/src/context/project-context.ts": {
+      "description": "LinkDecision type uses tier-based action mapping: HIGH tier (>= 0.85) maps to 'auto_apply', MEDIUM tier (>= 0.50) maps to 'suggest', LOW tier (< 0.50) maps to 'require_confirmation'. This pattern enables confidence-driven automation levels.",
+      "category": "pattern",
+      "discovered_at": "2026-01-13T17:02:08.200038+00:00"
+    },
+    "apps/desktop/src/nlp/natural.ts": {
+      "description": "Added habit completion detection via looksLikeHabitCompletion() and extractHabitDetails() functions. Detects past-tense habit completions like \"did my workout\", \"brushed teeth\", \"took vitamins\", \"went to gym\". Creates log events with #habit tag and optional duration/quantity metrics.",
+      "category": "nlp-parsing",
+      "discovered_at": "2026-01-13T17:05:12.417127+00:00"
+    },
+    "apps/desktop/src/__tests__/integration/habit-completion-flow.test.ts": {
+      "description": "Comprehensive integration test suite for habit completion flow. Tests detectHabitCompletion(), matchHabitFuzzy(), calculateMatchConfidence(), parseCaptureNatural(), and parseCaptureWithBlocks() for habit detection. Run with: cd apps/desktop && npm run test:integration",
+      "category": "testing",
+      "discovered_at": "2026-01-13T17:21:03.113989+00:00"
+    },
+    "apps/desktop/src/__tests__/integration/project-auto-linking-flow.test.ts": {
+      "description": "Comprehensive integration test suite for project auto-linking with confidence tiers (34 tests). Tests autoLinkProject(), matchProjectFuzzy(), calculateMatchConfidence(), extractProjectReferences(), getAllProjectLinks() from project-context.ts. Verifies confidence tiers: HIGH (>= 0.85) -> auto_apply, MEDIUM (>= 0.50) -> suggest, LOW (< 0.50) -> require_confirmation. Run with: npx vitest run apps/desktop/src/__tests__/integration",
+      "category": "test",
+      "discovered_at": "2026-01-13T17:44:30.638891+00:00"
+    },
+    "apps/desktop/src/__tests__/integration/entity-classification-e2e.test.ts": {
+      "description": "Comprehensive E2E test suite for all 5 entity types (93 tests). Verifies: Task (\"I need to call mom tomorrow\"), Event (\"meeting at 3pm with John\"), Note (\"note: project deadline is Friday\"), Tracker (\"#mood(7)\"), Habit (\"did my workout\"). Includes disambiguation tests, variations, classifier rules coverage, intent patterns, block parser integration. Run with: npx vitest run apps/desktop/src/__tests__/integration/entity-classification-e2e.test.ts",
+      "category": "testing",
+      "discovered_at": "2026-01-13T18:07:33.282719+00:00"
+    }
+  },
+  "last_updated": "2026-01-13T18:07:33.282754+00:00"
+}

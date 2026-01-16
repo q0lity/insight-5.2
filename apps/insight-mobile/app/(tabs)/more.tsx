@@ -22,7 +22,7 @@ const MENU_SECTIONS: MenuSection[] = [
   {
     title: 'Capture',
     items: [
-      { label: 'Voice', icon: 'mic', route: '/voice', color: '#D95D39' },
+      { label: 'Capture', icon: 'mic', route: '/capture', color: '#D95D39' },
       { label: 'Focus', icon: 'zap', route: '/focus', color: '#F59E0B' },
       { label: 'Notes', icon: 'file', route: '/notes', color: '#3B82F6' },
     ],
@@ -133,10 +133,10 @@ export default function MoreScreen() {
           <View style={styles.quickActions}>
             <TouchableOpacity
               style={[styles.quickAction, { backgroundColor: palette.tint }]}
-              onPress={() => router.push('/voice')}
+              onPress={() => router.push('/capture')}
             >
               <InsightIcon name="mic" size={20} color="#FFFFFF" />
-              <Text style={styles.quickActionText}>Voice Capture</Text>
+              <Text style={styles.quickActionText}>Capture</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.quickAction, { backgroundColor: '#F59E0B' }]}

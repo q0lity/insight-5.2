@@ -1,0 +1,551 @@
+{
+  "project_root": "/Users/dg/Desktop/insight-5.2",
+  "project_type": "monorepo",
+  "services": {
+    "shared": {
+      "name": "shared",
+      "path": "/Users/dg/Desktop/insight-5.2/packages/shared",
+      "language": "JavaScript",
+      "framework": null,
+      "type": "library",
+      "package_manager": "npm",
+      "key_directories": {
+        "src": {
+          "path": "src",
+          "purpose": "Source code"
+        }
+      },
+      "entry_point": "src/index.ts",
+      "dependencies": [],
+      "dev_dependencies": []
+    },
+    "landing": {
+      "name": "landing",
+      "path": "/Users/dg/Desktop/insight-5.2/apps/landing",
+      "language": "TypeScript",
+      "framework": "Next.js",
+      "type": "frontend",
+      "package_manager": "npm",
+      "default_port": 3000,
+      "styling": "Tailwind CSS",
+      "dev_command": "npm run dev",
+      "key_directories": {
+        "src": {
+          "path": "src",
+          "purpose": "Source code"
+        }
+      },
+      "dependencies": [
+        "clsx",
+        "framer-motion",
+        "lucide-react",
+        "next",
+        "@supabase/supabase-js",
+        "react",
+        "react-dom",
+        "tailwind-merge"
+      ],
+      "dev_dependencies": [
+        "@tailwindcss/postcss",
+        "@types/node",
+        "@types/react",
+        "@types/react-dom",
+        "eslint",
+        "eslint-config-next",
+        "tailwindcss",
+        "typescript"
+      ]
+    },
+    "insight-mobile": {
+      "name": "insight-mobile",
+      "path": "/Users/dg/Desktop/insight-5.2/apps/insight-mobile",
+      "language": "TypeScript",
+      "framework": "React",
+      "type": "frontend",
+      "package_manager": "npm",
+      "default_port": 3000,
+      "styling": "Tailwind CSS",
+      "dev_command": "npm run start",
+      "key_directories": {
+        "src": {
+          "path": "src",
+          "purpose": "Source code"
+        },
+        "app": {
+          "path": "app",
+          "purpose": "Application code"
+        },
+        "components": {
+          "path": "components",
+          "purpose": "UI components"
+        }
+      },
+      "dependencies": [
+        "@expo-google-fonts/figtree",
+        "@expo-google-fonts/space-grotesk",
+        "@expo/vector-icons",
+        "@insight/shared",
+        "@react-native-async-storage/async-storage",
+        "@react-navigation/native",
+        "@supabase/supabase-js",
+        "expo",
+        "expo-av",
+        "expo-constants",
+        "expo-font",
+        "expo-image-picker",
+        "expo-linking",
+        "expo-location",
+        "expo-router",
+        "expo-splash-screen",
+        "expo-status-bar",
+        "expo-web-browser",
+        "nativewind",
+        "react"
+      ],
+      "dev_dependencies": [
+        "@expo/ngrok",
+        "@types/react",
+        "react-test-renderer",
+        "typescript"
+      ],
+      "environment": {
+        "variables": {
+          "EXPO_PUBLIC_SUPABASE_URL": {
+            "value": "https://oaywymdbbhhewppmpihr.supabase.co",
+            "source": ".env.local",
+            "type": "url",
+            "sensitive": false,
+            "required": true
+          },
+          "EXPO_PUBLIC_SUPABASE_ANON_KEY": {
+            "value": "<REDACTED>",
+            "source": ".env.local",
+            "type": "string",
+            "sensitive": true,
+            "required": true
+          },
+          "EXPO_PUBLIC_SUPABASE_AUTO_LOGIN": {
+            "value": "true",
+            "source": ".env.local",
+            "type": "boolean",
+            "sensitive": false,
+            "required": true
+          },
+          "EXPO_PUBLIC_SUPABASE_AUTO_LOGIN_EMAIL": {
+            "value": "qolitybrand@gmail.com",
+            "source": ".env.local",
+            "type": "email",
+            "sensitive": false,
+            "required": true
+          },
+          "EXPO_PUBLIC_SUPABASE_AUTO_LOGIN_PASSWORD": {
+            "value": "<REDACTED>",
+            "source": ".env.local",
+            "type": "string",
+            "sensitive": true,
+            "required": true
+          }
+        },
+        "required_count": 5,
+        "optional_count": 0,
+        "detected_count": 5
+      }
+    },
+    "mobile2": {
+      "name": "mobile2",
+      "path": "/Users/dg/Desktop/insight-5.2/apps/mobile2",
+      "language": "TypeScript",
+      "framework": "React",
+      "type": "frontend",
+      "package_manager": "npm",
+      "default_port": 3000,
+      "styling": "Tailwind CSS",
+      "dev_command": "npm run start",
+      "key_directories": {
+        "src": {
+          "path": "src",
+          "purpose": "Source code"
+        },
+        "app": {
+          "path": "app",
+          "purpose": "Application code"
+        },
+        "components": {
+          "path": "components",
+          "purpose": "UI components"
+        }
+      },
+      "dependencies": [
+        "@expo-google-fonts/figtree",
+        "@expo-google-fonts/space-grotesk",
+        "@expo/vector-icons",
+        "@react-native-async-storage/async-storage",
+        "@react-native-community/slider",
+        "@react-navigation/native",
+        "@supabase/supabase-js",
+        "chrono-node",
+        "expo",
+        "expo-av",
+        "expo-constants",
+        "expo-dev-client",
+        "expo-font",
+        "expo-image-picker",
+        "expo-linking",
+        "expo-location",
+        "expo-router",
+        "expo-splash-screen",
+        "expo-status-bar",
+        "expo-web-browser"
+      ],
+      "dev_dependencies": [
+        "@expo/ngrok",
+        "@types/react",
+        "react-test-renderer",
+        "typescript"
+      ],
+      "environment": {
+        "variables": {
+          "EXPO_PUBLIC_SUPABASE_URL": {
+            "value": "https://oaywymdbbhhewppmpihr.supabase.co",
+            "source": ".env",
+            "type": "url",
+            "sensitive": false,
+            "required": true
+          },
+          "EXPO_PUBLIC_SUPABASE_ANON_KEY": {
+            "value": "<REDACTED>",
+            "source": ".env",
+            "type": "string",
+            "sensitive": true,
+            "required": true
+          },
+          "EXPO_PUBLIC_SUPABASE_AUTO_LOGIN": {
+            "value": "true",
+            "source": ".env",
+            "type": "boolean",
+            "sensitive": false,
+            "required": true
+          },
+          "EXPO_PUBLIC_SUPABASE_AUTO_LOGIN_EMAIL": {
+            "value": "qolitybrand@gmail.com",
+            "source": ".env",
+            "type": "email",
+            "sensitive": false,
+            "required": true
+          },
+          "EXPO_PUBLIC_SUPABASE_AUTO_LOGIN_PASSWORD": {
+            "value": "<REDACTED>",
+            "source": ".env",
+            "type": "string",
+            "sensitive": true,
+            "required": true
+          }
+        },
+        "required_count": 5,
+        "optional_count": 0,
+        "detected_count": 5
+      }
+    },
+    "desktop": {
+      "name": "desktop",
+      "path": "/Users/dg/Desktop/insight-5.2/apps/desktop",
+      "language": "TypeScript",
+      "framework": "React",
+      "type": "frontend",
+      "package_manager": "npm",
+      "default_port": 5174,
+      "build_tool": "Vite",
+      "styling": "Tailwind CSS",
+      "dev_command": "npm run dev",
+      "key_directories": {
+        "src": {
+          "path": "src",
+          "purpose": "Source code"
+        }
+      },
+      "entry_point": "src/App.tsx",
+      "dependencies": [
+        "@insight/shared",
+        "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-scroll-area",
+        "@radix-ui/react-separator",
+        "@radix-ui/react-slot",
+        "@radix-ui/react-tabs",
+        "@radix-ui/react-toggle",
+        "@radix-ui/react-toggle-group",
+        "@supabase/supabase-js",
+        "chrono-node",
+        "class-variance-authority",
+        "clsx",
+        "dexie",
+        "framer-motion",
+        "react",
+        "react-dom",
+        "react-markdown",
+        "remark-gfm",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "dev_dependencies": [
+        "@eslint/js",
+        "@tailwindcss/postcss",
+        "@types/node",
+        "@types/react",
+        "@types/react-dom",
+        "@vitejs/plugin-react",
+        "autoprefixer",
+        "concurrently",
+        "electron",
+        "eslint"
+      ],
+      "environment": {
+        "variables": {
+          "VITE_SUPABASE_URL": {
+            "value": "https://oaywymdbbhhewppmpihr.supabase.co",
+            "source": ".env",
+            "type": "url",
+            "sensitive": false,
+            "required": true
+          },
+          "VITE_SUPABASE_ANON_KEY": {
+            "value": "<REDACTED>",
+            "source": ".env",
+            "type": "string",
+            "sensitive": true,
+            "required": true
+          },
+          "VITE_OPENAI_API_KEY": {
+            "value": null,
+            "source": ".env.example",
+            "type": "string",
+            "sensitive": true,
+            "required": true
+          },
+          "VITE_OPENAI_MODEL": {
+            "value": null,
+            "source": ".env.example",
+            "type": "string",
+            "sensitive": false,
+            "required": true
+          }
+        },
+        "required_count": 4,
+        "optional_count": 0,
+        "detected_count": 4
+      }
+    },
+    "mobile3": {
+      "name": "mobile3",
+      "path": "/Users/dg/Desktop/insight-5.2/apps/mobile3",
+      "language": "TypeScript",
+      "framework": "React",
+      "type": "frontend",
+      "package_manager": "npm",
+      "default_port": 3000,
+      "styling": "Tailwind CSS",
+      "dev_command": "npm run start",
+      "key_directories": {
+        "src": {
+          "path": "src",
+          "purpose": "Source code"
+        },
+        "app": {
+          "path": "app",
+          "purpose": "Application code"
+        },
+        "components": {
+          "path": "components",
+          "purpose": "UI components"
+        }
+      },
+      "dependencies": [
+        "@expo-google-fonts/figtree",
+        "@expo-google-fonts/space-grotesk",
+        "@expo/vector-icons",
+        "@react-native-async-storage/async-storage",
+        "@react-native-community/slider",
+        "@react-navigation/native",
+        "@supabase/supabase-js",
+        "expo",
+        "expo-av",
+        "expo-constants",
+        "expo-dev-client",
+        "expo-font",
+        "expo-image-picker",
+        "expo-linking",
+        "expo-location",
+        "expo-router",
+        "expo-splash-screen",
+        "expo-status-bar",
+        "expo-web-browser",
+        "nativewind"
+      ],
+      "dev_dependencies": [
+        "@expo/ngrok",
+        "@types/react",
+        "react-test-renderer",
+        "typescript"
+      ],
+      "environment": {
+        "variables": {
+          "EXPO_PUBLIC_SUPABASE_URL": {
+            "value": "https://oaywymdbbhhewppmpihr.supabase.co",
+            "source": ".env",
+            "type": "url",
+            "sensitive": false,
+            "required": true
+          },
+          "EXPO_PUBLIC_SUPABASE_ANON_KEY": {
+            "value": "<REDACTED>",
+            "source": ".env",
+            "type": "string",
+            "sensitive": true,
+            "required": true
+          }
+        },
+        "required_count": 2,
+        "optional_count": 0,
+        "detected_count": 2
+      }
+    },
+    "mobile4": {
+      "name": "mobile4",
+      "path": "/Users/dg/Desktop/insight-5.2/apps/mobile4",
+      "language": "TypeScript",
+      "framework": "React",
+      "type": "frontend",
+      "package_manager": "npm",
+      "default_port": 3000,
+      "styling": "Tailwind CSS",
+      "dev_command": "npm run start",
+      "key_directories": {
+        "src": {
+          "path": "src",
+          "purpose": "Source code"
+        },
+        "app": {
+          "path": "app",
+          "purpose": "Application code"
+        },
+        "components": {
+          "path": "components",
+          "purpose": "UI components"
+        }
+      },
+      "dependencies": [
+        "@expo-google-fonts/figtree",
+        "@expo-google-fonts/space-grotesk",
+        "@expo/vector-icons",
+        "@insight/shared",
+        "@react-native-async-storage/async-storage",
+        "@react-native-community/slider",
+        "@react-navigation/native",
+        "@supabase/supabase-js",
+        "chrono-node",
+        "expo",
+        "expo-av",
+        "expo-constants",
+        "expo-dev-client",
+        "expo-font",
+        "expo-image-picker",
+        "expo-linking",
+        "expo-location",
+        "expo-router",
+        "expo-splash-screen",
+        "expo-status-bar"
+      ],
+      "dev_dependencies": [
+        "@expo/ngrok",
+        "@types/react",
+        "react-test-renderer",
+        "typescript"
+      ],
+      "environment": {
+        "variables": {
+          "EXPO_PUBLIC_SUPABASE_URL": {
+            "value": null,
+            "source": ".env.example",
+            "type": "string",
+            "sensitive": false,
+            "required": true
+          },
+          "EXPO_PUBLIC_SUPABASE_ANON_KEY": {
+            "value": null,
+            "source": ".env.example",
+            "type": "string",
+            "sensitive": true,
+            "required": true
+          },
+          "EXPO_PUBLIC_GOOGLE_CLIENT_ID": {
+            "value": null,
+            "source": ".env.example",
+            "type": "string",
+            "sensitive": false,
+            "required": true
+          },
+          "EXPO_PUBLIC_MICROSOFT_CLIENT_ID": {
+            "value": null,
+            "source": ".env.example",
+            "type": "string",
+            "sensitive": false,
+            "required": true
+          }
+        },
+        "required_count": 4,
+        "optional_count": 0,
+        "detected_count": 4
+      }
+    },
+    "mobile": {
+      "name": "mobile",
+      "path": "/Users/dg/Desktop/insight-5.2/apps/mobile",
+      "language": "TypeScript",
+      "framework": "React",
+      "type": "frontend",
+      "package_manager": "npm",
+      "default_port": 3000,
+      "dev_command": "npm run start",
+      "key_directories": {
+        "src": {
+          "path": "src",
+          "purpose": "Source code"
+        },
+        "__tests__": {
+          "path": "__tests__",
+          "purpose": "Tests"
+        }
+      },
+      "entry_point": "index.js",
+      "dependencies": [
+        "react",
+        "react-native",
+        "@react-native/new-app-screen",
+        "react-native-safe-area-context"
+      ],
+      "dev_dependencies": [
+        "@babel/core",
+        "@babel/preset-env",
+        "@babel/runtime",
+        "@react-native-community/cli",
+        "@react-native-community/cli-platform-android",
+        "@react-native-community/cli-platform-ios",
+        "@react-native/babel-preset",
+        "@react-native/eslint-config",
+        "@react-native/metro-config",
+        "@react-native/typescript-config"
+      ],
+      "testing": "Jest",
+      "test_directory": "__tests__"
+    }
+  },
+  "infrastructure": {
+    "ci": "GitHub Actions",
+    "ci_workflows": [
+      "mobile-release.yml",
+      "ci.yml"
+    ]
+  },
+  "conventions": {
+    "typescript": true
+  }
+}

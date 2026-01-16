@@ -1,0 +1,124 @@
+{
+  "documentation_gaps": [
+    {
+      "id": "doc-001",
+      "type": "documentation_gaps",
+      "title": "Add comprehensive README for the parser package",
+      "description": "The packages/parser package contains critical parsing infrastructure including tokenizer, entity extraction, classification, confidence scoring, and markdown parsing - but has no README or API documentation. The package exports through src/index.ts and src/types.ts but users have no guidance on how to use these components.",
+      "rationale": "The parser package is the core NLP/parsing engine used across desktop and mobile apps. Developers need to understand the token types, pattern syntax (like #tracker(value), @person, !location), the pipeline architecture (tokenizer -> classifier -> entity-extractor -> output-builder), and confidence scoring system to effectively integrate or extend parsing capabilities.",
+      "category": "api_docs",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "packages/parser/src/index.ts",
+        "packages/parser/src/types.ts",
+        "packages/parser/src/pipeline/tokenizer.ts",
+        "packages/parser/src/pipeline/classifier.ts",
+        "packages/parser/src/pipeline/entity-extractor.ts",
+        "packages/parser/src/confidence/scorer.ts"
+      ],
+      "currentDocumentation": "Some inline JSDoc comments exist in tokenizer.ts, but no package README, no API overview, no usage examples",
+      "proposedContent": "Create packages/parser/README.md with: 1) Package overview and purpose, 2) Token type reference table (tracker, person, location, tag, time, duration, etc.), 3) Pattern syntax guide with examples, 4) Pipeline architecture diagram, 5) Basic usage examples, 6) Confidence scoring explanation",
+      "priority": "high",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "doc-002",
+      "type": "documentation_gaps",
+      "title": "Document the shared package data models and types",
+      "description": "The packages/shared/src/models.ts file exports 20+ types (Task, CalendarEvent, Workout, Meal, Exercise, Pattern, Entity, etc.) that form the core data model used across all apps. These types have no documentation explaining field meanings, relationships, or usage patterns.",
+      "rationale": "Understanding the data model is essential for any developer working on the project. Fields like 'entityIds', 'kind', 'character', 'skills', or the relationship between CalendarEvent.taskId and Task.parentEventId are non-obvious. The Pattern system for adaptive learning also needs explanation.",
+      "category": "api_docs",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "packages/shared/src/models.ts",
+        "packages/shared/src/index.ts",
+        "packages/shared/src/taxonomy.ts",
+        "packages/shared/src/normalize.ts"
+      ],
+      "currentDocumentation": "Only minimal inline comments like '// grams' or '// milligrams' exist",
+      "proposedContent": "Add JSDoc comments to all exported types explaining: 1) Purpose of each type, 2) Field descriptions with valid values, 3) Relationships between types (e.g., CalendarEvent <-> Task <-> Note), 4) Example values, 5) Create packages/shared/README.md with data model overview diagram",
+      "priority": "high",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "doc-003",
+      "type": "documentation_gaps",
+      "title": "Update root README with accurate monorepo setup guide",
+      "description": "The root README.md references outdated paths ('cd \"Insight 5\"'), mentions a Flutter prototype and external folders that don't exist in this repo, and lacks essential information about the monorepo structure, npm workspace setup, and development workflows.",
+      "rationale": "The README is the primary entry point for any developer. Currently it directs users to non-existent paths and doesn't explain the apps/ and packages/ structure, how to run each app independently, or how dependencies flow between packages.",
+      "category": "readme",
+      "targetAudience": "contributors",
+      "affectedAreas": [
+        "README.md",
+        "apps/desktop/README.md",
+        "apps/landing/README.md",
+        "apps/insight-mobile/README.md"
+      ],
+      "currentDocumentation": "Minimal README with outdated references; app-specific READMEs are default template boilerplate (Vite/Next.js defaults)",
+      "proposedContent": "Rewrite README.md with: 1) Project overview (what Insight does), 2) Monorepo structure explanation (apps/desktop, apps/insight-mobile, apps/landing, packages/shared, packages/parser), 3) Prerequisites (Node.js, npm), 4) Installation instructions, 5) Running each app, 6) Environment variable setup guide with .env.example references, 7) Links to detailed docs in AGENTS/ and PRD/",
+      "priority": "high",
+      "estimatedEffort": "low"
+    },
+    {
+      "id": "doc-004",
+      "type": "documentation_gaps",
+      "title": "Add Supabase sync architecture documentation",
+      "description": "The apps/desktop/src/supabase/sync.ts file (1160+ lines) handles complex bidirectional sync between local IndexedDB (Dexie) and Supabase. This includes entity mapping, embedding generation, workout/meal specialized tables, and conflict resolution - all undocumented.",
+      "rationale": "The sync system is critical for multi-device usage and data integrity. Understanding the sync flow (local -> entries table, entries <-> workout_sessions/nutrition_logs, entity management, embedding generation) is essential for debugging sync issues or extending functionality.",
+      "category": "architecture",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "apps/desktop/src/supabase/sync.ts",
+        "apps/desktop/src/supabase/client.ts",
+        "apps/desktop/src/supabase/bootstrap.ts",
+        "apps/desktop/src/db/insight-db.ts"
+      ],
+      "currentDocumentation": "Zero documentation - no comments, no overview, no data flow explanation",
+      "proposedContent": "Create docs/SYNC_ARCHITECTURE.md with: 1) Sync strategy overview (local-first, eventual consistency), 2) Data flow diagram (local Dexie -> Supabase entries/workout_sessions/nutrition_logs), 3) Entity mapping explanation, 4) Embedding generation process, 5) Pull/push mechanics, 6) Migration/bootstrap process, 7) Troubleshooting common sync issues",
+      "priority": "medium",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "doc-005",
+      "type": "documentation_gaps",
+      "title": "Create mobile app setup and development guide",
+      "description": "The apps/insight-mobile directory (Expo/React Native app) has no README or setup documentation. Developers need guidance on Expo setup, environment variables (EXPO_PUBLIC_*), running on iOS/Android simulators, and the app's navigation structure.",
+      "rationale": "Mobile development has specific tooling requirements (Expo CLI, simulators/emulators, Metro bundler). The app structure uses Expo Router with file-based routing (app/(tabs)/, app/health/, etc.) which needs explanation. Environment setup for Supabase connection is also critical.",
+      "category": "readme",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "apps/insight-mobile/app/(tabs)/",
+        "apps/insight-mobile/app.json",
+        "apps/insight-mobile/src/supabase/",
+        "apps/insight-mobile/src/storage/",
+        "apps/insight-mobile/.env.local"
+      ],
+      "currentDocumentation": "No README exists; only an app.json with basic Expo config",
+      "proposedContent": "Create apps/insight-mobile/README.md with: 1) Prerequisites (Node.js, Expo CLI, Xcode/Android Studio), 2) Environment setup (.env.local variables), 3) Running on simulator/device, 4) Project structure overview (Expo Router file-based routing), 5) Key screens and their purposes, 6) Storage architecture (AsyncStorage, Supabase sync), 7) Building for release",
+      "priority": "medium",
+      "estimatedEffort": "low"
+    }
+  ],
+  "metadata": {
+    "filesAnalyzed": 150,
+    "documentedFunctions": 28,
+    "undocumentedFunctions": 145,
+    "readmeLastUpdated": "unknown",
+    "existingDocFolders": [
+      "AGENTS/ (10 agent workstream docs)",
+      "PRD/ (14 product requirement docs)",
+      "ARCH/ (10 architecture docs)",
+      "DB/ (3 database docs)",
+      "DESIGN/ (2 design docs)",
+      "docs/ (1 integration doc)"
+    ],
+    "majorGaps": [
+      "Parser package completely undocumented",
+      "Shared package models lack JSDoc",
+      "Root README outdated and incomplete",
+      "Sync system has no architecture docs",
+      "Mobile app has no setup guide"
+    ],
+    "generatedAt": "2026-01-13T11:55:00Z"
+  }
+}

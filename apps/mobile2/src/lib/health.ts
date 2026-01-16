@@ -134,7 +134,62 @@ const COMMON_FOODS: CommonFood[] = [
   { name: 'Hot Dog', unit: 'item', calories: 150, protein: 5, carbs: 2, fat: 13 },
 ];
 
-const RESTAURANT_FOODS: Array<{ name: string; restaurant?: string; calories: number; protein: number; carbs: number; fat: number }> = [
+type RestaurantFood = {
+  name: string;
+  restaurant?: string;
+  aliases?: string[];
+  unit?: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber?: number;
+  sodium?: number;
+  potassium?: number;
+  saturatedFat?: number;
+  transFat?: number;
+  sugar?: number;
+  cholesterol?: number;
+  confidence?: number;
+};
+
+const RESTAURANT_FOODS: RestaurantFood[] = [
+  {
+    name: 'Double Quarter Pounder with Cheese',
+    restaurant: "McDonald's",
+    aliases: ['double quarter pounder', 'quarter pounder with cheese', 'quarter pounder', 'double quarter powder with cheese'],
+    calories: 740,
+    protein: 48,
+    carbs: 43,
+    fat: 42,
+    fiber: 2,
+    sugar: 10,
+    saturatedFat: 20,
+    transFat: 1.5,
+    sodium: 1360,
+    potassium: 660,
+    cholesterol: 155,
+    confidence: 0.6,
+  },
+  {
+    name: 'McFlurry',
+    restaurant: "McDonald's",
+    aliases: ['mc flurry', 'oreo mcflurry'],
+    calories: 510,
+    protein: 12,
+    carbs: 74,
+    fat: 16,
+    fiber: 1,
+    sugar: 64,
+    saturatedFat: 10,
+    transFat: 0,
+    sodium: 240,
+    potassium: 370,
+    cholesterol: 50,
+    confidence: 0.55,
+  },
+  { name: 'Big Mac', restaurant: "McDonald's", calories: 550, protein: 25, carbs: 45, fat: 30 },
+  { name: 'Whopper', restaurant: 'Burger King', calories: 660, protein: 28, carbs: 49, fat: 40 },
   { name: 'Chipotle Burrito Bowl', restaurant: 'Chipotle', calories: 700, protein: 40, carbs: 50, fat: 35 },
   { name: 'Subway 6" Turkey Sub', restaurant: 'Subway', calories: 280, protein: 18, carbs: 40, fat: 4 },
 ];
@@ -187,6 +242,22 @@ export function parseWorkoutFromText(text: string) {
   const exercises: Exercise[] = [];
   const workoutType = normalizeWorkoutType(text);
   const overallRpe = inferRpe(text);
+  const seenBodyweight = new Set<string>();
+
+  const BODYWEIGHT_RE = '(?:push[-\\s]?ups?|pull[-\\s]?ups?|sit[-\\s]?ups?|burpees|squats|lunges|jumping jacks|dips?)';
+  const addBodyweight = (rawName: string, reps: number) => {
+    const name = rawName.replace(/\s+/g, ' ').trim();
+    if (!Number.isFinite(reps)) return;
+    const key = `${name.toLowerCase()}|${reps}`;
+    if (seenBodyweight.has(key)) return;
+    seenBodyweight.add(key);
+    exercises.push({
+      id: makeId('ex'),
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      type: 'strength',
+      sets: [{ reps }],
+    });
+  };
 
   const setPatterns = [
     /(\d+)\s*(?:sets?\s+(?:of\s+)?)?(\d+)\s*(?:reps?)?\s*([a-zA-Z][a-zA-Z\s-]{2,40})\s*(?:at|@)\s*(\d+)/gi,
@@ -213,16 +284,22 @@ export function parseWorkoutFromText(text: string) {
     }
   }
 
-  for (const match of text.matchAll(/(\d+)\s*(push[-\s]?ups?|pull[-\s]?ups?|sit[-\s]?ups?|burpees|squats|lunges|jumping jacks)/gi)) {
+  const pairedBodyweightPattern = new RegExp(`(${BODYWEIGHT_RE})\\s*(\\d+)\\s*(${BODYWEIGHT_RE})`, 'gi');
+  for (const match of text.matchAll(pairedBodyweightPattern)) {
+    const reps = parseInt(match[2], 10);
+    addBodyweight(match[1], reps);
+    addBodyweight(match[3], reps);
+  }
+
+  const exerciseFirstPattern = new RegExp(`(${BODYWEIGHT_RE})\\s*(\\d+)`, 'gi');
+  for (const match of text.matchAll(exerciseFirstPattern)) {
+    const reps = parseInt(match[2], 10);
+    addBodyweight(match[1], reps);
+  }
+
+  for (const match of text.matchAll(/(\d+)\s*(push[-\s]?ups?|pull[-\s]?ups?|sit[-\s]?ups?|burpees|squats|lunges|jumping jacks|dips?)/gi)) {
     const reps = parseInt(match[1], 10);
-    const name = match[2].replace(/\s+/g, ' ').trim();
-    if (!Number.isFinite(reps)) continue;
-    exercises.push({
-      id: makeId('ex'),
-      name: name.charAt(0).toUpperCase() + name.slice(1),
-      type: 'strength',
-      sets: [{ reps }],
-    });
+    addBodyweight(match[2], reps);
   }
 
   const cardioMatch =
@@ -333,16 +410,26 @@ export function estimateFoodNutrition(name: string, quantity = 1, unit = 'servin
   }
 
   for (const food of RESTAURANT_FOODS) {
-    if (lower.includes(food.name.toLowerCase()) || (food.restaurant && lower.includes(food.restaurant.toLowerCase()))) {
+    const nameMatch = lower.includes(food.name.toLowerCase());
+    const aliasMatch = food.aliases?.some((alias) => lower.includes(alias.toLowerCase()));
+    const restaurantMatch = food.restaurant && lower.includes(food.restaurant.toLowerCase());
+    if (nameMatch || aliasMatch || restaurantMatch) {
       return {
         name: food.name,
         quantity,
-        unit: 'item',
+        unit: unit === 'serving' ? food.unit ?? 'item' : unit,
         calories: Math.round(food.calories * quantity),
         protein: Math.round(food.protein * quantity),
         carbs: Math.round(food.carbs * quantity),
         fat: Math.round(food.fat * quantity),
-        confidence: 0.75,
+        fiber: food.fiber ? Math.round(food.fiber * quantity) : undefined,
+        sodium: food.sodium ? Math.round(food.sodium * quantity) : undefined,
+        potassium: food.potassium ? Math.round(food.potassium * quantity) : undefined,
+        saturatedFat: food.saturatedFat ? Math.round(food.saturatedFat * quantity) : undefined,
+        transFat: food.transFat ? Math.round(food.transFat * quantity) : undefined,
+        sugar: food.sugar ? Math.round(food.sugar * quantity) : undefined,
+        cholesterol: food.cholesterol ? Math.round(food.cholesterol * quantity) : undefined,
+        confidence: food.confidence ?? 0.75,
         source: 'database',
       };
     }
@@ -363,7 +450,7 @@ export function estimateFoodNutrition(name: string, quantity = 1, unit = 'servin
   return { name, quantity, unit, confidence: 0.25, source: 'database' };
 }
 
-const FOOD_CUE_RE = /\b(ate|eat|eating|meal|breakfast|lunch|dinner|snack|drink|drank|coffee|tea|smoothie|shake|pizza|hot dog|chipotle|burrito|bowl|salad|sandwich|burger|rice|pasta|chicken|beef|fish|fruit|veggie|vegetable|costco|grocery)\b/i;
+const FOOD_CUE_RE = /\b(ate|eat|eating|meal|breakfast|lunch|dinner|snack|drink|drank|coffee|tea|smoothie|shake|pizza|hot dog|chipotle|burrito|bowl|salad|sandwich|burger|rice|pasta|chicken|beef|fish|fruit|veggie|vegetable|costco|grocery|mcdonalds|mcflurry|mc\s*flurry|quarter\s+pounder|big\s+mac|whopper)\b/i;
 const WORKOUT_CUE_RE = /\b(run|ran|jog|walk|cycle|bike|mile|miles|km|minutes?|mins?|reps?|sets?|bench|press|squat|deadlift|treadmill|cardio|rpe|gym)\b/i;
 
 function isWorkoutToken(name: string) {
@@ -415,6 +502,24 @@ export function parseMealFromText(text: string, opts?: { nowMs?: number }) {
 
   const seen = new Set<string>();
   const UNIT_LEAD_RE = /^(?:oz|ounce|ounces|cup|cups|head|heads|slice|slices|piece|pieces|wrap|wraps|tortilla|tortillas|serving|servings)\b/i;
+  const WORD_QUANTITIES: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+  };
+  const parseWordQuantity = (raw?: string) => {
+    if (!raw) return null;
+    const cleaned = raw.toLowerCase();
+    if (cleaned === 'a' || cleaned === 'an') return 1;
+    return WORD_QUANTITIES[cleaned] ?? null;
+  };
 
   const recordItem = (foodNameRaw: string, quantity: number, unit: string) => {
     const cleaned = normalizeFoodName(foodNameRaw);
@@ -489,8 +594,17 @@ export function parseMealFromText(text: string, opts?: { nowMs?: number }) {
   }
 
   if (hasFoodCue) {
-    const genericQuantityPattern = /(\d+(?:\.\d+)?)\s+([a-zA-Z][a-zA-Z\s]+)/gi;
-    for (const match of text.matchAll(genericQuantityPattern)) {
+    const wordQuantityPattern = /\b(one|two|three|four|five|six|seven|eight|nine|ten|a|an)\s+([a-zA-Z][a-zA-Z\s]{2,40})/gi;
+    for (const match of text.matchAll(wordQuantityPattern)) {
+      const quantity = parseWordQuantity(match[1]);
+      const foodName = match[2].trim();
+      if (!quantity) continue;
+      if (UNIT_LEAD_RE.test(foodName)) continue;
+      recordItem(foodName, quantity, 'serving');
+    }
+
+    const numericQuantityPattern = /(\d+(?:\.\d+)?)\s+([a-zA-Z][a-zA-Z\s]+)/gi;
+    for (const match of text.matchAll(numericQuantityPattern)) {
       const quantity = parseFloat(match[1]);
       const foodName = match[2].trim();
       if (UNIT_LEAD_RE.test(foodName)) continue;
@@ -503,10 +617,11 @@ export function parseMealFromText(text: string, opts?: { nowMs?: number }) {
     recordItem('Chipotle Burrito Bowl', 1, 'item');
   }
 
-  const simplePattern = /\b(?:had|ate|having|got)\s+(?:a\s+|an\s+)?([a-zA-Z][a-zA-Z\s]{2,20})/gi;
+  const simplePattern = /\b(?:had|ate|having|got)\s+(?:(one|two|three|four|five|six|seven|eight|nine|ten|a|an)\s+)?([a-zA-Z][a-zA-Z\s]{2,40})/gi;
   for (const match of text.matchAll(simplePattern)) {
-    const foodName = match[1].trim();
-    recordItem(foodName, 1, 'serving');
+    const quantity = parseWordQuantity(match[1]) ?? 1;
+    const foodName = match[2].trim();
+    recordItem(foodName, quantity, 'serving');
   }
 
   if (items.length === 0) return null;

@@ -1,0 +1,31 @@
+{
+  "task_description": "Need you to reframe the notes explorer page because, obviously, like, nothing is fitting in here. And, like, you know, when I click something or, like, whatever, you'll see here it needs to have all the properties of, like, everything that came up. And I need it to come up almost like an Obsidian page where it's almost like a file folder that you can search and that everything here is consolidated to 1 line at the top because that's like, it just takes up too much space. And yeah. And then so go ahead and fix that. And then on the notes explorer, you'll see that's, like, 1 page here. But You can get rid of these 3 views because, these are the these are the same as notes explorer, so you can get rid of that. And then, also, you can get rid of this. There's you can get rid of actually all of these because, this is, you know, like, that's all within the notes explorer, so you can get rid of all those. And then Yeah. So you can get rid of all that.",
+  "workflow_type": "feature",
+  "attached_images": [
+    {
+      "filename": "screenshot-1768321295439.png",
+      "path": "attachments/screenshot-1768321295439.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321310792.png",
+      "path": "attachments/screenshot-1768321310792.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321325119.png",
+      "path": "attachments/screenshot-1768321325119.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321367297.png",
+      "path": "attachments/screenshot-1768321367297.png",
+      "description": ""
+    },
+    {
+      "filename": "screenshot-1768321386331.png",
+      "path": "attachments/screenshot-1768321386331.png",
+      "description": ""
+    }
+  ]
+}

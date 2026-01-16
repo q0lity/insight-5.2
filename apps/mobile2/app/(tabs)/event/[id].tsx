@@ -6,7 +6,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { Text, View } from '@/components/Themed';
 import { useTheme } from '@/src/state/theme';
-import { getEvent, updateEvent, type MobileEvent } from '@/src/storage/events';
+import { getEvent, listEvents, updateEvent, type MobileEvent } from '@/src/storage/events';
 import { createTask, listTasks, completeTask, type MobileTask } from '@/src/storage/tasks';
 import { createTrackerLog, deleteTrackerLog, listTrackerLogs, updateTrackerLog, type TrackerLogEntry } from '@/src/storage/trackers';
 import { useSession } from '@/src/state/session';
@@ -71,6 +71,7 @@ export default function EventDetailScreen() {
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
   const [estimateMinutes, setEstimateMinutes] = useState('');
+  const [childEvents, setChildEvents] = useState<MobileEvent[]>([]);
   const [subtasks, setSubtasks] = useState<MobileTask[]>([]);
   const [subtaskDraft, setSubtaskDraft] = useState('');
   const [trackerLogs, setTrackerLogs] = useState<TrackerLogEntry[]>([]);
@@ -134,6 +135,21 @@ export default function EventDetailScreen() {
       mounted = false;
     };
   }, [eventId, active?.id]);
+
+  useEffect(() => {
+    if (!eventId) return;
+    let mounted = true;
+    listEvents().then((events) => {
+      if (!mounted) return;
+      const children = events
+        .filter((entry) => entry.parentEventId === eventId)
+        .sort((a, b) => a.startAt - b.startAt);
+      setChildEvents(children);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [eventId]);
 
   useEffect(() => {
     if (!eventId) return;
@@ -1078,6 +1094,62 @@ export default function EventDetailScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>Embedded Blocks</Text>
+          </View>
+          {childEvents.length ? (
+            childEvents.map((child) => {
+              const kindLabel = child.kind === 'episode' ? 'Segment' : child.kind === 'log' ? 'Log' : 'Event';
+              const endAt = child.endAt;
+              const timeLabel = endAt ? `${formatTime(child.startAt)} - ${formatTime(endAt)}` : formatTime(child.startAt);
+              const durationMinutes = endAt ? Math.max(1, Math.round((endAt - child.startAt) / 60000)) : null;
+              const metaLabel = durationMinutes ? `${timeLabel} · ${durationMinutes}m` : timeLabel;
+              const childTags = child.tags ?? [];
+              return (
+                <Pressable
+                  key={child.id}
+                  onPress={() => router.push(`/event/${child.id}`)}
+                  style={[
+                    styles.embeddedCard,
+                    { backgroundColor: palette.surface, borderColor: palette.border },
+                  ]}>
+                  <View style={styles.embeddedHeader}>
+                    <View style={styles.embeddedMeta}>
+                      <Text style={[styles.embeddedTitle, { color: palette.text }]}>{child.title || 'Untitled'}</Text>
+                      <Text style={[styles.embeddedMetaText, { color: palette.textSecondary }]}>{metaLabel}</Text>
+                    </View>
+                    <View style={[styles.embeddedPill, { borderColor: palette.tint }]}>
+                      <Text style={[styles.embeddedPillText, { color: palette.tint }]}>{kindLabel}</Text>
+                    </View>
+                  </View>
+                  {childTags.length ? (
+                    <View style={styles.embeddedTags}>
+                      {childTags.slice(0, 5).map((tag) => (
+                        <View
+                          key={`${child.id}_${tag}`}
+                          style={[
+                            styles.embeddedTag,
+                            { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' },
+                          ]}>
+                          <Text style={[styles.embeddedTagText, { color: palette.text }]}>#{tag}</Text>
+                        </View>
+                      ))}
+                      {childTags.length > 5 ? (
+                        <Text style={[styles.embeddedMore, { color: palette.textSecondary }]}>
+                          +{childTags.length - 5}
+                        </Text>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+            })
+          ) : (
+            <Text style={[styles.emptyText, { color: palette.textSecondary }]}>No embedded blocks yet.</Text>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
             <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>Subtasks</Text>
           </View>
           <View style={styles.subtaskRow}>
@@ -1641,6 +1713,65 @@ const styles = StyleSheet.create({
   },
   subtaskMeta: {
     flex: 1,
+  },
+  embeddedCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 14,
+    gap: 10,
+  },
+  embeddedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  embeddedMeta: {
+    flex: 1,
+    gap: 4,
+  },
+  embeddedTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    fontFamily: 'Figtree',
+  },
+  embeddedMetaText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Figtree',
+  },
+  embeddedPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  embeddedPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    fontFamily: 'Figtree',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  embeddedTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  embeddedTag: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  embeddedTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'Figtree',
+  },
+  embeddedMore: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'Figtree',
   },
   subtaskTitle: {
     fontSize: 15,
