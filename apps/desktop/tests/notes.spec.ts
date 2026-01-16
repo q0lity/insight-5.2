@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { openCaptureModal } from './helpers/open-capture'
 
 /**
  * E2E tests for Notes View functionality
@@ -39,7 +40,7 @@ test.describe('Notes View', () => {
   test.describe('Note Creation Flow', () => {
     test('created note appears in notes list', async ({ page }) => {
       // Create a note
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const uniqueText = `Test note ${Date.now()}`
       await page.locator('.captureTextarea').fill(uniqueText)
       await page.getByRole('button', { name: 'Save Note' }).click()
@@ -65,7 +66,7 @@ test.describe('Notes View', () => {
   test.describe('Note Display', () => {
     test('notes render markdown correctly', async ({ page }) => {
       // Create a note with markdown
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('# Test Heading\n\n- [ ] Task item')
       await page.getByRole('button', { name: 'Save Note' }).click()
 
@@ -90,7 +91,7 @@ test.describe('Notes View', () => {
   test.describe('Checkbox Interaction', () => {
     test('clicking checkbox toggles state', async ({ page }) => {
       // Create note with checkbox
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('- [ ] Click me')
       await page.getByRole('button', { name: 'Save Note' }).click()
 
@@ -128,7 +129,7 @@ test.describe('Notes View', () => {
     test('can search for notes', async ({ page }) => {
       // Create a unique note
       const uniqueTag = `#test${Date.now()}`
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(`Note with unique tag ${uniqueTag}`)
       await page.getByRole('button', { name: 'Save Note' }).click()
 
@@ -148,7 +149,7 @@ test.describe('Notes View', () => {
 
   test.describe('Tag Display', () => {
     test('tags render as colored chips', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Note with #important and #urgent tags')
       await page.getByRole('button', { name: 'Save Note' }).click()
 

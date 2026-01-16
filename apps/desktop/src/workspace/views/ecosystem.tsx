@@ -670,8 +670,14 @@ export function EcosystemView(props: {
 
   function removeHabitById(id: string) {
     hideValue('habits', id)
-    const nextDefs = habitDefs.filter((h) => h.id !== id)
-    if (nextDefs.length !== habitDefs.length) updateHabits(nextDefs)
+    setHabitDefs((prev) => {
+      const nextDefs = prev.filter((h) => h.id !== id)
+      if (nextDefs.length !== prev.length) {
+        saveHabits(nextDefs)
+        window.dispatchEvent(new Event(HABITS_UPDATED_EVENT))
+      }
+      return nextDefs
+    })
     if (selection.kind === 'habit' && selection.id === id) setSelection({ kind: 'none' })
   }
 

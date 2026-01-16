@@ -243,7 +243,10 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
   }
 
   function removeHabit(id: string) {
-    setDefs((prev) => prev.filter((h) => h.id !== id))
+    setDefs((prev) => {
+      const next = prev.filter((h) => h.id !== id)
+      return next.length === prev.length ? prev : next
+    })
     setSelectedId((prev) => (prev === id ? null : prev))
     void deleteHabitFromSupabase(id)
   }
@@ -320,7 +323,7 @@ export function HabitsView(props: { events: CalendarEvent[]; onCreatedEvent: (ev
       <div className="flex-1 overflow-hidden px-8 pb-24 max-w-7xl mx-auto w-full">
         <div className="flex flex-col xl:flex-row gap-6 h-full">
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-            <div className="flex flex-col gap-3">
+            <div className="habitGrid">
               {defs.length === 0 && <div className="py-20 text-center opacity-30 font-bold uppercase text-xs tracking-widest">No habits defined</div>}
               {defs.map((h) => {
                 const isSelected = selectedId === h.id

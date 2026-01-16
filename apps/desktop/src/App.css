@@ -9398,20 +9398,20 @@ select:focus-visible {
 
 .notesViewToggle {
   display: flex;
-  background: rgba(10, 12, 18, 0.75);
-  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
-  border-radius: 8px;
-  padding: 2px;
+  background: var(--glass2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
 }
 
 .notesViewToggle button {
   width: auto;
   min-width: 56px;
-  height: 28px;
+  height: 26px;
   padding: 0 10px;
   border: none;
   background: transparent;
-  border-radius: 6px;
+  border-radius: 999px;
   color: var(--muted);
   cursor: pointer;
   display: grid;
@@ -9426,9 +9426,9 @@ select:focus-visible {
 }
 
 .notesViewToggle button.active {
-  background: rgba(22, 28, 38, 0.9);
+  background: var(--glass3);
   color: var(--text);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.35);
 }
 
 .notesNewBtn {
@@ -9467,9 +9467,9 @@ select:focus-visible {
   align-items: center;
   gap: 8px;
   padding: 0 10px;
-  background: rgba(12, 15, 22, 0.9);
-  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
-  border-radius: 8px;
+  background: var(--glass2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
   color: var(--muted);
 }
 
@@ -9490,9 +9490,9 @@ select:focus-visible {
 .notesSortSelect {
   height: 32px;
   padding: 0 10px;
-  background: rgba(12, 15, 22, 0.9);
-  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
-  border-radius: 8px;
+  background: var(--glass2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text);
@@ -9513,8 +9513,8 @@ select:focus-visible {
   gap: 6px;
   padding: 4px;
   border-radius: 999px;
-  background: rgba(10, 12, 18, 0.75);
-  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+  background: var(--glass2);
+  border: 1px solid var(--border);
 }
 
 .notesFilterTab {
@@ -9533,7 +9533,7 @@ select:focus-visible {
 }
 
 .notesFilterTab.active {
-  background: rgba(22, 28, 38, 0.9);
+  background: var(--glass3);
   color: var(--text);
   box-shadow: 0 6px 16px rgba(0,0,0,0.35);
 }
@@ -9547,8 +9547,8 @@ select:focus-visible {
 .notesFilterChip {
   height: 26px;
   padding: 0 10px;
-  background: rgba(12, 15, 22, 0.9);
-  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+  background: var(--glass2);
+  border: 1px solid var(--border);
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
@@ -9584,8 +9584,8 @@ select:focus-visible {
 .notesTagChip {
   height: 26px;
   padding: 0 10px;
-  background: rgba(12, 15, 22, 0.9);
-  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+  background: var(--glass2);
+  border: 1px solid var(--border);
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
@@ -9639,8 +9639,8 @@ select:focus-visible {
 /* Cards Grid */
 .notesMasonry {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
 }
 
 .notesCard {
@@ -9648,74 +9648,70 @@ select:focus-visible {
   text-align: left;
   display: flex;
   flex-direction: column;
-  padding: 20px;
-  background: var(--glass);
-  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
-  border-radius: 18px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
   cursor: pointer;
-  transition: all 150ms ease;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  min-height: 44px;
+  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.18);
 }
 
 .notesCard:hover {
   border-color: var(--accentBorder);
-  box-shadow: 0 16px 32px rgba(0,0,0,0.35);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.24);
   transform: translateY(-2px);
 }
 
 .notesCard.active {
   border-color: var(--accent);
-  background: var(--glass2);
-  box-shadow: 0 16px 32px rgba(0,0,0,0.4);
+  background: var(--glass);
+  box-shadow: 0 18px 32px var(--glowSoft);
 }
 
 .notesCardTitle {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
 .notesCardTitle > span:first-child {
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.4;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   letter-spacing: -0.01em;
 }
 
 .notesCardDate {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   color: var(--muted);
   white-space: nowrap;
   flex-shrink: 0;
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
 .notesCardPreview {
-  font-size: 13px;
+  font-size: 11px;
   color: var(--muted);
-  line-height: 1.5;
+  line-height: 1.4;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  margin-top: 10px;
+  margin-top: 4px;
 }
 
 .notesCardMeta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+  display: none;
 }
 
 .notesCardPlace,
@@ -9737,17 +9733,14 @@ select:focus-visible {
 }
 
 .notesCardTags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 12px;
+  display: none;
 }
 
 .notesCardTags span {
-  padding: 4px 10px;
-  background: color-mix(in srgb, var(--glass2) 80%, transparent);
-  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
-  border-radius: 6px;
+  padding: 5px 12px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
   color: var(--text);
@@ -9979,8 +9972,8 @@ select:focus-visible {
 .notesTable {
   display: flex;
   flex-direction: column;
-  background: rgba(12, 16, 22, 0.92);
-  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+  background: var(--glass);
+  border: 1px solid var(--border);
   border-radius: 16px;
   overflow: hidden;
 }
@@ -9990,8 +9983,8 @@ select:focus-visible {
   grid-template-columns: 80px minmax(200px, 0.9fr) minmax(320px, 2fr) minmax(200px, 1fr);
   gap: 12px;
   padding: 10px 14px;
-  background: rgba(10, 12, 18, 0.95);
-  border-bottom: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+  background: var(--glass2);
+  border-bottom: 1px solid var(--border);
   font-size: 10px;
   font-weight: 700;
   color: var(--muted);
@@ -12938,31 +12931,35 @@ select:focus-visible {
 
 .goalCardGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+  gap: 24px;
 }
 
 .goalCard {
   border: 1px solid var(--border);
-  background: var(--panel);
-  border-radius: 20px;
-  padding: 16px;
+  background: var(--glass);
+  border-radius: 22px;
+  padding: 28px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   text-align: left;
-  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  box-shadow: var(--shadowSoft), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  min-height: 240px;
 }
 
 .goalCard:hover {
-  border-color: rgba(17, 24, 39, 0.12);
-  box-shadow: 0 16px 26px rgba(15, 23, 42, 0.08);
-  transform: translateY(-1px);
+  border-color: var(--border2);
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
 }
 
 .goalCard.active {
   border-color: var(--accentBorder);
-  box-shadow: 0 18px 30px var(--glowSoft);
+  box-shadow: 0 22px 44px var(--glow);
 }
 
 .goalCardHeader {
@@ -12973,7 +12970,7 @@ select:focus-visible {
 }
 
 .goalCardTitle {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 900;
 }
 
@@ -12997,50 +12994,168 @@ select:focus-visible {
 }
 
 .goalCardStats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
 .goalCardStat {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
   font-size: 11px;
   font-weight: 700;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.goalCardStat span {
   color: var(--muted);
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: var(--panel2);
-  border: 1px solid var(--border);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .goalCardStat strong {
   color: var(--text);
   font-weight: 800;
-  font-size: 13px;
+  font-size: 12px;
+  letter-spacing: 0;
 }
 
 .goalCardFooter {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .goalCardChip {
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--panel2);
+  border: 1px solid var(--accentBorder);
+  background: var(--accentSoft);
   font-size: 10px;
   font-weight: 700;
+  color: var(--accent);
 }
 
 .goalCardFooterEmpty {
   font-size: 11px;
   font-weight: 700;
   color: var(--muted);
+}
+
+.projectCardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+  gap: 24px;
+}
+
+.projectCard {
+  border: 1px solid var(--border);
+  background: var(--glass);
+  border-radius: 22px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  box-shadow: var(--shadowSoft), inset 0 1px 0 var(--edge-highlight), inset 0 -1px 0 var(--edge-shadow);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  min-height: 220px;
+}
+
+.projectCard:hover {
+  border-color: var(--border2);
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
+}
+
+.projectCard.active {
+  border-color: var(--accentBorder);
+  box-shadow: 0 22px 44px var(--glow);
+}
+
+.projectCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.projectCardTitle {
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.projectCardMeta {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.projectCardBadge {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--accentBorder);
+  background: var(--accentSoft);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.projectCardStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.projectCardStat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: color-mix(in srgb, var(--glass2) 70%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.projectCardStat span {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.projectCardStat strong {
+  color: var(--text);
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+@media (max-width: 900px) {
+  .goalCardGrid,
+  .projectCardGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .goalSidebar {
@@ -13231,13 +13346,25 @@ select:focus-visible {
   color: var(--muted);
 }
 
+.habitGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1200px) {
+  .habitGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .habitRowCard {
   border: 1px solid var(--border);
   background: var(--panel);
   border-radius: 16px;
   padding: 14px;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(300px, 1.4fr);
+  grid-template-columns: 1fr;
   gap: 12px;
   transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
 }
@@ -13336,7 +13463,7 @@ select:focus-visible {
 .habitRowMetrics {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -14260,4 +14387,436 @@ select:focus-visible {
 
 :root[data-density='compact'] .kbCount {
   font-size: 10px;
+}
+
+/* Trackers dashboard */
+.trackersDashboardRoot {
+  position: relative;
+  overflow: hidden;
+}
+
+.trackersDashboardRoot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(640px 260px at 12% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 68%),
+    radial-gradient(620px 320px at 88% 0%, color-mix(in srgb, #ffffff 8%, transparent), transparent 62%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.03), transparent 55%);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.trackersDashboardContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.trackerHeaderKicker {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  color: var(--muted);
+}
+
+.trackerHeaderPill {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--glass2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.trackerHeaderMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--glass2);
+}
+
+.trackerHeaderMetaLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.trackerHeaderMetaValue {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.trackersSummaryGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.trackersSummaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.trackersSummaryLabel {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.trackersSummaryValue {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.trackersSummarySub {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.trackersFocusRow {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 1100px) {
+  .trackersFocusRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trackerBadge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--accentBorder);
+  background: var(--accentSoft);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.trackerHero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 260px;
+}
+
+.trackerHeroHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.trackerHeroTitle {
+  font-size: 20px;
+  font-weight: 800;
+  margin-top: 6px;
+}
+
+.trackerHeroMeta {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.trackerHeroValue {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.trackerHeroValue span {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.trackerHeroValue small {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.trackerHeroStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trackerHeroStats div {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.trackerHeroStats strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.trackerRhythm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.trackerRhythmHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trackerRhythmHeader h3 {
+  font-size: 18px;
+  font-weight: 800;
+  margin-top: 6px;
+}
+
+.trackerRhythmMeta {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.trackerRhythmBars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  align-items: end;
+  height: 140px;
+}
+
+.trackerRhythmBar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.trackerRhythmBarFill {
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 70%, #ffffff) 0%, rgba(0, 0, 0, 0) 100%);
+  box-shadow: 0 12px 20px var(--glowSoft);
+}
+
+.trackersCardGrid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.trackerCard {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: auto;
+  padding: 18px;
+}
+
+.trackerCard.active {
+  border-color: var(--accentBorder);
+  box-shadow: 0 18px 36px var(--glowSoft);
+}
+
+.trackerCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trackerCardTitle {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.trackerCardSub {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.trackerTrend {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--glass2);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.trackerTrend small {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+}
+
+.trackerTrend.up {
+  color: #3D8856;
+  border-color: color-mix(in srgb, #3D8856 40%, transparent);
+  background: rgba(61, 136, 86, 0.16);
+}
+
+.trackerTrend.down {
+  color: #CF423C;
+  border-color: color-mix(in srgb, #CF423C 40%, transparent);
+  background: rgba(207, 66, 60, 0.16);
+}
+
+.trackerCardValueRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trackerCardValue {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.trackerCardMeta {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.trackerSparkline {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(6px, 1fr);
+  gap: 6px;
+  height: 46px;
+  align-items: end;
+}
+
+.trackerSparkline.hero {
+  height: 72px;
+}
+
+.trackerSparklineBar {
+  border-radius: 999px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 70%, #ffffff) 0%, rgba(0, 0, 0, 0) 100%);
+  opacity: 0.8;
+  transition: opacity 160ms ease, transform 160ms ease;
+  transform-origin: bottom;
+}
+
+.trackerCard:hover .trackerSparklineBar,
+.trackerHero:hover .trackerSparklineBar {
+  opacity: 1;
+  transform: scaleY(1.05);
+}
+
+.trackerSparklineEmpty {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 8px 0;
+}
+
+.trackerCardStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.trackerCardStats div {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.trackerCardStats strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.trackerCardFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.trackerEmptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 140px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
 }

@@ -203,35 +203,46 @@ export function ProjectsView(props: {
         <div className="flex gap-8 h-full">
           <div className="w-full flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
             {projectRows.length === 0 && <div className="py-20 text-center opacity-30 font-bold uppercase text-xs tracking-widest">No projects yet</div>}
-            {projectRows.map((row) => (
-              <button
-                key={row.key}
-                className={`goalListItem ${activeKey === row.key ? 'active' : ''}`}
-                onClick={() => {
-                  const def = ensureProjectDef(row.name)
-                  if (def) {
-                    setActiveKey(normalizeKey(def.name))
-                    props.onSelectProject?.(def.name)
-                  }
-                }}
-              >
-                <div className="goalListTitleRow">
-                  <h3 className="goalListTitle">{row.name}</h3>
-                  <Icon name="chevronRight" size={16} className="goalListChevron" />
-                </div>
-                <div className="goalListMeta">
-                  <span className="goalListDate">{row.stats.lastAt ? new Date(row.stats.lastAt).toLocaleDateString() : 'No activity yet'}</span>
-                  <span className="goalListStat">
-                    <Icon name="calendar" size={10} className="goalListStatIcon calendar" />
-                    {Math.round(row.stats.minutes)}m
-                  </span>
-                  <span className="goalListStat">
-                    <Icon name="bolt" size={10} className="goalListStatIcon" />
-                    {row.stats.eventCount + row.stats.taskCount} items
-                  </span>
-                </div>
-              </button>
-            ))}
+            <div className="projectCardGrid">
+              {projectRows.map((row) => (
+                <button
+                  key={row.key}
+                  type="button"
+                  className={`projectCard ${activeKey === row.key ? 'active' : ''}`}
+                  onClick={() => {
+                    const def = ensureProjectDef(row.name)
+                    if (def) {
+                      setActiveKey(normalizeKey(def.name))
+                      props.onSelectProject?.(def.name)
+                    }
+                  }}
+                >
+                  <div className="projectCardHeader">
+                    <div>
+                      <div className="projectCardTitle">{row.name}</div>
+                      <div className="projectCardMeta">
+                        {row.stats.lastAt ? `Last active ${new Date(row.stats.lastAt).toLocaleDateString()}` : 'No activity yet'}
+                      </div>
+                    </div>
+                    <div className="projectCardBadge">{row.stats.eventCount + row.stats.taskCount} items</div>
+                  </div>
+                  <div className="projectCardStats">
+                    <div className="projectCardStat">
+                      <span>Minutes</span>
+                      <strong>{Math.round(row.stats.minutes)}m</strong>
+                    </div>
+                    <div className="projectCardStat">
+                      <span>Events</span>
+                      <strong>{row.stats.eventCount}</strong>
+                    </div>
+                    <div className="projectCardStat">
+                      <span>Tasks</span>
+                      <strong>{row.stats.taskCount}</strong>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="flex-1 pageHero overflow-hidden flex flex-col">

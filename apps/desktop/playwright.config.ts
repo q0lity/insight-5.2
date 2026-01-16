@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 /**
  * Playwright configuration for Insight Desktop E2E tests
- * Targets web version at http://127.0.0.1:5175
+ * Targets web version at http://127.0.0.1:5174
  */
 export default defineConfig({
   testDir: './tests',
@@ -25,7 +25,7 @@ export default defineConfig({
   // Shared settings for all projects
   use: {
     // Base URL to use in actions like `await page.goto('/')`
-    baseURL: 'http://127.0.0.1:5175',
+    baseURL: 'http://127.0.0.1:5174',
 
     // Collect trace when retrying the failed test
     trace: 'on-first-retry',
@@ -71,7 +71,7 @@ export default defineConfig({
   // Run your local dev server before starting the tests
   webServer: {
     command: 'npm run dev:web',
-    url: 'http://127.0.0.1:5175',
+    url: 'http://127.0.0.1:5174',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },

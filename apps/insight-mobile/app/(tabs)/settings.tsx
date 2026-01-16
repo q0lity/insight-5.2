@@ -1,4 +1,5 @@
 import { StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
@@ -40,6 +41,7 @@ function SettingRow({ icon, label, value, onPress, danger }: SettingRowProps) {
 export default function SettingsScreen() {
   const { palette, themeMode, setThemeMode, displayMode, setDisplayMode } = useTheme();
   const { session, signOut, forceReauthenticate } = useAuth();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const handleThemeChange = () => {
@@ -59,7 +61,15 @@ export default function SettingsScreen() {
       'Are you sure you want to sign out?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: () => void signOut() },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: () => {
+            void signOut().finally(() => {
+              router.replace('/auth');
+            });
+          },
+        },
       ]
     );
   };
@@ -70,9 +80,23 @@ export default function SettingsScreen() {
       'This will clear all session data and require you to sign in again.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Continue', style: 'destructive', onPress: () => void forceReauthenticate() },
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () => {
+            void forceReauthenticate().finally(() => {
+              router.replace('/auth');
+            });
+          },
+        },
       ]
     );
+  };
+
+  const handleSignIn = () => {
+    void forceReauthenticate().finally(() => {
+      router.replace('/auth');
+    });
   };
 
   const themeLabel = themeMode === 'system' ? 'System' : themeMode === 'dark' ? 'Dark' : 'Light';
@@ -114,17 +138,27 @@ export default function SettingsScreen() {
 
       <View style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
         <Text style={[styles.sectionTitle, { color: palette.textSecondary }]}>Actions</Text>
-        <SettingRow
-          icon="refresh"
-          label="Force Re-authenticate"
-          onPress={handleForceReauth}
-        />
-        <SettingRow
-          icon="sign-out"
-          label="Sign Out"
-          onPress={handleSignOut}
-          danger
-        />
+        {session ? (
+          <>
+            <SettingRow
+              icon="refresh"
+              label="Force Re-authenticate"
+              onPress={handleForceReauth}
+            />
+            <SettingRow
+              icon="sign-out"
+              label="Sign Out"
+              onPress={handleSignOut}
+              danger
+            />
+          </>
+        ) : (
+          <SettingRow
+            icon="sign-in"
+            label="Sign In"
+            onPress={handleSignIn}
+          />
+        )}
       </View>
 
       <View style={styles.footer}>

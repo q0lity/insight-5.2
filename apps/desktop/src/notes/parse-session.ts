@@ -1,4 +1,6 @@
 import { parseCaptureNatural, parseCaptureWithBlocks } from '../nlp/natural'
+import { parseMealFromText } from '../storage/nutrition'
+import { parseWorkoutFromText } from '../storage/workouts'
 import { appendSectionLines, ensureSystemFrontmatter, parseNoteDoc, serializeNoteDoc, upsertSection, type NoteDoc } from './doc-model'
 
 type TranscriptEntry = {
@@ -25,6 +27,26 @@ function formatTimeLabel(ms: number) {
   return `${hh}:${mm}`
 }
 
+function formatDateStamp(ms: number) {
+  const safeMs = Number.isFinite(ms) ? ms : Date.now()
+  const d = new Date(safeMs)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+function formatDateTimeStamp(ms: number) {
+  const safeMs = Number.isFinite(ms) ? ms : Date.now()
+  const d = new Date(safeMs)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const hh = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`
+}
+
 function normalizeTimeToken(raw: string | null | undefined) {
   if (!raw) return null
   const cleaned = raw.replace(/[^0-9]/g, '')
@@ -47,6 +69,173 @@ function summarizeHeadline(text: string) {
   const sentence = cleaned.split(/[.!?]/)[0] ?? cleaned
   const words = sentence.split(/\s+/).filter(Boolean)
   return words.slice(0, 10).join(' ')
+}
+
+type TableColumn = { key: string; label: string; align?: 'left' | 'right' }
+
+function formatTitleCase(raw: string) {
+  if (!raw) return ''
+  return raw.charAt(0).toUpperCase() + raw.slice(1)
+}
+
+function formatNumber(value: number | null | undefined, decimals = 0) {
+  if (value == null || !Number.isFinite(value)) return ''
+  return decimals > 0 ? value.toFixed(decimals) : Math.round(value).toString()
+}
+
+function formatDuration(seconds: number | null | undefined) {
+  if (seconds == null || !Number.isFinite(seconds)) return ''
+  const mins = Math.round(seconds / 60)
+  if (mins <= 0) return ''
+  if (mins < 60) return `${mins}m`
+  const hours = Math.floor(mins / 60)
+  const rem = mins % 60
+  return rem ? `${hours}h ${rem}m` : `${hours}h`
+}
+
+function formatDistance(miles: number | null | undefined) {
+  if (miles == null || !Number.isFinite(miles)) return ''
+  if (miles < 0.1) return ''
+  const rounded = miles < 10 ? miles.toFixed(1) : Math.round(miles).toString()
+  return `${rounded} mi`
+}
+
+function formatRange(values: Array<number | null | undefined>, decimals = 0) {
+  const cleaned = values.filter((value): value is number => value != null && Number.isFinite(value))
+  if (!cleaned.length) return ''
+  const min = Math.min(...cleaned)
+  const max = Math.max(...cleaned)
+  const format = (value: number) => (decimals > 0 ? value.toFixed(decimals) : Math.round(value).toString())
+  if (min === max) return format(min)
+  return `${format(min)}-${format(max)}`
+}
+
+function buildAsciiTable(columns: TableColumn[], rows: Array<Record<string, string>>, footerRows?: Array<Record<string, string>>) {
+  if (!rows.length) return []
+  const widths = columns.map((col) => col.label.length)
+  const allRows = footerRows?.length ? [...rows, ...footerRows] : rows
+  allRows.forEach((row) => {
+    columns.forEach((col, idx) => {
+      const value = row[col.key] ?? ''
+      widths[idx] = Math.max(widths[idx], value.length)
+    })
+  })
+  const border = `+${widths.map((w) => '-'.repeat(w + 2)).join('+')}+`
+  const formatRow = (row: Record<string, string>) =>
+    `|${columns
+      .map((col, idx) => {
+        const raw = row[col.key] ?? ''
+        const pad = widths[idx] - raw.length
+        const aligned = col.align === 'right' ? `${' '.repeat(pad)}${raw}` : `${raw}${' '.repeat(pad)}`
+        return ` ${aligned} `
+      })
+      .join('|')}|`
+  const lines = [border, formatRow(Object.fromEntries(columns.map((col) => [col.key, col.label]))), border]
+  rows.forEach((row) => lines.push(formatRow(row)))
+  if (footerRows?.length) {
+    lines.push(border)
+    footerRows.forEach((row) => lines.push(formatRow(row)))
+  }
+  lines.push(border)
+  return lines
+}
+
+function buildMealTableLines(meal: NonNullable<ReturnType<typeof parseMealFromText>>) {
+  const items = meal.items ?? []
+  const columns: TableColumn[] = [
+    { key: 'item', label: 'Item' },
+    { key: 'notes', label: 'Notes' },
+    { key: 'calories', label: 'Calories', align: 'right' },
+    { key: 'protein', label: 'Protein g', align: 'right' },
+    { key: 'carbs', label: 'Carbs g', align: 'right' },
+    { key: 'fat', label: 'Fat g', align: 'right' },
+    { key: 'fiber', label: 'Fiber g', align: 'right' },
+    { key: 'sodium', label: 'Sodium mg', align: 'right' },
+  ]
+  const rows = items.map((item) => {
+    const qty = item.quantity != null ? formatNumber(item.quantity, item.quantity % 1 === 0 ? 0 : 1) : ''
+    const unit = item.unit ?? ''
+    const notes = [qty && unit ? `${qty} ${unit}` : qty || unit, item.notes].filter(Boolean).join(', ')
+    return {
+      item: item.name ?? 'Item',
+      notes,
+      calories: formatNumber(item.calories),
+      protein: formatNumber(item.protein),
+      carbs: formatNumber(item.carbs),
+      fat: formatNumber(item.fat),
+      fiber: formatNumber(item.fiber),
+      sodium: formatNumber(item.sodium),
+    }
+  })
+  const sumField = (key: 'calories' | 'protein' | 'carbs' | 'fat' | 'fiber' | 'sodium') => {
+    let total = 0
+    let has = false
+    items.forEach((item) => {
+      const value = item[key]
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        total += value
+        has = true
+      }
+    })
+    return has ? total : null
+  }
+  const totalCalories = meal.totalCalories ?? sumField('calories')
+  const totalMacros = meal.macros ?? {
+    protein: sumField('protein') ?? 0,
+    carbs: sumField('carbs') ?? 0,
+    fat: sumField('fat') ?? 0,
+    fiber: sumField('fiber') ?? undefined,
+    sodium: sumField('sodium') ?? undefined,
+  }
+  const totalRow = {
+    item: 'TOTAL',
+    notes: '',
+    calories: formatNumber(totalCalories ?? undefined),
+    protein: formatNumber(totalMacros.protein ?? undefined),
+    carbs: formatNumber(totalMacros.carbs ?? undefined),
+    fat: formatNumber(totalMacros.fat ?? undefined),
+    fiber: formatNumber(totalMacros.fiber ?? undefined),
+    sodium: formatNumber(totalMacros.sodium ?? undefined),
+  }
+  return buildAsciiTable(columns, rows, [totalRow])
+}
+
+function buildWorkoutTableLines(workout: NonNullable<ReturnType<typeof parseWorkoutFromText>>) {
+  const exercises = workout.exercises ?? []
+  const columns: TableColumn[] = [
+    { key: 'exercise', label: 'Exercise' },
+    { key: 'sets', label: 'Sets', align: 'right' },
+    { key: 'reps', label: 'Reps', align: 'right' },
+    { key: 'weight', label: 'Weight', align: 'right' },
+    { key: 'distance', label: 'Distance', align: 'right' },
+    { key: 'duration', label: 'Duration', align: 'right' },
+    { key: 'rpe', label: 'RPE', align: 'right' },
+  ]
+  const rows = exercises.map((exercise) => {
+    const sets = exercise.sets ?? []
+    const repsValues = sets.map((set) => set.reps)
+    const weightValues = sets.map((set) => set.weight)
+    const distanceTotal = sets.reduce((sum, set) => sum + (set.distance ?? 0), 0)
+    const durationTotal = sets.reduce((sum, set) => sum + (set.duration ?? 0), 0)
+    const rpeValues = sets.map((set) => set.rpe)
+    const rpeValue = rpeValues.filter((value): value is number => value != null && Number.isFinite(value))
+    const rpe =
+      rpeValue.length > 0
+        ? Math.round(rpeValue.reduce((sum, value) => sum + value, 0) / rpeValue.length).toString()
+        : workout.overallRpe != null
+          ? Math.round(workout.overallRpe).toString()
+          : ''
+    return {
+      exercise: exercise.name ?? 'Exercise',
+      sets: sets.length ? `${sets.length}` : '',
+      reps: formatRange(repsValues),
+      weight: formatRange(weightValues),
+      distance: formatDistance(distanceTotal),
+      duration: formatDuration(durationTotal),
+      rpe,
+    }
+  })
+  return buildAsciiTable(columns, rows)
 }
 
 function expandInlineTimestampLines(rawText: string) {
@@ -127,6 +316,170 @@ function parseTranscriptEntries(rawText: string | null | undefined, anchorMs: nu
 
 function normalizeTokenValue(raw: string) {
   return raw.trim().replace(/^\s+|\s+$/g, '')
+}
+
+function isSectionHeading(line: string) {
+  const trimmed = line.trim()
+  if (!trimmed) return false
+  if (/^###\s+/.test(trimmed)) return true
+  if (/^entry\b/i.test(trimmed)) return true
+  if (/^time\s*:/i.test(trimmed)) return true
+  if (/^title\s*:/i.test(trimmed)) return true
+  if (/^date\s*:/i.test(trimmed)) return true
+  if (/^created\s*:/i.test(trimmed)) return true
+  if (/^(notes|next actions|completed|trackers|working on|meal|workout)\b/i.test(trimmed)) return true
+  return false
+}
+
+function isTableLine(line: string) {
+  const trimmed = line.trim()
+  if (!trimmed) return false
+  if (trimmed.startsWith('|')) return true
+  if (trimmed.startsWith('+') && /-+/.test(trimmed)) return true
+  return false
+}
+
+function findPreferredTokenLine(lines: string[]) {
+  const headings = [
+    '### Notes',
+    '### Next actions',
+    '### Completed',
+    '### Trackers',
+    'Notes',
+    'Next actions',
+    'Completed',
+    'Trackers',
+    'Working On',
+    'Meal',
+    'Workout',
+  ]
+  for (const heading of headings) {
+    const idx = lines.findIndex((line) => line.trim().toLowerCase() === heading.toLowerCase())
+    if (idx === -1) continue
+    for (let i = idx + 1; i < lines.length; i += 1) {
+      const line = lines[i] ?? ''
+      if (!line.trim()) continue
+      if (isSectionHeading(line) || /^\s*---\s*$/.test(line) || isTableLine(line)) break
+      return i
+    }
+  }
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] ?? ''
+    if (!line.trim()) continue
+    if (isSectionHeading(line) || /^\s*---\s*$/.test(line) || isTableLine(line)) continue
+    return i
+  }
+  return -1
+}
+
+function appendInlineTokens(lines: string[], tokens: string[]) {
+  if (!tokens.length) return
+  const targetIdx = findPreferredTokenLine(lines)
+  if (targetIdx === -1) {
+    lines.push(tokens.join(' '))
+    return
+  }
+  const existing = lines[targetIdx] ?? ''
+  const missing = tokens.filter((token) => !existing.includes(token))
+  if (!missing.length) return
+  lines[targetIdx] = `${existing} ${missing.join(' ')}`.replace(/\s+/g, ' ').trim()
+}
+
+function appendTokensToLine(line: string, tokens: string[]) {
+  if (!tokens.length) return line
+  const missing = tokens.filter((token) => !line.includes(token))
+  if (!missing.length) return line
+  return `${line} ${missing.join(' ')}`.replace(/\s+/g, ' ').trim()
+}
+
+function isTemplateHeaderLine(line: string) {
+  const trimmed = line.trim()
+  if (!trimmed) return false
+  if (/^title\s*:/i.test(trimmed)) return true
+  if (/^date\s*:/i.test(trimmed)) return true
+  if (/^created\s*:/i.test(trimmed)) return true
+  if (/^entry\s*\(outline style; chips woven into the lines\)/i.test(trimmed)) return true
+  return false
+}
+
+function readTemplateValue(lines: string[], re: RegExp) {
+  for (const line of lines) {
+    const match = line.match(re)
+    if (!match?.[1]) continue
+    const value = match[1].trim()
+    if (value) return value
+  }
+  return ''
+}
+
+function ensureTemplateHeader(lines: string[], meta: { title: string; anchorMs: number }) {
+  const firstEntryIdx = lines.findIndex((line) => /^time\s*:/i.test(line.trim()))
+  const headerEnd = firstEntryIdx === -1 ? lines.length : firstEntryIdx
+  const headerSlice = lines.slice(0, headerEnd)
+  const rest = lines.slice(headerEnd)
+
+  const existingTitle = readTemplateValue(headerSlice, /^title\s*:\s*(.+)$/i)
+  const existingDate = readTemplateValue(headerSlice, /^date\s*:\s*(.+)$/i)
+  const existingCreated = readTemplateValue(headerSlice, /^created\s*:\s*(.+)$/i)
+
+  const title = existingTitle || meta.title || 'Untitled'
+  const date = existingDate || formatDateStamp(meta.anchorMs)
+  const created = existingCreated || formatDateTimeStamp(meta.anchorMs)
+
+  const cleanedHeader = headerSlice.filter((line) => !isTemplateHeaderLine(line))
+  const trimmedBody = [...cleanedHeader, ...rest]
+  while (trimmedBody.length && !trimmedBody[0]?.trim()) trimmedBody.shift()
+
+  const headerLines = [
+    `Title: ${title}`,
+    `date: ${date}`,
+    `created: ${created}`,
+    '',
+    'ENTRY (outline style; chips woven into the lines)',
+    '',
+  ]
+
+  const next = [...headerLines, ...trimmedBody]
+  return next
+}
+
+function extractTimeFromEntryLine(line: string) {
+  const match = line.match(/^time\s*:\s*(\d{1,2}:\d{2}|\d{3,4}|\d{1,2}[,]\d{2})/i)
+  return normalizeTimeToken(match?.[1] ?? null)
+}
+
+function findEntryBlocks(lines: string[]) {
+  const blocks: Array<{ time: string; start: number; end: number }> = []
+  let current: { time: string; start: number } | null = null
+  for (let i = 0; i < lines.length; i += 1) {
+    const time = extractTimeFromEntryLine(lines[i] ?? '')
+    if (!time) continue
+    if (current) {
+      blocks.push({ time: current.time, start: current.start, end: i })
+    }
+    current = { time, start: i }
+  }
+  if (current) {
+    blocks.push({ time: current.time, start: current.start, end: lines.length })
+  }
+  return blocks
+}
+
+function mergeEntryBlock(lines: string[], block: { start: number; end: number }, entryLines: string[]) {
+  const currentSlice = lines.slice(block.start, block.end)
+  const existing = new Set(currentSlice.map((line) => line.trim()).filter(Boolean))
+  const toAdd = entryLines.filter((line) => line.trim() && !existing.has(line.trim()))
+  if (!toAdd.length) return { lines, changed: false }
+  const next = [...lines.slice(0, block.end), ...toAdd, ...lines.slice(block.end)]
+  return { lines: next, changed: true }
+}
+
+function insertEntryBlock(lines: string[], entryLines: string[]) {
+  if (!entryLines.length) return { lines, changed: false }
+  const next = [...lines]
+  if (next.length && next[next.length - 1]?.trim() !== '') next.push('')
+  next.push(...entryLines)
+  return { lines: next, changed: true }
 }
 
 function extractTrackerTokensFromText(rawText: string) {
@@ -382,7 +735,29 @@ function extractNoteLines(text: string) {
     const raw = (match[1] ?? '').trim()
     if (raw) notes.push(`Worked on ${raw}`)
   }
+  if (notes.length) return notes
+
+  const narrative = extractNarrativeSentences(text)
+  if (narrative.length) return narrative
   return notes
+}
+
+function extractNarrativeSentences(text: string) {
+  const cleaned = text.replace(/\s+/g, ' ').trim()
+  if (!cleaned) return []
+  const sentences = cleaned.split(/(?<=[.!?])\s+/)
+  const lines: string[] = []
+  for (const sentenceRaw of sentences) {
+    let sentence = sentenceRaw.replace(/[.!?]+$/, '').trim()
+    if (!sentence) continue
+    if (/^pending notes\b/i.test(sentence)) continue
+    sentence = sentence.replace(/^i said[:,]?\s*/i, '').trim()
+    if (!sentence) continue
+    if (/^make this\b/i.test(sentence)) continue
+    lines.push(sentence)
+    if (lines.length >= 6) break
+  }
+  return lines
 }
 
 function extractMediaActivity(text: string) {
@@ -393,25 +768,76 @@ function extractMediaActivity(text: string) {
     title = title.replace(/\b(right now|currently|just|at the moment)\b.*$/i, '').trim()
     title = title.replace(/\b(episode|ep|season)\b.*$/i, '').trim()
     title = title.replace(/\s{2,}/g, ' ').trim()
-    if (title) return { label: `Watching ${title}`.trim(), kind: 'watch' }
+    if (title) return { label: `Watching ${title}`.trim(), kind: 'watch', title }
   }
   const listenMatch = text.match(/\blisten(?:ing)?\s+to\s+([^.;]+)/i)
   if (listenMatch?.[1]) {
     const title = listenMatch[1].replace(/\b(right now|currently|just)\b.*$/i, '').trim()
-    if (title) return { label: `Listening to ${title}`.trim(), kind: 'listen' }
+    if (title) return { label: `Listening to ${title}`.trim(), kind: 'listen', title }
   }
   const readMatch = text.match(/\bread(?:ing)?\s+([^.;]+)/i)
   if (readMatch?.[1]) {
     const title = readMatch[1].replace(/\b(right now|currently|just)\b.*$/i, '').trim()
-    if (title) return { label: `Reading ${title}`.trim(), kind: 'read' }
+    if (title) return { label: `Reading ${title}`.trim(), kind: 'read', title }
   }
-  if (/\bwatch\b/.test(lower)) return { label: 'Watching', kind: 'watch' }
+  if (/\bwatch\b/.test(lower)) return { label: 'Watching', kind: 'watch', title: null }
   return null
 }
 
 function extractEpisodeDetail(text: string) {
+  const rangeMatch = text.match(/\bepisodes?\s+(\d+)\s*(?:and|&|to|-)\s*(\d+)\b/i)
+  if (rangeMatch?.[1] && rangeMatch?.[2]) return `Episodes ${rangeMatch[1]}-${rangeMatch[2]}`
+  const listMatch = text.match(/\bepisodes?\s+(\d+(?:\s*,\s*\d+)+)\b/i)
+  if (listMatch?.[1]) return `Episodes ${listMatch[1].replace(/\s+/g, '')}`
   const match = text.match(/\bepisode\s+(\d+)\b/i) ?? text.match(/\bep\s*(\d+)\b/i)
   return match?.[1] ? `Episode ${match[1]}` : null
+}
+
+function extractImplicitPeople(text: string) {
+  const out: string[] = []
+  for (const m of text.matchAll(/\bwith\s+(?:(?:dr|doctor|mr|ms|mrs|prof|professor)\.?\s+)?([A-Z][\w'’.-]*(?:\s+[A-Z][\w'’.-]*){0,2})\b/gim)) {
+    const name = (m[1] ?? '').trim()
+    if (!name) continue
+    out.push(name)
+  }
+  for (const m of text.matchAll(/\b([A-Z][\w'’.-]*(?:\s+[A-Z][\w'’.-]*){0,2})\s+(?:says?|said|thinks?|thought|mentioned|told|texted|called)\b/gim)) {
+    const name = (m[1] ?? '').trim()
+    if (!name) continue
+    out.push(name)
+  }
+  return Array.from(new Set(out)).slice(0, 8)
+}
+
+function extractImplicitLocations(text: string) {
+  const lower = text.toLowerCase()
+  const out = new Set<string>()
+  if (/\b(in bed|lying in bed|on the bed)\b/i.test(lower)) out.add('bed')
+  if (/\b(on the couch|on the sofa|couch|sofa)\b/i.test(lower)) out.add('couch')
+  if (/\b(at home|home)\b/i.test(lower)) out.add('home')
+  return Array.from(out).slice(0, 8)
+}
+
+function slugifyTag(raw: string) {
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .trim()
+}
+
+function inferNarrativeTags(text: string, activityTitle?: string | null) {
+  const tags = new Set<string>()
+  const lower = text.toLowerCase()
+  if (/\bwatch(?:ing|ed)?\b/.test(lower)) {
+    tags.add('watch')
+    tags.add('tv')
+  }
+  if (/\b(relaxed|chill|resting|lying in bed)\b/.test(lower)) tags.add('rest')
+  if (activityTitle) {
+    const slug = slugifyTag(activityTitle)
+    if (slug && slug.length > 2) tags.add(slug)
+  }
+  return Array.from(tags)
 }
 
 function deriveEntryLabel(entry: TranscriptEntry, tags: string[], workingItems: string[]) {
@@ -449,6 +875,10 @@ function entrySectionLines(entry: TranscriptEntry, anchorMs: number) {
   const trackerTokens = new Set<string>()
   const trackerLines: string[] = []
   const parsedBlocks = parseCaptureWithBlocks(entryText, anchorMs)
+  const blockTags = new Set<string>()
+  const blockPeople = new Set<string>()
+  const blockContexts = new Set<string>()
+  const blockLocations = new Set<string>()
   parsedBlocks.blocks.forEach((block) => {
     block.trackers.forEach((tracker) => {
       const value = Math.round(tracker.value)
@@ -459,29 +889,112 @@ function entrySectionLines(entry: TranscriptEntry, anchorMs: number) {
         : `${tracker.key}: ${value}`
       trackerLines.push(`- ${numericLabel} ${token}`.trim())
     })
+    block.tags.forEach((tag) => blockTags.add(tag))
+    block.people.forEach((person) => blockPeople.add(person))
+    block.contexts.forEach((context) => blockContexts.add(context))
+    block.locations.forEach((location) => blockLocations.add(location))
   })
   const activity = extractMediaActivity(entryText)
+  const implicitPeople = extractImplicitPeople(entryText)
+  const implicitLocations = extractImplicitLocations(entryText)
+  const narrativeTags = inferNarrativeTags(entryText, activity?.title)
+  const tagTokens = new Set<string>()
+  inferredTags.forEach((tag) => tagTokens.add(tag.replace(/^#/, '')))
+  workingTags.forEach((tag) => tagTokens.add(tag.replace(/^#/, '')))
+  blockTags.forEach((tag) => tagTokens.add(tag.replace(/^#/, '')))
+  narrativeTags.forEach((tag) => tagTokens.add(tag.replace(/^#/, '')))
+  const parsedMeal = parseMealFromText(entryText, { nowMs: anchorMs })
+  const parsedWorkout = parseWorkoutFromText(entryText)
+  const mealTokens = (parsedMeal?.tags ?? [])
+    .map((tag) => slugifyTag(tag.replace(/^#/, '')))
+    .filter(Boolean)
+    .map((tag) => `#${tag}`)
+  const workoutTokens = (parsedWorkout?.tags ?? [])
+    .map((tag) => slugifyTag(tag.replace(/^#/, '')))
+    .filter(Boolean)
+    .map((tag) => `#${tag}`)
+  const skipTagTokens = new Set([...mealTokens, ...workoutTokens].map((token) => token.toLowerCase()))
+  const peopleTokens = Array.from(new Set([...blockPeople, ...implicitPeople]))
+  const contextTokens = Array.from(blockContexts)
+  const locationTokens = Array.from(new Set([...blockLocations, ...implicitLocations]))
   const label = activity?.label ?? deriveEntryLabel(entry, tags, workingItems)
-  const sectionTitle = `⏱ ${entry.time} — ${label}`.trim()
-  const lines: string[] = []
+  const lines: string[] = [`Time: ${entry.time}`]
 
-  if (tags.length) lines.push(tags.join(' '))
-
+  const chipTokens: string[] = []
+  Array.from(tagTokens)
+    .map((tag) => slugifyTag(tag))
+    .filter(Boolean)
+    .forEach((tag) => {
+      const token = `#${tag}`
+      if (skipTagTokens.has(token.toLowerCase())) return
+      chipTokens.push(token)
+    })
+  peopleTokens
+    .map((person) => person.replace(/^@+/, '').trim())
+    .filter(Boolean)
+    .forEach((person) => chipTokens.push(`@${person}`))
+  contextTokens
+    .map((context) => slugifyTag(context))
+    .filter(Boolean)
+    .forEach((context) => chipTokens.push(`+${context}`))
+  locationTokens
+    .map((location) => slugifyTag(location))
+    .filter(Boolean)
+    .forEach((location) => chipTokens.push(`!${location}`))
   if (trackerTokens.size) {
-    lines.push('### Trackers')
-    trackerLines.forEach((line) => lines.push(line))
+    lines.push('Trackers')
+    trackerLines.forEach((line) => lines.push(line.replace(/^-+\s*/, '')))
   }
 
-  if (activity) {
-    const episode = extractEpisodeDetail(entryText)
-    if (episode) lines.push(`### ${episode}`)
+  const mealLines: string[] = []
+  if (parsedMeal?.items?.length) {
+    const mealTitle = formatTitleCase(parsedMeal.type ?? 'meal')
+    const itemList = parsedMeal.items
+      .map((item) => item.name)
+      .filter(Boolean)
+      .slice(0, 6)
+      .join(', ')
+    const summary = itemList ? `${mealTitle}: ${itemList}` : `${mealTitle} logged`
+    mealLines.push('Meal')
+    mealLines.push(appendTokensToLine(summary, mealTokens))
+    mealLines.push('Meal breakdown + macros (estimated)')
+    mealLines.push(...buildMealTableLines(parsedMeal))
+  }
+
+  const workoutLines: string[] = []
+  if (parsedWorkout?.exercises?.length) {
+    const typeLabel = formatTitleCase(parsedWorkout.type ?? 'workout')
+    const totalSets = parsedWorkout.exercises.reduce((sum, ex) => sum + (ex.sets?.length ?? 0), 0)
+    const totalDuration = parsedWorkout.exercises.reduce(
+      (sum, ex) => sum + (ex.sets ?? []).reduce((inner, set) => inner + (set.duration ?? 0), 0),
+      0,
+    )
+    const totalDistance = parsedWorkout.exercises.reduce(
+      (sum, ex) => sum + (ex.sets ?? []).reduce((inner, set) => inner + (set.distance ?? 0), 0),
+      0,
+    )
+    const details = [
+      parsedWorkout.exercises.length ? `${parsedWorkout.exercises.length} exercise${parsedWorkout.exercises.length === 1 ? '' : 's'}` : '',
+      totalSets ? `${totalSets} sets` : '',
+      formatDistance(totalDistance),
+      formatDuration(totalDuration),
+      parsedWorkout.overallRpe != null ? `RPE ${Math.round(parsedWorkout.overallRpe)}` : '',
+    ].filter(Boolean)
+    const summary = details.length ? `${typeLabel} workout: ${details.join(', ')}` : `${typeLabel} workout`
+    workoutLines.push('Workout')
+    workoutLines.push(appendTokensToLine(summary, workoutTokens))
+    workoutLines.push(...buildWorkoutTableLines(parsedWorkout))
   }
 
   if (workingItems.length) {
+    if (mealLines.length) lines.push(...mealLines)
+    if (workoutLines.length) lines.push(...workoutLines)
+    lines.push('Working On')
     workingItems.forEach((item) => {
       lines.push(`- [ ] ▶ ${item}`)
     })
-    return { title: sectionTitle, lines }
+    appendInlineTokens(lines, chipTokens)
+    return { timeLabel: entry.time, label, lines }
   }
 
   const parsed = parseCaptureNatural(entryText, anchorMs)
@@ -497,26 +1010,34 @@ function entrySectionLines(entry: TranscriptEntry, anchorMs: number) {
   const done = mergeEntryTasks(parsedTasks.filter((t) => t.status === 'done'), completedTasks)
 
   if (notes.length) {
-    lines.push('### Notes')
-    notes.forEach((note) => lines.push(`- ${note}`))
+    lines.push('Notes')
+    notes.forEach((note) => lines.push(note))
   }
 
+  if (mealLines.length) lines.push(...mealLines)
+  if (workoutLines.length) lines.push(...workoutLines)
+
   if (todos.length) {
-    lines.push('### Next actions')
+    lines.push('Next actions')
     todos.forEach((task) => {
       lines.push(`- [ ] ▶ ${task.title}`)
     })
   }
 
   if (!todos.length && done.length) {
-    lines.push('### Completed')
+    lines.push('Completed')
     done.forEach((task) => lines.push(`- [x] ${task.title}`))
   } else if (done.length) {
-    lines.push('### Completed')
+    lines.push('Completed')
     done.forEach((task) => lines.push(`- [x] ${task.title}`))
   }
 
-  return { title: sectionTitle, lines }
+  if (lines.length === 1 && label) {
+    lines.push(label)
+  }
+
+  appendInlineTokens(lines, chipTokens)
+  return { timeLabel: entry.time, label, lines }
 }
 
 function collectTokens(transcript: string, anchorMs: number) {
@@ -708,41 +1229,72 @@ export function buildNotesFromTranscript(opts: BuildNotesInput) {
   })
   // Keep the output as a clean, exportable note (no extra context sections).
 
+  let preamble = base.sections.find((section) => !section.title)
+  if (!preamble) {
+    preamble = {
+      id: `preamble-${base.sections.length}`,
+      title: null,
+      level: 0,
+      lines: [],
+      dividerBefore: false,
+    }
+    base.sections.unshift(preamble)
+    didChange = true
+  }
+
+  let lines = ensureTemplateHeader(preamble.lines, {
+    title: base.title ?? opts.title ?? 'Untitled',
+    anchorMs: safeAnchorMs,
+  })
+
   const structuredSections = parseStructuredOutline(opts.transcript, safeAnchorMs)
+  const entryBlocks: string[][] = []
+
   if (structuredSections.length) {
     structuredSections.forEach((section) => {
-      const title = `⏱ ${section.timeLabel} — ${section.title}`
-      const nextSection = upsertSectionBefore(base, title, ['running outline', 'inbox / capture', 'end-of-note recap'], 2)
-      const lines: string[] = []
-      if (section.dateLabel) {
-        lines.push(`📅 [[${section.dateLabel}]]`)
-      }
-      if (section.tags.length) {
-        lines.push(section.tags.join(' '))
-      }
+      const block: string[] = []
+      block.push(`Time: ${section.timeLabel}`)
+      if (section.title) block.push(section.title)
+      if (section.dateLabel) block.push(`Date: ${section.dateLabel}`)
       if (section.lines.length) {
-        lines.push('', ...section.lines)
+        section.lines
+          .map((line) => line.replace(/^###\s+/, '').trim())
+          .filter(Boolean)
+          .forEach((line) => block.push(line))
       }
-      const before = nextSection.lines.join('\n')
-      appendUniqueLines(nextSection, lines)
-      if (nextSection.lines.join('\n') !== before) didChange = true
+      appendInlineTokens(block, section.tags)
+      entryBlocks.push(block)
     })
   } else {
     const entries = parseTranscriptEntries(opts.transcript, safeAnchorMs)
-    if (entries.length) {
-      const beforeCount = base.sections.length
-      entries.forEach((entry, index) => {
-        const section = entrySectionLines(entry, safeAnchorMs)
-        const target = upsertSectionBefore(base, section.title, ['running outline', 'inbox / capture', 'end-of-note recap'], 2)
-        const before = target.lines.join('\n')
-        appendUniqueLines(target, section.lines)
-        if (target.lines.join('\n') !== before) didChange = true
-        if (!target.dividerBefore && (beforeCount > 0 || index > 0)) {
-          target.dividerBefore = true
-          didChange = true
+    entries.forEach((entry) => {
+      const section = entrySectionLines(entry, safeAnchorMs)
+      entryBlocks.push(section.lines)
+    })
+  }
+
+  if (entryBlocks.length) {
+    entryBlocks.forEach((block) => {
+      const time = extractTimeFromEntryLine(block[0] ?? '')
+      if (time) {
+        const existingBlocks = findEntryBlocks(lines)
+        const existing = existingBlocks.find((b) => b.time === time)
+        if (existing) {
+          const merged = mergeEntryBlock(lines, existing, block)
+          lines = merged.lines
+          if (merged.changed) didChange = true
+          return
         }
-      })
-    }
+      }
+      const inserted = insertEntryBlock(lines, block)
+      lines = inserted.lines
+      if (inserted.changed) didChange = true
+    })
+  }
+
+  if (lines.join('\n') !== preamble.lines.join('\n')) {
+    preamble.lines = lines
+    didChange = true
   }
 
   if (didChange) {

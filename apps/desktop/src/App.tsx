@@ -1904,7 +1904,7 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
 
   function buildDocPreview(base: string, title: string | null | undefined, metaBlock: string, frontmatterBlock?: string) {
     const trimmed = base.trim()
-    const hasTitle = /^\s*#\s+/.test(trimmed)
+    const hasTitle = /^\s*#\s+/.test(trimmed) || /^\s*Title\s*:/i.test(trimmed)
     const hasProps = /##\s+Properties/i.test(trimmed) || /\^page-props\b/i.test(trimmed)
     const hasFrontmatter = Boolean(extractFrontmatter(trimmed).frontmatter)
     const header = title && !hasTitle ? `# ${title}\n\n` : ''

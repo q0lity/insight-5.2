@@ -155,6 +155,7 @@ export const COMMON_EXERCISES: Array<{ name: string; type: WorkoutType; muscleGr
   { name: 'Incline Bench Press', type: 'strength', muscleGroups: ['chest', 'triceps', 'shoulders'] },
   { name: 'Dumbbell Fly', type: 'strength', muscleGroups: ['chest'] },
   { name: 'Push-ups', type: 'strength', muscleGroups: ['chest', 'triceps', 'shoulders'] },
+  { name: 'Sit-ups', type: 'strength', muscleGroups: ['core'] },
   // Strength - Back
   { name: 'Deadlift', type: 'strength', muscleGroups: ['back', 'glutes', 'hamstrings'] },
   { name: 'Pull-ups', type: 'strength', muscleGroups: ['back', 'biceps'] },
@@ -228,6 +229,7 @@ export function estimateCalories(workout: Workout, bodyWeightKg = 80): number {
 export function parseWorkoutFromText(text: string): Partial<Workout> | null {
   const exercisesByName = new Map<string, Exercise>()
   const lower = text.toLowerCase()
+  const seenBodyweightKeys = new Set<string>()
 
   const normalizeExerciseKey = (name: string) =>
     name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() || 'exercise'
@@ -249,6 +251,17 @@ export function parseWorkoutFromText(text: string): Partial<Workout> | null {
     }
     exercise.sets.push(set)
   }
+
+  const addBodyweightReps = (rawName: string, reps: number) => {
+    if (!Number.isFinite(reps)) return
+    const cleaned = rawName.replace(/\s+/g, ' ').trim() || 'Exercise'
+    const key = `${normalizeExerciseKey(cleaned)}|${reps}`
+    if (seenBodyweightKeys.has(key)) return
+    seenBodyweightKeys.add(key)
+    addExerciseSet(cleaned, 'strength', { reps: Math.max(1, reps) })
+  }
+
+  const BODYWEIGHT_RE = '(?:push[-\\s]?ups?|pull[-\\s]?ups?|sit[-\\s]?ups?|burpees|squats|lunges|jumping jacks|dips?)'
 
   const findKnownExerciseName = (segment: string) => {
     const lowerSegment = segment.toLowerCase()
@@ -507,11 +520,24 @@ export function parseWorkoutFromText(text: string): Partial<Workout> | null {
     addExerciseSet(name, 'cardio', { duration: durationSeconds, distance: distanceMiles })
   }
 
+  const pairedBodyweightPattern = new RegExp(`(${BODYWEIGHT_RE})\\s*(\\d+)\\s*(${BODYWEIGHT_RE})`, 'gi')
+  for (const match of text.matchAll(pairedBodyweightPattern)) {
+    const reps = parseInt(match[2], 10)
+    addBodyweightReps(match[1], reps)
+    addBodyweightReps(match[3], reps)
+  }
+
+  const exerciseFirstPattern = new RegExp(`(${BODYWEIGHT_RE})\\s*(\\d+)`, 'gi')
+  for (const match of text.matchAll(exerciseFirstPattern)) {
+    const reps = parseInt(match[2], 10)
+    addBodyweightReps(match[1], reps)
+  }
+
   for (const match of text.matchAll(/(\d+)\s*(push[-\s]?ups?|pull[-\s]?ups?|sit[-\s]?ups?|burpees|squats|lunges|jumping jacks|dips?|rows?)\b/gi)) {
     const reps = parseInt(match[1], 10)
     const name = match[2].replace(/\s+/g, ' ').trim()
     if (!Number.isFinite(reps)) continue
-    addExerciseSet(name.charAt(0).toUpperCase() + name.slice(1), 'strength', { reps })
+    addBodyweightReps(name, reps)
   }
 
   const recoveryMatch = text.match(/\b(sauna|cold plunge|massage|stretch(?:ing)?|yoga|mobility|equestrian|horseback)\b.*?(\d+(?:\.\d+)?)\s*(minutes?|mins?|m|hours?|hrs?|h)\b/i)

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { MOCK_TRANSCRIPTS } from './fixtures/transcripts'
+import { openCaptureModal } from './helpers/open-capture'
 
 /**
  * E2E tests for Markdown rendering with Obsidian-style improvements
@@ -21,7 +22,7 @@ test.describe('Markdown Rendering', () => {
 
   test.describe('Typography Hierarchy', () => {
     test('headings have correct size hierarchy', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(`# H1 Heading
 ## H2 Heading
 ### H3 Heading`)
@@ -36,7 +37,7 @@ test.describe('Markdown Rendering', () => {
 
   test.describe('Checkboxes', () => {
     test('checkboxes render in preview', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(`- [ ] Unchecked task
 - [x] Checked task`)
 
@@ -45,7 +46,7 @@ test.describe('Markdown Rendering', () => {
     })
 
     test('checked and unchecked boxes have different states', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(`- [ ] Unchecked
 - [x] Checked`)
 
@@ -60,7 +61,7 @@ test.describe('Markdown Rendering', () => {
 
   test.describe('Inline Tokens (Tags, People, Locations)', () => {
     test('tags render as chips', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Meeting about #project and #deadline')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -69,7 +70,7 @@ test.describe('Markdown Rendering', () => {
     })
 
     test('people references render as chips', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Met with @Alice and @Bob')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -78,7 +79,7 @@ test.describe('Markdown Rendering', () => {
     })
 
     test('location references render as chips', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Meeting at !office and !coffeeshop')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -86,7 +87,7 @@ test.describe('Markdown Rendering', () => {
     })
 
     test('mixed tokens all render correctly', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(MOCK_TRANSCRIPTS.withTags)
 
       const preview = page.locator('.capturePreviewPanel')
@@ -98,7 +99,7 @@ test.describe('Markdown Rendering', () => {
 
   test.describe('Code Blocks', () => {
     test('code blocks render with language badge', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(`\`\`\`javascript
 function hello() {
   console.log("Hello");
@@ -110,7 +111,7 @@ function hello() {
     })
 
     test('code blocks have copy button', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(`\`\`\`python
 print("Hello World")
 \`\`\``)
@@ -124,7 +125,7 @@ print("Hello World")
       // Grant clipboard permissions
       await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
 
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const code = 'console.log("test")'
       await page.locator('.captureTextarea').fill(`\`\`\`javascript\n${code}\n\`\`\``)
 
@@ -142,7 +143,7 @@ print("Hello World")
     })
 
     test('inline code renders correctly', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Use the `console.log()` function')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -152,7 +153,7 @@ print("Hello World")
 
   test.describe('Math Rendering (LaTeX)', () => {
     test('inline math renders', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('The formula is $E = mc^2$')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -161,7 +162,7 @@ print("Hello World")
     })
 
     test('block math renders centered', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('$$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -169,7 +170,7 @@ print("Hello World")
     })
 
     test('complex math expressions render', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(MOCK_TRANSCRIPTS.withMath)
 
       const preview = page.locator('.capturePreviewPanel')
@@ -180,7 +181,7 @@ print("Hello World")
 
   test.describe('Heading Anchors', () => {
     test('headings have anchor links', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('# Test Heading')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -189,7 +190,7 @@ print("Hello World")
     })
 
     test('anchor links show # symbol', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('## Section Title')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -199,7 +200,7 @@ print("Hello World")
 
   test.describe('Emoji Support', () => {
     test('emoji shortcodes convert to emoji', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Great work :smile: :rocket:')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -211,7 +212,7 @@ print("Hello World")
     })
 
     test('emoji in mixed content', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(MOCK_TRANSCRIPTS.withEmoji)
 
       const preview = page.locator('.capturePreviewPanel')
@@ -223,7 +224,7 @@ print("Hello World")
 
   test.describe('Lists', () => {
     test('unordered lists render correctly', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(`- Item 1
 - Item 2
 - Item 3`)
@@ -233,7 +234,7 @@ print("Hello World")
     })
 
     test('ordered lists render correctly', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(`1. First
 2. Second
 3. Third`)
@@ -243,7 +244,7 @@ print("Hello World")
     })
 
     test('nested lists render correctly', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(`- Parent
   - Child 1
   - Child 2`)
@@ -255,7 +256,7 @@ print("Hello World")
 
   test.describe('Formatting', () => {
     test('bold text renders', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('This is **bold** text')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -263,7 +264,7 @@ print("Hello World")
     })
 
     test('italic text renders', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('This is *italic* text')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -271,7 +272,7 @@ print("Hello World")
     })
 
     test('strikethrough renders', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('This is ~~deleted~~ text')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -279,7 +280,7 @@ print("Hello World")
     })
 
     test('combined formatting works', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('**Bold and *italic* together**')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -290,7 +291,7 @@ print("Hello World")
 
   test.describe('Links', () => {
     test('links render correctly', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('[Click here](https://example.com)')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -300,7 +301,7 @@ print("Hello World")
     })
 
     test('autolinks work', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Visit https://example.com for more')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -310,7 +311,7 @@ print("Hello World")
 
   test.describe('Blockquotes', () => {
     test('blockquotes render', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('> This is a quote')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -318,7 +319,7 @@ print("Hello World")
     })
 
     test('nested blockquotes render', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(`> Level 1
 >> Level 2`)
 
@@ -329,7 +330,7 @@ print("Hello World")
 
   test.describe('Visual Polish', () => {
     test('preview has proper spacing', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(`# Heading
 
 Paragraph with content.
@@ -347,7 +348,7 @@ Paragraph with content.
     })
 
     test('checkboxes have hover states', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('- [ ] Hover me')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -359,7 +360,7 @@ Paragraph with content.
     })
 
     test('chips have color coding', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('#tag @person !location')
 
       const preview = page.locator('.capturePreviewPanel')
@@ -381,7 +382,7 @@ Paragraph with content.
 
   test.describe('Complex Content', () => {
     test('realistic note renders completely', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(MOCK_TRANSCRIPTS.realistic)
 
       const preview = page.locator('.capturePreviewPanel')
@@ -394,7 +395,7 @@ Paragraph with content.
     })
 
     test('long form content scrolls properly', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(MOCK_TRANSCRIPTS.longForm)
 
       const preview = page.locator('.capturePreviewPanel')

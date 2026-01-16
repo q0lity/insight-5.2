@@ -1,6 +1,7 @@
 import { test, expect, Page } from '@playwright/test'
 import { setupQuickMock, setupRealisticMock } from './helpers/mock-speech'
 import { MOCK_TRANSCRIPTS } from './fixtures/transcripts'
+import { openCaptureModal, openCaptureModalCtrl } from './helpers/open-capture'
 
 /**
  * Comprehensive E2E tests for Capture Modal functionality
@@ -23,26 +24,26 @@ test.describe('Capture Modal', () => {
 
   test.describe('1. Opening & Closing', () => {
     test('opens with Cmd+K shortcut on Mac', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await expect(page.locator('.captureModalCard')).toBeVisible()
       await expect(page.locator('h2:has-text("Capture")')).toBeVisible()
     })
 
     test('opens with Ctrl+K shortcut on Windows/Linux', async ({ page }) => {
-      await page.keyboard.press('Control+K')
+      await openCaptureModalCtrl(page)
       await expect(page.locator('.captureModalCard')).toBeVisible()
       await expect(page.locator('h2:has-text("Capture")')).toBeVisible()
     })
 
     test('closes with Escape key', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await expect(page.locator('.captureModalCard')).toBeVisible()
       await page.keyboard.press('Escape')
       await expect(page.locator('.captureModalCard')).not.toBeVisible()
     })
 
     test('closes by clicking backdrop', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await expect(page.locator('.captureModalCard')).toBeVisible()
       // Click outside modal (top-left corner of overlay)
       await page.locator('.modalOverlay').click({ position: { x: 10, y: 10 } })
@@ -50,77 +51,77 @@ test.describe('Capture Modal', () => {
     })
 
     test('closes with X button in header', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await expect(page.locator('.captureModalCard')).toBeVisible()
       await page.locator('.captureModalHeader button').last().click()
       await expect(page.locator('.captureModalCard')).not.toBeVisible()
     })
 
     test('auto-focuses textarea on open', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const textarea = page.locator('.captureTextarea')
       await expect(textarea).toBeFocused()
     })
 
     test('shows "Ready" status initially', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await expect(page.locator('.captureLivePill')).toContainText('Ready')
     })
   })
 
   test.describe('2. Text Input & Editing', () => {
     test('types text into textarea', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const textarea = page.locator('.captureTextarea')
       await textarea.fill('Test note content')
       await expect(textarea).toHaveValue('Test note content')
     })
 
     test('character count updates in real-time', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Hello')
       await expect(page.locator('.captureSheetCount')).toHaveText('5 chars')
     })
 
     test('character count updates with longer text', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const text = 'This is a longer test message'
       await page.locator('.captureTextarea').fill(text)
       await expect(page.locator('.captureSheetCount')).toHaveText(`${text.length} chars`)
     })
 
     test('clear button empties textarea', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Test content')
       await page.getByRole('button', { name: 'Clear' }).click()
       await expect(page.locator('.captureTextarea')).toHaveValue('')
     })
 
     test('clear button disabled when empty', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await expect(page.getByRole('button', { name: 'Clear' })).toBeDisabled()
     })
 
     test('save button disabled when empty', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await expect(page.getByRole('button', { name: /Save Note/ })).toBeDisabled()
     })
 
     test('paste long text (>1000 chars)', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const textarea = page.locator('.captureTextarea')
       await textarea.fill(MOCK_TRANSCRIPTS.veryLong)
       await expect(page.locator('.captureSheetCount')).toContainText('10000 chars')
     })
 
     test('emoji input works', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Test 😀 emoji 🎉 input')
       await expect(page.locator('.captureTextarea')).toHaveValue('Test 😀 emoji 🎉 input')
     })
 
     test('textarea auto-expands with content', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const textarea = page.locator('.captureTextarea')
       const initialHeight = await textarea.boundingBox().then(box => box?.height ?? 0)
 
@@ -135,7 +136,7 @@ test.describe('Capture Modal', () => {
 
   test.describe('3. Voice Recording (Mocked)', () => {
     test('starts recording on Voice button click', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await setupQuickMock(page, MOCK_TRANSCRIPTS.simple)
 
       const voiceBtn = page.getByRole('button', { name: /Voice/ })
@@ -146,7 +147,7 @@ test.describe('Capture Modal', () => {
     })
 
     test('button shows "Listening..." state with pulsing mic icon', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await setupQuickMock(page, MOCK_TRANSCRIPTS.simple)
 
       await page.getByRole('button', { name: /Voice/ }).click()
@@ -157,7 +158,7 @@ test.describe('Capture Modal', () => {
     })
 
     test('status changes to "Listening" pill', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await setupQuickMock(page, MOCK_TRANSCRIPTS.simple)
 
       await page.getByRole('button', { name: /Voice/ }).click()
@@ -166,7 +167,7 @@ test.describe('Capture Modal', () => {
     })
 
     test('appends transcript to draft', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await setupQuickMock(page, MOCK_TRANSCRIPTS.simple)
 
       await page.getByRole('button', { name: /Voice/ }).click()
@@ -180,7 +181,7 @@ test.describe('Capture Modal', () => {
     })
 
     test('multiple recording sessions append text', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
 
       // First recording
       await setupQuickMock(page, 'First part')
@@ -202,7 +203,7 @@ test.describe('Capture Modal', () => {
     })
 
     test('recording with tags transcript', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await setupQuickMock(page, MOCK_TRANSCRIPTS.withTags)
 
       await page.getByRole('button', { name: /Voice/ }).click()
@@ -218,7 +219,7 @@ test.describe('Capture Modal', () => {
     })
 
     test('recording with checkboxes', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await setupQuickMock(page, MOCK_TRANSCRIPTS.withCheckboxes)
 
       await page.getByRole('button', { name: /Voice/ }).click()
@@ -235,13 +236,13 @@ test.describe('Capture Modal', () => {
 
   test.describe('4. Live Preview', () => {
     test('preview appears when text exists', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Test content')
       await expect(page.locator('.capturePreviewPanel')).toBeVisible()
     })
 
     test('preview hides when text cleared', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Test content')
       await expect(page.locator('.capturePreviewPanel')).toBeVisible()
 
@@ -250,7 +251,7 @@ test.describe('Capture Modal', () => {
     })
 
     test('preview parses tags correctly', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Meeting with @Alice #project')
 
       // Check for rendered chips
@@ -260,7 +261,7 @@ test.describe('Capture Modal', () => {
     })
 
     test('preview renders markdown correctly', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(MOCK_TRANSCRIPTS.withMarkdown)
 
       const preview = page.locator('.capturePreviewPanel')
@@ -270,7 +271,7 @@ test.describe('Capture Modal', () => {
     })
 
     test('preview shows checkboxes', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(MOCK_TRANSCRIPTS.withCheckboxes)
 
       const preview = page.locator('.capturePreviewPanel')
@@ -280,13 +281,13 @@ test.describe('Capture Modal', () => {
 
   test.describe('5. Saving Notes', () => {
     test('save button enabled when text exists', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('My test note')
       await expect(page.getByRole('button', { name: 'Save Note' })).toBeEnabled()
     })
 
     test('shows loading state when saving', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('My test note')
 
       const saveBtn = page.getByRole('button', { name: 'Save Note' })
@@ -297,7 +298,7 @@ test.describe('Capture Modal', () => {
     })
 
     test('prevents double submission', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Test note')
 
       const saveBtn = page.getByRole('button', { name: 'Save Note' })
@@ -308,7 +309,7 @@ test.describe('Capture Modal', () => {
     })
 
     test('modal closes after save completes', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Quick note')
 
       await page.getByRole('button', { name: 'Save Note' }).click()
@@ -320,7 +321,7 @@ test.describe('Capture Modal', () => {
 
   test.describe('6. Status & Progress Indicators', () => {
     test('loading phrases rotate', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Test note for loading phrases')
 
       await page.getByRole('button', { name: 'Save Note' }).click()
@@ -347,7 +348,7 @@ test.describe('Capture Modal', () => {
 
   test.describe('7. Keyboard Shortcuts', () => {
     test('Escape closes modal', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await expect(page.locator('.captureModalCard')).toBeVisible()
 
       await page.keyboard.press('Escape')
@@ -355,7 +356,7 @@ test.describe('Capture Modal', () => {
     })
 
     test('Enter in textarea adds newline (does not submit)', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const textarea = page.locator('.captureTextarea')
 
       await textarea.fill('Line 1')
@@ -375,7 +376,7 @@ test.describe('Capture Modal', () => {
   test.describe('8. Responsive & Dynamic Sizing', () => {
     test('modal fits on small screens', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 }) // iPhone SE
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
 
       const modal = page.locator('.captureModalCard')
       await expect(modal).toBeVisible()
@@ -386,7 +387,7 @@ test.describe('Capture Modal', () => {
 
     test('modal limited to max width', async ({ page }) => {
       await page.setViewportSize({ width: 1920, height: 1080 })
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
 
       const modal = page.locator('.captureModalCard')
       const box = await modal.boundingBox()
@@ -394,7 +395,7 @@ test.describe('Capture Modal', () => {
     })
 
     test('text size reduces with length', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const textarea = page.locator('.captureTextarea')
 
       // Short text should have text-xl
@@ -413,28 +414,28 @@ test.describe('Capture Modal', () => {
 
   test.describe('9. Edge Cases & Error Handling', () => {
     test('handles extremely long text', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const longText = 'A'.repeat(10000)
       await page.locator('.captureTextarea').fill(longText)
       await expect(page.locator('.captureSheetCount')).toHaveText('10000 chars')
     })
 
     test('handles empty whitespace (save disabled)', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('   \n\n  ')
       // Save should be disabled (trim check)
       await expect(page.getByRole('button', { name: 'Save Note' })).toBeDisabled()
     })
 
     test('handles special characters', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const specialChars = MOCK_TRANSCRIPTS.specialChars
       await page.locator('.captureTextarea').fill(specialChars)
       await expect(page.locator('.captureTextarea')).toHaveValue(specialChars)
     })
 
     test('handles multilingual text', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill(MOCK_TRANSCRIPTS.multiLanguage)
       await expect(page.locator('.captureTextarea')).toHaveValue(MOCK_TRANSCRIPTS.multiLanguage)
     })
@@ -442,27 +443,27 @@ test.describe('Capture Modal', () => {
 
   test.describe('10. Accessibility', () => {
     test('modal is visible and renders', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const modal = page.locator('.captureModalCard')
       await expect(modal).toBeVisible()
     })
 
     test('close button is accessible', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const closeBtn = page.locator('.captureModalHeader button').last()
       await expect(closeBtn).toBeVisible()
       await expect(closeBtn).toBeEnabled()
     })
 
     test('voice button is accessible', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const voiceBtn = page.getByRole('button', { name: /Voice/ })
       await expect(voiceBtn).toBeVisible()
       await expect(voiceBtn).toBeEnabled()
     })
 
     test('save button is accessible when enabled', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       await page.locator('.captureTextarea').fill('Test content')
 
       const saveBtn = page.getByRole('button', { name: 'Save Note' })
@@ -473,7 +474,7 @@ test.describe('Capture Modal', () => {
 
   test.describe('11. Animation & Transitions', () => {
     test('modal fades in on open', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const modal = page.locator('.captureModalCard')
 
       // Modal should be visible after animation
@@ -488,7 +489,7 @@ test.describe('Capture Modal', () => {
     })
 
     test('voice button has hover state', async ({ page }) => {
-      await page.keyboard.press('Meta+K')
+      await openCaptureModal(page)
       const voiceBtn = page.getByRole('button', { name: /Voice/ })
 
       await voiceBtn.hover()

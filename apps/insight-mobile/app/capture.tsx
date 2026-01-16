@@ -1,16 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Image, Pressable, type PressableStateCallbackType, ScrollView, Share, StyleSheet, TextInput } from 'react-native';
+import { Alert, AppState, Image, Pressable, type PressableStateCallbackType, ScrollView, Share, StyleSheet, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  AudioModule,
-  RecordingPresets,
-  setAudioModeAsync,
-  useAudioRecorder,
-  useAudioRecorderState,
-} from 'expo-audio';
+import { Audio } from 'expo-av';
 
 import { Text, View } from '@/components/Themed';
 import { useTheme } from '@/src/state/theme';
@@ -22,6 +16,7 @@ import { getEvent, startEvent, stopEvent, updateEvent } from '@/src/storage/even
 import { autoCategorize, detectIntent, formatSegmentsPreview, parseCapture } from '@/src/lib/schema';
 import { parseCaptureNatural, type ParsedEvent } from '@/src/lib/nlp/natural';
 import { estimateWorkoutCalories, parseMealFromText, parseWorkoutFromText } from '@/src/lib/health';
+import { RECORDING_OPTIONS } from '@/src/lib/audio';
 import { invokeCaptureParse } from '@/src/supabase/functions';
 import { upsertTranscriptSegment } from '@/src/supabase/segments';
 import { uploadCaptureAudio } from '@/src/supabase/storage';
@@ -57,6 +52,17 @@ function formatTimeMarker(date = new Date()) {
   return `[${hh}:${mm}] `;
 }
 
+async function createRecording() {
+  if (typeof Audio?.Recording?.createAsync === 'function') {
+    const result = await Audio.Recording.createAsync(RECORDING_OPTIONS);
+    return result.recording;
+  }
+  const next = new Audio.Recording();
+  await next.prepareToRecordAsync(RECORDING_OPTIONS);
+  await next.startAsync();
+  return next;
+}
+
 function formatClock(ms: number) {
   const total = Math.max(0, Math.floor(ms / 1000));
   const hours = Math.floor(total / 3600);
@@ -67,18 +73,12 @@ function formatClock(ms: number) {
 
 const TIMESTAMP_LINE_RE = /^\[\d{2}:\d{2}(?::\d{2})?\]\s*$/;
 const RECORDING_AUDIO_MODE = {
-  playsInSilentMode: true,
-  interruptionMode: 'duckOthers',
-  allowsRecording: true,
-  shouldPlayInBackground: false,
-  allowsBackgroundRecording: false,
+  allowsRecordingIOS: true,
+  playsInSilentModeIOS: true,
 } as const;
 const IDLE_AUDIO_MODE = {
-  playsInSilentMode: true,
-  interruptionMode: 'mixWithOthers',
-  allowsRecording: false,
-  shouldPlayInBackground: false,
-  allowsBackgroundRecording: false,
+  allowsRecordingIOS: false,
+  playsInSilentModeIOS: true,
 } as const;
 
 let cachedImagePicker: typeof import('expo-image-picker') | null = null;
@@ -1038,10 +1038,12 @@ export default function CaptureScreen() {
   const pendingDividerRef = useRef(false);
   const isRecordingStartingRef = useRef(false);
   const rawTextRef = useRef('');
+  const autoStartRef = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
+  const pendingAppStartRef = useRef(false);
   const { palette, sizes, isDark } = useTheme();
   const { active, startSession, stopSession } = useSession();
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(audioRecorder);
+  const recordingRef = useRef<Audio.Recording | null>(null);
   const elapsedMs = active ? now - active.startedAt : 0;
   const remainingMs = useMemo(() => {
     if (!active) return null;
@@ -1053,7 +1055,6 @@ export default function CaptureScreen() {
   }, [active, now, elapsedMs]);
 
   const hasAttachments = useMemo(() => attachments.length > 0, [attachments]);
-  const hasAudio = useMemo(() => attachments.some((item) => item.type === 'audio'), [attachments]);
   const canSave = useMemo(
     () => (rawText.trim().length > 0 || hasAttachments) && !saving,
     [rawText, hasAttachments, saving]
@@ -1201,6 +1202,35 @@ export default function CaptureScreen() {
   }, [rawText]);
 
   useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      appStateRef.current = nextState;
+      if (nextState === 'active' && pendingAppStartRef.current) {
+        pendingAppStartRef.current = false;
+        void startRecording();
+      }
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, [startRecording]);
+
+  useEffect(() => {
+    if (autoStartRef.current) return;
+    autoStartRef.current = true;
+    void startRecording();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch(() => {});
+        recordingRef.current = null;
+      }
+      void Audio.setAudioModeAsync(IDLE_AUDIO_MODE);
+    };
+  }, []);
+
+  useEffect(() => {
     if (recordingState !== 'recording') {
       pendingMarkerRef.current = false;
       pendingDividerRef.current = false;
@@ -1288,6 +1318,7 @@ export default function CaptureScreen() {
     queueAttachmentUpdate(id, {
       transcription: provider === 'whisper' ? 'Whisper transcription queued.' : 'Supabase transcription queued.',
     });
+    return next;
   };
 
   const addLocationAttachment = async () => {
@@ -1342,7 +1373,8 @@ export default function CaptureScreen() {
   const transcribeAudioAttachments = async (
     captureId: string,
     sourceAttachments: CaptureAttachment[],
-    seedTokens?: { tags: string[]; contexts: string[]; people: string[] }
+    seedTokens?: { tags: string[]; contexts: string[]; people: string[] },
+    options?: { autoProcess?: boolean }
   ) => {
     const audioAttachments = sourceAttachments.filter((item) => item.type === 'audio' && item.uri);
     if (!audioAttachments.length) return;
@@ -1350,6 +1382,8 @@ export default function CaptureScreen() {
     let nextAttachments = [...sourceAttachments];
     let failed = false;
     let failureMessage: string | null = null;
+    const shouldAutoProcess = options?.autoProcess ?? false;
+    let didAutoProcess = false;
 
     for (const attachment of audioAttachments) {
       if (!attachment.uri) continue;
@@ -1410,6 +1444,14 @@ export default function CaptureScreen() {
               : item
           );
           await persistAttachments(captureId, nextAttachments);
+          if (shouldAutoProcess && !didAutoProcess) {
+            const captures = await listInboxCaptures();
+            const updatedCapture = captures.find((item) => item.id === captureId);
+            if (updatedCapture) {
+              await processCapture(updatedCapture);
+            }
+            didAutoProcess = true;
+          }
         } else {
           nextAttachments = nextAttachments.map((item) =>
             item.id === attachment.id ? { ...item, status: 'ready' } : item
@@ -1547,37 +1589,63 @@ export default function CaptureScreen() {
     addImageAttachment(result.assets[0], 'library');
   };
 
-  const toggleRecording = async () => {
-    if (recordingState === 'processing' || isRecordingStartingRef.current) return;
-    if (recordingState === 'recording') {
-      setRecordingState('processing');
-      try {
-        await audioRecorder.stop();
-        const uri = audioRecorder.uri;
-        if (uri) {
-          addAudioAttachment(uri, transcriptionProvider);
-        }
-      } catch {
-        Alert.alert('Recording failed', 'Unable to stop the recording.');
-      } finally {
-        if (!recorderState.isRecording) {
-          await setAudioModeAsync(IDLE_AUDIO_MODE);
-        }
-        setRecordingState('idle');
+  const stopRecording = async () => {
+    if (recordingState !== 'recording') return;
+    let nextAttachment: CaptureAttachment | null = null;
+    setRecordingState('processing');
+    try {
+      const current = recordingRef.current;
+      if (!current) {
+        throw new Error('No active recording.');
       }
+      await current.stopAndUnloadAsync();
+      const uri = current.getURI();
+      recordingRef.current = null;
+      if (uri) {
+        nextAttachment = addAudioAttachment(uri, transcriptionProvider);
+      }
+    } catch {
+      Alert.alert('Recording failed', 'Unable to stop the recording.');
+    } finally {
+      await Audio.setAudioModeAsync(IDLE_AUDIO_MODE);
+      setRecordingState('idle');
+    }
+    return nextAttachment;
+  };
+
+  const startRecording = async () => {
+    if (recordingState !== 'idle' || isRecordingStartingRef.current) return;
+    if (appStateRef.current !== 'active') {
+      pendingAppStartRef.current = true;
       return;
     }
-
     isRecordingStartingRef.current = true;
     try {
-      const permission = await AudioModule.requestRecordingPermissionsAsync();
+      if (!Audio?.requestPermissionsAsync || !Audio?.Recording) {
+        Alert.alert('Recording unavailable', 'Audio recording is not available in this build.');
+        return;
+      }
+      if (recordingRef.current) {
+        try {
+          const status = await recordingRef.current.getStatusAsync();
+          if (status.isLoaded) {
+            await recordingRef.current.stopAndUnloadAsync();
+          }
+        } catch {
+          // ignore stop failures
+        }
+        recordingRef.current = null;
+      }
+      const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
         Alert.alert('Microphone permission needed', 'Enable mic access to record audio.');
         return;
       }
-      await setAudioModeAsync(RECORDING_AUDIO_MODE);
-      await audioRecorder.prepareToRecordAsync(RecordingPresets.HIGH_QUALITY);
-      audioRecorder.record({});
+      if (typeof Audio.setAudioModeAsync === 'function') {
+        await Audio.setAudioModeAsync(RECORDING_AUDIO_MODE);
+      }
+      const next = await createRecording();
+      recordingRef.current = next;
       setRecordingState('recording');
     } catch (err) {
       console.error('Audio recording start failed', err);
@@ -1589,14 +1657,32 @@ export default function CaptureScreen() {
     }
   };
 
+  const toggleRecording = async () => {
+    if (recordingState === 'processing') return;
+    if (recordingState === 'recording') {
+      await stopRecording();
+      return;
+    }
+    await startRecording();
+  };
+
   async function onSave() {
     if (!canSave) return;
     setSaving(true);
     try {
+      let attachmentsForSave = attachments;
+      if (recordingState === 'recording') {
+        const stoppedAttachment = await stopRecording();
+        if (stoppedAttachment) {
+          attachmentsForSave = [stoppedAttachment, ...attachmentsForSave];
+        }
+      }
+      const hasAudioForSave = attachmentsForSave.some((item) => item.type === 'audio');
       const trimmed = rawText.trim();
       const normalized = trimmed.length > 0 ? normalizeCaptureText(trimmed) : '';
-      const fallbackRawText = trimmed || (hasAudio ? '[Audio capture pending transcription]' : '');
-      const processedText = normalized || (hasAudio ? 'Audio transcription pending.' : '');
+      const fallbackRawText = trimmed || (hasAudioForSave ? '[Audio capture pending transcription]' : '');
+      const processedText = normalized || (hasAudioForSave ? 'Audio transcription pending.' : '');
+      const hasTextForSave = normalized.length > 0;
       const command = appendEventId ? null : detectDrivingCommand(rawText);
       if (command?.action === 'start') {
         if (active?.locked) {
@@ -1636,7 +1722,7 @@ export default function CaptureScreen() {
         void stopSession();
       }
 
-      const saved = await addInboxCapture(fallbackRawText, attachments, {
+      const saved = await addInboxCapture(fallbackRawText, attachmentsForSave, {
         importance,
         difficulty,
         tags,
@@ -1739,14 +1825,17 @@ export default function CaptureScreen() {
       }
 
       const shouldTranscribe = transcriptionProvider === 'supabase' || transcriptionProvider === 'whisper';
-      if (shouldTranscribe) {
-        if (hasAudio) {
-          await transcribeAudioAttachments(saved.id, attachments, {
-            tags,
-            contexts,
-            people,
-          });
-        }
+      if (shouldTranscribe && hasAudioForSave) {
+        await transcribeAudioAttachments(saved.id, attachmentsForSave, {
+          tags,
+          contexts,
+          people,
+        }, {
+          autoProcess: !appendEventId && !hasTextForSave,
+        });
+      }
+      if (!appendEventId && hasTextForSave) {
+        await processCapture(saved);
       }
       await refreshInbox();
       if (appendEventId && normalized) {
@@ -1780,6 +1869,9 @@ export default function CaptureScreen() {
       setCategory('');
       setSubcategory('');
       setEstimateMinutes('');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to save this capture.';
+      Alert.alert('Save failed', message);
     } finally {
       setSaving(false);
     }
@@ -2221,647 +2313,501 @@ export default function CaptureScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.recordCard}>
-          <View style={styles.recordHeader}>
-            <View style={styles.recordHeaderLeft}>
-              <FontAwesome name="microphone" size={14} color="#FFFFFF" />
-              <View style={styles.recordDot} />
-            </View>
-            <Text style={styles.recordTitle}>{appendEventId ? 'Append note' : 'Record'}</Text>
-            <View style={styles.recordHeaderRight}>
-              <FontAwesome name="cog" size={14} color="rgba(255,255,255,0.6)" />
-            </View>
-          </View>
-          <View style={styles.waveform}>
-            {waveformBars.map((height, idx) => (
-              <View key={`bar_${idx}`} style={[styles.waveBar, { height }]} />
-            ))}
-          </View>
-          <Text style={styles.recordPrompt}>
-            {recordingState === 'recording' ? 'Recording… keep talking.' : 'Record a message to capture this moment.'}
-          </Text>
-          <Text style={styles.recordSubPrompt}>Start talking, then tap stop.</Text>
-          <View style={styles.recordControls}>
-            <Pressable style={styles.recordControl} onPress={() => router.back()}>
-              <Text style={styles.recordControlText}>Cancel</Text>
-            </Pressable>
-            <Pressable
-              style={[
-                styles.recordButton,
-                recordingState === 'recording' && styles.recordButtonActive,
-              ]}
-              onPress={() => void toggleRecording()}>
-              <View style={styles.recordButtonInner}>
-                {recordingState === 'recording' ? (
-                  <View style={styles.recordStop} />
-                ) : (
-                  <View style={styles.recordDotInner} />
-                )}
-              </View>
-            </Pressable>
-            <Pressable
-              style={[
-                styles.recordControl,
-                recordingState !== 'recording' && styles.recordControlDisabled,
-              ]}
-              disabled={recordingState !== 'recording'}>
-              <Text style={styles.recordControlText}>Pause</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {active ? (
-          <View
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: palette.background,
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom + 12,
+        },
+      ]}>
+      <View style={[styles.header, { borderColor: palette.border, backgroundColor: palette.surface }]}>
+        <View style={styles.headerLeft}>
+          <Text style={[styles.headerTitle, { color: palette.text }]}>Capture</Text>
+          <Pressable
+            onPress={() => setExtendedMode((prev) => !prev)}
             style={[
-              styles.activeCard,
+              styles.extendPill,
               {
                 borderColor: palette.border,
                 backgroundColor: palette.surface,
               },
+              extendedMode && styles.extendPillActive,
             ]}>
-            <View style={styles.activeHeader}>
-              <View style={[styles.statusDot, { backgroundColor: '#10B981' }]} />
-              <Text style={[styles.activeStatus, { color: palette.textSecondary }]}>ACTIVE SESSION</Text>
-            </View>
-            <Text style={[styles.activeTitle, { color: palette.text }]} numberOfLines={1}>
-              {active.title}
+            <FontAwesome name="bolt" size={12} color={extendedMode ? palette.tint : palette.textSecondary} />
+            <Text style={[styles.extendText, { color: extendedMode ? palette.tint : palette.textSecondary }]}>
+              {extendedMode ? '1hr' : 'Extend'}
             </Text>
-            <View style={styles.activeTiming}>
-              <Text style={[styles.activeClock, { color: palette.tint }]}>{formatClock(elapsedMs)}</Text>
-              {remainingMs != null ? (
-                <Text style={[styles.activeRemaining, { color: palette.textSecondary }]}>
-                  {formatClock(remainingMs)} remaining
-                </Text>
-              ) : null}
-            </View>
-            <View style={styles.activeActions}>
-              <Pressable
-                style={[styles.activeButton, { borderColor: palette.tint }]}
-                onPress={() => router.push(`/event/${active.id}`)}>
-                <Text style={[styles.activeButtonText, { color: palette.tint }]}>Open</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.activeButton, { backgroundColor: palette.tint }]}
-                onPress={() => void stopSession()}>
-                <Text style={styles.activeButtonTextLight}>Stop</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
-
-        <View style={styles.notesCard}>
-          <View style={styles.notesHeader}>
-            <Text style={styles.sectionLabel}>Notes</Text>
-            <Pressable style={styles.sendButton} onPress={() => void shareNotes()}>
-              <FontAwesome name="paper-plane" size={14} color="#D95D39" />
-            </Pressable>
-          </View>
-          <View style={styles.notesToolbar}>
-            <View style={styles.modeRow}>
-              {[
-                { key: 'raw', label: 'Raw' },
-                { key: 'transcript', label: 'Transcript' },
-                { key: 'outline', label: 'Outline' },
-              ].map((option) => {
-                const activeOption = noteMode === option.key;
-                return (
-                  <Pressable
-                    key={option.key}
-                    onPress={() => setNoteMode(option.key as 'raw' | 'transcript' | 'outline')}
-                    style={[
-                      styles.modePill,
-                      activeOption && styles.modePillActive,
-                      {
-                        borderColor: palette.border,
-                      },
-                    ]}>
-                    <Text style={[styles.modeText, activeOption && styles.modeTextActive]}>{option.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <View style={styles.notesActions}>
-              <Pressable style={styles.timestampButton} onPress={addSegmentDivider}>
-                <Text style={styles.timestampText}>Add segment</Text>
-              </Pressable>
-            </View>
-          </View>
-          {noteMode === 'raw' ? (
-            <TextInput
-              value={rawText}
-              onChangeText={(nextText) => {
-                const now = Date.now();
-                const prev = rawTextRef.current;
-                let updated = nextText;
-                if (recordingState === 'recording' && nextText.startsWith(prev)) {
-                  const needsDivider =
-                    pendingDividerRef.current &&
-                    hasSemanticContent(prev) &&
-                    !lastNonEmptyLine(prev).startsWith('---');
-                  const needsTimestamp =
-                    pendingMarkerRef.current && !TIMESTAMP_LINE_RE.test(lastNonEmptyLine(prev).trim());
-                  if (needsDivider || needsTimestamp) {
-                    const insertion = buildAutoInsertion(prev, { divider: needsDivider, timestamp: needsTimestamp });
-                    const appended = nextText.slice(prev.length);
-                    updated = `${prev}${insertion}${appended}`;
-                    pendingDividerRef.current = false;
-                    pendingMarkerRef.current = false;
-                    lastMarkerAtRef.current = now;
-                  }
-                }
-                rawTextRef.current = updated;
-                lastInputAtRef.current = now;
-                setRawText(updated);
-              }}
-              placeholder="What happened?"
-              placeholderTextColor={palette.textSecondary}
-              multiline
-              style={[
-                styles.input,
-                {
-                  color: palette.text,
-                  borderColor: palette.border,
-                },
-              ]}
-            />
-          ) : (
+          </Pressable>
+          <View
+            style={[
+              styles.livePill,
+              {
+                borderColor: palette.border,
+                backgroundColor: palette.surface,
+              },
+              recordingState === 'recording' && styles.livePillActive,
+            ]}>
             <View
               style={[
-                styles.processedCard,
-                { borderColor: palette.border },
+                styles.liveDot,
+                { backgroundColor: recordingState === 'recording' ? palette.tint : palette.textSecondary },
+              ]}
+            />
+            <Text
+              style={[
+                styles.liveText,
+                { color: recordingState === 'recording' ? palette.tint : palette.textSecondary },
               ]}>
-              {eventPreview ? (
-                <View style={styles.previewEvent}>
-                  <Text style={styles.previewEventLabel}>Event preview</Text>
-                  <Text style={styles.previewEventTitle}>
-                    {eventPreview.category || 'General'}/{eventPreview.subcategory || 'General'}/{eventPreview.title}
-                  </Text>
-                  {eventPreview.contexts?.length ? (
-                    <Text style={styles.previewEventMeta}>
-                      {eventPreview.contexts.map((ctx) => `+${ctx}`).join(' ')}
-                    </Text>
-                  ) : null}
-                </View>
-              ) : null}
-              <Text style={styles.processedText}>
-                {noteMode === 'transcript'
-                  ? transcriptPreview || 'Transcript will appear here.'
-                  : outlinePreview || 'Outline will appear here.'}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.frontmatter}>
-          <Text style={styles.sectionLabel}>Frontmatter</Text>
-          <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Tags</Text>
-            <View style={styles.chipRow}>
-              {tags.map((tag) => (
-                <Pressable
-                  key={tag}
-                  onPress={() => setManualTags((prev) => prev.filter((entry) => entry !== tag))}
-                  style={styles.chip}>
-                  <Text style={styles.chipText}>#{tag}</Text>
-                  {manualTags.includes(tag) ? <Text style={styles.chipRemove}>x</Text> : null}
-                </Pressable>
-              ))}
-              {!tags.length ? <Text style={styles.chipHint}>#tags will appear here</Text> : null}
-              <TextInput
-                value={tagDraft}
-                onChangeText={setTagDraft}
-                onSubmitEditing={addTagsFromDraft}
-                onBlur={addTagsFromDraft}
-                placeholder="#work #meeting"
-                placeholderTextColor={palette.textSecondary}
-                style={[styles.chipInput, { color: palette.text }]}
-              />
-            </View>
-          </View>
-
-          <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Contexts</Text>
-            <View style={styles.chipRow}>
-              {contexts.map((ctx) => (
-                <Pressable
-                  key={ctx}
-                  onPress={() => setManualContexts((prev) => prev.filter((entry) => entry !== ctx))}
-                  style={[styles.chip, styles.contextChip]}>
-                  <Text style={[styles.chipText, styles.contextChipText]}>+{ctx}</Text>
-                  {manualContexts.includes(ctx) ? (
-                    <Text style={[styles.chipRemove, styles.contextChipText]}>x</Text>
-                  ) : null}
-                </Pressable>
-              ))}
-              {!contexts.length ? <Text style={styles.chipHint}>+contexts will appear here</Text> : null}
-              <TextInput
-                value={contextDraft}
-                onChangeText={setContextDraft}
-                onSubmitEditing={addContextsFromDraft}
-                onBlur={addContextsFromDraft}
-                placeholder="+car +clinic"
-                placeholderTextColor={palette.textSecondary}
-                style={[styles.chipInput, { color: palette.text }]}
-              />
-            </View>
-          </View>
-
-          <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>People</Text>
-            <View style={styles.chipRow}>
-              {people.map((person) => (
-                <Pressable
-                  key={person}
-                  onPress={() => setPeople((prev) => prev.filter((entry) => entry !== person))}
-                  style={styles.chip}>
-                  <Text style={styles.chipText}>@{person}</Text>
-                  <Text style={styles.chipRemove}>x</Text>
-                </Pressable>
-              ))}
-              <TextInput
-                value={peopleDraft}
-                onChangeText={setPeopleDraft}
-                onSubmitEditing={addPeopleFromDraft}
-                onBlur={addPeopleFromDraft}
-                placeholder="Mom, Alex"
-                placeholderTextColor={palette.textSecondary}
-                style={[styles.chipInput, { color: palette.text }]}
-              />
-            </View>
-          </View>
-
-          <View style={styles.gridRow}>
-            <View style={styles.gridItem}>
-              <Text style={styles.fieldLabel}>Estimate (min)</Text>
-              <TextInput
-                value={estimateMinutes}
-                onChangeText={setEstimateMinutes}
-                keyboardType="number-pad"
-                placeholder="45"
-                placeholderTextColor={palette.textSecondary}
-                style={[
-                  styles.smallInput,
-                  {
-                    color: palette.text,
-                    borderColor: palette.border,
-                  },
-                ]}
-              />
-            </View>
-            <View style={styles.gridItem}>
-              <Text style={styles.fieldLabel}>Location</Text>
-              <View style={styles.chipRow}>
-                {locations.map((loc) => (
-                  <Pressable
-                    key={loc}
-                    onPress={() => setManualLocations((prev) => prev.filter((entry) => entry !== loc))}
-                    style={styles.chip}>
-                    <Text style={styles.chipText}>{loc}</Text>
-                    {manualLocations.includes(loc) ? <Text style={styles.chipRemove}>x</Text> : null}
-                  </Pressable>
-                ))}
-                <TextInput
-                  value={locationDraft}
-                  onChangeText={setLocationDraft}
-                  onSubmitEditing={addLocationsFromDraft}
-                  onBlur={addLocationsFromDraft}
-                  placeholder="Home"
-                  placeholderTextColor={palette.textSecondary}
-                  style={[styles.chipInput, { color: palette.text }]}
-                />
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.gridRow}>
-            <View style={styles.gridItem}>
-              <Text style={styles.fieldLabel}>Points</Text>
-              <View style={styles.pointsCard}>
-                <Text style={styles.pointsValue}>{formatXp(pointsPreview)}</Text>
-                <Text style={styles.pointsMeta}>{pointsFormula}</Text>
-              </View>
-            </View>
-            <View style={styles.gridItem}>
-              <Text style={styles.fieldLabel}>Running</Text>
-              <View style={styles.pointsCard}>
-                <Text style={styles.pointsValue}>--</Text>
-                <Text style={styles.pointsMeta}>Not running</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Skills</Text>
-            <View style={styles.chipRow}>
-              {skills.map((skill) => (
-                <Pressable
-                  key={skill}
-                  onPress={() => setSkills((prev) => prev.filter((entry) => entry !== skill))}
-                  style={styles.chip}>
-                  <Text style={styles.chipText}>{skill}</Text>
-                  <Text style={styles.chipRemove}>x</Text>
-                </Pressable>
-              ))}
-              <TextInput
-                value={skillsDraft}
-                onChangeText={setSkillsDraft}
-                onSubmitEditing={addSkillsFromDraft}
-                onBlur={addSkillsFromDraft}
-                placeholder="communication, lifting"
-                placeholderTextColor={palette.textSecondary}
-                style={[styles.chipInput, { color: palette.text }]}
-              />
-            </View>
-          </View>
-
-          <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Character</Text>
-            <View style={styles.chipRow}>
-              {CHARACTER_KEYS.map((key) => {
-                const activeChip = character.includes(key);
-                return (
-                  <Pressable
-                    key={key}
-                    onPress={() => toggleCharacter(key)}
-                    style={[styles.chip, activeChip && styles.chipActive]}>
-                    <Text style={[styles.chipText, activeChip && styles.chipTextActive]}>{key}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.gridRow}>
-            <View style={styles.gridItem}>
-              <Text style={styles.fieldLabel}>Goal</Text>
-              <TextInput
-                value={goal}
-                onChangeText={setGoal}
-                placeholder="get shredded"
-                placeholderTextColor={palette.textSecondary}
-                style={[
-                  styles.smallInput,
-                  {
-                    color: palette.text,
-                    borderColor: palette.border,
-                  },
-                ]}
-              />
-            </View>
-            <View style={styles.gridItem}>
-              <Text style={styles.fieldLabel}>Project</Text>
-              <TextInput
-                value={project}
-                onChangeText={setProject}
-                placeholder="workout plan"
-                placeholderTextColor={palette.textSecondary}
-                style={[
-                  styles.smallInput,
-                  {
-                    color: palette.text,
-                    borderColor: palette.border,
-                  },
-                ]}
-              />
-            </View>
-          </View>
-
-          <View style={styles.gridRow}>
-            <View style={styles.gridItem}>
-              <Text style={styles.fieldLabel}>Category</Text>
-              <TextInput
-                value={category}
-                onChangeText={setCategory}
-                placeholder="Work / Health / Study"
-                placeholderTextColor={palette.textSecondary}
-                style={[
-                  styles.smallInput,
-                  {
-                    color: palette.text,
-                    borderColor: palette.border,
-                  },
-                ]}
-              />
-            </View>
-            <View style={styles.gridItem}>
-              <Text style={styles.fieldLabel}>Subcategory</Text>
-              <TextInput
-                value={subcategory}
-                onChangeText={setSubcategory}
-                placeholder="Clinic / Surgery / Gym"
-                placeholderTextColor={palette.textSecondary}
-                style={[
-                  styles.smallInput,
-                  {
-                    color: palette.text,
-                    borderColor: palette.border,
-                  },
-                ]}
-              />
-            </View>
-          </View>
-
-          <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Category shortcuts</Text>
-            <View style={styles.chipRow}>
-              {CATEGORY_SHORTCUTS.map((shortcut) => {
-                const activeChip = shortcut.toLowerCase() === category.trim().toLowerCase();
-                return (
-                  <Pressable
-                    key={shortcut}
-                    onPress={() => setCategory(shortcut)}
-                    style={[styles.chip, activeChip && styles.chipActive]}>
-                    <Text style={[styles.chipText, activeChip && styles.chipTextActive]}>{shortcut}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          {subcategoryOptions.length ? (
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Subcategory shortcuts</Text>
-              <View style={styles.chipRow}>
-                {subcategoryOptions.map((shortcut) => {
-                  const activeChip = shortcut.toLowerCase() === subcategory.trim().toLowerCase();
-                  return (
-                    <Pressable
-                      key={shortcut}
-                      onPress={() => setSubcategory(shortcut)}
-                      style={[styles.chip, activeChip && styles.chipActive]}>
-                      <Text style={[styles.chipText, activeChip && styles.chipTextActive]}>{shortcut}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-          ) : null}
-        </View>
-
-        <View style={styles.scaleGroup}>
-          <Text style={styles.sectionLabel}>Importance</Text>
-          <View style={styles.scaleRow}>
-            {Array.from({ length: 10 }, (_, idx) => idx + 1).map((level) => (
-              <Pressable
-                key={`imp_${level}`}
-                style={[styles.scalePill, level <= importance && styles.scalePillActive]}
-                onPress={() => setImportance(level)}>
-                <Text style={[styles.scaleText, level <= importance && styles.scaleTextActive]}>{level}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.sectionLabel}>Difficulty / Energy</Text>
-          <View style={styles.scaleRow}>
-            {Array.from({ length: 10 }, (_, idx) => idx + 1).map((level) => (
-              <Pressable
-                key={`dif_${level}`}
-                style={[styles.scalePill, level <= difficulty && styles.scalePillActive]}
-                onPress={() => setDifficulty(level)}>
-                <Text style={[styles.scaleText, level <= difficulty && styles.scaleTextActive]}>{level}</Text>
-              </Pressable>
-            ))}
+              {recordingState === 'recording' ? 'Listening' : 'Ready'}
+            </Text>
           </View>
         </View>
+        <Pressable
+          onPress={() => router.back()}
+          style={[styles.closeButton, { borderColor: palette.border }]}
+          accessibilityLabel="Close capture">
+          <FontAwesome name="times" size={14} color={palette.textSecondary} />
+        </Pressable>
+      </View>
 
-        <View style={styles.attachments}>
-          <Pressable style={styles.attachButton} onPress={pickFromCamera}>
-            <FontAwesome name="camera" size={16} color={palette.text} />
+      {appendEventId ? (
+        <View style={[styles.attachRow, { borderColor: palette.border, backgroundColor: palette.surface }]}>
+          <Text style={[styles.attachLabel, { color: palette.textSecondary }]}>Appending to</Text>
+          <Text style={[styles.attachTitle, { color: palette.text }]} numberOfLines={1}>
+            {attachedEventTitle ?? 'Event'}
+          </Text>
+          <Pressable
+            style={[styles.attachDetach, { borderColor: palette.border }]}
+            onPress={() => router.replace('/capture')}
+            accessibilityLabel="Detach event">
+            <FontAwesome name="times" size={10} color={palette.textSecondary} />
           </Pressable>
-          <Pressable style={styles.attachButton} onPress={pickFromLibrary}>
-            <FontAwesome name="image" size={16} color={palette.text} />
+        </View>
+      ) : null}
+
+      <ScrollView
+        contentContainerStyle={styles.body}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
+        <View style={[styles.sheet, { borderColor: palette.border, backgroundColor: palette.surface }]}>
+          <View style={styles.sheetHeader}>
+            <Text style={[styles.sheetTitle, { color: palette.textSecondary }]}>Live transcript</Text>
+            <View style={styles.sheetMeta}>
+              <View
+                style={[
+                  styles.sheetStatus,
+                  { borderColor: palette.border },
+                  recordingState === 'recording' && styles.sheetStatusActive,
+                ]}>
+                <Text
+                  style={[
+                    styles.sheetStatusText,
+                    { color: recordingState === 'recording' ? palette.tint : palette.textSecondary },
+                  ]}>
+                  {recordingState === 'recording' ? 'Transcribing' : 'Idle'}
+                </Text>
+              </View>
+              <Text style={[styles.sheetCount, { color: palette.textSecondary }]}>{rawText.length} chars</Text>
+            </View>
+          </View>
+          <TextInput
+            value={rawText}
+            onChangeText={(nextText) => {
+              const now = Date.now();
+              const prev = rawTextRef.current;
+              let updated = nextText;
+              if (recordingState === 'recording' && nextText.startsWith(prev)) {
+                const needsDivider =
+                  pendingDividerRef.current &&
+                  hasSemanticContent(prev) &&
+                  !lastNonEmptyLine(prev).startsWith('---');
+                const needsTimestamp =
+                  pendingMarkerRef.current && !TIMESTAMP_LINE_RE.test(lastNonEmptyLine(prev).trim());
+                if (needsDivider || needsTimestamp) {
+                  const insertion = buildAutoInsertion(prev, { divider: needsDivider, timestamp: needsTimestamp });
+                  const appended = nextText.slice(prev.length);
+                  updated = `${prev}${insertion}${appended}`;
+                  pendingDividerRef.current = false;
+                  pendingMarkerRef.current = false;
+                  lastMarkerAtRef.current = now;
+                }
+              }
+              rawTextRef.current = updated;
+              lastInputAtRef.current = now;
+              setRawText(updated);
+            }}
+            placeholder="Start talking or type your notes..."
+            placeholderTextColor={palette.textSecondary}
+            multiline
+            style={[
+              styles.transcriptInput,
+              {
+                color: palette.text,
+              },
+            ]}
+          />
+        </View>
+
+        <View style={[styles.outlinePanel, { borderColor: palette.border, backgroundColor: palette.surface }]}>
+          <View style={styles.outlineHeader}>
+            <Text style={[styles.outlineTitle, { color: palette.textSecondary }]}>Live outline</Text>
+            <View style={styles.outlineMeta}>
+              {[
+                { label: 'segment', value: outlineStats.segments },
+                { label: 'note', value: outlineStats.notes },
+                { label: 'event', value: outlineStats.events },
+              ].map((item) => (
+                <View
+                  key={item.label}
+                  style={[
+                    styles.outlineChip,
+                    { borderColor: palette.border, backgroundColor: palette.surface },
+                    item.value > 0 && styles.outlineChipActive,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.outlineChipText,
+                      { color: item.value > 0 ? palette.tint : palette.textSecondary },
+                    ]}>
+                    {item.value} {item.label}
+                    {item.value === 1 ? '' : 's'}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+          <Text style={[styles.outlineText, { color: palette.text }]}>
+            {outlinePreview || 'Outline will appear here.'}
+          </Text>
+        </View>
+      </ScrollView>
+
+      <View style={[styles.footer, { borderColor: palette.border, backgroundColor: palette.surface }]}>
+        <Pressable
+          onPress={() => void toggleRecording()}
+          disabled={recordingState === 'processing'}
+            style={({ pressed }: PressableStateCallbackType) => [
+            styles.voiceButton,
+            { borderColor: palette.border },
+            recordingState === 'recording' && [
+              styles.voiceButtonActive,
+              { backgroundColor: palette.tint, borderColor: palette.tint, shadowColor: palette.tint },
+            ],
+            pressed && recordingState !== 'recording' && styles.voiceButtonPressed,
+          ]}>
+          <FontAwesome
+            name="microphone"
+            size={16}
+            color={recordingState === 'recording' ? '#FFFFFF' : palette.text}
+          />
+          <Text
+            style={[
+              styles.voiceButtonText,
+              { color: recordingState === 'recording' ? '#FFFFFF' : palette.text },
+            ]}>
+            {recordingState === 'recording' ? 'Listening...' : 'Voice'}
+          </Text>
+        </Pressable>
+        <View style={styles.footerActions}>
+          <Pressable
+            onPress={() => {
+              rawTextRef.current = '';
+              setRawText('');
+            }}
+            disabled={saving || !rawText.trim()}
+            style={({ pressed }: PressableStateCallbackType) => [
+              styles.clearButton,
+              pressed && !saving && styles.clearButtonPressed,
+            ]}>
+            <Text style={[styles.clearButtonText, { color: palette.textSecondary }]}>Clear</Text>
           </Pressable>
           <Pressable
-            style={[styles.attachButton, recordingState === 'recording' && styles.attachButtonActive]}
-            onPress={() => void toggleRecording()}>
-            <FontAwesome
-              name={recordingState === 'recording' ? 'stop' : 'microphone'}
-              size={16}
-              color={recordingState === 'recording' ? '#D95D39' : palette.text}
-            />
+            onPress={onSave}
+            disabled={!canSave}
+            style={({ pressed }: PressableStateCallbackType) => [
+              styles.saveButton,
+              { backgroundColor: palette.tint, shadowColor: palette.tint },
+              !canSave && styles.saveButtonDisabled,
+              pressed && canSave && styles.saveButtonPressed,
+            ]}>
+            <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save Note'}</Text>
           </Pressable>
-          <Pressable style={styles.attachButton} onPress={() => void addLocationAttachment()}>
-            <FontAwesome name="map-marker" size={16} color={palette.text} />
-          </Pressable>
         </View>
-        {recordingState === 'recording' ? (
-          <Text style={styles.recordingHint}>Recording... markers added automatically</Text>
-        ) : null}
-
-        <Text style={styles.sectionLabel}>Transcription</Text>
-        <View style={styles.segmentRow}>
-          {[
-            { key: 'supabase', label: 'Supabase' },
-            { key: 'whisper', label: 'Whisper' },
-          ].map((option) => {
-            const activeOption = transcriptionProvider === option.key;
-            return (
-              <Pressable
-                key={option.key}
-                style={[
-                  styles.segment,
-                  {
-                    backgroundColor: activeOption ? 'rgba(217,93,57,0.16)' : 'rgba(255,255,255,0.04)',
-                    borderColor: palette.border,
-                  },
-                ]}
-                onPress={() => setTranscriptionProvider(option.key as 'supabase' | 'whisper')}>
-                <Text style={styles.segmentText}>{option.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {attachments.length ? (
-          <View style={styles.attachmentList}>
-            {attachments.map((item) => (
-              <View key={item.id} style={styles.attachmentCard}>
-                {item.type === 'image' && item.uri ? (
-                  <Image source={{ uri: item.uri }} style={styles.attachmentPreview} />
-                ) : (
-                  <View style={styles.attachmentIcon}>
-                    <FontAwesome
-                      name={item.type === 'audio' ? 'microphone' : item.type === 'location' ? 'map-marker' : 'paperclip'}
-                      size={14}
-                      color={palette.text}
-                    />
-                  </View>
-                )}
-                <View style={styles.attachmentBody}>
-                  <Text style={styles.attachmentTitle}>{item.label ?? item.type}</Text>
-                  <Text style={styles.attachmentMeta}>
-                    {item.status === 'pending'
-                      ? 'Processing...'
-                      : item.transcription || item.analysis || 'Ready'}
-                    {item.type === 'audio' && item.metadata?.provider
-                      ? ` - ${item.metadata.provider === 'whisper' ? 'Whisper' : 'Supabase'}`
-                      : ''}
-                  </Text>
-                </View>
-                <Pressable
-                  style={styles.attachmentRemove}
-                  onPress={() => setAttachments((prev) => prev.filter((entry) => entry.id !== item.id))}>
-                  <FontAwesome name="times" size={12} color={palette.text} />
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        <View style={styles.reviewSection}>
-          <Text style={styles.sectionLabel}>Review queue</Text>
-          {!reviewQueue.length ? (
-            <Text style={styles.reviewEmpty}>No pending captures yet.</Text>
-          ) : (
-            reviewQueue.map((capture) => (
-              <View key={capture.id} style={styles.reviewCard}>
-                <Text style={styles.reviewTitle}>
-                  {capture.rawText.split('\n')[0]?.slice(0, 80) || 'Capture'}
-                </Text>
-                <Text style={styles.reviewMeta}>
-                  {new Date(capture.createdAt).toLocaleString()}
-                </Text>
-                <View style={styles.reviewActions}>
-                  <Pressable
-                    style={[styles.reviewButton, styles.reviewButtonPrimary]}
-                    disabled={reviewingId === capture.id}
-                    onPress={() => void processCapture(capture)}>
-                    <Text style={styles.reviewButtonText}>
-                      {reviewingId === capture.id ? 'Processing...' : 'Process'}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.reviewButton, styles.reviewButtonSecondary]}
-                    disabled={reviewingId === capture.id}
-                    onPress={() => void dismissCapture(capture)}>
-                    <Text style={styles.reviewButtonText}>Dismiss</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
-
-        <Pressable
-          onPress={onSave}
-          disabled={!canSave}
-          style={({ pressed }: PressableStateCallbackType) => [
-            styles.button,
-            !canSave && styles.buttonDisabled,
-            pressed && canSave && styles.buttonPressed,
-          ]}>
-          <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Send'}</Text>
-        </Pressable>
-      </ScrollView>
+      </View>
     </View>
   );
 }
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  extendPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  extendPillActive: {
+    opacity: 1,
+  },
+  extendText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.08,
+    textTransform: 'uppercase',
+  },
+  livePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  livePillActive: {
+    opacity: 1,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  liveText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.08,
+    textTransform: 'uppercase',
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  attachRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+  },
+  attachLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.08,
+    textTransform: 'uppercase',
+  },
+  attachTitle: {
+    flex: 1,
+    fontWeight: '700',
+  },
+  attachDetach: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  body: {
+    gap: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
+  },
+  sheet: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    shadowColor: '#000000',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  sheetTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.16,
+    textTransform: 'uppercase',
+  },
+  sheetMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sheetStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  sheetStatusActive: {
+    opacity: 1,
+  },
+  sheetStatusText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  sheetCount: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  transcriptInput: {
+    minHeight: 160,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  outlinePanel: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    shadowColor: '#000000',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+  },
+  outlineHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  outlineTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.16,
+    textTransform: 'uppercase',
+  },
+  outlineMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  outlineChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  outlineChipActive: {
+    opacity: 1,
+  },
+  outlineChipText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  outlineText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+  },
+  voiceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  voiceButtonActive: {
+    opacity: 1,
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  voiceButtonPressed: {
+    transform: [{ scale: 0.98 }],
+  },
+  voiceButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  footerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  clearButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  clearButtonPressed: {
+    opacity: 0.7,
+  },
+  clearButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  saveButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 14,
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  saveButtonPressed: {
+    transform: [{ scale: 0.98 }],
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 14,
   },
   scroll: {
     gap: 16,

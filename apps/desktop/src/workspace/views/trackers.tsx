@@ -1,10 +1,35 @@
 import { useEffect, useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
+import { formatRelativeDate } from '@insight/shared'
 import type { CalendarEvent } from '../../storage/calendar'
 import { Icon } from '../../ui/icons'
-import { MetaEditor } from '../../ui/MetaEditor'
-import { TrackerUnitEditor } from '../../ui/TrackerUnitEditor'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
-import { emptySharedMeta, loadTrackerDefs, saveTrackerDefs, type TrackerDef } from '../../storage/ecosystem'
+import { loadTrackerDefs, type TrackerDef } from '../../storage/ecosystem'
+
+type TrackerHistory = { value: number; at: number }
+
+type TrackerStats = {
+  count: number
+  lastValue: number | null
+  lastAt: number | null
+  avg: number | null
+  min: number | null
+  max: number | null
+  recent: TrackerHistory[]
+  recentCount: number
+  weekAvg: number | null
+  prevWeekAvg: number | null
+  trendPct: number | null
+}
+
+type TrackerRow = TrackerStats & {
+  key: string
+  label: string
+  unitLabel: string
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+const RECENT_LOG_COUNT = 12
+const countFormatter = new Intl.NumberFormat('en-US')
 
 function normalizeKey(raw: string | null | undefined) {
   return (raw ?? '').trim().toLowerCase()
@@ -17,31 +42,110 @@ function parseTrackerValue(title: string) {
   return Number.isFinite(value) ? value : null
 }
 
-function slugify(input: string) {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
+function isoDate(ms: number) {
+  const d = new Date(ms)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 }
 
-function makeId() {
-  return `tracker_${Date.now()}_${Math.random().toString(16).slice(2)}`
+function startOfDayMs(ms: number) {
+  const d = new Date(ms)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
 }
 
-function numberOrNull(raw: string) {
-  const trimmed = raw.trim()
-  if (!trimmed) return null
-  const n = Number(trimmed)
-  return Number.isFinite(n) ? n : null
+function formatNumber(value: number | null) {
+  if (value == null || !Number.isFinite(value)) return '—'
+  const rounded = Math.abs(value) >= 100 ? Math.round(value) : Math.round(value * 10) / 10
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
 }
 
-function parsePresetDraft(raw: string) {
-  return raw
-    .split(/[,\s]+/)
-    .map((p) => Number(p))
-    .filter((p) => Number.isFinite(p))
+function summarizeHistory(history: TrackerHistory[], now: number): TrackerStats {
+  if (history.length === 0) {
+    return {
+      count: 0,
+      lastValue: null,
+      lastAt: null,
+      avg: null,
+      min: null,
+      max: null,
+      recent: [],
+      recentCount: 0,
+      weekAvg: null,
+      prevWeekAvg: null,
+      trendPct: null,
+    }
+  }
+
+  let sum = 0
+  let min = Number.POSITIVE_INFINITY
+  let max = Number.NEGATIVE_INFINITY
+  for (const item of history) {
+    sum += item.value
+    min = Math.min(min, item.value)
+    max = Math.max(max, item.value)
+  }
+
+  const count = history.length
+  const last = history[count - 1]
+  const avg = sum / count
+  const weekStart = now - 7 * DAY_MS
+  const prevStart = now - 14 * DAY_MS
+  const weekValues = history.filter((item) => item.at >= weekStart).map((item) => item.value)
+  const prevValues = history.filter((item) => item.at >= prevStart && item.at < weekStart).map((item) => item.value)
+  const weekAvg = weekValues.length ? weekValues.reduce((a, b) => a + b, 0) / weekValues.length : null
+  const prevWeekAvg = prevValues.length ? prevValues.reduce((a, b) => a + b, 0) / prevValues.length : null
+  const trendPct = prevWeekAvg && weekAvg != null ? ((weekAvg - prevWeekAvg) / Math.abs(prevWeekAvg)) * 100 : null
+
+  return {
+    count,
+    lastValue: last.value,
+    lastAt: last.at,
+    avg,
+    min: Number.isFinite(min) ? min : null,
+    max: Number.isFinite(max) ? max : null,
+    recent: history.slice(-RECENT_LOG_COUNT),
+    recentCount: weekValues.length,
+    weekAvg,
+    prevWeekAvg,
+    trendPct,
+  }
+}
+
+function buildDailyCounts(history: TrackerHistory[], days: number) {
+  const todayStart = startOfDayMs(Date.now())
+  const start = todayStart - (days - 1) * DAY_MS
+  const counts = Array.from({ length: days }).map(() => 0)
+
+  for (const item of history) {
+    if (item.at < start) continue
+    const idx = Math.floor((item.at - start) / DAY_MS)
+    if (idx >= 0 && idx < days) counts[idx] += 1
+  }
+
+  return counts.map((count, idx) => {
+    const date = new Date(start + idx * DAY_MS)
+    const label = date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2)
+    return { count, label }
+  })
+}
+
+function TrackerSparkline(props: { values: number[]; variant?: 'default' | 'hero' }) {
+  if (props.values.length === 0) return null
+  const max = Math.max(...props.values.map((value) => Math.abs(value)), 1)
+  return (
+    <div className={`trackerSparkline${props.variant === 'hero' ? ' hero' : ''}`}>
+      {props.values.map((value, index) => (
+        <span
+          key={`${index}-${value}`}
+          className="trackerSparklineBar"
+          style={{ height: `${Math.max(16, (Math.abs(value) / max) * 100)}%` }}
+        />
+      ))}
+    </div>
+  )
 }
 
 export function TrackersView(props: {
@@ -53,38 +157,14 @@ export function TrackersView(props: {
 }) {
   const [defs, setDefs] = useState<TrackerDef[]>(() => props.trackerDefs ?? loadTrackerDefs())
   const [query, setQuery] = useState('')
-  const [draft, setDraft] = useState('')
-  const [activeKey, setActiveKey] = useState<string | null>(() => {
-    const key = normalizeKey(props.trackerKey)
-    return key || null
-  })
-  const [presetDrafts, setPresetDrafts] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    const next: Record<string, string> = {}
-    for (const def of defs) next[def.key] = def.unit.presets.join(', ')
-    setPresetDrafts(next)
-  }, [defs])
 
   useEffect(() => {
     if (!props.trackerDefs) return
     setDefs(props.trackerDefs)
   }, [props.trackerDefs])
 
-  useEffect(() => {
-    if (!props.trackerKey) {
-      setActiveKey(null)
-      return
-    }
-    const key = normalizeKey(props.trackerKey)
-    if (!key) return
-    setActiveKey(key)
-  }, [props.trackerKey])
-
-  const trackerStats = useMemo(() => {
-    const stats = new Map<string, { lastValue: number | null; lastAt: number | null; avg: number | null }>()
-    const accum = new Map<string, number[]>()
-
+  const trackerHistories = useMemo(() => {
+    const byKey = new Map<string, TrackerHistory[]>()
     for (const ev of props.events) {
       if (ev.kind !== 'log') continue
       if (!ev.trackerKey) continue
@@ -93,58 +173,127 @@ export function TrackersView(props: {
       if (!key) continue
       const value = parseTrackerValue(ev.title)
       if (value == null) continue
-      const list = accum.get(key) ?? []
-      list.push(value)
-      accum.set(key, list)
-      const existing = stats.get(key)
-      if (!existing || (ev.startAt ?? 0) > (existing.lastAt ?? 0)) {
-        stats.set(key, { lastValue: value, lastAt: ev.startAt ?? null, avg: null })
-      }
+      const list = byKey.get(key) ?? []
+      list.push({ value, at: ev.startAt ?? ev.createdAt ?? Date.now() })
+      byKey.set(key, list)
     }
-
-    for (const [key, values] of accum.entries()) {
-      const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : null
-      const existing = stats.get(key)
-      stats.set(key, { lastValue: existing?.lastValue ?? null, lastAt: existing?.lastAt ?? null, avg })
-    }
-
-    return stats
+    for (const list of byKey.values()) list.sort((a, b) => a.at - b.at)
+    return byKey
   }, [props.events])
 
   const rows = useMemo(() => {
+    const now = Date.now()
+    const needle = query.trim().toLowerCase()
     return defs
-      .filter((def) => def.label.toLowerCase().includes(query.trim().toLowerCase()) || def.key.includes(query.trim().toLowerCase()))
-      .map((def) => ({
-        ...def,
-        stats: trackerStats.get(def.key) ?? { lastValue: null, lastAt: null, avg: null },
-      }))
-  }, [defs, query, trackerStats])
+      .filter((def) => def.label.toLowerCase().includes(needle) || def.key.includes(needle))
+      .map((def) => {
+        const history = trackerHistories.get(def.key) ?? []
+        const stats = summarizeHistory(history, now)
+        return {
+          key: def.key,
+          label: def.label,
+          unitLabel: def.unit.label || 'value',
+          ...stats,
+        }
+      })
+      .sort((a, b) => (b.lastAt ?? 0) - (a.lastAt ?? 0) || b.count - a.count)
+  }, [defs, query, trackerHistories])
 
-  function updateDefs(next: TrackerDef[]) {
-    setDefs(next)
-    saveTrackerDefs(next)
-    props.onTrackerDefsChange?.(next)
+  const summary = useMemo(() => {
+    const now = Date.now()
+    const weekStart = now - 7 * DAY_MS
+    const monthStart = now - 30 * DAY_MS
+    let totalLogs = 0
+    let logsLast7Days = 0
+    let logsLast30Days = 0
+    let lastActivityAt: number | null = null
+    const activeTrackers = new Set<string>()
+    const activeDays = new Set<string>()
+    for (const [key, history] of trackerHistories.entries()) {
+      if (history.length === 0) continue
+      totalLogs += history.length
+      const last = history[history.length - 1]
+      if (!lastActivityAt || last.at > lastActivityAt) lastActivityAt = last.at
+      let hasWeek = false
+      for (const item of history) {
+        if (item.at >= weekStart) {
+          logsLast7Days += 1
+          hasWeek = true
+        }
+        if (item.at >= monthStart) {
+          logsLast30Days += 1
+          activeDays.add(isoDate(item.at))
+        }
+      }
+      if (hasWeek) activeTrackers.add(key)
+    }
+    return {
+      totalLogs,
+      logsLast7Days,
+      logsLast30Days,
+      logsPerDay: logsLast7Days / 7,
+      activeTrackers: activeTrackers.size,
+      activeDays: activeDays.size,
+      lastActivityAt,
+    }
+  }, [trackerHistories])
+
+  const allHistory = useMemo(() => {
+    const merged: TrackerHistory[] = []
+    for (const history of trackerHistories.values()) merged.push(...history)
+    return merged
+  }, [trackerHistories])
+
+  const dailyCounts = useMemo(() => buildDailyCounts(allHistory, 7), [allHistory])
+
+  const topTracker = useMemo(() => {
+    let top: TrackerRow | null = null
+    for (const row of rows) {
+      if (row.count === 0) continue
+      if (!top) {
+        top = row
+        continue
+      }
+      if (row.recentCount > top.recentCount) {
+        top = row
+        continue
+      }
+      if (row.recentCount === top.recentCount && row.count > top.count) {
+        top = row
+      }
+    }
+    return top
+  }, [rows])
+
+  const activeKey = normalizeKey(props.trackerKey)
+  const listVariants = {
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { staggerChildren: 0.05 } },
+  }
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0 },
   }
 
-  function updateDef(key: string, patch: Partial<TrackerDef>) {
-    const next = defs.map((def) => (def.key === key ? { ...def, ...patch } : def))
-    updateDefs(next)
-  }
-
-  const activeDef = activeKey ? defs.find((d) => d.key === activeKey) ?? null : null
-  const activeStats = activeKey ? trackerStats.get(activeKey) ?? null : null
+  const dailyMax = Math.max(...dailyCounts.map((day) => day.count), 1)
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
+    <div className="trackersDashboardRoot flex flex-col h-full bg-[var(--bg)] text-[var(--text)] font-['Figtree'] overflow-hidden">
       <div className="px-10 pt-10 pb-6 bg-[var(--bg)]/80 backdrop-blur-xl sticky top-0 z-10 max-w-7xl mx-auto w-full">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
+        <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="space-y-2">
+            <div className="trackerHeaderKicker">Insights</div>
             <h1 className="text-3xl font-extrabold tracking-tight">Trackers</h1>
-            <p className="text-sm text-[var(--muted)] font-semibold">Edit tracker units, presets, and linked metadata.</p>
+            <p className="text-sm text-[var(--muted)] font-semibold">A living dashboard of your most important signals.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="trackerHeaderPill">{countFormatter.format(defs.length)} trackers</div>
+            <div className="trackerHeaderPill">{countFormatter.format(summary.logsLast7Days)} logs this week</div>
+            <div className="trackerHeaderPill">{summary.activeTrackers} active</div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-6 mt-6">
+        <div className="flex flex-wrap items-center gap-4 mt-6">
           <div className="flex-1 min-w-[240px] max-w-md relative">
             <input
               className="w-full h-11 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-10 text-sm font-medium focus:bg-[var(--glass3)] focus:shadow-[0_10px_24px_var(--glowSoft)] transition-all outline-none backdrop-blur"
@@ -153,213 +302,158 @@ export function TrackersView(props: {
               placeholder="Filter trackers..."
             />
             <div className="absolute left-3.5 top-3.5 opacity-30">
-              <Icon name="tag" size={16} />
+              <Icon name="search" size={16} />
             </div>
           </div>
-          <div className="flex items-center gap-2 min-w-[260px] max-w-md w-full">
-            <input
-              className="flex-1 h-11 bg-[var(--glass2)] border border-[var(--border)] rounded-2xl px-4 text-sm font-medium focus:bg-[var(--glass3)] focus:shadow-[0_10px_24px_var(--glowSoft)] transition-all outline-none backdrop-blur"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="New tracker name..."
-              onKeyDown={(e) => {
-                if (e.key !== 'Enter') return
-                const name = draft.trim()
-                if (!name) return
-                const key = slugify(name)
-                if (!key) return
-                const existing = defs.find((d) => d.key === key)
-                if (existing) {
-                  setActiveKey(existing.key)
-                  props.onSelectTracker?.(existing.key)
-                } else {
-                  const next: TrackerDef = {
-                    id: makeId(),
-                    key,
-                    label: name,
-                    createdAt: Date.now(),
-                    unit: { label: 'value', min: null, max: null, step: null, presets: [] },
-                    meta: emptySharedMeta(),
-                  }
-                  updateDefs([next, ...defs])
-                  setActiveKey(next.key)
-                  props.onSelectTracker?.(next.key)
-                }
-                setDraft('')
-              }}
-            />
-            <button
-              className="h-11 px-4 rounded-2xl bg-[var(--glass2)] border border-[var(--border)] text-xs font-bold hover:bg-[var(--glass3)] transition-all"
-              onClick={() => {
-                const name = draft.trim()
-                if (!name) return
-                const key = slugify(name)
-                if (!key) return
-                const existing = defs.find((d) => d.key === key)
-                if (existing) {
-                  setActiveKey(existing.key)
-                  props.onSelectTracker?.(existing.key)
-                } else {
-                  const next: TrackerDef = {
-                    id: makeId(),
-                    key,
-                    label: name,
-                    createdAt: Date.now(),
-                    unit: { label: 'value', min: null, max: null, step: null, presets: [] },
-                    meta: emptySharedMeta(),
-                  }
-                  updateDefs([next, ...defs])
-                  setActiveKey(next.key)
-                  props.onSelectTracker?.(next.key)
-                }
-                setDraft('')
-              }}
-            >
-              Add
-            </button>
+          <div className="trackerHeaderMeta">
+            <div className="trackerHeaderMetaLabel">Last activity</div>
+            <div className="trackerHeaderMetaValue">{summary.lastActivityAt ? formatRelativeDate(summary.lastActivityAt) : '—'}</div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden px-10 pb-32 max-w-7xl mx-auto w-full">
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-10 h-full">
-          <div className="glassCard overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tracker</TableHead>
-                  <TableHead>Unit</TableHead>
-                  <TableHead>Min</TableHead>
-                  <TableHead>Max</TableHead>
-                  <TableHead>Step</TableHead>
-                  <TableHead>Presets</TableHead>
-                  <TableHead>Last</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-xs uppercase tracking-widest text-[var(--muted)]">
-                      No trackers yet
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  rows.map((row) => (
-                    <TableRow
-                      key={row.key}
-                      data-state={activeKey === row.key ? 'selected' : undefined}
-                      className="cursor-pointer"
-                      onClick={() => {
-                        setActiveKey(row.key)
-                        props.onSelectTracker?.(row.key)
-                      }}
-                    >
-                      <TableCell>
-                        <input
-                          className="w-full bg-transparent text-sm font-semibold"
-                          value={row.label}
-                          onChange={(e) => updateDef(row.key, { label: e.target.value })}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <input
-                          className="w-full bg-transparent text-xs"
-                          value={row.unit.label}
-                          onChange={(e) => updateDef(row.key, { unit: { ...row.unit, label: e.target.value || 'value' } })}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <input
-                          className="w-16 bg-transparent text-xs"
-                          value={row.unit.min ?? ''}
-                          onChange={(e) => updateDef(row.key, { unit: { ...row.unit, min: numberOrNull(e.target.value) } })}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <input
-                          className="w-16 bg-transparent text-xs"
-                          value={row.unit.max ?? ''}
-                          onChange={(e) => updateDef(row.key, { unit: { ...row.unit, max: numberOrNull(e.target.value) } })}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <input
-                          className="w-16 bg-transparent text-xs"
-                          value={row.unit.step ?? ''}
-                          onChange={(e) => updateDef(row.key, { unit: { ...row.unit, step: numberOrNull(e.target.value) } })}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <input
-                          className="w-full bg-transparent text-xs"
-                          value={presetDrafts[row.key] ?? ''}
-                          onChange={(e) => setPresetDrafts((prev) => ({ ...prev, [row.key]: e.target.value }))}
-                          onBlur={(e) => updateDef(row.key, { unit: { ...row.unit, presets: parsePresetDraft(e.target.value) } })}
-                        />
-                      </TableCell>
-                      <TableCell className="text-xs text-[var(--muted)]">
-                        {row.stats.lastValue ?? '—'}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+      <div className="flex-1 overflow-y-auto px-10 pb-32 max-w-7xl mx-auto w-full">
+        <div className="trackersDashboardContent">
+          <motion.div className="trackersSummaryGrid" variants={listVariants} initial="hidden" animate="show">
+            <motion.div className="glassCard trackersSummaryCard" variants={itemVariants}>
+              <div className="trackersSummaryLabel">Total logs</div>
+              <div className="trackersSummaryValue">{countFormatter.format(summary.totalLogs)}</div>
+              <div className="trackersSummarySub">Across {countFormatter.format(defs.length)} trackers</div>
+            </motion.div>
+            <motion.div className="glassCard trackersSummaryCard" variants={itemVariants}>
+              <div className="trackersSummaryLabel">Weekly cadence</div>
+              <div className="trackersSummaryValue">{countFormatter.format(summary.logsLast7Days)}</div>
+              <div className="trackersSummarySub">{summary.logsPerDay.toFixed(1)} logs per day</div>
+            </motion.div>
+            <motion.div className="glassCard trackersSummaryCard" variants={itemVariants}>
+              <div className="trackersSummaryLabel">Active trackers</div>
+              <div className="trackersSummaryValue">{summary.activeTrackers}</div>
+              <div className="trackersSummarySub">With logs in the last 7 days</div>
+            </motion.div>
+            <motion.div className="glassCard trackersSummaryCard" variants={itemVariants}>
+              <div className="trackersSummaryLabel">Consistency</div>
+              <div className="trackersSummaryValue">{summary.activeDays}/30</div>
+              <div className="trackersSummarySub">Days with any tracker activity</div>
+            </motion.div>
+          </motion.div>
 
-          <aside className="glassCard h-full overflow-y-auto p-6 space-y-6">
-            <div>
-              <h3 className="text-lg font-bold">Details</h3>
-              <p className="text-xs text-[var(--muted)]">Tune defaults and shared properties.</p>
+          <div className="trackersFocusRow">
+            <div className="glassCard trackerHero">
+              {topTracker ? (
+                <>
+                  <div className="trackerHeroHeader">
+                    <div>
+                      <div className="trackerBadge">Most active</div>
+                      <h3 className="trackerHeroTitle">{topTracker.label}</h3>
+                      <div className="trackerHeroMeta">{countFormatter.format(topTracker.count)} total logs</div>
+                    </div>
+                    <div className="trackerHeroValue">
+                      <span>{formatNumber(topTracker.lastValue)}</span>
+                      <small>{topTracker.unitLabel}</small>
+                    </div>
+                  </div>
+                  {topTracker.recent.length ? (
+                    <TrackerSparkline values={topTracker.recent.map((item) => item.value)} variant="hero" />
+                  ) : (
+                    <div className="trackerEmptyState">No logs yet.</div>
+                  )}
+                  <div className="trackerHeroStats">
+                    <div>
+                      <span>7d avg</span>
+                      <strong>{formatNumber(topTracker.weekAvg)}</strong>
+                    </div>
+                    <div>
+                      <span>Min</span>
+                      <strong>{formatNumber(topTracker.min)}</strong>
+                    </div>
+                    <div>
+                      <span>Max</span>
+                      <strong>{formatNumber(topTracker.max)}</strong>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="trackerEmptyState">Start logging tracker values to unlock insights.</div>
+              )}
             </div>
 
-            {!activeDef ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center opacity-30 space-y-3">
-                <Icon name="droplet" size={32} />
-                <p className="text-xs font-bold uppercase tracking-widest">Select a tracker</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <div className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Tracker</div>
-                  <div className="text-lg font-bold">{activeDef.label}</div>
-                  <div className="text-xs text-[var(--muted)]">Key: {activeDef.key}</div>
+            <div className="glassCard trackerRhythm">
+              <div className="trackerRhythmHeader">
+                <div>
+                  <div className="trackerBadge">Pulse</div>
+                  <h3>Last 7 days</h3>
                 </div>
-
-                <div className="detailGrid">
-                  <label>
-                    Default value
-                    <input
-                      className="detailSmall"
-                      value={activeDef.defaultValue ?? ''}
-                      onChange={(e) => {
-                        const value = Number(e.target.value)
-                        updateDef(activeDef.key, { defaultValue: Number.isFinite(value) ? value : null })
-                      }}
-                    />
-                  </label>
-                  <label>
-                    Last logged
-                    <input
-                      className="detailSmall"
-                      value={activeStats?.lastAt ? new Date(activeStats.lastAt).toLocaleDateString() : '—'}
-                      readOnly
-                    />
-                  </label>
-                </div>
-
-                <TrackerUnitEditor
-                  unit={activeDef.unit}
-                  onChange={(unit) => updateDef(activeDef.key, { unit })}
-                />
-
-                <MetaEditor
-                  value={activeDef.meta}
-                  onChange={(meta) => updateDef(activeDef.key, { meta })}
-                />
+                <div className="trackerRhythmMeta">{countFormatter.format(summary.logsLast7Days)} logs</div>
               </div>
-            )}
-          </aside>
+              <div className="trackerRhythmBars">
+                {dailyCounts.map((day) => (
+                  <div key={day.label} className="trackerRhythmBar">
+                    <div className="trackerRhythmBarFill" style={{ height: `${Math.max(12, (day.count / dailyMax) * 100)}%` }} />
+                    <span>{day.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {rows.length === 0 ? (
+            <div className="glassCard trackerEmptyState">No trackers yet. Create one from the ecosystem view.</div>
+          ) : (
+            <motion.div className="trackersCardGrid" variants={listVariants} initial="hidden" animate="show">
+              {rows.map((row) => {
+                const trend = row.trendPct
+                const trendDirection = trend == null ? 'neutral' : trend > 0 ? 'up' : trend < 0 ? 'down' : 'neutral'
+                const trendLabel = trend == null ? '—' : `${Math.abs(trend).toFixed(0)}%`
+                return (
+                  <motion.button
+                    key={row.key}
+                    className={`glassCard trackerCard${activeKey === row.key ? ' active' : ''}`}
+                    variants={itemVariants}
+                    type="button"
+                    onClick={() => props.onSelectTracker?.(row.key)}
+                  >
+                    <div className="trackerCardHeader">
+                      <div>
+                        <div className="trackerCardTitle">{row.label}</div>
+                        <div className="trackerCardSub">Unit: {row.unitLabel}</div>
+                      </div>
+                      <div className={`trackerTrend ${trendDirection}`}>
+                        <span>{trendLabel}</span>
+                        <small>7d</small>
+                      </div>
+                    </div>
+                    <div className="trackerCardValueRow">
+                      <div className="trackerCardValue">{formatNumber(row.lastValue)}</div>
+                      <div className="trackerCardMeta">Last {row.lastAt ? formatRelativeDate(row.lastAt) : '—'}</div>
+                    </div>
+                    {row.recent.length ? (
+                      <TrackerSparkline values={row.recent.map((item) => item.value)} />
+                    ) : (
+                      <div className="trackerSparklineEmpty">No logs yet</div>
+                    )}
+                    <div className="trackerCardStats">
+                      <div>
+                        <span>Avg</span>
+                        <strong>{formatNumber(row.avg)}</strong>
+                      </div>
+                      <div>
+                        <span>Min</span>
+                        <strong>{formatNumber(row.min)}</strong>
+                      </div>
+                      <div>
+                        <span>Max</span>
+                        <strong>{formatNumber(row.max)}</strong>
+                      </div>
+                    </div>
+                    <div className="trackerCardFoot">
+                      <span>{countFormatter.format(row.count)} logs</span>
+                      <span>{countFormatter.format(row.recentCount)} in last 7d</span>
+                    </div>
+                  </motion.button>
+                )
+              })}
+            </motion.div>
+          )}
         </div>
       </div>
     </div>
