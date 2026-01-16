@@ -52,6 +52,17 @@ Goal: timeboxing and “live XP” feel.
 Acceptance:
 - Start 2-min timer for “brush teeth”; see Live Activity and completion notification.
 
+## Phase 1.6 — Ecosystem Refactor (Parsing + Tasks + Goals)
+Goal: reduce misclassification/duplication and make Tasks/Goals the primary planning surfaces.
+- Parser/linker v2 (category memory, purchase vs consume, tracker guardrails)
+- Tasks table controls (columns, start button, subtasks)
+- Goals plan split panel (outline + Gantt sync)
+
+Acceptance:
+- "Coding Insight" resolves to Professional/Insight.
+- "Bought 2 monsters, drank 1" splits purchase vs consume.
+- Goal outline reorder updates Gantt and vice versa.
+
 ## Phase 2 — Calendar Sync Day 1 (Google + Device)
 - Google OAuth exchange (Edge Function)
 - Sync events ↔ entries, store mapping in `external_event_links`

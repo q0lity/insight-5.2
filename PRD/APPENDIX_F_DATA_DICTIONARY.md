@@ -22,6 +22,8 @@ This maps product concepts to the Supabase schema. Canonical SQL is in `Insight 
 ## Triple Title Rule
 Use the format `category/subcategory/title` for Entry titles to keep naming consistent and filterable.
 
+If a `categoryPath` has 3+ levels, the title may include the first two levels while the full path lives in `frontmatter.categoryPath`.
+
 Examples:
 - `transport/driving/Driving to work`
 - `health/fitness/Morning run`
@@ -45,6 +47,11 @@ Examples:
   - `status`, `priority`, `scheduled_at`, `due_at`, `completed_at`
 - `frontmatter`: YAML-equivalent JSON.
 - `body_markdown`: primary markdown body.
+- `frontmatter.categoryPath`: optional string[] for 3+ level categories.
+- `frontmatter.costUsd`: optional number for purchase/expense logs.
+- `frontmatter.purchaseItems`: optional array of {name, qty, unit?}.
+- `frontmatter.consumeItems`: optional array of {name, qty, unit?}.
+- `frontmatter.subtasks`: optional array of {title, status, estimateMinutes?}.
 - `source`: `app|import|calendar|migration`.
 - `embedding`: vector(1536) for semantic search.
 

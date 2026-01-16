@@ -56,6 +56,12 @@ difficulty: 6
 Example:
 `Clinic rounds #work/clinic @DrSmith +hospital ~4h !8 ^6`
 
+## Purchase vs Consume
+- Purchase verbs (buy/bought/purchased/picked up/got) create `frontmatter.purchaseItems`.
+- Consume verbs (ate/drank/had/finished) create `frontmatter.consumeItems` and/or nutrition logs.
+- If both appear in one capture, split into purchase event + consumption log.
+  - Example: "Bought 2 monsters and drank 1" => purchaseItems: Monster x2; consumeItems: Monster x1.
+
 ## Normalization Rules
 - Frontmatter overrides tokens and heuristics.
 - Tags are lowercased and stored with `#` removed in entity keys, but events store tags as `#tag`.

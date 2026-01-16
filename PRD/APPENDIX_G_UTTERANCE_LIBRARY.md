@@ -58,3 +58,14 @@ This is the test corpus for voice parsing prompts and QA. Each item describes ex
 
 16. “I’m going to the store later.”
    - Suggested event card (time unclear) or ask for time.
+
+## G9) Ecosystem guardrails + categorization
+17. “I went to Wawa and got 2 monsters and a Gatorade 0. Drank 1 monster.”
+   - Proposal A: Personal/Errands/Wawa run (purchaseItems: Monster x2, Gatorade Zero x1)
+   - Proposal B: Food/Drink/Monster (consumeItems: Monster x1)
+
+18. “I’m coding Insight again.”
+   - Proposal: Professional/Insight/Coding (event), reusing the last-known categoryPath.
+
+19. “Episode 4, Episode 5.”
+   - No tracker creation unless explicitly tagged; treat as note or ignore.

@@ -1,5 +1,14 @@
 # Insight 5 Requests Log
 
+## 2026-01-16
+- Refactor categorization engine: infer Professional/Insight for "coding Insight", reduce false tags/contexts/trackers.
+- Prevent duplicate tables/events in capture notes; remove Points/Running tiles from entry detail.
+- Tasks: adjustable columns, start button, sortable table, subtask drawer, auto category/project pickers.
+- Goals: split outline + Gantt panel, reorderable tasks, confirmable remove (bottom-right).
+- Habits/trackers: consistency mini-graphs, dedupe, fix "Ep-4/Ep-5" tracker noise.
+- Nutrition/workouts: add weekly/monthly views, expand workout set rows, fix incorrect meal labels.
+- Magic button: auto-fill properties from history; calendar auto-start + external sync behavior.
+
 ## 2026-01-08
 - Enabled editable metadata (tags/people/contexts) for tasks, habits, and notes with persistence updates.
 - Added recurrence-safe editing for tasks/habits (apply-to-series toggle plus single-occurrence exceptions).

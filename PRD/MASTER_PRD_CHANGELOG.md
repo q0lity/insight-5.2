@@ -10,3 +10,4 @@
 - 2025-12-30: Added `Insight 5/PRD/IMPLEMENTATION_PLAN_MOBILE_CAPTURE.md` (mobile capture parity plan).
 - 2025-12-30: Updated `Insight 5/PRD/APPENDICES.md`, `Insight 5/PRD/MASTER_PRD_V3.md`, and `Insight 5/PRD/APPENDIX_E_IMPLEMENTATION_PLAN.md` to reference the new parity and capture docs.
 - 2025-12-30: Added `Insight 5/PRD/MOBILE_IMPLEMENTATION_CHECKLIST.md` and linked it from `Insight 5/PRD/APPENDICES.md` and `Insight 5/PRD/MASTER_PRD_V3.md`.
+- 2026-01-16: Added `Insight 5/PRD/APPENDIX_J_ECOSYSTEM_REFACTOR_SPEC.md` and linked it from the PRD index and master PRD.

@@ -126,3 +126,8 @@ If an utterance implies it already happened and does not provide explicit time:
 
 ### A9.4 Midnight rollover (last night)
 If capture occurs shortly after midnight (configurable rollover window; default 00:00–03:00) and the utterance clearly refers to “last night”, default the date to yesterday.
+
+## A10) Purchase vs Consume
+- Purchase verbs (buy/bought/purchased/picked up/got) populate `purchaseItems`.
+- Consume verbs (ate/drank/had/finished) populate `consumeItems` and nutrition logs.
+- If both are present in one capture, split into purchase event + consumption log.

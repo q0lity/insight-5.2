@@ -19,6 +19,8 @@ This document is the canonical UI and parsing contract for capture, live outline
 - Importance/difficulty default from linked goals/projects and display the bonus multiplier logic.
 - Tracker logs and habit completions render on the Calendar as small markers anchored to time (clickable to drill into details).
 - Habit completions must be visible as a log line in notes/timeline, not just streak counters.
+- Table views never render twice for the same entry (single table per facet).
+- Points/Running tiles are not shown in entry detail; they live in analytics only.
 
 ## 2) Canonical Block Format (Bullet Journal)
 Each capture is segmented into blocks separated by horizontal dividers. A block is the atomic unit that becomes an Entry. Blocks can be events, tasks, notes, or hybrids.
@@ -245,7 +247,7 @@ Note
 Title: Workout - Chest                     [Edit]
 chips: #fitness #strength goal:Get Jacked habit:Workout skill:Calisthenics
 --------------------------------------------------------------------
-Tabs: [Outline] [Markdown] [Table]
+Tabs: [Edit] [Outline] [Table] [Transcribe]                      [Expand]
 
 OUTLINE
 notes:
@@ -276,6 +278,43 @@ chips: #lunch #nutrition +restaurant
 Estimated: 680 cal | P: 32g C: 78g F: 24g (confidence: 0.72)
 notes:
 - Chicken sandwich, soup, iced tea
+--------------------------------------------------------------------
+```
+
+### 12.6 Tasks Table (Inbox)
+```
+--------------------------------------------------------------------
+Tasks     [Inbox] [Today] [Next 7] [All] [Done]      [Filter...]
+Views: [Table] [Kanban] [Cards]                      [Columns] [Sort]
+--------------------------------------------------------------------
+| Start | Title | Tags | Priority | Due | Estimate | Goal | Project | Category |
+|  ▶   | Upload ILP | #upload | High | Jan 12 | 25m | -- | Residency | Personal/General |
+|  ▾   | Check status of loan | #finance | Medium | -- | 15m | -- | -- | Finance/Budget |
+--------------------------------------------------------------------
+Subtasks (row expand):
+  - [ ] open website
+  - [ ] upload ILP
+--------------------------------------------------------------------
+```
+
+### 12.7 Goal Plan (Outline + Gantt Split)
+```
+--------------------------------------------------------------------
+Goal: Launch App                                         [Remove Goal]
+--------------------------------------------------------------------
+Outline (drag to reorder)      |  Gantt (drag to reschedule)
+ [ ] ▶ Scope MVP               |  |----|-----|-----|
+   [ ] ▶ Parsing refactor      |  Parsing refactor (Jan 12-20)
+   [ ] ▶ Tasks table           |  Tasks table (Jan 20-27)
+ [ ] ▶ Mobile polish           |  Mobile polish (Jan 28-Feb 3)
+--------------------------------------------------------------------
+```
+
+### 12.8 Habit Detail (Consistency)
+```
+--------------------------------------------------------------------
+Consistency heatmap
+Mini trend graph: done vs missed (last 30 days)
 --------------------------------------------------------------------
 ```
 
@@ -508,6 +547,8 @@ This section is the source-of-truth for where every input routes and where it re
 - Trackers: mood vs emotion, 1–10 intensity, pain labels.
 - Habits: micro-habit completion logs with default duration.
 - Duration estimation: baseline from personal history.
+- Purchase vs consume split and cost extraction.
+- Category memory reuse (e.g., "Coding Insight").
 
 **Integration tests**
 - Capture pipeline: transcript → proposals → review → commit to Supabase.
@@ -519,6 +560,8 @@ This section is the source-of-truth for where every input routes and where it re
 - Embedded blocks render inside parent event, not as separate time blocks.
 - Habit markers and tracker markers render at correct time.
 - Unified entries list shows tasks, events, habit blocks.
+- Tasks column selector and subtask drawer persist.
+- Goals outline + Gantt remain in sync on reorder.
 
 **E2E tests (flows)**
 - Morning run + mood + call task.
