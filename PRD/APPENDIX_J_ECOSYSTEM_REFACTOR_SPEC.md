@@ -95,6 +95,7 @@ Rules:
 - Remove the marketing tagline; keep a clean Tasks header + filters.
 - Sorting applies to visible columns and persists per view.
 - Unscheduled tasks surface in the all-day lane for drag-into-calendar behavior.
+- Countdown badges appear anywhere a target date exists (tasks, events, goals, milestones).
 
 ### Goals Plan Split Panel (Outline + Gantt)
 ```
