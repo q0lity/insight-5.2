@@ -69,6 +69,7 @@ Mobile adaptations:
 
 ### Settings / Onboarding
 - Default auto-start is configurable at onboarding (auto-start on by default).
+- Conflict window default is 60 seconds; expose as a setting later.
 
 ### Tasks
 - Adjustable columns (persisted per view)

@@ -30,6 +30,7 @@ Purpose: create/update/delete events in Google Calendar and store mapping in `ex
 - Each calendar-linked Entry has one row in `external_event_links`.
 - Use `provider`, `external_event_id`, `external_calendar_id`, `etag`.
 - Read-only calendars import entries with `source="calendar"` and a `frontmatter.readOnly=true` flag; no outbound sync.
+- Conflict window default is 60 seconds (matches current edge function logic); make configurable later.
 
 ## D5) Offline Sync Contract (MVP)
 Client maintains an outbox with idempotent operations:

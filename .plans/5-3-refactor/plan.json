@@ -1,0 +1,147 @@
+{
+  "created_at": "2026-01-16T19:59:34+00:00",
+  "goal": "Change Proposal: 5-3-refactor",
+  "openspec": {
+    "change": "5-3-refactor",
+    "proposal": "openspec/changes/5-3-refactor/proposal.md",
+    "spec_deltas_dir": "openspec/changes/5-3-refactor/specs",
+    "tasks": "openspec/changes/5-3-refactor/tasks.md"
+  },
+  "tasks": [
+    {
+      "depends_on": [],
+      "description": "Implement this OpenSpec task for change `5-3-refactor`:\n\n- - [ ] 1.1 Parser/linker v2: category memory, direct category prompt, purchase/consume split, tracker/context guardrails, dedupe.\n\nFollow `openspec/project.md` + `.plans/<PR>/CONTEXT.md`.\nDo not implement other tasks.",
+      "done_criteria": [
+        "Implementation matches the requirement implied by the task line.",
+        "Relevant tests/builds (if any) pass."
+      ],
+      "expected_files": [],
+      "id": "task_001",
+      "status": "pending",
+      "title": "1.1 Parser/linker v2: category memory, direct category prompt, purchase/consume split, tracker/context guardrails, dedupe.",
+      "verify": [
+        "echo \"manual verification\""
+      ]
+    },
+    {
+      "depends_on": [],
+      "description": "Implement this OpenSpec task for change `5-3-refactor`:\n\n- - [ ] 1.2 Review UX: auto-created tasks preselected with opt-out; category prompt flow wired.\n\nFollow `openspec/project.md` + `.plans/<PR>/CONTEXT.md`.\nDo not implement other tasks.",
+      "done_criteria": [
+        "Implementation matches the requirement implied by the task line.",
+        "Relevant tests/builds (if any) pass."
+      ],
+      "expected_files": [],
+      "id": "task_002",
+      "status": "pending",
+      "title": "1.2 Review UX: auto-created tasks preselected with opt-out; category prompt flow wired.",
+      "verify": [
+        "echo \"manual verification\""
+      ]
+    },
+    {
+      "depends_on": [],
+      "description": "Implement this OpenSpec task for change `5-3-refactor`:\n\n- - [ ] 1.3 Tasks table: column picker (persist across devices), start button, subtasks timeline, unscheduled all-day lane.\n\nFollow `openspec/project.md` + `.plans/<PR>/CONTEXT.md`.\nDo not implement other tasks.",
+      "done_criteria": [
+        "Implementation matches the requirement implied by the task line.",
+        "Relevant tests/builds (if any) pass."
+      ],
+      "expected_files": [],
+      "id": "task_003",
+      "status": "pending",
+      "title": "1.3 Tasks table: column picker (persist across devices), start button, subtasks timeline, unscheduled all-day lane.",
+      "verify": [
+        "echo \"manual verification\""
+      ]
+    },
+    {
+      "depends_on": [],
+      "description": "Implement this OpenSpec task for change `5-3-refactor`:\n\n- - [ ] 1.4 Goals plan: outline + Gantt split panel, milestones + dependencies, unlink on goal removal.\n\nFollow `openspec/project.md` + `.plans/<PR>/CONTEXT.md`.\nDo not implement other tasks.",
+      "done_criteria": [
+        "Implementation matches the requirement implied by the task line.",
+        "Relevant tests/builds (if any) pass."
+      ],
+      "expected_files": [],
+      "id": "task_004",
+      "status": "pending",
+      "title": "1.4 Goals plan: outline + Gantt split panel, milestones + dependencies, unlink on goal removal.",
+      "verify": [
+        "echo \"manual verification\""
+      ]
+    },
+    {
+      "depends_on": [],
+      "description": "Implement this OpenSpec task for change `5-3-refactor`:\n\n- - [ ] 1.5 Habits/trackers: routine mapping, auto-check rules, consistency mini graph, guardrails.\n\nFollow `openspec/project.md` + `.plans/<PR>/CONTEXT.md`.\nDo not implement other tasks.",
+      "done_criteria": [
+        "Implementation matches the requirement implied by the task line.",
+        "Relevant tests/builds (if any) pass."
+      ],
+      "expected_files": [],
+      "id": "task_005",
+      "status": "pending",
+      "title": "1.5 Habits/trackers: routine mapping, auto-check rules, consistency mini graph, guardrails.",
+      "verify": [
+        "echo \"manual verification\""
+      ]
+    },
+    {
+      "depends_on": [],
+      "description": "Implement this OpenSpec task for change `5-3-refactor`:\n\n- - [ ] 1.6 Calendar: read-only locked events, all-day lane layout, auto-start onboarding default.\n\nFollow `openspec/project.md` + `.plans/<PR>/CONTEXT.md`.\nDo not implement other tasks.",
+      "done_criteria": [
+        "Implementation matches the requirement implied by the task line.",
+        "Relevant tests/builds (if any) pass."
+      ],
+      "expected_files": [],
+      "id": "task_006",
+      "status": "pending",
+      "title": "1.6 Calendar: read-only locked events, all-day lane layout, auto-start onboarding default.",
+      "verify": [
+        "echo \"manual verification\""
+      ]
+    },
+    {
+      "depends_on": [],
+      "description": "Implement this OpenSpec task for change `5-3-refactor`:\n\n- - [ ] 1.7 Countdown badges across surfaces (tasks/events/goals/milestones).\n\nFollow `openspec/project.md` + `.plans/<PR>/CONTEXT.md`.\nDo not implement other tasks.",
+      "done_criteria": [
+        "Implementation matches the requirement implied by the task line.",
+        "Relevant tests/builds (if any) pass."
+      ],
+      "expected_files": [],
+      "id": "task_007",
+      "status": "pending",
+      "title": "1.7 Countdown badges across surfaces (tasks/events/goals/milestones).",
+      "verify": [
+        "echo \"manual verification\""
+      ]
+    },
+    {
+      "depends_on": [],
+      "description": "Implement this OpenSpec task for change `5-3-refactor`:\n\n- - [ ] 2.1 Add/adjust tests for parser/linker, dedupe, and countdown badges where applicable.\n\nFollow `openspec/project.md` + `.plans/<PR>/CONTEXT.md`.\nDo not implement other tasks.",
+      "done_criteria": [
+        "Implementation matches the requirement implied by the task line.",
+        "Relevant tests/builds (if any) pass."
+      ],
+      "expected_files": [],
+      "id": "task_008",
+      "status": "pending",
+      "title": "2.1 Add/adjust tests for parser/linker, dedupe, and countdown badges where applicable.",
+      "verify": [
+        "echo \"manual verification\""
+      ]
+    },
+    {
+      "depends_on": [],
+      "description": "Implement this OpenSpec task for change `5-3-refactor`:\n\n- - [ ] 2.2 Run targeted checks or manual verification for Tasks/Goals/Calendar behaviors.\n\nFollow `openspec/project.md` + `.plans/<PR>/CONTEXT.md`.\nDo not implement other tasks.",
+      "done_criteria": [
+        "Implementation matches the requirement implied by the task line.",
+        "Relevant tests/builds (if any) pass."
+      ],
+      "expected_files": [],
+      "id": "task_009",
+      "status": "pending",
+      "title": "2.2 Run targeted checks or manual verification for Tasks/Goals/Calendar behaviors.",
+      "verify": [
+        "echo \"manual verification\""
+      ]
+    }
+  ]
+}
