@@ -614,6 +614,12 @@ function extractTrackerTokens(text: string) {
     if (name === 'sleep') continue
     out.push({ name: m[1], value: Number(m[2]) })
   }
+  for (const m of text.matchAll(/#([a-zA-Z][\w/-]*)\[([^\]]+)\]/g)) {
+    const name = m[1].toLowerCase()
+    if (name === 'sleep') continue
+    const value = Number(m[2])
+    if (Number.isFinite(value)) out.push({ name: m[1], value })
+  }
   for (const m of text.matchAll(/#([a-zA-Z][\w/-]*):([-+]?\d*\.?\d+)/g)) {
     const name = m[1].toLowerCase()
     if (name === 'sleep') continue
@@ -684,6 +690,68 @@ function extractTaskLines(markdown: string) {
   return titles.slice(0, 50)
 }
 
+function normalizeTimeToken(raw: string | null | undefined) {
+  if (!raw) return null
+  const cleaned = raw.replace(/[^0-9]/g, '')
+  if (cleaned.length === 4) {
+    const hh = cleaned.slice(0, 2)
+    const mm = cleaned.slice(2)
+    if (Number(mm) < 60 && Number(hh) < 24) return `${hh}:${mm}`
+  }
+  if (cleaned.length === 3) {
+    const mm = cleaned.slice(1)
+    if (Number(mm) < 60) {
+      const hh = `0${cleaned.slice(0, 1)}`
+      return `${hh}:${mm}`
+    }
+    const hhAlt = Number(cleaned.slice(0, 2))
+    const mmAlt = cleaned.slice(2)
+    if (Number.isFinite(hhAlt) && hhAlt < 24) return `${String(hhAlt).padStart(2, '0')}:${mmAlt.padStart(2, '0')}`
+  }
+  return raw.includes(':') ? raw : null
+}
+
+function timeLabelToMs(label: string | null | undefined, anchorMs: number) {
+  const normalized = normalizeTimeToken(label)
+  if (!normalized) return null
+  const [hhRaw, mmRaw] = normalized.split(':')
+  const hh = Number(hhRaw)
+  const mm = Number(mmRaw)
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null
+  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null
+  const base = new Date(anchorMs)
+  base.setHours(hh, mm, 0, 0)
+  return base.getTime()
+}
+
+function splitTextByTimeMarkers(text: string, anchorMs: number) {
+  const lines = text.split(/\r?\n/)
+  const sections: Array<{ timeMs: number; text: string }> = []
+  let currentLines: string[] = []
+  let currentTimeMs: number | null = null
+  const pushSection = () => {
+    if (!currentLines.length) return
+    sections.push({ timeMs: currentTimeMs ?? anchorMs, text: currentLines.join('\n') })
+    currentLines = []
+  }
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    const match = trimmed.match(/^(?:time\s*:\s*)?\[?(\d{1,2}:\d{2}|\d{3,4}|\d{1,2}\s+\d{2})\]?\s*(?:[-–—:]|\s+)?(.*)$/i)
+    const normalized = normalizeTimeToken(match?.[1])
+    if (match && normalized) {
+      pushSection()
+      currentTimeMs = timeLabelToMs(normalized, anchorMs)
+      const remainder = (match[2] ?? '').trim()
+      if (remainder) currentLines.push(remainder)
+      continue
+    }
+    currentLines.push(line)
+  }
+  pushSection()
+  return sections.length ? sections : [{ timeMs: anchorMs, text }]
+}
+
 async function createTrackerLogsFromText(opts: {
   text: string
   atMs: number
@@ -696,55 +764,58 @@ async function createTrackerLogsFromText(opts: {
   createEvent: typeof createEvent
   setEvents: (value: SetStateAction<CalendarEvent[]>) => void
 }) {
-  const tokens = extractTrackerTokens(opts.text)
-  if (!tokens.length) return { created: 0, skipped: 0 }
-  const parentId =
-    typeof opts.parentEventId !== 'undefined'
-      ? opts.parentEventId
-      : (await opts.findBestActiveEventAt(opts.atMs))?.id ?? null
+  const sections = splitTextByTimeMarkers(opts.text, opts.atMs)
   const createdKeys = new Set<string>()
   let created = 0
   let skipped = 0
-  for (const tok of tokens) {
-    const key = tok.name.trim().toLowerCase()
-    if (!key) continue
-    if (key === 'sleep') continue
-    const dedupeKey = `${key}|${opts.sourceNoteId ?? ''}`
-    if (createdKeys.has(dedupeKey)) continue
-    const already = opts.events.find((e) => e.kind === 'log' && e.trackerKey === key && e.sourceNoteId === opts.sourceNoteId)
-    if (already) {
-      skipped += 1
-      continue
+  for (const section of sections) {
+    const tokens = extractTrackerTokens(section.text)
+    if (!tokens.length) continue
+    const parentId =
+      typeof opts.parentEventId !== 'undefined'
+        ? opts.parentEventId
+        : (await opts.findBestActiveEventAt(section.timeMs))?.id ?? null
+    for (const tok of tokens) {
+      const key = tok.name.trim().toLowerCase()
+      if (!key) continue
+      if (key === 'sleep') continue
+      const dedupeKey = `${key}|${opts.sourceNoteId ?? ''}`
+      if (createdKeys.has(dedupeKey)) continue
+      const already = opts.events.find((e) => e.kind === 'log' && e.trackerKey === key && e.sourceNoteId === opts.sourceNoteId)
+      if (already) {
+        skipped += 1
+        continue
+      }
+      const def = opts.ensureTrackerDefinition({ key })
+      const unit = def?.unit ?? opts.defaultTrackerUnit(key)
+      let value = typeof tok.value === 'number' && Number.isFinite(tok.value) ? tok.value : null
+      if (value != null) {
+        if (unit.step && unit.step > 0) value = Math.round(value / unit.step) * unit.step
+        if (unit.min != null) value = Math.max(unit.min, value)
+        if (unit.max != null) value = Math.min(unit.max, value)
+      }
+      if (value == null) continue
+      const label = def?.label ?? key
+      const unitSuffix = unit.label && unit.label !== 'value' && unit.label !== 'score' ? ` ${unit.label}` : ''
+      const title = `${label}: ${value}${unitSuffix}`
+      const log = await opts.createEvent({
+        title,
+        startAt: section.timeMs,
+        endAt: section.timeMs + 5 * 60 * 1000,
+        kind: 'log',
+        parentEventId: parentId,
+        tags: [`#${key}`],
+        sourceNoteId: opts.sourceNoteId ?? null,
+        trackerKey: key,
+        icon: def?.icon ?? null,
+        color: def?.color ?? null,
+        category: null,
+        subcategory: null,
+      })
+      opts.setEvents((prev) => [log, ...prev])
+      createdKeys.add(dedupeKey)
+      created += 1
     }
-    const def = opts.ensureTrackerDefinition({ key })
-    const unit = def?.unit ?? opts.defaultTrackerUnit(key)
-    let value = typeof tok.value === 'number' && Number.isFinite(tok.value) ? tok.value : null
-    if (value != null) {
-      if (unit.step && unit.step > 0) value = Math.round(value / unit.step) * unit.step
-      if (unit.min != null) value = Math.max(unit.min, value)
-      if (unit.max != null) value = Math.min(unit.max, value)
-    }
-    if (value == null) continue
-    const label = def?.label ?? key
-    const unitSuffix = unit.label && unit.label !== 'value' && unit.label !== 'score' ? ` ${unit.label}` : ''
-    const title = `${label}: ${value}${unitSuffix}`
-    const log = await opts.createEvent({
-      title,
-      startAt: opts.atMs,
-      endAt: opts.atMs + 5 * 60 * 1000,
-      kind: 'log',
-      parentEventId: parentId,
-      tags: [`#${key}`],
-      sourceNoteId: opts.sourceNoteId ?? null,
-      trackerKey: key,
-      icon: def?.icon ?? null,
-      color: def?.color ?? null,
-      category: null,
-      subcategory: null,
-    })
-    opts.setEvents((prev) => [log, ...prev])
-    createdKeys.add(dedupeKey)
-    created += 1
   }
   return { created, skipped }
 }

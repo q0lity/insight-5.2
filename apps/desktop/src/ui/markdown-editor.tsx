@@ -222,12 +222,37 @@ function normalizeTitle(raw: string) {
   let cleaned = stripTokensForPreview(raw)
   cleaned = cleaned.replace(/^#+\s*/, '')
   cleaned = cleaned.replace(/^⏱\s*/u, '')
+  cleaned = cleaned.replace(/^title\s*:\s*/i, '')
+  cleaned = cleaned.replace(/^date\s*:\s*/i, '')
+  cleaned = cleaned.replace(/^created\s*:\s*/i, '')
+  cleaned = cleaned.replace(/^time\s*:\s*/i, '')
   cleaned = cleaned.replace(/^\d{1,2}:\d{2}(?:\s*[ap]m)?\s*(?:[-–—]\s*)?/i, '')
   cleaned = cleaned.replace(/^[-*+]\s*(?:\[[ xX]\]\s*)?/, '')
   cleaned = cleaned.replace(/^\[event\]\s*/i, '')
   cleaned = cleaned.replace(/^(event|task|note|habit|tracker)\s*[-:]\s*/i, '')
   cleaned = cleaned.replace(/^\*{0,2}\s*\d{1,2}:\d{2}(?:\s*[ap]m)?\s*\*{0,2}[\s-:]*/i, '')
   return cleaned.trim()
+}
+
+function normalizeTimeToken(raw: string | null | undefined) {
+  if (!raw) return null
+  const cleaned = raw.replace(/[^0-9]/g, '')
+  if (cleaned.length === 4) {
+    const hh = cleaned.slice(0, 2)
+    const mm = cleaned.slice(2)
+    if (Number(mm) < 60 && Number(hh) < 24) return `${hh}:${mm}`
+  }
+  if (cleaned.length === 3) {
+    const mm = cleaned.slice(1)
+    if (Number(mm) < 60) {
+      const hh = `0${cleaned.slice(0, 1)}`
+      return `${hh}:${mm}`
+    }
+    const hhAlt = Number(cleaned.slice(0, 2))
+    const mmAlt = cleaned.slice(2)
+    if (Number.isFinite(hhAlt) && hhAlt < 24) return `${String(hhAlt).padStart(2, '0')}:${mmAlt.padStart(2, '0')}`
+  }
+  return raw.includes(':') ? raw : null
 }
 
 function stripTokensForPreview(raw: string) {
@@ -262,6 +287,10 @@ function stripTokensForTable(raw: string) {
       const match = line.match(/^\s*/u)
       const indent = match ? match[0] : ''
       const content = line.slice(indent.length)
+      const trimmed = content.trim()
+      if (/^\|.*\|$/.test(trimmed) || /^\+[-+]+\+$/.test(trimmed)) {
+        return line
+      }
       const cleaned = content
         .replace(inlineTokenWithMetaPattern, ' ')
         .replace(tokenPattern, ' ')
@@ -282,11 +311,54 @@ function stripTokensForTable(raw: string) {
     .trim()
 }
 
+function normalizeComparableText(raw: string) {
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function isMetaLine(line: string) {
+  const trimmed = line.trim()
+  if (!trimmed) return true
+  if (/^[-*_]{3,}$/.test(trimmed)) return true
+  if (/^#{1,6}\s+/.test(trimmed)) return true
+  if (/^title\s*:/i.test(trimmed)) return true
+  if (/^date\s*:/i.test(trimmed)) return true
+  if (/^created\s*:/i.test(trimmed)) return true
+  if (/^type\s*:/i.test(trimmed)) return true
+  if (/^source\s*:/i.test(trimmed)) return true
+  if (/^updated\s*:/i.test(trimmed)) return true
+  if (/^entry\s*\(/i.test(trimmed)) return true
+  if (/^time\s*:/i.test(trimmed)) return true
+  if (/^(notes|trackers|next actions|completed|working on|meal|workout)\b/i.test(trimmed)) return true
+  return false
+}
+
+function buildNoteSnippet(rawText: string, title: string) {
+  const cleaned = stripTokensForTable(rawText)
+  const normalizedTitle = normalizeComparableText(title)
+  const lines = cleaned
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^[-*+]\s+/, '').trim())
+    .filter((line) => line && !isMetaLine(line))
+    .filter((line) => normalizeComparableText(line) !== normalizedTitle)
+  if (!lines.length) return title
+  return lines.slice(0, 8).join('\n')
+}
+
 function extractTimeLabel(block: ReturnType<typeof parseCaptureWithBlocks>['blocks'][number]) {
   const explicit = block.events.find((ev) => ev.explicitTime)
   if (explicit) {
     return new Date(explicit.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
+  const headingMatch = block.rawText.match(/^\s*time\s*:\s*([^\s]+)/im)
+  const normalizedHeading = normalizeTimeToken(headingMatch?.[1])
+  if (normalizedHeading) return normalizedHeading
+  const inlineMatch = block.rawText.match(/^\s*\[?(\d{1,2}:\d{2}|\d{3,4}|\d{1,2}\s+\d{2})\]?/m)
+  const normalizedInline = normalizeTimeToken(inlineMatch?.[1])
+  if (normalizedInline) return normalizedInline
   const match = block.rawText.match(/\b(\d{1,2}:\d{2})\b/)
   return match?.[1] ?? '—'
 }
@@ -328,6 +400,15 @@ function extractInlineTokens(raw: string) {
   }
 
   return tokens
+}
+
+function tokenClassForTable(token: string) {
+  if (token.startsWith('@@') || token.startsWith('!')) return 'place'
+  if (token.startsWith('@')) return 'person'
+  if (token.startsWith('+') || token.startsWith('*')) return 'context'
+  if (token.startsWith('#') && token.includes('[')) return 'tracker'
+  if (token.startsWith('#')) return 'tag'
+  return 'tag'
 }
 
 function parseBlockProperties(raw: string) {
@@ -396,10 +477,11 @@ function buildTableRows(text: string, filter: NotesTableFilter, habitNames?: str
       if (filter === 'habit' && !hasHabits) continue
       if (filter === 'note' && (hasEvents || hasTasks || hasTrackers || hasHabits)) continue
     }
-    const note = stripTokensForTable(block.rawText)
+    const title = deriveBlockTitle(block)
+    const note = buildNoteSnippet(block.rawText, title)
     rows.push({
       timeLabel: extractTimeLabel(block),
-      title: deriveBlockTitle(block),
+      title,
       note,
       tokens: buildRowTokens(block, habitNames),
       kind: primaryKindForBlock(block, habitNames),
@@ -451,10 +533,9 @@ function NotesTablePreview(props: { text: string; filter: NotesTableFilter; habi
 
   return (
     <div className="mdPreviewPane mdPreviewPaneTable" aria-label="Notes table preview">
-      <div className="notesTable">
+      <div className="notesTable notesTableCompact">
         <div className="notesTableHeader">
           <span>Time</span>
-          <span>Title</span>
           <span>Note</span>
           <span>Tags</span>
         </div>
@@ -462,12 +543,11 @@ function NotesTablePreview(props: { text: string; filter: NotesTableFilter; habi
           {rows.map((row, idx) => (
             <div key={`${row.timeLabel}_${idx}`} className="notesTableRow">
               <div className="notesTableCell time">{row.timeLabel}</div>
-              <div className="notesTableCell title">{row.title}</div>
               <div className="notesTableCell preview">{row.note || '—'}</div>
               <div className="notesTableCell tags">
                 <span className={`notesTableTag kind kind-${row.kind}`}>{row.kind.charAt(0).toUpperCase() + row.kind.slice(1)}</span>
                 {row.tokens.length ? row.tokens.map((token) => (
-                  <span key={`${token}_${idx}`} className="notesTableTag">
+                  <span key={`${token}_${idx}`} className={`notesTableTag token-${tokenClassForTable(token)}`}>
                     {token}
                   </span>
                 )) : null}

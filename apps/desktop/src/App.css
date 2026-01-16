@@ -9992,6 +9992,17 @@ select:focus-visible {
   letter-spacing: 0.05em;
 }
 
+.notesTable.notesTableCompact .notesTableHeader {
+  grid-template-columns: 70px minmax(320px, 2fr) minmax(160px, 1fr);
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.notesTable.notesTableCompact .notesTableHeader span + span {
+  border-left: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+  padding-left: 12px;
+}
+
 .notesTableBody {
   display: flex;
   flex-direction: column;
@@ -10009,6 +10020,13 @@ select:focus-visible {
   cursor: pointer;
   transition: background 100ms ease;
   align-items: start;
+}
+
+.notesTable.notesTableCompact .notesTableRow {
+  grid-template-columns: 70px minmax(320px, 2fr) minmax(160px, 1fr);
+  gap: 8px;
+  padding: 8px 12px;
+  align-items: center;
 }
 
 .notesTableRow:last-child {
@@ -10046,6 +10064,10 @@ select:focus-visible {
   white-space: nowrap;
 }
 
+.notesTable.notesTableCompact .notesTableCell.time {
+  font-variant-numeric: tabular-nums;
+}
+
 .notesTableCell.date {
   color: var(--muted);
   font-size: 11px;
@@ -10060,6 +10082,16 @@ select:focus-visible {
   align-content: flex-start;
 }
 
+.notesTable.notesTableCompact .notesTableCell.preview,
+.notesTable.notesTableCompact .notesTableCell.tags {
+  border-left: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+  padding-left: 12px;
+}
+
+.notesTable.notesTableCompact .notesTableCell.tags {
+  align-items: center;
+}
+
 .notesTableTag {
   padding: 2px 6px;
   background: rgba(18, 22, 30, 0.8);
@@ -10069,6 +10101,41 @@ select:focus-visible {
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
+}
+
+.notesTableTag.token-tag {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.35);
+  color: #1d4ed8;
+}
+
+.notesTableTag.token-context {
+  background: rgba(13, 148, 136, 0.12);
+  border-color: rgba(13, 148, 136, 0.35);
+  color: #0f766e;
+}
+
+.notesTableTag.token-person {
+  background: rgba(6, 182, 212, 0.12);
+  border-color: rgba(6, 182, 212, 0.35);
+  color: #0e7490;
+}
+
+.notesTableTag.token-place {
+  background: rgba(217, 119, 6, 0.14);
+  border-color: rgba(217, 119, 6, 0.4);
+  color: #b45309;
+}
+
+.notesTableTag.token-tracker {
+  background: rgba(244, 63, 94, 0.14);
+  border-color: rgba(244, 63, 94, 0.4);
+  color: #be123c;
+}
+
+.notesTable.notesTableCompact .notesTableTag {
+  padding: 1px 6px;
+  font-size: 9px;
 }
 
 .notesTableTag.kind {
@@ -10085,6 +10152,16 @@ select:focus-visible {
   white-space: pre-wrap;
   word-break: break-word;
   overflow: visible;
+}
+
+.notesTable.notesTableCompact .notesTableCell.preview {
+  font-size: 12px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-wrap;
 }
 
 /* Responsive */

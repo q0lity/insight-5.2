@@ -59,6 +59,17 @@ async function saveEventsLocal(events: MobileEvent[]) {
   }
 }
 
+async function upsertLocalEvent(event: MobileEvent) {
+  const events = await loadEventsLocal();
+  const idx = events.findIndex((e) => e.id === event.id);
+  if (idx >= 0) {
+    events[idx] = event;
+  } else {
+    events.unshift(event);
+  }
+  await saveEventsLocal(events);
+}
+
 function normalizeTagForSupabase(tag: string) {
   const trimmed = tag.trim();
   if (!trimmed) return '';
@@ -312,7 +323,28 @@ export async function startEvent(input: {
   }
 
   const { supabase, user } = session;
-  const payload = mobileEventToEntry(event, user.id);
+  const payload = mobileEventToEntry(event, user.id, { legacyId: event.id });
+  const existing = await supabase
+    .from('entries')
+    .select('id')
+    .eq('frontmatter->>legacyId', event.id)
+    .eq('frontmatter->>legacyType', 'event')
+    .maybeSingle();
+
+  if (existing.data?.id) {
+    const { error } = await supabase.from('entries').update(payload).eq('id', existing.data.id);
+    if (error) {
+      const events = await loadEventsLocal();
+      events.unshift(event);
+      await saveEventsLocal(events);
+      return event;
+    }
+    const nextEvent = { ...event, id: existing.data.id };
+    await upsertLocalEvent(nextEvent);
+    void ensureEntitiesFromEntry({ tags: event.tags ?? [], people: event.people ?? [], location: event.location ?? null });
+    return nextEvent;
+  }
+
   const { data, error } = await supabase.from('entries').insert(payload).select('id').single();
   if (error || !data) {
     const events = await loadEventsLocal();
@@ -320,8 +352,10 @@ export async function startEvent(input: {
     await saveEventsLocal(events);
     return event;
   }
+  const nextEvent = { ...event, id: data.id };
+  await upsertLocalEvent(nextEvent);
   void ensureEntitiesFromEntry({ tags: event.tags ?? [], people: event.people ?? [], location: event.location ?? null });
-  return { ...event, id: data.id };
+  return nextEvent;
 }
 
 export async function updateEvent(id: string, patch: Partial<MobileEvent>) {

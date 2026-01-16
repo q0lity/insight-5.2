@@ -27,26 +27,6 @@ function formatTimeLabel(ms: number) {
   return `${hh}:${mm}`
 }
 
-function formatDateStamp(ms: number) {
-  const safeMs = Number.isFinite(ms) ? ms : Date.now()
-  const d = new Date(safeMs)
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
-}
-
-function formatDateTimeStamp(ms: number) {
-  const safeMs = Number.isFinite(ms) ? ms : Date.now()
-  const d = new Date(safeMs)
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  const hh = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd} ${hh}:${min}`
-}
-
 function normalizeTimeToken(raw: string | null | undefined) {
   if (!raw) return null
   const cleaned = raw.replace(/[^0-9]/g, '')
@@ -56,9 +36,14 @@ function normalizeTimeToken(raw: string | null | undefined) {
     if (Number(mm) < 60 && Number(hh) < 24) return `${hh}:${mm}`
   }
   if (cleaned.length === 3) {
-    const hh = `0${cleaned.slice(0, 1)}`
     const mm = cleaned.slice(1)
-    if (Number(mm) < 60) return `${hh}:${mm}`
+    if (Number(mm) < 60) {
+      const hh = `0${cleaned.slice(0, 1)}`
+      return `${hh}:${mm}`
+    }
+    const hhAlt = Number(cleaned.slice(0, 2))
+    const mmAlt = cleaned.slice(2)
+    if (Number.isFinite(hhAlt) && hhAlt < 24) return `${String(hhAlt).padStart(2, '0')}:${mmAlt.padStart(2, '0')}`
   }
   return raw.includes(':') ? raw : null
 }
@@ -243,7 +228,7 @@ function expandInlineTimestampLines(rawText: string) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
-  const atPattern = /\bAt\s+(\d{1,2}:\d{2}|\d{3,4}|\d{1,2}[,]\d{2})(?:\s*[ap]m)?\b/gi
+  const atPattern = /\bAt\s+(\d{1,2}:\d{2}|\d{3,4}|\d{1,2}[,]\d{2}|\d{1,2}\s+\d{2})(?:\s*[ap]m)?\b/gi
   const lines: string[] = []
 
   for (const rawLine of rawText.split(/\r?\n/)) {
@@ -284,14 +269,40 @@ function parseTranscriptEntries(rawText: string | null | undefined, anchorMs: nu
   const lines = expandInlineTimestampLines(rawText)
   const entries: TranscriptEntry[] = []
   let current: TranscriptEntry | null = null
-  const timePattern = /^(?:⏱\s*)?(?:at\s+)?(\d{1,2}:\d{2}|\d{3,4}|\d{1,2}[,]\d{2})(?:\s*[ap]m)?\s*(?:[-–—:]|\s+)\s*(.+)$/i
-  const bracketPattern = /^\[(\d{1,2}:\d{2}|\d{3,4}|\d{1,2}[,]\d{2})\]\s*(.+)$/
+  const timePattern = /^(?:⏱\s*)?(?:at\s+)?(\d{1,2}:\d{2}|\d{3,4}|\d{1,2}[,]\d{2}|\d{1,2}\s+\d{2})(?:\s*[ap]m)?\s*(?:[-–—:]|\s+)\s*(.+)$/i
+  const bracketPattern = /^\[(\d{1,2}:\d{2}|\d{3,4}|\d{1,2}[,]\d{2}|\d{1,2}\s+\d{2})\]\s*(.+)$/
   const defaultTime = formatTimeLabel(anchorMs)
 
   for (const rawLine of lines) {
     const trimmed = rawLine.trim()
-    if (!trimmed) continue
+    if (!trimmed || /^[-*_]{3,}$/.test(trimmed)) continue
+    if (
+      /^title\s*:/i.test(trimmed) ||
+      /^date\s*:/i.test(trimmed) ||
+      /^created\s*:/i.test(trimmed) ||
+      /^type\s*:/i.test(trimmed) ||
+      /^source\s*:/i.test(trimmed) ||
+      /^updated\s*:/i.test(trimmed)
+    ) {
+      continue
+    }
+    if (/^entry\s*\(/i.test(trimmed)) continue
+    if (!current && /^#+\s*\S+/.test(trimmed)) continue
     const cleaned = trimmed.replace(/^#+\s*/, '')
+    const timeHeading = cleaned.match(/^time\s*:\s*([0-9:.,]+(?:\s+\d{2})?)(?:\s+(.*))?$/i)
+    if (timeHeading) {
+      const normalized = normalizeTimeToken(timeHeading[1])
+      if (normalized) {
+        if (current) entries.push(current)
+        current = {
+          time: normalized,
+          headline: (timeHeading[2] ?? '').trim(),
+          body: [],
+          raw: trimmed,
+        }
+        continue
+      }
+    }
     const match = cleaned.match(timePattern) ?? cleaned.match(bracketPattern)
     if (match) {
       const normalized = normalizeTimeToken(match[1]) ?? match[1]
@@ -398,53 +409,95 @@ function isTemplateHeaderLine(line: string) {
   if (/^title\s*:/i.test(trimmed)) return true
   if (/^date\s*:/i.test(trimmed)) return true
   if (/^created\s*:/i.test(trimmed)) return true
+  if (/^type\s*:/i.test(trimmed)) return true
+  if (/^source\s*:/i.test(trimmed)) return true
+  if (/^updated\s*:/i.test(trimmed)) return true
   if (/^entry\s*\(outline style; chips woven into the lines\)/i.test(trimmed)) return true
   return false
 }
 
-function readTemplateValue(lines: string[], re: RegExp) {
-  for (const line of lines) {
-    const match = line.match(re)
-    if (!match?.[1]) continue
-    const value = match[1].trim()
-    if (value) return value
-  }
-  return ''
+function stripTemplateHeaderLines(lines: string[]) {
+  return lines.filter((line) => !isTemplateHeaderLine(line))
 }
 
-function ensureTemplateHeader(lines: string[], meta: { title: string; anchorMs: number }) {
-  const firstEntryIdx = lines.findIndex((line) => /^time\s*:/i.test(line.trim()))
-  const headerEnd = firstEntryIdx === -1 ? lines.length : firstEntryIdx
-  const headerSlice = lines.slice(0, headerEnd)
-  const rest = lines.slice(headerEnd)
+function normalizeComparableText(raw: string) {
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
-  const existingTitle = readTemplateValue(headerSlice, /^title\s*:\s*(.+)$/i)
-  const existingDate = readTemplateValue(headerSlice, /^date\s*:\s*(.+)$/i)
-  const existingCreated = readTemplateValue(headerSlice, /^created\s*:\s*(.+)$/i)
-
-  const title = existingTitle || meta.title || 'Untitled'
-  const date = existingDate || formatDateStamp(meta.anchorMs)
-  const created = existingCreated || formatDateTimeStamp(meta.anchorMs)
-
-  const cleanedHeader = headerSlice.filter((line) => !isTemplateHeaderLine(line))
-  const trimmedBody = [...cleanedHeader, ...rest]
-  while (trimmedBody.length && !trimmedBody[0]?.trim()) trimmedBody.shift()
-
-  const headerLines = [
-    `Title: ${title}`,
-    `date: ${date}`,
-    `created: ${created}`,
-    '',
-    'ENTRY (outline style; chips woven into the lines)',
-    '',
-  ]
-
-  const next = [...headerLines, ...trimmedBody]
-  return next
+function isLowSignalText(raw: string) {
+  const cleaned = normalizeComparableText(raw)
+  if (!cleaned) return true
+  if (cleaned.length < 3) return true
+  const words = cleaned.split(' ').filter(Boolean)
+  const stop = new Set([
+    'a',
+    'an',
+    'and',
+    'are',
+    'as',
+    'at',
+    'basically',
+    'but',
+    'do',
+    'does',
+    'done',
+    'for',
+    'from',
+    'get',
+    'go',
+    'going',
+    'gonna',
+    'gotta',
+    'have',
+    'i',
+    'im',
+    "i'm",
+    'is',
+    'it',
+    'just',
+    'kind',
+    'kinda',
+    'like',
+    'me',
+    'my',
+    'need',
+    'of',
+    'ok',
+    'okay',
+    'on',
+    'or',
+    'so',
+    'that',
+    'the',
+    'then',
+    'there',
+    'this',
+    'to',
+    'uh',
+    'um',
+    'u',
+    'wanna',
+    'we',
+    'with',
+    'you',
+    'your',
+    'know',
+  ])
+  const meaningful = words.filter((w) => !stop.has(w))
+  if (meaningful.length === 0) return true
+  if (meaningful.length === 1 && words.length >= 4) return true
+  if (words.every((w) => stop.has(w))) return true
+  if (words.length <= 2 && words.every((w) => stop.has(w))) return true
+  if (cleaned === 'you know' || cleaned === 'i mean' || cleaned === 'like that') return true
+  return false
 }
 
 function extractTimeFromEntryLine(line: string) {
-  const match = line.match(/^time\s*:\s*(\d{1,2}:\d{2}|\d{3,4}|\d{1,2}[,]\d{2})/i)
+  const match = line.match(/^time\s*:\s*(\d{1,2}:\d{2}|\d{3,4}|\d{1,2}[,]\d{2}|\d{1,2}\s+\d{2})/i)
   return normalizeTimeToken(match?.[1] ?? null)
 }
 
@@ -470,14 +523,37 @@ function mergeEntryBlock(lines: string[], block: { start: number; end: number },
   const existing = new Set(currentSlice.map((line) => line.trim()).filter(Boolean))
   const toAdd = entryLines.filter((line) => line.trim() && !existing.has(line.trim()))
   if (!toAdd.length) return { lines, changed: false }
-  const next = [...lines.slice(0, block.end), ...toAdd, ...lines.slice(block.end)]
+  let insertAt = block.end
+  for (let i = block.end - 1; i >= block.start; i -= 1) {
+    const trimmed = (lines[i] ?? '').trim()
+    if (!trimmed) continue
+    if (trimmed === '---') {
+      insertAt = i
+    }
+    break
+  }
+  const next = [...lines.slice(0, insertAt), ...toAdd, ...lines.slice(insertAt)]
   return { lines: next, changed: true }
 }
 
 function insertEntryBlock(lines: string[], entryLines: string[]) {
   if (!entryLines.length) return { lines, changed: false }
   const next = [...lines]
-  if (next.length && next[next.length - 1]?.trim() !== '') next.push('')
+  const lastNonEmptyIdx = (() => {
+    for (let i = next.length - 1; i >= 0; i -= 1) {
+      if ((next[i] ?? '').trim() !== '') return i
+    }
+    return -1
+  })()
+  if (lastNonEmptyIdx >= 0) {
+    const lastLine = next[lastNonEmptyIdx]!.trim()
+    if (lastLine !== '---') {
+      if (next.length && next[next.length - 1]?.trim() !== '') next.push('')
+      next.push('---', '')
+    } else if (next.length && next[next.length - 1]?.trim() !== '') {
+      next.push('')
+    }
+  }
   next.push(...entryLines)
   return { lines: next, changed: true }
 }
@@ -622,6 +698,7 @@ function extractWorkingOnItems(text: string) {
   for (const match of text.matchAll(re)) {
     let raw = (match[1] ?? '').trim()
     raw = raw.replace(/\b(right now|currently|just|basically|really)\b/gi, '').trim()
+    raw = stripInlineTokens(raw)
     if (!raw) continue
     raw
       .split(/\s+(?:and|also)\s+/i)
@@ -633,6 +710,7 @@ function extractWorkingOnItems(text: string) {
   for (const match of text.matchAll(subtaskRe)) {
     let raw = (match[1] ?? '').trim()
     raw = raw.replace(/\b(right now|currently|just|basically|really)\b/gi, '').trim()
+    raw = stripInlineTokens(raw)
     if (!raw) continue
     raw
       .split(/\s*(?:,|and)\s+/i)
@@ -687,8 +765,12 @@ function splitTaskSegments(raw: string) {
     .filter(Boolean)
 }
 
+function stripInlineTokens(raw: string) {
+  return raw.replace(/(^|[\s(])[#@+!][\w/-]+/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 function normalizeTaskTitle(raw: string) {
-  return raw
+  return stripInlineTokens(raw)
     .replace(/^(?:to\s+)?/i, '')
     .replace(/\s+/g, ' ')
     .replace(/^[^a-z0-9]+/i, '')
@@ -702,14 +784,14 @@ function extractActionTasks(text: string) {
     const raw = match[1] ?? ''
     splitTaskSegments(raw).forEach((segment) => {
       const title = normalizeTaskTitle(segment)
-      if (title) tasks.push({ title, status: 'todo' })
+      if (title && !isLowSignalText(title)) tasks.push({ title, status: 'todo' })
     })
   }
   const imperativeRe = /^\s*(?:call|text|email|buy|pick up|schedule|book|review|evaluate|finish|start)\b/i
   if (imperativeRe.test(text)) {
     splitTaskSegments(text).forEach((segment) => {
       const title = normalizeTaskTitle(segment)
-      if (title) tasks.push({ title, status: 'todo' })
+      if (title && !isLowSignalText(title)) tasks.push({ title, status: 'todo' })
     })
   }
   return tasks
@@ -722,7 +804,7 @@ function extractCompletedTasks(text: string) {
     const raw = match[1] ?? ''
     splitTaskSegments(raw).forEach((segment) => {
       const title = normalizeTaskTitle(segment)
-      if (title) tasks.push({ title, status: 'done' })
+      if (title && !isLowSignalText(title)) tasks.push({ title, status: 'done' })
     })
   }
   return tasks
@@ -733,9 +815,9 @@ function extractNoteLines(text: string) {
   const workedRe = /\bworked on\s+([^.;]+)/gi
   for (const match of text.matchAll(workedRe)) {
     const raw = (match[1] ?? '').trim()
-    if (raw) notes.push(`Worked on ${raw}`)
+    if (raw && !isLowSignalText(raw)) notes.push(`Worked on ${raw}`)
   }
-  if (notes.length) return notes
+  if (notes.length) return notes.filter((line) => !isLowSignalText(line))
 
   const narrative = extractNarrativeSentences(text)
   if (narrative.length) return narrative
@@ -754,7 +836,9 @@ function extractNarrativeSentences(text: string) {
     sentence = sentence.replace(/^i said[:,]?\s*/i, '').trim()
     if (!sentence) continue
     if (/^make this\b/i.test(sentence)) continue
-    lines.push(sentence)
+    if (!isLowSignalText(sentence)) {
+      lines.push(sentence)
+    }
     if (lines.length >= 6) break
   }
   return lines
@@ -991,7 +1075,7 @@ function entrySectionLines(entry: TranscriptEntry, anchorMs: number) {
     if (workoutLines.length) lines.push(...workoutLines)
     lines.push('Working On')
     workingItems.forEach((item) => {
-      lines.push(`- [ ] ▶ ${item}`)
+      lines.push(`- ▶ ${item}`)
     })
     appendInlineTokens(lines, chipTokens)
     return { timeLabel: entry.time, label, lines }
@@ -1004,14 +1088,28 @@ function entrySectionLines(entry: TranscriptEntry, anchorMs: number) {
   }))
   const extractedTasks = extractActionTasks(entryText)
   const completedTasks = extractCompletedTasks(entryText)
-  const notes = entry.body.length ? entry.body : extractNoteLines(entryText)
+  const headline = normalizeComparableText(entry.headline)
+  const notes = (entry.body.length ? entry.body : extractNoteLines(entryText))
+    .map((note) => note.trim())
+    .filter((note) => note && !isLowSignalText(note))
+    .filter((note) => normalizeComparableText(note) !== headline)
 
-  const todos = mergeEntryTasks(parsedTasks.filter((t) => t.status !== 'done'), extractedTasks)
-  const done = mergeEntryTasks(parsedTasks.filter((t) => t.status === 'done'), completedTasks)
+  const todos = mergeEntryTasks(
+    parsedTasks.filter((t) => t.status !== 'done' && !isLowSignalText(t.title)),
+    extractedTasks,
+  )
+  const done = mergeEntryTasks(
+    parsedTasks.filter((t) => t.status === 'done' && !isLowSignalText(t.title)),
+    completedTasks,
+  )
 
   if (notes.length) {
     lines.push('Notes')
-    notes.forEach((note) => lines.push(note))
+    notes.forEach((note) => {
+      const trimmed = note.trim()
+      if (!trimmed) return
+      lines.push(trimmed.startsWith('- ') ? trimmed : `- ${trimmed}`)
+    })
   }
 
   if (mealLines.length) lines.push(...mealLines)
@@ -1098,7 +1196,7 @@ type StructuredSection = {
 }
 
 function extractTimePrefix(line: string) {
-  const match = line.match(/^\s*\[?(\d{1,2}:\d{2}|\d{3,4}|\d{1,2}[,]\d{2})\]?\s*(?:-|—)?\s*/i)
+  const match = line.match(/^\s*\[?(\d{1,2}:\d{2}|\d{3,4}|\d{1,2}[,]\d{2}|\d{1,2}\s+\d{2})\]?\s*(?:-|—)?\s*/i)
   return normalizeTimeToken(match?.[1] ?? null)
 }
 
@@ -1242,10 +1340,8 @@ export function buildNotesFromTranscript(opts: BuildNotesInput) {
     didChange = true
   }
 
-  let lines = ensureTemplateHeader(preamble.lines, {
-    title: base.title ?? opts.title ?? 'Untitled',
-    anchorMs: safeAnchorMs,
-  })
+  let lines = stripTemplateHeaderLines(preamble.lines)
+  while (lines.length && !lines[0]?.trim()) lines.shift()
 
   const structuredSections = parseStructuredOutline(opts.transcript, safeAnchorMs)
   const entryBlocks: string[][] = []

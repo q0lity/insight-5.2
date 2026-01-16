@@ -496,6 +496,7 @@ This section is the source-of-truth for where every input routes and where it re
 - Tests: drag reschedules start/end; markers show correct value and time; embedded blocks do not create separate events.
 - All-day lane includes all-day events plus unscheduled tasks; drag tasks into time grid to schedule.
 - Read-only calendars render locked events (visible, not synced back).
+- Countdown badges show time-to-target for scheduled items (events/tasks/goals) wherever they render.
 
 **Unified Entries List**
 - Inputs: check-off tasks, open entry, filter by chip.

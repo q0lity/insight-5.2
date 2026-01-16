@@ -10,9 +10,16 @@ export async function getSupabaseSessionUser(options: SessionOptions = {}) {
 
   // Step 1: Try to get cached session
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  if (!sessionError && sessionData.session?.user) {
-    console.log('[Auth] Found cached session for:', sessionData.session.user.email ?? sessionData.session.user.id);
-    return { supabase, user: sessionData.session.user };
+  const cachedSession = sessionData.session;
+  if (!sessionError && cachedSession?.user) {
+    const expiresAt = cachedSession.expires_at ?? 0;
+    const now = Math.floor(Date.now() / 1000);
+    if (expiresAt > 0 && expiresAt <= now + 60) {
+      console.log('[Auth] Cached session expired, attempting refresh...');
+    } else {
+      console.log('[Auth] Found cached session for:', cachedSession.user.email ?? cachedSession.user.id);
+      return { supabase, user: cachedSession.user };
+    }
   }
 
   // Step 2: Try to refresh the session from storage

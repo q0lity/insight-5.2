@@ -17,7 +17,7 @@ import {
   parseTagList,
   uniqStrings,
 } from '@/src/utils/frontmatter';
-import { formatSegmentsPreview, parseCapture } from '@/src/lib/schema';
+import { buildOutlineFromTranscript } from '@/src/lib/notes-outline';
 import { computeXp, formatXp } from '@/src/utils/points';
 import { RollingNumber } from '@/src/components/RollingNumber';
 
@@ -130,9 +130,8 @@ export default function FocusScreen() {
   const normalizedNotes = useMemo(() => (notes.trim() ? normalizeCaptureText(notes) : ''), [notes]);
   const outlineNotes = useMemo(() => {
     if (!normalizedNotes) return '';
-    const parsed = parseCapture(normalizedNotes);
-    return parsed.segments.length ? formatSegmentsPreview(parsed.segments) : normalizedNotes;
-  }, [normalizedNotes]);
+    return buildOutlineFromTranscript(normalizedNotes, { anchorMs: active?.startAt ?? Date.now() });
+  }, [active?.startAt, normalizedNotes]);
 
   useEffect(() => {
     setImportance(active?.importance ?? 5);

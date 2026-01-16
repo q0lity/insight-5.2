@@ -110,7 +110,13 @@ async function formatFunctionError(error: { message?: string; context?: { status
 
 async function getSupabaseAccessToken(supabase: SupabaseClient) {
   const { data: sessionData } = await supabase.auth.getSession();
-  if (sessionData.session?.access_token) return sessionData.session.access_token;
+  const session = sessionData.session;
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = session?.expires_at ?? 0;
+  const shouldRefresh = !session?.access_token || (expiresAt > 0 && expiresAt <= now + 60);
+
+  if (!shouldRefresh && session?.access_token) return session.access_token;
+
   const { data: refreshed, error } = await supabase.auth.refreshSession();
   if (!error && refreshed.session?.access_token) return refreshed.session.access_token;
   return null;
@@ -119,21 +125,21 @@ async function getSupabaseAccessToken(supabase: SupabaseClient) {
 export async function invokeCaptureParse(payload: CaptureParsePayload) {
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error('Supabase is not configured.');
-  const { data: sessionData } = await supabase.auth.getSession();
-  if (!sessionData.session?.access_token) {
-    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-    if (refreshError || !refreshed.session?.access_token) {
-      await clearSupabaseLocalSession('missing-session');
-      throw new Error('Sign in required to transcribe audio. Please sign in first.');
-    }
+  const accessToken = await getSupabaseAccessToken(supabase);
+  if (!accessToken) {
+    await clearSupabaseLocalSession('missing-session');
+    throw new Error('Sign in required to transcribe audio. Please sign in first.');
   }
 
   const { data, error } = await supabase.functions.invoke('transcribe_and_parse_capture', {
     body: payload,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   });
   if (error) {
     const message = await formatFunctionError(error);
-    if (error.context?.status === 401 || /invalid jwt/i.test(message)) {
+    if (error.context?.status === 401 || /invalid jwt|unauthorized|session expired/i.test(message)) {
       await clearSupabaseLocalSession('invalid-jwt');
       throw new Error('Session expired. Please sign in again.');
     }

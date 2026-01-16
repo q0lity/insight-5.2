@@ -18,6 +18,7 @@ import { listWorkouts } from '@/src/storage/workouts';
 import type { Workout } from '@/src/storage/workouts';
 import { listMeals } from '@/src/storage/nutrition';
 import type { Meal } from '@/src/storage/nutrition';
+import { createTrackerLog, listTrackerLogs } from '@/src/storage/trackers';
 
 type TrackerType = 'mood' | 'energy' | 'water' | 'stress' | 'sleep';
 
@@ -35,12 +36,12 @@ type QuickAction = {
   route?: string;
 };
 
-const TRACKER_CONFIG: Record<TrackerType, { label: string; icon: keyof typeof Ionicons.glyphMap; max: number; unit: string }> = {
-  mood: { label: 'Mood', icon: 'happy-outline', max: 5, unit: '' },
-  energy: { label: 'Energy', icon: 'flash-outline', max: 5, unit: '' },
-  water: { label: 'Water', icon: 'water-outline', max: 8, unit: 'glasses' },
-  stress: { label: 'Stress', icon: 'pulse-outline', max: 5, unit: '' },
-  sleep: { label: 'Sleep', icon: 'moon-outline', max: 12, unit: 'hrs' },
+const TRACKER_CONFIG: Record<TrackerType, { label: string; icon: keyof typeof Ionicons.glyphMap; max: number; unit: string; keys: string[] }> = {
+  mood: { label: 'Mood', icon: 'happy-outline', max: 10, unit: '/10', keys: ['mood'] },
+  energy: { label: 'Energy', icon: 'flash-outline', max: 10, unit: '/10', keys: ['energy'] },
+  water: { label: 'Water', icon: 'water-outline', max: 10, unit: '/10', keys: ['water', 'hydration'] },
+  stress: { label: 'Stress', icon: 'pulse-outline', max: 10, unit: '/10', keys: ['stress'] },
+  sleep: { label: 'Sleep', icon: 'moon-outline', max: 10, unit: '/10', keys: ['sleep'] },
 };
 
 const QUICK_ACTIONS: QuickAction[] = [
@@ -80,11 +81,11 @@ export default function LifeTrackerScreen() {
   const screenWidth = Dimensions.get('window').width;
 
   const [trackers, setTrackers] = useState<TrackerValue[]>([
-    { type: 'mood', value: 3, updatedAt: Date.now() },
-    { type: 'energy', value: 4, updatedAt: Date.now() },
-    { type: 'water', value: 2, updatedAt: Date.now() },
-    { type: 'stress', value: 2, updatedAt: Date.now() },
-    { type: 'sleep', value: 7, updatedAt: Date.now() - 86400000 },
+    { type: 'mood', value: 0, updatedAt: Date.now() },
+    { type: 'energy', value: 0, updatedAt: Date.now() },
+    { type: 'water', value: 0, updatedAt: Date.now() },
+    { type: 'stress', value: 0, updatedAt: Date.now() },
+    { type: 'sleep', value: 0, updatedAt: Date.now() },
   ]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
@@ -92,13 +93,25 @@ export default function LifeTrackerScreen() {
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      const [workoutsData, mealsData] = await Promise.all([
+      const [workoutsData, mealsData, trackerLogs] = await Promise.all([
         listWorkouts(),
         listMeals(),
+        listTrackerLogs({ limit: 200 }),
       ]);
       if (!mounted) return;
       setWorkouts(workoutsData);
       setMeals(mealsData);
+
+      const nextValues = Object.entries(TRACKER_CONFIG).map(([type, cfg]) => {
+        const latest = trackerLogs.find((log) => cfg.keys.some((key) => log.trackerKey.includes(key)));
+        const value = latest?.valueNumber ?? (latest?.valueBool ? cfg.max : 0);
+        return {
+          type: type as TrackerType,
+          value: value != null && Number.isFinite(value) ? Math.min(cfg.max, Number(value)) : 0,
+          updatedAt: latest?.occurredAt ?? Date.now(),
+        };
+      });
+      setTrackers(nextValues);
     };
     if (isFocused) {
       void load();
@@ -135,17 +148,26 @@ export default function LifeTrackerScreen() {
   }, [workouts]);
 
   const handleTrackerTap = useCallback((type: TrackerType) => {
+    if (type === 'sleep') {
+      Alert.alert('Sleep', 'Sleep logs are pulled from health data.');
+      return;
+    }
     const config = TRACKER_CONFIG[type];
     setTrackers((prev) =>
       prev.map((t) => {
         if (t.type !== type) return t;
         const next = t.value >= config.max ? 1 : t.value + 1;
+        void createTrackerLog({ trackerKey: config.keys[0], value: next });
         return { ...t, value: next, updatedAt: Date.now() };
       })
     );
   }, []);
 
   const handleTrackerLongPress = useCallback((type: TrackerType) => {
+    if (type === 'sleep') {
+      Alert.alert('Sleep', 'Sleep logs are pulled from health data.');
+      return;
+    }
     const config = TRACKER_CONFIG[type];
     Alert.alert(
       `Set ${config.label}`,
@@ -160,6 +182,7 @@ export default function LifeTrackerScreen() {
                 t.type === type ? { ...t, value: i + 1, updatedAt: Date.now() } : t
               )
             );
+            void createTrackerLog({ trackerKey: config.keys[0], value: i + 1 });
           },
         })),
       ]

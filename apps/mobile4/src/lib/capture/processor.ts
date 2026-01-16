@@ -1,5 +1,6 @@
-import { formatSegmentsPreview, parseCapture } from '@/src/lib/schema';
-import { parseCaptureNatural, type ParsedEvent } from '@/src/lib/nlp/natural';
+import { parseCapture } from '@/src/lib/schema';
+import { parseCaptureNatural, parseCaptureWithBlocks, type ParsedEvent } from '@/src/lib/nlp/natural';
+import { buildOutlineFromTranscript } from '@/src/lib/notes-outline';
 import { startEvent, stopEvent } from '@/src/storage/events';
 import { createTask } from '@/src/storage/tasks';
 import { createTrackerLog } from '@/src/storage/trackers';
@@ -124,6 +125,68 @@ function normalizeCaptureText(rawText: string) {
     .trim();
 }
 
+function normalizeTimeToken(raw: string | null | undefined) {
+  if (!raw) return null;
+  const cleaned = raw.replace(/[^0-9]/g, '');
+  if (cleaned.length === 4) {
+    const hh = cleaned.slice(0, 2);
+    const mm = cleaned.slice(2);
+    if (Number(mm) < 60 && Number(hh) < 24) return `${hh}:${mm}`;
+  }
+  if (cleaned.length === 3) {
+    const mm = cleaned.slice(1);
+    if (Number(mm) < 60) {
+      const hh = `0${cleaned.slice(0, 1)}`;
+      return `${hh}:${mm}`;
+    }
+    const hhAlt = Number(cleaned.slice(0, 2));
+    const mmAlt = cleaned.slice(2);
+    if (Number.isFinite(hhAlt) && hhAlt < 24) return `${String(hhAlt).padStart(2, '0')}:${mmAlt.padStart(2, '0')}`;
+  }
+  return raw.includes(':') ? raw : null;
+}
+
+function timeLabelToMs(label: string | null | undefined, anchorMs: number) {
+  const normalized = normalizeTimeToken(label);
+  if (!normalized) return null;
+  const [hhRaw, mmRaw] = normalized.split(':');
+  const hh = Number(hhRaw);
+  const mm = Number(mmRaw);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+  const base = new Date(anchorMs);
+  base.setHours(hh, mm, 0, 0);
+  return base.getTime();
+}
+
+function splitTextByTimeMarkers(text: string, anchorMs: number) {
+  const lines = text.split(/\r?\n/);
+  const sections: Array<{ timeMs: number; text: string }> = [];
+  let currentLines: string[] = [];
+  let currentTimeMs: number | null = null;
+  const pushSection = () => {
+    if (!currentLines.length) return;
+    sections.push({ timeMs: currentTimeMs ?? anchorMs, text: currentLines.join('\n') });
+    currentLines = [];
+  };
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const match = trimmed.match(/^(?:time\s*:\s*)?\[?(\d{1,2}:\d{2}|\d{3,4}|\d{1,2}\s+\d{2})\]?\s*(?:[-–—:]|\s+)?(.*)$/i);
+    const normalized = normalizeTimeToken(match?.[1]);
+    if (match && normalized) {
+      pushSection();
+      currentTimeMs = timeLabelToMs(normalized, anchorMs);
+      const remainder = (match[2] ?? '').trim();
+      if (remainder) currentLines.push(remainder);
+      continue;
+    }
+    currentLines.push(line);
+  }
+  pushSection();
+  return sections.length ? sections : [{ timeMs: anchorMs, text }];
+}
+
 function toStringList(value: unknown) {
   if (Array.isArray(value)) return value.map((item) => String(item)).filter(Boolean);
   if (typeof value === 'string' && value.trim()) return parseInlineList(value);
@@ -191,6 +254,10 @@ function extractTrackerTokens(text: string) {
   const out: Array<{ name: string; value: number }> = [];
   for (const match of text.matchAll(/#([a-zA-Z][\w/-]*)\(([-+]?\d*\.?\d+)\)/g)) {
     out.push({ name: match[1], value: Number(match[2]) });
+  }
+  for (const match of text.matchAll(/#([a-zA-Z][\w/-]*)\[([^\]]+)\]/g)) {
+    const value = Number(match[2]);
+    if (Number.isFinite(value)) out.push({ name: match[1], value });
   }
   for (const match of text.matchAll(/#([a-zA-Z][\w/-]*):([-+]?\d*\.?\d+)/g)) {
     out.push({ name: match[1], value: Number(match[2]) });
@@ -1080,20 +1147,33 @@ export async function processInboxCapture(capture: InboxCapture): Promise<Proces
     trackerMap.set('pain', painValue);
   }
 
+  const trackerTimes = new Map<string, number>();
+  const timeSections = splitTextByTimeMarkers(normalized, nowMs);
+  for (const section of timeSections) {
+    const parsedSection = parseCaptureWithBlocks(section.text, section.timeMs);
+    parsedSection.blocks.forEach((block) => {
+      block.trackers.forEach((tracker) => {
+        if (!trackerTimes.has(tracker.key)) trackerTimes.set(tracker.key, section.timeMs);
+        if (!trackerMap.has(tracker.key)) trackerMap.set(tracker.key, tracker.value);
+      });
+    });
+  }
+
   let createdTrackerLogs = 0;
   for (const [key, value] of trackerMap.entries()) {
     const tokenValue = typeof value === 'string' ? value : String(value);
+    const occurredAt = trackerTimes.get(key) ?? nowMs;
     await createTrackerLog({
       trackerKey: key,
       value,
-      occurredAt: nowMs,
+      occurredAt,
       entryId: primaryEventId ?? capture.id,
       rawToken: `#${key}(${tokenValue})`,
     });
     createdTrackerLogs += 1;
   }
 
-  const processedText = parsed.segments.length ? formatSegmentsPreview(parsed.segments) : normalized;
+  const processedText = buildOutlineFromTranscript(normalized);
   await updateInboxCapture(capture.id, {
     status: 'parsed',
     processedText,

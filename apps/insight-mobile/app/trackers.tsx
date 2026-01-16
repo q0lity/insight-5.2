@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/state/theme';
 import { InsightIcon } from '@/src/components/InsightIcon';
 import { TrackerHeatMap } from '@/src/components/TrackerHeatMap';
-import { TrackerPieChart } from '@/src/components/TrackerPieChart';
+import { TrackerRadar } from '@/src/components/TrackerRadar';
 import {
   createTrackerLog,
   deleteTrackerLog,
@@ -259,13 +259,13 @@ export default function TrackersScreen() {
         {/* 7-Day Heatmap */}
         <Text style={[styles.sectionTitle, { color: palette.text }]}>7-Day Overview</Text>
         <View style={[styles.chartCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-          <TrackerHeatMap logs={logs} days={7} />
+          <TrackerHeatMap logs={logs} days={7} cellSize={12} cellGap={3} />
         </View>
 
-        {/* Pie Chart by Category */}
-        <Text style={[styles.sectionTitle, { color: palette.text }]}>By Category</Text>
+        {/* Radar by Category */}
+        <Text style={[styles.sectionTitle, { color: palette.text }]}>Feelings Radar</Text>
         <View style={[styles.chartCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-          <TrackerPieChart logs={logs} size={120} />
+          <TrackerRadar logs={logs} size={180} />
         </View>
 
         {/* Timeline */}

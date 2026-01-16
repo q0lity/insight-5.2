@@ -1,0 +1,229 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e4]:
+        - button "Close toast" [ref=e5] [cursor=pointer]:
+          - img [ref=e6]
+        - img [ref=e10]
+        - generic [ref=e13]: Quick capture opened
+  - main [ref=e14]:
+    - complementary "Primary navigation" [ref=e15]:
+      - img [ref=e18]
+      - button "Dashboard" [ref=e21] [cursor=pointer]:
+        - img [ref=e22]
+        - generic: Dashboard
+      - button "Capture" [ref=e25] [cursor=pointer]:
+        - img [ref=e26]
+        - generic: Capture
+      - button "Calendar" [ref=e28] [cursor=pointer]:
+        - img [ref=e29]
+        - generic: Calendar
+      - button "Tasks" [ref=e33] [cursor=pointer]:
+        - img [ref=e34]
+        - generic: Tasks
+      - button "Notes" [ref=e37] [cursor=pointer]:
+        - img [ref=e38]
+        - generic: Notes
+      - button "Reflections" [ref=e42] [cursor=pointer]:
+        - img [ref=e43]
+        - generic: Reflections
+      - button "Chat" [ref=e46] [cursor=pointer]:
+        - img [ref=e47]
+        - generic: Chat
+      - button "Habits" [ref=e50] [cursor=pointer]:
+        - img [ref=e51]
+        - generic: Habits
+      - button "Goals" [ref=e54] [cursor=pointer]:
+        - img [ref=e55]
+        - generic: Goals
+      - button "Projects" [ref=e60] [cursor=pointer]:
+        - img [ref=e61]
+        - generic: Projects
+      - button "Ecosystem" [ref=e64] [cursor=pointer]:
+        - img [ref=e65]
+        - generic: Ecosystem
+      - button "Trackers" [ref=e68] [cursor=pointer]:
+        - img [ref=e69]
+        - generic: Trackers
+      - button "Rewards" [ref=e71] [cursor=pointer]:
+        - img [ref=e72]
+        - generic: Rewards
+      - button "Workout & Nutrition" [ref=e77] [cursor=pointer]:
+        - img [ref=e78]
+        - generic: Workout + Nutrition
+      - button "Refresh" [ref=e80] [cursor=pointer]:
+        - img [ref=e81]
+        - generic: Refresh
+      - button "Toggle theme" [ref=e83] [cursor=pointer]:
+        - img [ref=e84]
+        - generic: Theme
+      - button "Toggle explorer" [ref=e86] [cursor=pointer]:
+        - img [ref=e87]
+        - generic: Explorer
+      - button "Settings" [ref=e89] [cursor=pointer]:
+        - img [ref=e90]
+        - generic: Settings
+    - complementary [ref=e93]:
+      - generic [ref=e94]:
+        - generic [ref=e95]: Vault
+        - generic [ref=e96]: Local-first (IndexedDB)
+      - generic [ref=e97]:
+        - generic [ref=e98]:
+          - button "Toggle pinned" [ref=e99] [cursor=pointer]:
+            - img [ref=e100]
+          - generic [ref=e102]: Pinned
+        - generic [ref=e103]:
+          - generic [ref=e104]:
+            - generic [ref=e105]:
+              - button "Toggle tasks" [ref=e106] [cursor=pointer]:
+                - img [ref=e107]
+              - generic [ref=e109]: Tasks
+              - generic "Drag to reorder" [ref=e110]:
+                - img [ref=e111]
+            - generic [ref=e112]:
+              - textbox "Search tasks…" [ref=e114]
+              - generic [ref=e115]:
+                - textbox "Quick add…" [ref=e116]
+                - button "Add" [ref=e117] [cursor=pointer]
+              - generic [ref=e119]: No open tasks.
+          - generic [ref=e120]:
+            - generic [ref=e121]:
+              - button "Toggle habits" [ref=e122] [cursor=pointer]:
+                - img [ref=e123]
+              - generic [ref=e125]: Habits
+              - generic "Drag to reorder" [ref=e126]:
+                - img [ref=e127]
+            - generic [ref=e129]: No habits yet. Add one in the Habits tab.
+          - generic [ref=e130]:
+            - generic [ref=e131]:
+              - button "Toggle trackers" [ref=e132] [cursor=pointer]:
+                - img [ref=e133]
+              - generic [ref=e135]: Trackers
+              - generic "Drag to reorder" [ref=e136]:
+                - img [ref=e137]
+            - generic [ref=e138]:
+              - generic [ref=e139]:
+                - img [ref=e141]
+                - generic [ref=e144]: Mood
+                - generic [ref=e145]: Tracker
+              - generic [ref=e146]:
+                - img [ref=e148]
+                - generic [ref=e150]: Energy
+                - generic [ref=e151]: Tracker
+              - generic [ref=e152]:
+                - img [ref=e154]
+                - generic [ref=e157]: Stress
+                - generic [ref=e158]: Tracker
+              - generic [ref=e159]:
+                - img [ref=e161]
+                - generic [ref=e163]: Pain
+                - generic [ref=e164]: Tracker
+              - generic [ref=e165]:
+                - img [ref=e167]
+                - generic [ref=e169]: Water
+                - generic [ref=e170]: Tracker
+          - generic [ref=e171]:
+            - generic [ref=e172]:
+              - button "Toggle shortcuts" [ref=e173] [cursor=pointer]:
+                - img [ref=e174]
+              - generic [ref=e176]: Shortcuts
+              - generic "Drag to reorder" [ref=e177]:
+                - img [ref=e178]
+            - generic [ref=e179]:
+              - button "Calendar" [ref=e180] [cursor=pointer]
+              - button "Notes" [ref=e181] [cursor=pointer]
+              - button "Chat" [ref=e182] [cursor=pointer]
+              - button "Settings" [ref=e183] [cursor=pointer]
+      - generic [ref=e185]:
+        - button "Toggle recent notes" [ref=e186] [cursor=pointer]:
+          - img [ref=e187]
+        - generic [ref=e189]: Recent Notes
+      - generic [ref=e190]:
+        - generic [ref=e191]:
+          - button "Toggle pomodoro" [ref=e192] [cursor=pointer]:
+            - img [ref=e193]
+          - generic [ref=e195]: Pomodoro
+        - generic [ref=e196]:
+          - generic [ref=e198]: Ready To Start
+          - generic [ref=e200]: 25:00
+          - generic [ref=e201]:
+            - button "Start" [ref=e202] [cursor=pointer]
+            - button "Reset" [ref=e203] [cursor=pointer]
+          - generic [ref=e204]:
+            - generic [ref=e205]: Active task
+            - generic [ref=e206]:
+              - generic [ref=e207]: —
+              - button "Clear active task" [disabled] [ref=e208]: ×
+            - generic [ref=e209]:
+              - button "Set active task to selected task" [disabled] [ref=e210]: Use selected
+              - button "Open tasks" [ref=e211] [cursor=pointer]
+            - generic "Quick pick tasks" [ref=e212]:
+              - generic [ref=e213]: No open tasks.
+          - generic [ref=e214]:
+            - generic [ref=e215]: Recent notes
+            - generic "Recent notes"
+    - generic [ref=e219]:
+      - generic [ref=e220]:
+        - generic [ref=e221]:
+          - generic [ref=e222]:
+            - heading "Notes Explorer" [level=1] [ref=e223]
+            - paragraph [ref=e224]: 0 captures
+          - generic [ref=e225]:
+            - tablist "Notes layout" [ref=e226]:
+              - tab "List" [ref=e227] [cursor=pointer]
+              - tab "Cards" [selected] [ref=e228] [cursor=pointer]
+            - generic [ref=e229]:
+              - generic [ref=e230]:
+                - img [ref=e231]
+                - textbox "Search notes..." [ref=e234]
+              - combobox [ref=e235] [cursor=pointer]:
+                - option "Recent" [selected]
+                - option "Oldest"
+                - option "A-Z"
+            - button "New" [ref=e237] [cursor=pointer]:
+              - img [ref=e238]
+              - text: New
+        - generic [ref=e241]:
+          - button "All" [ref=e242] [cursor=pointer]
+          - button "Categories" [ref=e243] [cursor=pointer]
+          - button "Tags" [ref=e244] [cursor=pointer]
+          - button "People" [ref=e245] [cursor=pointer]
+          - button "Places" [ref=e246] [cursor=pointer]
+      - generic [ref=e247]:
+        - generic [ref=e249]:
+          - img [ref=e250]
+          - generic [ref=e254]: No notes found
+        - complementary [ref=e255]:
+          - generic [ref=e256]:
+            - img [ref=e257]
+            - generic [ref=e261]: Select a note to inspect details.
+  - button "Capture" [ref=e262] [cursor=pointer]:
+    - img [ref=e263]
+  - generic [ref=e266]:
+    - generic [ref=e267]:
+      - generic [ref=e268]:
+        - heading "Capture" [level=2] [ref=e269]
+        - button "Extend" [ref=e270] [cursor=pointer]:
+          - img [ref=e271]
+          - text: Extend
+        - generic [ref=e273]: Listening
+      - button [ref=e275] [cursor=pointer]:
+        - img [ref=e276]
+    - generic [ref=e279]:
+      - generic [ref=e280]:
+        - generic [ref=e281]: Live transcript
+        - generic [ref=e282]:
+          - generic [ref=e283]: Transcribing
+          - generic [ref=e284]: 0 chars
+      - textbox "Start talking or type your notes..." [active] [ref=e285]
+    - generic [ref=e286]:
+      - button "Listening..." [ref=e288] [cursor=pointer]:
+        - img [ref=e289]
+        - text: Listening...
+      - generic [ref=e292]:
+        - button "Clear" [disabled] [ref=e293]
+        - button "Save Note" [disabled] [ref=e294]
+```

@@ -1,11 +1,12 @@
 import React, { useMemo, useRef } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/Themed';
 import { InsightIcon, type InsightIconName } from '@/src/components/InsightIcon';
+import { useSession } from '@/src/state/session';
 import { useTheme } from '@/src/state/theme';
 
 type TabItem = {
@@ -25,6 +26,7 @@ const TAB_ITEMS: TabItem[] = [
 function InsightTabBar({ state, navigation }: BottomTabBarProps) {
   const router = useRouter();
   const { palette, sizes, isDark } = useTheme();
+  const { active, startSession } = useSession();
   const insets = useSafeAreaInsets();
   const currentRoute = state.routes[state.index]?.name;
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -39,6 +41,35 @@ function InsightTabBar({ state, navigation }: BottomTabBarProps) {
     inputRange: [0, 1],
     outputRange: ['0deg', '90deg'],
   });
+
+  const handleCapturePress = () => {
+    if (!active) {
+      router.push('/capture');
+      return;
+    }
+    const title = active.title || 'Active session';
+    Alert.alert('Capture', `You are in "${title}".`, [
+      {
+        text: 'Append',
+        onPress: () => router.push(`/capture?eventId=${encodeURIComponent(active.id)}`),
+      },
+      {
+        text: 'New Session',
+        onPress: () => {
+          void (async () => {
+            await startSession({
+              title: 'Focus session',
+              kind: 'event',
+              startedAt: Date.now(),
+              estimatedMinutes: null,
+            });
+            router.push('/focus');
+          })();
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
 
   const renderTab = (tab: TabItem) => {
     const route = state.routes.find((r) => r.name === tab.name);
@@ -90,7 +121,7 @@ function InsightTabBar({ state, navigation }: BottomTabBarProps) {
       <View style={styles.tabRow}>
         <View style={styles.tabGroup}>{leftTabs.map(renderTab)}</View>
         <Pressable
-          onPress={() => router.push('/capture')}
+          onPress={handleCapturePress}
           onPressIn={() =>
             Animated.timing(rotateAnim, {
               toValue: 1,

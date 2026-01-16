@@ -705,6 +705,16 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
         ),
       },
       {
+        id: 'characterRadar',
+        title: 'Character Stats',
+        group: 'radar' as WidgetGroup,
+        element: (
+          <div className="chartContainer">
+            <RadarChart axes={characterTotals.axes} values={characterTotals.values} compact={compact} />
+          </div>
+        ),
+      },
+      {
         id: 'trackerSummary',
         title: 'Trackers',
         group: 'overview' as WidgetGroup,
@@ -819,16 +829,6 @@ export function DashboardView(props: { events: CalendarEvent[]; tasks: Task[]; t
         ),
       },
       // Radar charts
-      {
-        id: 'characterRadar',
-        title: 'Attributes',
-        group: 'radar' as WidgetGroup,
-        element: (
-          <div className="chartContainer">
-            <RadarChart axes={characterTotals.axes} values={characterTotals.values} compact={compact} />
-          </div>
-        ),
-      },
       {
         id: 'skillsRadar',
         title: 'Top Skills',

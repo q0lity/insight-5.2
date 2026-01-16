@@ -86,6 +86,7 @@ const DIVIDER_RE = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/
 const HEADER_RE = /^::([a-zA-Z][\w-]*)(?:\s+(.*))?$/
 const BRACKET_RE = /\[([^\]]+)\]/g
 const TRACKER_RE = /#([a-zA-Z][\w-]*)\(([^)]+)\)/g
+const TRACKER_BRACKET_RE = /#([a-zA-Z][\w-]*)\[([^\]]+)\]/g
 const TASK_RE = /^(\s*)-\s*\[([ xX])\]\s*(.+)$/gm
 
 function uniq<T>(values: T[]): T[] {
@@ -142,7 +143,7 @@ export function extractInlineTokens(text: string): MarkdownToken[] {
     tokens.push({ type, raw, value, trackerValue, index })
   }
 
-  // Extract tracker tokens with values: #mood(7), #stress(5)
+  // Extract tracker tokens with values: #mood(7), #mood[7], #stress(5)
   for (const m of text.matchAll(TRACKER_RE)) {
     const key = m[1]
     const rawValue = m[2]
@@ -150,9 +151,16 @@ export function extractInlineTokens(text: string): MarkdownToken[] {
     const value = Number.isFinite(numValue) ? numValue : rawValue
     add('tracker', `#${key}(${rawValue})`, key, m.index ?? 0, value)
   }
+  for (const m of text.matchAll(TRACKER_BRACKET_RE)) {
+    const key = m[1]
+    const rawValue = m[2]
+    const numValue = Number(rawValue)
+    const value = Number.isFinite(numValue) ? numValue : rawValue
+    add('tracker', `#${key}[${rawValue}]`, key, m.index ?? 0, value)
+  }
 
   // Extract regular tags (excluding tracker tokens)
-  const textWithoutTrackers = text.replace(TRACKER_RE, ' ')
+  const textWithoutTrackers = text.replace(TRACKER_RE, ' ').replace(TRACKER_BRACKET_RE, ' ')
   for (const m of textWithoutTrackers.matchAll(/(^|[\s(])#([a-zA-Z][\w/-]*)/g)) {
     add('tag', `#${m[2]}`, m[2], m.index ?? 0)
   }
@@ -199,6 +207,7 @@ export function toTokenCollections(tokens: MarkdownToken[]): MarkdownTokenCollec
 function stripTokens(raw: string): string {
   return raw
     .replace(TRACKER_RE, ' ')
+    .replace(TRACKER_BRACKET_RE, ' ')
     .replace(/(^|[\s(])[#@!*+][a-zA-Z][\w/''-]*(?:\s+[A-Za-z][\w''-]*){0,3}/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
@@ -389,8 +398,11 @@ export function detectIntent(text: string): {
   }
 
   // Tracker patterns
-  if (/(feeling|mood|energy|pain|stress|anxious|tired|motivated)/i.test(lower) ||
-      TRACKER_RE.test(text)) {
+  if (
+    /(feeling|mood|energy|pain|stress|anxious|tired|motivated)/i.test(lower) ||
+    TRACKER_RE.test(text) ||
+    TRACKER_BRACKET_RE.test(text)
+  ) {
     return {
       type: 'log_tracker',
       confidence: 0.8,

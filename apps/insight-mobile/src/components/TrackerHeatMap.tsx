@@ -58,9 +58,11 @@ function getDaysArray(endDate: Date, count: number): Date[] {
 type TrackerHeatMapProps = {
   logs: TrackerLogEntry[];
   days?: number;
+  cellSize?: number;
+  cellGap?: number;
 };
 
-export function TrackerHeatMap({ logs, days = 7 }: TrackerHeatMapProps) {
+export function TrackerHeatMap({ logs, days = 7, cellSize = 16, cellGap = 4 }: TrackerHeatMapProps) {
   const { palette, sizes, isDark } = useTheme();
 
   const daysArray = useMemo(() => getDaysArray(new Date(), days), [days]);
@@ -138,7 +140,7 @@ export function TrackerHeatMap({ logs, days = 7 }: TrackerHeatMapProps) {
       <View style={styles.headerRow}>
         <View style={styles.categoryLabelCol} />
         {daysArray.map((date, idx) => (
-          <View key={idx} style={styles.dayLabelCell}>
+          <View key={idx} style={[styles.dayLabelCell, { width: cellSize + cellGap }]}>
             <Text style={[styles.dayLabel, { color: palette.tabIconDefault }]}>
               {date.toLocaleDateString([], { weekday: 'narrow' })}
             </Text>
@@ -172,9 +174,9 @@ export function TrackerHeatMap({ logs, days = 7 }: TrackerHeatMapProps) {
               const color = getColorForValue(category, avg, maxValue);
 
               return (
-                <View key={idx} style={styles.cellWrapper}>
-                  <View style={[styles.cell, { backgroundColor: color }]}>
-                    {avg > 0 && (
+                <View key={idx} style={[styles.cellWrapper, { width: cellSize + cellGap, height: cellSize + cellGap }]}>
+                  <View style={[styles.cell, { backgroundColor: color, width: cellSize, height: cellSize, borderRadius: Math.max(2, Math.round(cellSize * 0.3)) }]}>
+                    {avg > 0 && cellSize >= 16 && (
                       <Text style={[styles.cellValue, { color: avg > maxValue * 0.5 ? '#FFFFFF' : palette.tabIconDefault }]}>
                         {Math.round(avg)}
                       </Text>
@@ -227,7 +229,6 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   dayLabelCell: {
-    flex: 1,
     alignItems: 'center',
   },
   dayLabel: {
@@ -252,11 +253,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cellWrapper: {
-    flex: 1,
-    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cell: {
-    aspectRatio: 1,
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',

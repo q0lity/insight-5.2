@@ -13,7 +13,8 @@ import { useSession } from '@/src/state/session';
 import { createTask } from '@/src/storage/tasks';
 import { createTrackerLog } from '@/src/storage/trackers';
 import { getEvent, startEvent, stopEvent, updateEvent } from '@/src/storage/events';
-import { autoCategorize, detectIntent, formatSegmentsPreview, parseCapture } from '@/src/lib/schema';
+import { autoCategorize, detectIntent, parseCapture } from '@/src/lib/schema';
+import { buildOutlineFromTranscript } from '@/src/lib/notes-outline';
 import { parseCaptureNatural, type ParsedEvent } from '@/src/lib/nlp/natural';
 import { estimateWorkoutCalories, parseMealFromText, parseWorkoutFromText } from '@/src/lib/health';
 import { RECORDING_OPTIONS } from '@/src/lib/audio';
@@ -1041,9 +1042,7 @@ export default function CaptureScreen() {
   const transcriptPreview = useMemo(() => (rawText.trim() ? normalizeCaptureText(rawText) : ''), [rawText]);
   const outlinePreview = useMemo(() => {
     if (!rawText.trim()) return '';
-    const parsed = parseCapture(normalizeCaptureText(rawText));
-    if (!parsed.segments.length) return normalizeCaptureText(rawText);
-    return formatSegmentsPreview(parsed.segments);
+    return buildOutlineFromTranscript(normalizeCaptureText(rawText), { anchorMs: Date.now() });
   }, [rawText]);
 
   const eventPreview = useMemo(() => {
@@ -1281,7 +1280,7 @@ export default function CaptureScreen() {
           await updateInboxCaptureText(captureId, transcriptText);
           await upsertTranscriptSegment(captureId, transcriptText);
           const parsed = parseCapture(transcriptText);
-          const processed = parsed.segments.length ? formatSegmentsPreview(parsed.segments) : transcriptText;
+          const processed = buildOutlineFromTranscript(transcriptText, { anchorMs: Date.now() }) || transcriptText;
           const mergedTags = uniqStrings([...(seedTokens?.tags ?? []), ...parsed.tokens.tags]);
           const mergedContexts = uniqStrings([...(seedTokens?.contexts ?? []), ...parsed.tokens.contexts]);
           const mergedPeople = uniqStrings([...(seedTokens?.people ?? []), ...parsed.tokens.people]);
@@ -2065,7 +2064,7 @@ export default function CaptureScreen() {
         });
       }
 
-      const processedText = parsed.segments.length ? formatSegmentsPreview(parsed.segments) : normalized;
+      const processedText = buildOutlineFromTranscript(normalized, { anchorMs: nowMs }) || normalized;
       await updateInboxCapture(capture.id, {
         status: 'parsed',
         processedText,

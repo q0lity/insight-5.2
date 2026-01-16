@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +14,8 @@ import { InsightIcon } from '@/src/components/InsightIcon';
 import { RollingNumber } from '@/src/components/RollingNumber';
 import { MobileHeatmap, type HeatmapRange } from '@/src/components/MobileHeatmap';
 import { TrackerHeatMap } from '@/src/components/TrackerHeatMap';
-import { TrackerPieChart } from '@/src/components/TrackerPieChart';
+import { TrackerRadar } from '@/src/components/TrackerRadar';
+import { MultiLineChart, RadarChart } from '@/src/components/charts';
 import { computeXp, formatXp } from '@/src/utils/points';
 
 function formatClock(ms: number) {
@@ -28,11 +29,6 @@ function formatClock(ms: number) {
 function formatTime(timestamp: number) {
   const date = new Date(timestamp);
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatCategoryLine(event: MobileEvent) {
-  const parts = [event.category, event.subcategory].filter(Boolean);
-  return parts.length ? parts.join(' / ') : '';
 }
 
 function formatBreadcrumb(category?: string | null, subcategory?: string | null, title?: string | null) {
@@ -56,6 +52,16 @@ function formatTaskDate(timestamp: number) {
     return 'Tomorrow';
   }
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function taskUrgencyScore(task: MobileTask, nowMs: number) {
+  const dueAt = task.dueAt ?? task.scheduledAt ?? null;
+  const hoursUntil = dueAt != null ? (dueAt - nowMs) / 3600000 : null;
+  const dueScore = dueAt != null ? Math.max(0, 96 - hoursUntil) : 0;
+  const importance = task.importance ?? 5;
+  const difficulty = task.difficulty ?? 5;
+  const statusBoost = task.status === 'in_progress' ? 10 : 0;
+  return dueScore + importance * 2 + difficulty + statusBoost;
 }
 
 // Event accent colors and icons based on category/type
@@ -85,18 +91,37 @@ function isSameDay(a: number, b: number) {
   return new Date(a).toDateString() === new Date(b).toDateString();
 }
 
-function averageTrackerValue(logs: TrackerLogEntry[], key: string) {
+function averageTrackerValue(logs: TrackerLogEntry[], keys: string[]) {
   const values = logs
-    .filter((log) => log.trackerKey === key && typeof log.valueNumber === 'number')
+    .filter((log) => keys.some((key) => log.trackerKey.includes(key)) && typeof log.valueNumber === 'number')
     .map((log) => log.valueNumber as number);
   if (!values.length) return null;
   const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
   return Math.round(avg * 10) / 10;
 }
 
+type CharacterStat = 'STR' | 'INT' | 'CON' | 'PER' | 'WIS' | 'CHA';
+
+const STAT_CATEGORIES: Record<string, CharacterStat> = {
+  Health: 'CON',
+  Fitness: 'STR',
+  Work: 'INT',
+  Learning: 'WIS',
+  Social: 'CHA',
+  Personal: 'PER',
+};
+
+const WELLNESS_METRICS = [
+  { id: 'mood', label: 'Mood', color: '#8B7EC8', keys: ['mood'] },
+  { id: 'energy', label: 'Energy', color: '#7BAF7B', keys: ['energy'] },
+  { id: 'stress', label: 'Stress', color: '#D4A574', keys: ['stress'] },
+  { id: 'sleep', label: 'Sleep', color: '#6B8CAE', keys: ['sleep'] },
+  { id: 'water', label: 'Water', color: '#4C9AB8', keys: ['water', 'hydration'] },
+];
+
 export default function TodayScreen() {
   const router = useRouter();
-  const { palette, sizes, isDark } = useTheme();
+  const { palette, sizes } = useTheme();
   const insets = useSafeAreaInsets();
   const { active, stopSession, startSession } = useSession();
   const isFocused = useIsFocused();
@@ -108,8 +133,6 @@ export default function TodayScreen() {
   const [dailyStats, setDailyStats] = useState<{ totalPoints: number; totalMinutes: number; activeDays: number; streak: number } | null>(null);
   const [heatmapRange, setHeatmapRange] = useState<HeatmapRange>('month');
   const [upcomingTasks, setUpcomingTasks] = useState<MobileTask[]>([]);
-  const [quickStartOpen, setQuickStartOpen] = useState(false);
-  const [quickStartTitle, setQuickStartTitle] = useState('');
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -131,8 +154,8 @@ export default function TodayScreen() {
   useEffect(() => {
     if (!isFocused) return;
     let mounted = true;
-    const startAt = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    listTrackerLogs({ startAt, limit: 40 }).then((rows) => {
+    const startAt = Date.now() - 14 * 24 * 60 * 60 * 1000;
+    listTrackerLogs({ startAt, limit: 200 }).then((rows) => {
       if (!mounted) return;
       setTrackerLogs(rows);
     });
@@ -171,10 +194,13 @@ export default function TodayScreen() {
     let mounted = true;
     listTasks().then((tasks) => {
       if (!mounted) return;
-      // Filter for non-completed tasks, sorted by due date then scheduled date
+      // Filter for non-completed tasks, sorted by urgency
       const upcoming = tasks
         .filter((t) => t.status !== 'done' && t.status !== 'canceled')
         .sort((a, b) => {
+          const now = Date.now();
+          const score = taskUrgencyScore(b, now) - taskUrgencyScore(a, now);
+          if (score !== 0) return score;
           const aDue = a.dueAt ?? a.scheduledAt ?? Infinity;
           const bDue = b.dueAt ?? b.scheduledAt ?? Infinity;
           return aDue - bDue;
@@ -215,19 +241,16 @@ export default function TodayScreen() {
     router.push('/focus');
   };
 
-  const startQuickSession = async () => {
-    const title = quickStartTitle.trim();
-    if (!title) return;
+  const startQuickSession = useCallback(async (overrideTitle?: string) => {
+    const title = (overrideTitle ?? '').trim() || 'Focus session';
     await startSession({
       title,
       kind: 'event',
       startedAt: Date.now(),
       estimatedMinutes: null,
     });
-    setQuickStartTitle('');
-    setQuickStartOpen(false);
     router.push('/focus');
-  };
+  }, [router, startSession]);
 
   const elapsedMs = active ? now - active.startedAt : 0;
   const remainingMs =
@@ -261,7 +284,9 @@ export default function TodayScreen() {
 
   const todaySummary = useMemo(() => {
     let totalMinutes = 0;
-    const categoryCounts = new Map<string, number>();
+    const categoryTotals = new Map<string, number>();
+    let longestMinutes = 0;
+    let longestTitle: string | null = null;
 
     for (const event of todayEvents) {
       const duration =
@@ -270,14 +295,18 @@ export default function TodayScreen() {
           : event.estimateMinutes ?? 0;
       totalMinutes += duration;
       const category = event.category ?? 'Other';
-      categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
+      categoryTotals.set(category, (categoryTotals.get(category) ?? 0) + duration);
+      if (duration > longestMinutes) {
+        longestMinutes = duration;
+        longestTitle = event.title;
+      }
     }
 
     let topCategory: string | null = null;
     let topCount = 0;
-    for (const [category, count] of categoryCounts.entries()) {
-      if (count > topCount) {
-        topCount = count;
+    for (const [category, minutes] of categoryTotals.entries()) {
+      if (minutes > topCount) {
+        topCount = minutes;
         topCategory = category;
       }
     }
@@ -286,11 +315,131 @@ export default function TodayScreen() {
       count: todayEvents.length,
       totalMinutes,
       topCategory,
+      longestMinutes,
+      longestTitle,
     };
   }, [todayEvents]);
 
-  const moodAverage = useMemo(() => averageTrackerValue(trackerLogs, 'mood'), [trackerLogs]);
-  const energyAverage = useMemo(() => averageTrackerValue(trackerLogs, 'energy'), [trackerLogs]);
+  const characterStats = useMemo(() => {
+    const stats: Record<CharacterStat, number> = {
+      STR: 0,
+      INT: 0,
+      CON: 0,
+      PER: 0,
+      WIS: 0,
+      CHA: 0,
+    };
+    const counts: Record<CharacterStat, number> = {
+      STR: 0,
+      INT: 0,
+      CON: 0,
+      PER: 0,
+      WIS: 0,
+      CHA: 0,
+    };
+
+    events.forEach((e) => {
+      const cat = e.category || 'Personal';
+      const stat = STAT_CATEGORIES[cat] || 'PER';
+      const mins = e.endAt ? Math.round((e.endAt - e.startAt) / 60000) : (e.estimateMinutes ?? 0);
+      stats[stat] += mins;
+      counts[stat] += 1;
+    });
+
+    const maxMinutes = 600;
+    return Object.entries(stats).map(([key, value]) => ({
+      label: key,
+      shortLabel: key,
+      value: Math.min(100, Math.round((value / maxMinutes) * 100)),
+      minutes: value,
+      sessions: counts[key as CharacterStat],
+    }));
+  }, [events]);
+
+  const moodAverage = useMemo(() => averageTrackerValue(trackerLogs, ['mood']), [trackerLogs]);
+  const energyAverage = useMemo(() => averageTrackerValue(trackerLogs, ['energy']), [trackerLogs]);
+  const stressAverage = useMemo(() => averageTrackerValue(trackerLogs, ['stress']), [trackerLogs]);
+
+  const pulseMetrics = useMemo(() => {
+    const trackedHours = todaySummary.totalMinutes ? Math.round((todaySummary.totalMinutes / 60) * 10) / 10 : null;
+    return [
+      { id: 'events', label: 'Events', value: String(todaySummary.count), color: palette.tint },
+      { id: 'tracked', label: 'Tracked', value: trackedHours != null ? `${trackedHours}h` : '0h', color: palette.text },
+      { id: 'category', label: 'Top Category', value: todaySummary.topCategory ?? '—', color: palette.text },
+      { id: 'mood', label: 'Mood Avg', value: moodAverage != null ? String(moodAverage) : '—', color: palette.success },
+      { id: 'energy', label: 'Energy Avg', value: energyAverage != null ? String(energyAverage) : '—', color: palette.warning },
+      { id: 'stress', label: 'Stress Avg', value: stressAverage != null ? String(stressAverage) : '—', color: palette.error },
+    ];
+  }, [todaySummary, moodAverage, energyAverage, stressAverage, palette]);
+
+  const wellnessSeries = useMemo(() => {
+    const dayBuckets = new Map<string, Record<string, { sum: number; count: number }>>();
+    for (const log of trackerLogs) {
+      const metric = WELLNESS_METRICS.find((m) => m.keys.some((key) => log.trackerKey.includes(key)));
+      if (!metric) continue;
+      const value = log.valueNumber ?? (log.valueBool ? 10 : null);
+      if (value == null || !Number.isFinite(value)) continue;
+      const dayKey = new Date(log.occurredAt).toDateString();
+      const bucket = dayBuckets.get(dayKey) ?? {};
+      const stat = bucket[metric.id] ?? { sum: 0, count: 0 };
+      stat.sum += Number(value);
+      stat.count += 1;
+      bucket[metric.id] = stat;
+      dayBuckets.set(dayKey, bucket);
+    }
+
+    const days = 10;
+    const dayKeys = Array.from({ length: days }, (_, i) => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - (days - 1 - i));
+      return { key: d.toDateString(), index: i };
+    });
+
+    return WELLNESS_METRICS.map((metric) => {
+      const points = dayKeys
+        .map((day) => {
+          const stat = dayBuckets.get(day.key)?.[metric.id];
+          if (!stat || stat.count === 0) return null;
+          return { x: day.index, y: Math.min(10, stat.sum / stat.count) };
+        })
+        .filter((point): point is { x: number; y: number } => point !== null);
+      return { id: metric.id, label: metric.label, color: metric.color, points };
+    });
+  }, [trackerLogs]);
+
+  const latestWellness = useMemo(() => {
+    const latest: Record<string, number | null> = {};
+    for (const metric of WELLNESS_METRICS) {
+      latest[metric.id] = null;
+    }
+    for (const log of trackerLogs) {
+      const metric = WELLNESS_METRICS.find((m) => m.keys.some((key) => log.trackerKey.includes(key)));
+      if (!metric) continue;
+      if (latest[metric.id] != null) continue;
+      const value = log.valueNumber ?? (log.valueBool ? 10 : null);
+      latest[metric.id] = value != null && Number.isFinite(value) ? Math.min(10, Number(value)) : null;
+    }
+    return latest;
+  }, [trackerLogs]);
+
+  const lifeTrackerTiles = useMemo(() => {
+    return WELLNESS_METRICS.map((metric) => {
+      const value = latestWellness[metric.id];
+      return {
+        id: metric.id,
+        label: metric.label,
+        color: metric.color,
+        value: value != null ? `${Math.round(value)}` : '—',
+        unit: '/10',
+      };
+    });
+  }, [latestWellness]);
+
+  const hasWellnessData = useMemo(
+    () => wellnessSeries.some((series) => series.points.length >= 2),
+    [wellnessSeries]
+  );
 
   const upcomingSuggestion = useMemo(() => {
     if (active) return null;
@@ -314,19 +463,15 @@ export default function TodayScreen() {
     return latest;
   }, [trackerLogs]);
 
-  const trackerCount = useMemo(() => new Set(trackerLogs.map((log) => log.trackerKey)).size, [trackerLogs]);
-
-  const recentTrackerLogs = useMemo(() => trackerLogs.slice(0, 3), [trackerLogs]);
-
   const quickActions = useMemo(
     () => [
-      { key: 'event', label: 'Event', icon: 'calendar', onPress: () => setQuickStartOpen(true) },
+      { key: 'event', label: 'Event', icon: 'calendar', onPress: () => void startQuickSession() },
       { key: 'task', label: 'Task', icon: 'check', onPress: () => router.push('/tasks') },
       { key: 'note', label: 'Note', icon: 'file', onPress: () => router.push('/capture') },
       { key: 'habit', label: 'Habit', icon: 'target', onPress: () => router.push('/habits') },
       { key: 'tracker', label: 'Tracker', icon: 'sparkle', onPress: () => router.push('/trackers') },
     ],
-    [router]
+    [router, startQuickSession]
   );
 
   return (
@@ -425,7 +570,7 @@ export default function TodayScreen() {
         ) : (
           <TouchableOpacity
             style={[styles.startBtn, { backgroundColor: palette.tint, borderRadius: sizes.borderRadiusSmall }]}
-            onPress={() => setQuickStartOpen(true)}
+            onPress={() => void startQuickSession()}
           >
             <Text style={[styles.startBtnText, { fontSize: sizes.bodyText }]}>Start Session</Text>
           </TouchableOpacity>
@@ -446,7 +591,7 @@ export default function TodayScreen() {
                 {
                   backgroundColor: palette.surface,
                   borderColor: palette.border,
-                  paddingHorizontal: sizes.chipPadding,
+                  paddingHorizontal: Math.max(6, sizes.spacingSmall - 2),
                   paddingVertical: sizes.spacingSmall,
                   borderRadius: sizes.borderRadiusSmall,
                 },
@@ -454,52 +599,17 @@ export default function TodayScreen() {
               onPress={action.onPress}
             >
               <InsightIcon name={action.icon} size={sizes.iconSizeTiny} color={palette.tint} />
-              <Text style={[styles.quickActionText, { color: palette.text, fontSize: sizes.smallText }]}>
+              <Text
+                style={[styles.quickActionText, { color: palette.text, fontSize: sizes.smallText }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
                 {action.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
-
-      <Modal transparent visible={quickStartOpen} animationType="fade" onRequestClose={() => setQuickStartOpen(false)}>
-        <View style={styles.modalBackdrop}>
-          <Pressable style={styles.modalBackdropPress} onPress={() => setQuickStartOpen(false)} />
-          <View style={[styles.modalCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <Text style={[styles.modalTitle, { color: palette.text }]}>Start a new event</Text>
-            <Text style={[styles.modalSubtitle, { color: palette.textSecondary }]}>
-              Give it a title to kick off a focus session.
-            </Text>
-            <TextInput
-              value={quickStartTitle}
-              onChangeText={setQuickStartTitle}
-              placeholder="e.g., Code the app"
-              placeholderTextColor={palette.textSecondary}
-              style={[
-                styles.modalInput,
-                { color: palette.text, borderColor: palette.border, backgroundColor: palette.surfaceAlt },
-              ]}
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={() => void startQuickSession()}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, { borderColor: palette.border }]}
-                onPress={() => setQuickStartOpen(false)}
-              >
-                <Text style={[styles.modalButtonText, { color: palette.textSecondary }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: palette.tint }]}
-                onPress={() => void startQuickSession()}
-              >
-                <Text style={[styles.modalButtonTextLight, { color: '#FFFFFF' }]}>Start</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       {upcomingSuggestion ? (
         <View
@@ -569,58 +679,76 @@ export default function TodayScreen() {
         </View>
 
         <View style={[styles.pulseCard, { backgroundColor: palette.surface, borderColor: palette.border, borderRadius: sizes.borderRadius, padding: sizes.cardPadding }]}>
-          <View style={[styles.pulseRow, { gap: sizes.spacingSmall }]}>
-            <View style={styles.pulseStat}>
-              <Text style={[styles.pulseValue, { color: palette.tint, fontSize: sizes.metricValue }]}>
-                {todaySummary.count}
-              </Text>
-              <Text style={[styles.pulseLabel, { color: palette.textSecondary, fontSize: sizes.metricLabel }]}>
-                Events
-              </Text>
-            </View>
-            <View style={styles.pulseStat}>
-              <Text style={[styles.pulseValue, { color: palette.text, fontSize: sizes.metricValue }]}>
-                {todaySummary.totalMinutes ? `${Math.round((todaySummary.totalMinutes / 60) * 10) / 10}h` : '—'}
-              </Text>
-              <Text style={[styles.pulseLabel, { color: palette.textSecondary, fontSize: sizes.metricLabel }]}>
-                Tracked
-              </Text>
-            </View>
-            <View style={styles.pulseStat}>
-              <Text style={[styles.pulseValue, { color: palette.text, fontSize: sizes.metricValue }]}>
-                {todaySummary.topCategory ?? '—'}
-              </Text>
-              <Text style={[styles.pulseLabel, { color: palette.textSecondary, fontSize: sizes.metricLabel }]}>
-                Top Category
-              </Text>
-            </View>
+          <View style={[styles.pulseGrid, { gap: sizes.spacingSmall }]}>
+            {pulseMetrics.map((metric) => (
+              <View key={metric.id} style={[styles.pulseTile, { borderColor: palette.borderLight }]}>
+                <Text
+                  style={[styles.pulseValue, { color: metric.color, fontSize: sizes.metricValue }]}
+                  numberOfLines={1}
+                >
+                  {metric.value}
+                </Text>
+                <Text
+                  style={[styles.pulseLabel, { color: palette.textSecondary, fontSize: sizes.metricLabel }]}
+                  numberOfLines={1}
+                >
+                  {metric.label}
+                </Text>
+              </View>
+            ))}
           </View>
+        </View>
+      </View>
 
-          {(moodAverage != null || energyAverage != null) && (
-            <View style={[styles.pulseRow, { gap: sizes.spacingSmall }]}>
-              {moodAverage != null && (
-                <View style={styles.pulseStat}>
-                  <Text style={[styles.pulseValue, { color: palette.success, fontSize: sizes.metricValue }]}>
-                    {moodAverage}
-                  </Text>
-                  <Text style={[styles.pulseLabel, { color: palette.textSecondary, fontSize: sizes.metricLabel }]}>
-                    Mood Avg
-                  </Text>
-                </View>
-              )}
-              {energyAverage != null && (
-                <View style={styles.pulseStat}>
-                  <Text style={[styles.pulseValue, { color: palette.warning, fontSize: sizes.metricValue }]}>
-                    {energyAverage}
-                  </Text>
-                  <Text style={[styles.pulseLabel, { color: palette.textSecondary, fontSize: sizes.metricLabel }]}>
-                    Energy Avg
-                  </Text>
-                </View>
-              )}
+      <View style={[styles.wellnessSection, { marginTop: sizes.spacing + 12, paddingHorizontal: sizes.spacing + 4, gap: sizes.cardGap }]}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: palette.text, fontSize: sizes.sectionTitle + 3 }]}>Wellness Trends</Text>
+          <TouchableOpacity onPress={() => router.push('/life-tracker')}>
+            <Text style={[styles.seeAll, { color: palette.tint, fontSize: sizes.smallText + 1 }]}>Open</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.wellnessCard, { backgroundColor: palette.surface, borderColor: palette.border, borderRadius: sizes.borderRadius, padding: sizes.cardPadding }]}>
+          {hasWellnessData ? (
+            <MultiLineChart series={wellnessSeries} height={180} />
+          ) : (
+            <View style={styles.wellnessEmpty}>
+              <Text style={[styles.wellnessEmptyText, { color: palette.textSecondary }]}>
+                Log mood, stress, or energy to see trends.
+              </Text>
             </View>
           )}
+          <View style={[styles.wellnessLegend, { marginTop: sizes.spacingSmall }]}>
+            {WELLNESS_METRICS.map((metric) => (
+              <View key={metric.id} style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: metric.color }]} />
+                <Text style={[styles.legendText, { color: palette.textSecondary, fontSize: sizes.tinyText }]}>
+                  {metric.label}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
+
+        <TouchableOpacity
+          style={[styles.lifeTrackerCard, { backgroundColor: palette.surface, borderColor: palette.border, borderRadius: sizes.borderRadius, padding: sizes.cardPadding }]}
+          onPress={() => router.push('/life-tracker')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.lifeTrackerHeader}>
+            <Text style={[styles.lifeTrackerTitle, { color: palette.text }]}>Life Tracker</Text>
+            <Text style={[styles.lifeTrackerHint, { color: palette.textSecondary }]}>Tap to log</Text>
+          </View>
+          <View style={[styles.lifeTrackerGrid, { gap: sizes.spacingSmall }]}>
+            {lifeTrackerTiles.map((tile) => (
+              <View key={tile.id} style={[styles.lifeTrackerTile, { borderColor: palette.borderLight }]}>
+                <Text style={[styles.lifeTrackerValue, { color: tile.color }]}>{tile.value}</Text>
+                <Text style={[styles.lifeTrackerUnit, { color: palette.textSecondary }]}>{tile.unit}</Text>
+                <Text style={[styles.lifeTrackerLabel, { color: palette.textSecondary }]}>{tile.label}</Text>
+              </View>
+            ))}
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* Overview Section with Heatmap and KPIs */}
@@ -666,6 +794,26 @@ export default function TodayScreen() {
               </View>
             </View>
           )}
+        </View>
+      </View>
+
+      <View style={[styles.characterSection, { marginTop: sizes.spacing + 12, paddingHorizontal: sizes.spacing + 4, gap: sizes.cardGap }]}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: palette.text, fontSize: sizes.sectionTitle + 3 }]}>Character Stats</Text>
+        </View>
+
+        <View style={[styles.characterCard, { backgroundColor: palette.surface, borderColor: palette.border, borderRadius: sizes.borderRadius, padding: sizes.cardPadding }]}>
+          <View style={styles.characterChart}>
+            <RadarChart data={characterStats} size={180} color={palette.tint} showLabels />
+          </View>
+          <View style={[styles.characterGrid, { gap: sizes.spacingSmall }]}>
+            {characterStats.map((stat) => (
+              <View key={stat.label} style={[styles.characterItem, { borderColor: palette.borderLight }]}>
+                <Text style={[styles.characterLabel, { color: palette.textSecondary }]}>{stat.label}</Text>
+                <Text style={[styles.characterValue, { color: palette.text }]}>{stat.value}</Text>
+              </View>
+            ))}
+          </View>
         </View>
       </View>
 
@@ -743,13 +891,13 @@ export default function TodayScreen() {
           {/* Heat Map visualization */}
           <View style={[styles.trackerHeatmapSection, { gap: sizes.rowGap }]}>
             <Text style={[styles.trackerSectionLabel, { color: palette.textSecondary, fontSize: sizes.tinyText }]}>7-Day Overview</Text>
-            <TrackerHeatMap logs={trackerLogs} days={7} />
+            <TrackerHeatMap logs={trackerLogs} days={7} cellSize={12} cellGap={3} />
           </View>
 
-          {/* Pie Chart visualization */}
+          {/* Radar visualization */}
           <View style={[styles.trackerPieSection, { gap: sizes.rowGap, borderTopColor: palette.borderLight }]}>
-            <Text style={[styles.trackerSectionLabel, { color: palette.textSecondary, fontSize: sizes.tinyText }]}>By Category</Text>
-            <TrackerPieChart logs={trackerLogs} size={100} />
+            <Text style={[styles.trackerSectionLabel, { color: palette.textSecondary, fontSize: sizes.tinyText }]}>Feelings Radar</Text>
+            <TrackerRadar logs={trackerLogs} size={160} />
           </View>
 
           {/* Quick tracker chips - recent values */}
@@ -1018,64 +1166,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 15,
   },
-  modalBackdrop: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  modalBackdropPress: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  modalCard: {
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    fontFamily: 'Figtree',
-  },
-  modalSubtitle: {
-    marginTop: 6,
-    fontSize: 13,
-    fontWeight: '500',
-    fontFamily: 'Figtree',
-  },
-  modalInput: {
-    marginTop: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    fontWeight: '600',
-    fontFamily: 'Figtree',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
-  },
-  modalButton: {
-    flex: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Figtree',
-  },
-  modalButtonTextLight: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Figtree',
-  },
   suggestionCard: {
     marginHorizontal: 24,
     marginTop: 20,
@@ -1155,13 +1245,18 @@ const styles = StyleSheet.create({
   },
   quickActionsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   quickActionChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     gap: 6,
+    flex: 1,
+    minWidth: 0,
   },
   quickActionText: {
     fontWeight: '700',
@@ -1187,14 +1282,18 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 16,
   },
-  pulseRow: {
+  pulseGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  pulseStat: {
-    flex: 1,
-    alignItems: 'center',
+  pulseTile: {
+    flexBasis: '32%',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'flex-start',
     gap: 4,
   },
   pulseValue: {
@@ -1207,6 +1306,131 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
+  },
+  wellnessSection: {
+    marginTop: 32,
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  wellnessCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 12,
+  },
+  wellnessLegend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  wellnessEmpty: {
+    height: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wellnessEmptyText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  lifeTrackerCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 12,
+  },
+  lifeTrackerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lifeTrackerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    fontFamily: 'Figtree',
+  },
+  lifeTrackerHint: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  lifeTrackerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  lifeTrackerTile: {
+    flexBasis: '30%',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'flex-start',
+    gap: 2,
+    marginBottom: 8,
+  },
+  lifeTrackerValue: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  lifeTrackerUnit: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  lifeTrackerLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  characterSection: {
+    marginTop: 32,
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  characterCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 16,
+  },
+  characterChart: {
+    alignItems: 'center',
+  },
+  characterGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  characterItem: {
+    flexBasis: '30%',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    gap: 2,
+  },
+  characterLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  characterValue: {
+    fontSize: 16,
+    fontWeight: '800',
   },
   timelineCard: {
     borderRadius: 24,

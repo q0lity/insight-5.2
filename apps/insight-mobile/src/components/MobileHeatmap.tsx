@@ -96,6 +96,29 @@ function getWeeksGrid(days: Date[]): Date[][] {
   return grid as Date[][];
 }
 
+function getCalendarGrid(days: Date[]): (Date | null)[][] {
+  if (days.length === 0) return [];
+
+  const firstDay = days[0];
+  const startDow = firstDay.getDay();
+  const padded: (Date | null)[] = [];
+  for (let i = 0; i < startDow; i++) {
+    padded.push(null);
+  }
+  padded.push(...days);
+
+  const totalCells = Math.ceil(padded.length / 7) * 7;
+  while (padded.length < totalCells) {
+    padded.push(null);
+  }
+
+  const weeks: (Date | null)[][] = [];
+  for (let i = 0; i < padded.length; i += 7) {
+    weeks.push(padded.slice(i, i + 7));
+  }
+  return weeks;
+}
+
 function getMonthLabels(days: Date[]): { label: string; weekIndex: number }[] {
   const labels: { label: string; weekIndex: number }[] = [];
   let lastMonth = -1;
@@ -152,26 +175,23 @@ export function MobileHeatmap({
   const monthLabels = useMemo(() => getMonthLabels(days), [days]);
   const numWeeks = weeksGrid[0]?.length ?? 0;
 
-  // Use full day names for week/month, short for quarter/year
-  const useFullDayNames = selectedRange === 'week' || selectedRange === 'month';
+  const isLateral = selectedRange === 'week' || selectedRange === 'month' || selectedRange === 'quarter';
+  const useFullDayNames = selectedRange === 'week';
   const dayLabels = useFullDayNames ? DAY_LABELS_FULL : DAY_LABELS_SHORT;
 
   // Calculate cell size based on available width
-  // Wider label column for full day names
-  const labelWidth = useFullDayNames ? 80 : 20;
+  const labelWidth = isLateral ? 0 : useFullDayNames ? 80 : 20;
   const horizontalPadding = 32;
   const availableWidth = screenWidth - horizontalPadding - labelWidth;
 
-  // Range-specific gaps for better spacing
-  const cellGap = selectedRange === 'week' ? 4 : selectedRange === 'month' ? 4 : 2;
+  const cellGap = selectedRange === 'week' ? 6 : selectedRange === 'month' ? 5 : selectedRange === 'quarter' ? 4 : 2;
+  const columns = isLateral ? 7 : Math.max(1, numWeeks);
+  const rawCellSize = Math.floor((availableWidth - (columns - 1) * cellGap) / columns);
 
-  // Calculate cell size to FILL available width (no max constraint for month)
-  const rawCellSize = Math.floor((availableWidth - (numWeeks - 1) * cellGap) / numWeeks);
-
-  const cellSize = selectedRange === 'week'
-    ? Math.min(44, rawCellSize)  // Week: cap at 44px
+  const cellSize = isLateral
+    ? Math.min(36, Math.max(12, rawCellSize))
     : selectedRange === 'month'
-      ? Math.min(36, rawCellSize)  // Month: cap at 36px to fit on page
+      ? Math.min(36, rawCellSize)
       : selectedRange === 'quarter'
         ? Math.min(16, rawCellSize)
         : Math.min(10, rawCellSize);
@@ -236,7 +256,7 @@ export function MobileHeatmap({
       </View>
 
       {/* Month Labels */}
-      {selectedRange !== 'week' && monthLabels.length > 0 && (
+      {!isLateral && selectedRange !== 'week' && monthLabels.length > 0 && (
         <View style={styles.monthLabelsContainer}>
           <View style={{ width: labelWidth }} />
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -257,40 +277,22 @@ export function MobileHeatmap({
       )}
 
       {/* Heatmap Grid */}
-      <View style={styles.gridContainer}>
-        {/* Day Labels */}
-        <View style={[styles.dayLabelsColumn, { width: labelWidth }]}>
-          {dayLabels.map((label, idx) => (
-            <View key={idx} style={[styles.dayLabelCell, { height: cellSize }]}>
-              {/* Show all labels for week/month, only 0,3,6 for quarter/year */}
-              {(useFullDayNames || idx === 0 || idx === 3 || idx === 6) && (
-                <Text
-                  style={[
-                    styles.dayLabel,
-                    { color: palette.textSecondary, fontSize: sizes.tinyText },
-                    useFullDayNames && { fontSize: sizes.smallText, fontWeight: '700' },
-                  ]}
-                  numberOfLines={1}
-                >
+      {isLateral ? (
+        <View style={styles.lateralContainer}>
+          <View style={[styles.dayLabelsRow, { marginBottom: cellGap }]}>
+            {DAY_LABELS_SHORT.map((label, idx) => (
+              <View key={idx} style={[styles.dayLabelCell, { width: cellSize, height: cellSize }]}>
+                <Text style={[styles.dayLabel, { color: palette.textSecondary, fontSize: sizes.tinyText }]}>
                   {label}
                 </Text>
-              )}
-            </View>
-          ))}
-        </View>
-
-        {/* Cells Grid */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}>
-          <View style={[styles.weeksRow, { gap: sizes.heatmapGap }]}>
-            {Array.from({ length: numWeeks }).map((_, weekIdx) => (
-              <View key={weekIdx} style={[styles.weekColumn, { gap: cellGap }]}>
-                {weeksGrid.map((row, dayIdx) => {
-                  const day = row[weekIdx];
+              </View>
+            ))}
+          </View>
+          <View style={[styles.weeksColumn, { gap: cellGap }]}>
+            {getCalendarGrid(days).map((week, weekIdx) => (
+              <View key={weekIdx} style={[styles.weekRow, { gap: cellGap }]}>
+                {week.map((day, dayIdx) => {
                   if (!day) {
-                    // Show empty padding cells with subtle background
                     return (
                       <View
                         key={dayIdx}
@@ -300,7 +302,7 @@ export function MobileHeatmap({
                             width: cellSize,
                             height: cellSize,
                             backgroundColor: palette.borderLight,
-                            borderRadius: cellSize > 20 ? 6 : cellSize > 12 ? 4 : 2,
+                            borderRadius: Math.max(3, Math.round(cellSize * 0.25)),
                           },
                         ]}
                       />
@@ -321,27 +323,100 @@ export function MobileHeatmap({
                           width: cellSize,
                           height: cellSize,
                           backgroundColor: getColorForValue(value),
-                          borderRadius: cellSize > 20 ? 6 : cellSize > 12 ? 4 : 2,
+                          borderRadius: Math.max(3, Math.round(cellSize * 0.25)),
                         },
                         isToday && [styles.todayCell, { borderColor: accent }],
-                      ]}>
-                      {selectedRange === 'week' && (
-                        <Text
-                          style={[
-                            styles.cellDayNumber,
-                            { color: value > 0 ? '#FFFFFF' : palette.textSecondary, fontSize: sizes.smallText },
-                          ]}>
-                          {day.getDate()}
-                        </Text>
-                      )}
-                    </Pressable>
+                      ]}
+                    />
                   );
                 })}
               </View>
             ))}
           </View>
-        </ScrollView>
-      </View>
+        </View>
+      ) : (
+        <View style={styles.gridContainer}>
+          <View style={[styles.dayLabelsColumn, { width: labelWidth }]}>
+            {dayLabels.map((label, idx) => (
+              <View key={idx} style={[styles.dayLabelCell, { height: cellSize }]}>
+                {(useFullDayNames || idx === 0 || idx === 3 || idx === 6) && (
+                  <Text
+                    style={[
+                      styles.dayLabel,
+                      { color: palette.textSecondary, fontSize: sizes.tinyText },
+                      useFullDayNames && { fontSize: sizes.smallText, fontWeight: '700' },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {label}
+                  </Text>
+                )}
+              </View>
+            ))}
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}>
+            <View style={[styles.weeksRow, { gap: sizes.heatmapGap }]}>
+              {Array.from({ length: numWeeks }).map((_, weekIdx) => (
+                <View key={weekIdx} style={[styles.weekColumn, { gap: cellGap }]}>
+                  {weeksGrid.map((row, dayIdx) => {
+                    const day = row[weekIdx];
+                    if (!day) {
+                      return (
+                        <View
+                          key={dayIdx}
+                          style={[
+                            styles.cell,
+                            {
+                              width: cellSize,
+                              height: cellSize,
+                              backgroundColor: palette.borderLight,
+                              borderRadius: cellSize > 20 ? 6 : cellSize > 12 ? 4 : 2,
+                            },
+                          ]}
+                        />
+                      );
+                    }
+
+                    const key = formatDateKey(day);
+                    const value = data[key] ?? 0;
+                    const isToday = day.getTime() === today.getTime();
+
+                    return (
+                      <Pressable
+                        key={dayIdx}
+                        onPress={() => onDayPress?.(day, value)}
+                        style={[
+                          styles.cell,
+                          {
+                            width: cellSize,
+                            height: cellSize,
+                            backgroundColor: getColorForValue(value),
+                            borderRadius: cellSize > 20 ? 6 : cellSize > 12 ? 4 : 2,
+                          },
+                          isToday && [styles.todayCell, { borderColor: accent }],
+                        ]}>
+                        {selectedRange === 'week' && (
+                          <Text
+                            style={[
+                              styles.cellDayNumber,
+                              { color: value > 0 ? '#FFFFFF' : palette.textSecondary, fontSize: sizes.smallText },
+                            ]}>
+                            {day.getDate()}
+                          </Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      )}
 
       {/* Legend */}
       <View style={[styles.legendContainer, { gap: sizes.spacingSmall }]}>
@@ -414,6 +489,19 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   gridContainer: {
+    flexDirection: 'row',
+  },
+  lateralContainer: {
+    gap: 6,
+  },
+  dayLabelsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  weeksColumn: {
+    flexDirection: 'column',
+  },
+  weekRow: {
     flexDirection: 'row',
   },
   dayLabelsColumn: {

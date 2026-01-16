@@ -15,3 +15,6 @@ export type { PieChartProps, PieSlice } from './PieChart';
 
 export { RadarChart } from './RadarChart';
 export type { RadarChartProps, RadarDataPoint } from './RadarChart';
+
+export { MultiLineChart } from './MultiLineChart';
+export type { MultiLineChartProps, MultiLineSeries, MultiLinePoint } from './MultiLineChart';

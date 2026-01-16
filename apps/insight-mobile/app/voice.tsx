@@ -8,16 +8,17 @@ import { Text, View } from '@/components/Themed';
 import { useTheme } from '@/src/state/theme';
 import { addInboxCapture, updateInboxCapture, updateInboxCaptureText, type CaptureAttachment } from '@/src/storage/inbox';
 import { getEvent, updateEvent } from '@/src/storage/events';
-import { formatSegmentsPreview, parseCapture } from '@/src/lib/schema';
+import { parseCapture } from '@/src/lib/schema';
+import { buildOutlineFromTranscript } from '@/src/lib/notes-outline';
 import { processInboxCapture } from '@/src/lib/capture/processor';
 import { estimateWorkoutCalories, parseMealFromText, parseWorkoutFromText } from '@/src/lib/health';
 import { invokeCaptureParse } from '@/src/supabase/functions';
 import { upsertTranscriptSegment } from '@/src/supabase/segments';
 import { uploadCaptureAudio } from '@/src/supabase/storage';
-import { uniqStrings } from '@/src/supabase/helpers';
+import { getSupabaseSessionUser, uniqStrings } from '@/src/supabase/helpers';
 import { saveMeal } from '@/src/storage/nutrition';
 import { saveWorkout } from '@/src/storage/workouts';
-import { RECORDING_OPTIONS } from '@/src/lib/audio';
+import { IDLE_AUDIO_MODE, clearActiveRecording, createRecordingWithRetry } from '@/src/lib/audio';
 
 function normalizeCaptureText(rawText: string) {
   return rawText
@@ -33,27 +34,7 @@ function formatTimeMarker(date = new Date()) {
   return `[${hh}:${mm}] `;
 }
 
-async function createRecording() {
-  if (typeof Audio?.Recording?.createAsync === 'function') {
-    const result = await Audio.Recording.createAsync(RECORDING_OPTIONS);
-    return result.recording;
-  }
-  const next = new Audio.Recording();
-  await next.prepareToRecordAsync(RECORDING_OPTIONS);
-  await next.startAsync();
-  return next;
-}
-
 const TIMESTAMP_LINE_RE = /^\[\d{2}:\d{2}(?::\d{2})?\]\s*$/;
-const RECORDING_AUDIO_MODE = {
-  allowsRecordingIOS: true,
-  playsInSilentModeIOS: true,
-} as const;
-const IDLE_AUDIO_MODE = {
-  allowsRecordingIOS: false,
-  playsInSilentModeIOS: true,
-} as const;
-
 function hasSemanticContent(text?: string | null) {
   if (!text || typeof text !== 'string') return false;
   return text.split('\n').some((line) => {
@@ -119,6 +100,7 @@ export default function VoiceCaptureScreen() {
         } catch {
           // ignore stop failures
         }
+        clearActiveRecording(recordingRef.current);
         recordingRef.current = null;
       }
       const permission = await Audio.requestPermissionsAsync();
@@ -127,12 +109,10 @@ export default function VoiceCaptureScreen() {
         setInitError('Microphone permission denied.');
         return;
       }
-      if (typeof Audio.setAudioModeAsync === 'function') {
-        await Audio.setAudioModeAsync(RECORDING_AUDIO_MODE);
-      }
-      const next = await createRecording();
+      const next = await createRecordingWithRetry();
       if (token !== startTokenRef.current) {
         await next.stopAndUnloadAsync().catch(() => {});
+        clearActiveRecording(next);
         return;
       }
       recordingRef.current = next;
@@ -169,6 +149,7 @@ export default function VoiceCaptureScreen() {
       startTokenRef.current += 1;
       if (recordingRef.current && recordingStateRef.current === 'recording') {
         recordingRef.current.stopAndUnloadAsync().catch(() => {});
+        clearActiveRecording(recordingRef.current);
         recordingRef.current = null;
       }
       void Audio.setAudioModeAsync(IDLE_AUDIO_MODE);
@@ -191,6 +172,19 @@ export default function VoiceCaptureScreen() {
   const transcribeVoiceAttachment = useCallback(
     async (captureId: string, attachment: CaptureAttachment) => {
       if (!attachment.uri) return '';
+      const resolvedSession = await getSupabaseSessionUser();
+      if (!resolvedSession) {
+        await updateInboxCapture(captureId, {
+          attachments: [
+            {
+              ...attachment,
+              status: 'ready',
+              transcription: 'Transcription pending. Sign in to process.',
+            },
+          ],
+        });
+        return '';
+      }
       let nextAttachment = attachment;
       try {
         const upload = await uploadCaptureAudio({
@@ -225,7 +219,7 @@ export default function VoiceCaptureScreen() {
           await updateInboxCaptureText(captureId, transcriptText);
           await upsertTranscriptSegment(captureId, transcriptText);
           const parsed = parseCapture(transcriptText);
-          const processed = parsed.segments.length ? formatSegmentsPreview(parsed.segments) : transcriptText;
+          const processed = buildOutlineFromTranscript(transcriptText, { anchorMs: Date.now() }) || transcriptText;
           await updateInboxCapture(captureId, {
             processedText: processed,
             tags: uniqStrings(parsed.tokens.tags),
@@ -254,12 +248,23 @@ export default function VoiceCaptureScreen() {
       } catch (err) {
         console.error('Transcription failed', err);
         const message = err instanceof Error ? err.message : 'Transcription failed.';
-        if (/Supabase session not available/i.test(message)) {
-          Alert.alert('Transcription unavailable', 'Sign in to Supabase or enable anonymous auth in your project.');
+        const isAuthFailure =
+          /supabase session not available|sign in required|sign in again|unauthorized|session expired|invalid jwt/i.test(
+            message
+          );
+        if (isAuthFailure) {
+          await updateInboxCapture(captureId, {
+            attachments: [
+              {
+                ...nextAttachment,
+                status: 'ready',
+                transcription: 'Transcription pending. Sign in to process.',
+              },
+            ],
+          });
+          return '';
         } else if (/Edge Function error \\(404\\)/i.test(message) || /not found/i.test(message)) {
           Alert.alert('Transcription unavailable', 'Edge Function not deployed. Deploy "transcribe_and_parse_capture" in Supabase.');
-        } else if (/Edge Function error \\(401\\)|unauthorized|session expired/i.test(message)) {
-          Alert.alert('Transcription unavailable', 'Supabase auth failed. Please sign in again.');
         }
         await updateInboxCapture(captureId, {
           attachments: [
@@ -411,6 +416,7 @@ export default function VoiceCaptureScreen() {
       }
       await current.stopAndUnloadAsync();
       const uri = current.getURI();
+      clearActiveRecording(current);
       recordingRef.current = null;
       const attachment = uri
         ? ({
@@ -437,6 +443,7 @@ export default function VoiceCaptureScreen() {
     try {
       if (recordingRef.current) {
         await recordingRef.current.stopAndUnloadAsync();
+        clearActiveRecording(recordingRef.current);
         recordingRef.current = null;
       }
     } catch {

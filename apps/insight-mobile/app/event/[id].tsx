@@ -20,7 +20,7 @@ import {
   parseTagList,
   uniqStrings,
 } from '@/src/utils/frontmatter';
-import { formatSegmentsPreview, parseCapture } from '@/src/lib/schema';
+import { buildOutlineFromTranscript } from '@/src/lib/notes-outline';
 import { computeXp, extractGoalImportance, formatXp } from '@/src/utils/points';
 
 function formatClock(ms: number) {
@@ -85,9 +85,8 @@ export default function EventDetailScreen() {
   const normalizedNotes = useMemo(() => (notes.trim() ? normalizeCaptureText(notes) : ''), [notes]);
   const outlineNotes = useMemo(() => {
     if (!normalizedNotes) return '';
-    const parsed = parseCapture(normalizedNotes);
-    return parsed.segments.length ? formatSegmentsPreview(parsed.segments) : normalizedNotes;
-  }, [normalizedNotes]);
+    return buildOutlineFromTranscript(normalizedNotes, { anchorMs: event?.startAt ?? Date.now() });
+  }, [event?.startAt, normalizedNotes]);
   const shareNotes = useCallback(async () => {
     const message =
       noteMode === 'raw' ? notes : noteMode === 'transcript' ? normalizedNotes : outlineNotes;

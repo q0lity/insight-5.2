@@ -135,6 +135,11 @@ export default function GoalDetailScreen() {
     return { totalEvents, totalMinutes, totalPoints, activeDays, streak };
   }, [events]);
 
+  const lastActivityLabel = useMemo(() => {
+    if (!events.length) return '—';
+    return formatRelativeTime(events[0].startAt);
+  }, [events]);
+
   // Heatmap data
   const heatmapData = useMemo(() => {
     const result: Record<string, number> = {};
@@ -251,6 +256,16 @@ export default function GoalDetailScreen() {
           <View style={[styles.statCard, { backgroundColor: palette.surface }]}>
             <Text style={[styles.statBigValue, { color: palette.tint }]}>{stats.totalPoints}</Text>
             <Text style={[styles.statLabel, { color: palette.textSecondary }]}>XP Earned</Text>
+          </View>
+
+          <View style={[styles.statCard, { backgroundColor: palette.surface }]}>
+            <Text style={[styles.statBigValue, { color: palette.text }]}>{stats.activeDays}</Text>
+            <Text style={[styles.statLabel, { color: palette.textSecondary }]}>Active Days</Text>
+          </View>
+
+          <View style={[styles.statCard, { backgroundColor: palette.surface }]}>
+            <Text style={[styles.statSubValue, { color: palette.text }]}>{lastActivityLabel}</Text>
+            <Text style={[styles.statLabel, { color: palette.textSecondary }]}>Last Activity</Text>
           </View>
         </View>
 
@@ -412,6 +427,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -1,
+  },
+  statSubValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    fontFamily: 'Figtree',
+    textAlign: 'center',
   },
   statLabel: {
     fontSize: 11,

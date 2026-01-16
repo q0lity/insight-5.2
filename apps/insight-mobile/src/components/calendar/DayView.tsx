@@ -1,5 +1,5 @@
-import React from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { PanResponder, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { Text } from '@/components/Themed';
 import { useTheme } from '@/src/state/theme';
@@ -26,22 +26,98 @@ type Props = {
   date: Date;
   events: CalendarEvent[];
   onEventPress?: (event: CalendarEvent) => void;
+  onEventUpdate?: (eventId: string, patch: { startAt: number; endAt: number }) => void;
+  onCreateEvent?: (range: { startAt: number; endAt: number }) => void;
   hourHeight?: number;
 };
 
-export function DayView({ date, events, onEventPress, hourHeight = 60 }: Props) {
+type DragState = {
+  id: string;
+  mode: 'move' | 'resize';
+  startMin: number;
+  endMin: number;
+};
+
+type DraftRange = {
+  startMin: number;
+  endMin: number;
+};
+
+function clampMinutes(mins: number) {
+  return Math.max(0, Math.min(24 * 60, mins));
+}
+
+function roundToStep(mins: number, step = 15) {
+  return Math.round(mins / step) * step;
+}
+
+export function DayView({ date, events, onEventPress, onEventUpdate, onCreateEvent, hourHeight = 60 }: Props) {
   const { palette } = useTheme();
+  const dragRef = useRef<DragState | null>(null);
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const [draftRange, setDraftRange] = useState<DraftRange | null>(null);
 
   const dayStart = new Date(date);
   dayStart.setHours(0, 0, 0, 0);
   const dayStartMs = dayStart.getTime();
   const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
 
-  const dayEvents = events.filter((e) => e.startAt >= dayStartMs && e.startAt < dayEndMs);
+  const dayEvents = useMemo(
+    () => events.filter((e) => e.startAt >= dayStartMs && e.startAt < dayEndMs),
+    [events, dayStartMs, dayEndMs]
+  );
+
+  const minuteHeight = hourHeight / 60;
+
+  const applyDragDelta = (initial: DragState, dy: number) => {
+    const deltaMinutes = roundToStep(dy / minuteHeight);
+    if (initial.mode === 'resize') {
+      const nextEnd = clampMinutes(initial.endMin + deltaMinutes);
+      return {
+        ...initial,
+        endMin: Math.max(initial.startMin + 15, nextEnd),
+      };
+    }
+    const duration = initial.endMin - initial.startMin;
+    const nextStart = clampMinutes(initial.startMin + deltaMinutes);
+    const nextEnd = clampMinutes(nextStart + duration);
+    return { ...initial, startMin: nextStart, endMin: nextEnd };
+  };
+
+  const createPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onPanResponderGrant: (evt) => {
+          const startMin = clampMinutes(roundToStep(evt.nativeEvent.locationY / minuteHeight));
+          const endMin = clampMinutes(startMin + 30);
+          setDraftRange({ startMin, endMin });
+        },
+        onPanResponderMove: (_, gestureState) => {
+          setDraftRange((prev) => {
+            if (!prev) return prev;
+            const deltaMinutes = roundToStep(gestureState.dy / minuteHeight);
+            const nextEnd = clampMinutes(prev.startMin + Math.max(15, deltaMinutes));
+            return { startMin: prev.startMin, endMin: nextEnd };
+          });
+        },
+        onPanResponderRelease: () => {
+          setDraftRange((prev) => {
+            if (prev && onCreateEvent) {
+              const startAt = dayStartMs + prev.startMin * 60 * 1000;
+              const endAt = dayStartMs + Math.max(prev.endMin, prev.startMin + 15) * 60 * 1000;
+              onCreateEvent({ startAt, endAt });
+            }
+            return null;
+          });
+        },
+      }),
+    [dayStartMs, minuteHeight, onCreateEvent]
+  );
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.grid}>
+      <View style={styles.grid} {...createPanResponder.panHandlers}>
         {HOURS.map((h) => (
           <View key={h} style={[styles.hourRow, { height: hourHeight }]}>
             <View style={styles.hourLabelCol}>
@@ -53,18 +129,68 @@ export function DayView({ date, events, onEventPress, hourHeight = 60 }: Props) 
           </View>
         ))}
 
+        {draftRange ? (
+          <View
+            style={[
+              styles.draftBlock,
+              {
+                top: (draftRange.startMin / 60) * hourHeight,
+                height: Math.max(((draftRange.endMin - draftRange.startMin) / 60) * hourHeight, 30),
+                borderColor: palette.tint,
+              },
+            ]}
+          />
+        ) : null}
+
         {dayEvents.map((ev) => {
           const start = new Date(ev.startAt);
-          const end = new Date(ev.endAt);
+          const resolvedEnd = ev.endAt ?? ev.startAt + 30 * 60 * 1000;
+          const end = new Date(resolvedEnd);
           const startMins = start.getHours() * 60 + start.getMinutes();
-          const durationMins = Math.max(15, (end.getTime() - start.getTime()) / 60000);
-          const top = (startMins / 60) * hourHeight;
-          const height = (durationMins / 60) * hourHeight;
+          const endMins = end.getHours() * 60 + end.getMinutes();
+          const durationMins = Math.max(15, endMins - startMins);
+          const preview = dragState && dragState.id === ev.id ? dragState : null;
+          const displayStart = preview ? preview.startMin : startMins;
+          const displayEnd = preview ? preview.endMin : startMins + durationMins;
+          const top = (displayStart / 60) * hourHeight;
+          const height = ((displayEnd - displayStart) / 60) * hourHeight;
+          const responder = PanResponder.create({
+            onStartShouldSetPanResponder: (evt) => {
+              if (evt.nativeEvent.locationY >= height - 12) {
+                dragRef.current = { id: ev.id, mode: 'resize', startMin: startMins, endMin: endMins };
+                setDragState(dragRef.current);
+                return true;
+              }
+              dragRef.current = { id: ev.id, mode: 'move', startMin: startMins, endMin: endMins };
+              setDragState(dragRef.current);
+              return true;
+            },
+            onPanResponderMove: (_, gestureState) => {
+              if (!dragRef.current) return;
+              const next = applyDragDelta(dragRef.current, gestureState.dy);
+              setDragState(next);
+            },
+            onPanResponderRelease: (_, gestureState) => {
+              if (!dragRef.current) return;
+              const next = applyDragDelta(dragRef.current, gestureState.dy);
+              dragRef.current = null;
+              setDragState(null);
+              if (Math.abs(gestureState.dy) < 4 && onEventPress) {
+                onEventPress(ev);
+                return;
+              }
+              if (onEventUpdate) {
+                const nextStartAt = dayStartMs + next.startMin * 60 * 1000;
+                const nextEndAt = dayStartMs + next.endMin * 60 * 1000;
+                onEventUpdate(ev.id, { startAt: nextStartAt, endAt: nextEndAt });
+              }
+            },
+          });
 
           return (
             <TouchableOpacity
               key={ev.id}
-              onPress={() => onEventPress?.(ev)}
+              {...responder.panHandlers}
               style={[
                 styles.eventBlock,
                 {
@@ -87,6 +213,7 @@ export function DayView({ date, events, onEventPress, hourHeight = 60 }: Props) 
                   {ev.tags.slice(0, 2).map((t) => `#${t}`).join(' ')}
                 </Text>
               )}
+              <View style={[styles.resizeHandle, { backgroundColor: palette.tint }]} />
             </TouchableOpacity>
           );
         })}
@@ -122,4 +249,21 @@ const styles = StyleSheet.create({
   eventTitle: { fontSize: 14, fontWeight: '700', marginLeft: 4 },
   eventTime: { fontSize: 11, marginLeft: 4, marginTop: 2 },
   eventTags: { fontSize: 10, marginLeft: 4, marginTop: 2 },
+  resizeHandle: {
+    position: 'absolute',
+    height: 4,
+    left: 12,
+    right: 12,
+    bottom: 6,
+    borderRadius: 2,
+    opacity: 0.8,
+  },
+  draftBlock: {
+    position: 'absolute',
+    left: 60,
+    right: 0,
+    borderWidth: 2,
+    borderRadius: 12,
+    backgroundColor: 'rgba(217, 93, 57, 0.08)',
+  },
 });

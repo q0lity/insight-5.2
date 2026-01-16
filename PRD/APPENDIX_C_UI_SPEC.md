@@ -41,6 +41,7 @@ Mobile adaptations:
 - Column Picker (Tasks table configurable columns)
 - Subtask Drawer (expandable task checklist)
 - Plan Split Panel (outline + Gantt synced)
+- Countdown Badge (days/hours remaining on scheduled items)
 
 ## C4) Microinteractions
 - Swipe cards: snap + subtle sound/haptic on accept/reject
@@ -64,6 +65,7 @@ Mobile adaptations:
 - Drag/drop reschedule and resize
 - All-day lane sits above the time grid and holds all-day events plus unscheduled tasks (drag into grid).
 - Read-only calendars render as events with a lock state; visible but not synced back.
+- Countdown badges appear on events/tasks with a target date.
 
 ### Settings / Onboarding
 - Default auto-start is configurable at onboarding (auto-start on by default).
@@ -74,10 +76,12 @@ Mobile adaptations:
 - Subtask drawer (checklist with quick add)
 - Auto-suggest category/project/goal from ecosystem memory
 - Remove marketing tagline; keep header minimal (Tasks + filters)
+- Countdown badges show time-to-due/scheduled for visible tasks.
 
 ### Goals
 - Plan view is a split panel: outline + Gantt synced
 - Remove button with confirmation modal (bottom-right on card)
+- Countdown badges show time-to-target for goal milestones.
 
 ### Habits
 - Consistency heatmap + mini trend graph (done vs missed)

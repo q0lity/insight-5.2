@@ -8,7 +8,8 @@ import { Text, View } from '@/components/Themed';
 import { useTheme } from '@/src/state/theme';
 import { addInboxCapture, updateInboxCapture, updateInboxCaptureText, type CaptureAttachment } from '@/src/storage/inbox';
 import { getEvent, updateEvent } from '@/src/storage/events';
-import { formatSegmentsPreview, parseCapture } from '@/src/lib/schema';
+import { parseCapture } from '@/src/lib/schema';
+import { buildOutlineFromTranscript } from '@/src/lib/notes-outline';
 import { processInboxCapture } from '@/src/lib/capture/processor';
 import { estimateWorkoutCalories, parseMealFromText, parseWorkoutFromText } from '@/src/lib/health';
 import { invokeCaptureParse } from '@/src/supabase/functions';
@@ -195,7 +196,7 @@ export default function VoiceCaptureScreen() {
           await updateInboxCaptureText(captureId, transcriptText);
           await upsertTranscriptSegment(captureId, transcriptText);
           const parsed = parseCapture(transcriptText);
-          const processed = parsed.segments.length ? formatSegmentsPreview(parsed.segments) : transcriptText;
+          const processed = buildOutlineFromTranscript(transcriptText, { anchorMs: Date.now() }) || transcriptText;
           await updateInboxCapture(captureId, {
             processedText: processed,
             tags: uniqStrings(parsed.tokens.tags),

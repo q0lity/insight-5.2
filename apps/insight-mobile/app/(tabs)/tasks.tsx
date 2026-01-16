@@ -1,16 +1,26 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/Themed';
 import { useTheme } from '@/src/state/theme';
-import { createTask, listTasks, updateTask, type Task, type TaskStatus } from '@/src/storage/tasks';
+import { InsightIcon } from '@/src/components/InsightIcon';
+import { createTask, listTasks, updateTask, type MobileTask as Task, type MobileTaskStatus as TaskStatus } from '@/src/storage/tasks';
 import { computeXp, formatXp } from '@/src/utils/points';
 
 type FilterKey = 'inbox' | 'today' | 'next7' | 'all' | 'done';
 
 const FILTERS: FilterKey[] = ['inbox', 'today', 'next7', 'all', 'done'];
+
+type SortKey = 'urgency' | 'due' | 'updated' | 'created';
+
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: 'urgency', label: 'Urgency' },
+  { key: 'due', label: 'Due' },
+  { key: 'updated', label: 'Updated' },
+  { key: 'created', label: 'Created' },
+];
 
 function startOfDayMs(d: Date) {
   const x = new Date(d);
@@ -26,6 +36,16 @@ function addDays(d: Date, n: number) {
 
 function formatShortDate(ms: number) {
   return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function taskUrgencyScore(task: Task, nowMs: number) {
+  const dueAt = task.dueAt ?? task.scheduledAt ?? null;
+  const hoursUntil = dueAt != null ? (dueAt - nowMs) / 3600000 : null;
+  const dueScore = dueAt != null ? Math.max(0, 96 - hoursUntil) : 0;
+  const importance = task.importance ?? 5;
+  const difficulty = task.difficulty ?? 5;
+  const statusBoost = task.status === 'in_progress' ? 10 : 0;
+  return dueScore + importance * 2 + difficulty + statusBoost;
 }
 
 function parseQuickTaskInput(raw: string) {
@@ -46,6 +66,7 @@ export default function TasksScreen() {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<FilterKey>('inbox');
+  const [sortKey, setSortKey] = useState<SortKey>('urgency');
   const [q, setQ] = useState('');
   const [draft, setDraft] = useState('');
 
@@ -86,8 +107,28 @@ export default function TasksScreen() {
         })
       : base;
 
-    return [...searched].sort((a, b) => (b.dueAt ?? 0) - (a.dueAt ?? 0) || b.updatedAt - a.updatedAt);
-  }, [filter, next7End, q, tasks, todayStart, tomorrowStart]);
+    const sorted = [...searched].sort((a, b) => {
+      const nowMs = Date.now();
+      if (sortKey === 'urgency') {
+        const score = taskUrgencyScore(b, nowMs) - taskUrgencyScore(a, nowMs);
+        if (score !== 0) return score;
+      }
+      if (sortKey === 'due') {
+        const aDue = a.dueAt ?? a.scheduledAt ?? Infinity;
+        const bDue = b.dueAt ?? b.scheduledAt ?? Infinity;
+        if (aDue !== bDue) return aDue - bDue;
+      }
+      if (sortKey === 'updated') {
+        if (a.updatedAt !== b.updatedAt) return b.updatedAt - a.updatedAt;
+      }
+      if (sortKey === 'created') {
+        if (a.createdAt !== b.createdAt) return b.createdAt - a.createdAt;
+      }
+      return (b.dueAt ?? 0) - (a.dueAt ?? 0) || b.updatedAt - a.updatedAt;
+    });
+
+    return sorted;
+  }, [filter, next7End, q, tasks, todayStart, tomorrowStart, sortKey]);
 
   const counts = useMemo(() => {
     const inbox = tasks.filter((t) => t.status !== 'done' && t.status !== 'canceled').length;
@@ -130,50 +171,65 @@ export default function TasksScreen() {
       durationMinutes: estimate,
     });
     return (
-      <View key={task.id} style={[styles.taskCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-        <View style={styles.taskHeader}>
-          <Text style={[styles.taskTitle, { color: palette.text }]}>{task.title}</Text>
-          <TouchableOpacity onPress={() => toggleDone(task)}>
-            <Text style={{ color: palette.tint }}>{task.status === 'done' ? 'Undo' : 'Done'}</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={{ color: palette.textSecondary }}>
-          {task.dueAt ? `Due ${formatShortDate(task.dueAt)}` : 'No due date'} · {estimate}m · +{formatXp(xp)} XP
-        </Text>
-        <View style={styles.taskMetaRow}>
-          <Text style={{ color: palette.textSecondary }}>
-            {(task.tags ?? [])
-              .slice(0, 3)
-              .map((t) => `#${t}`)
-              .join(' ')}
-          </Text>
-          <Text style={{ color: palette.textSecondary }}>{task.status.replace('_', ' ')}</Text>
+      <Pressable
+        key={task.id}
+        style={[styles.taskCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
+        onPress={() => router.push(`/task/${task.id}`)}
+      >
+        <View style={styles.taskHeaderRow}>
+          <Pressable
+            style={[
+              styles.taskCheck,
+              {
+                borderColor: palette.tint,
+                backgroundColor: task.status === 'done' ? palette.tint : 'transparent',
+              },
+            ]}
+            onPress={(event) => {
+              event.stopPropagation();
+              void toggleDone(task);
+            }}
+          >
+            {task.status === 'done' ? (
+              <InsightIcon name="check" size={12} color="#FFFFFF" />
+            ) : null}
+          </Pressable>
+          <View style={styles.taskBody}>
+            <Text style={[styles.taskTitle, { color: palette.text }]} numberOfLines={1}>
+              {task.title}
+            </Text>
+            <Text style={{ color: palette.textSecondary }}>
+              {task.dueAt ? `Due ${formatShortDate(task.dueAt)}` : 'No due date'} · {estimate}m · +{formatXp(xp)} XP
+            </Text>
+            <View style={styles.taskMetaRow}>
+              <Text style={{ color: palette.textSecondary }} numberOfLines={1}>
+                {(task.tags ?? [])
+                  .slice(0, 3)
+                  .map((t) => `#${t}`)
+                  .join(' ')}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.taskStatusPill, { backgroundColor: palette.borderLight }]}>
+            <Text style={[styles.taskStatusText, { color: palette.textSecondary }]}>
+              {task.status.replace('_', ' ')}
+            </Text>
+          </View>
         </View>
         <View style={styles.taskActions}>
-          <TouchableOpacity
-            style={[styles.taskAction, { borderColor: palette.border }]}
-            onPress={() => router.push('/kanban')}
-          >
-            <Text style={{ color: palette.text }}>Kanban</Text>
-          </TouchableOpacity>
-          {task.status !== 'in_progress' ? (
+          {task.status !== 'in_progress' && task.status !== 'done' ? (
             <TouchableOpacity
-              style={[styles.taskAction, { borderColor: palette.border }]}
-              onPress={() => moveTask(task, 'in_progress')}
+              style={[styles.taskActionPrimary, { backgroundColor: palette.tint }]}
+              onPress={(event) => {
+                event.stopPropagation();
+                void moveTask(task, 'in_progress');
+              }}
             >
-              <Text style={{ color: palette.text }}>Start</Text>
-            </TouchableOpacity>
-          ) : null}
-          {task.status !== 'canceled' ? (
-            <TouchableOpacity
-              style={[styles.taskAction, { borderColor: palette.border }]}
-              onPress={() => moveTask(task, 'canceled')}
-            >
-              <Text style={{ color: palette.textSecondary }}>Cancel</Text>
+              <Text style={styles.taskActionPrimaryText}>Start</Text>
             </TouchableOpacity>
           ) : null}
         </View>
-      </View>
+      </Pressable>
     );
   };
 
@@ -217,6 +273,23 @@ export default function TasksScreen() {
         ))}
       </View>
 
+      <View style={styles.sortRow}>
+        {SORTS.map((s) => (
+          <TouchableOpacity
+            key={s.key}
+            onPress={() => setSortKey(s.key)}
+            style={[
+              styles.sortChip,
+              { backgroundColor: sortKey === s.key ? palette.tint : palette.surface, borderColor: palette.border },
+            ]}
+          >
+            <Text style={{ color: sortKey === s.key ? '#FFFFFF' : palette.text }}>
+              {s.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <View style={styles.searchRow}>
         <TextInput
           value={q}
@@ -251,15 +324,22 @@ const styles = StyleSheet.create({
   input: { flex: 1, height: 44, borderRadius: 14, borderWidth: 1, paddingHorizontal: 12 },
   addButton: { width: 64, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
   filtersRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
+  sortRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
+  sortChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, borderWidth: 1 },
   filterChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, borderWidth: 1 },
   searchRow: { paddingHorizontal: 16, paddingBottom: 8 },
   searchInput: { height: 40, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12 },
   listContent: { padding: 16, gap: 12 },
   taskCard: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 8 },
-  taskHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  taskTitle: { fontWeight: '700', flex: 1 },
-  taskMetaRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  taskActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  taskAction: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 },
+  taskHeaderRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  taskCheck: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  taskBody: { flex: 1, gap: 6 },
+  taskTitle: { fontWeight: '700' },
+  taskMetaRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  taskStatusPill: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
+  taskStatusText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+  taskActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', paddingLeft: 32 },
+  taskActionPrimary: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 },
+  taskActionPrimaryText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
   emptyState: { alignItems: 'center', paddingVertical: 40 },
 });

@@ -423,12 +423,26 @@ function stripTokenNoise(text: string) {
   return text
     .replace(/#([a-zA-Z][\w/-]*)\(([-+]?\d*\.?\d+)\)/g, ' ')
     .replace(/#([a-zA-Z][\w/-]*):([-+]?\d*\.?\d+)/g, ' ')
+    .replace(/#([a-zA-Z][\w/-]*)\[[^\]]+\]/g, ' ')
     .replace(/(^|\s)[+@][\w/-]+/g, ' ')
     .replace(/(^|\s)[!^]\d{1,2}\b/g, ' ')
     .replace(/~\s*\d{1,3}\s*(?:h|hr|hrs|hour|hours|m|min|mins|minute|minutes)\b/gi, ' ')
     .replace(/(^|\s)#[\w/-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+function isTrackerOnlyPhrase(raw: string) {
+  const trackers = extractTrackers(raw)
+  if (!trackers.length) return false
+  const cleaned = stripTokenNoise(raw)
+    .replace(/\b(mood|energy|stress|pain|anxiety|focus|motivation|sleep|productivity|fatigue)\b/gi, ' ')
+    .replace(/\b\d{1,2}\s*\/\s*10\b/g, ' ')
+    .replace(/\b\d{1,2}\b/g, ' ')
+    .replace(/[:/,-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return cleaned.length === 0
 }
 
 function normalizeTitle(raw: string) {
@@ -526,6 +540,7 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
     const mood = parseMood(phraseRaw)
     const base = phraseRaw.replace(/\b(feeling|feel|mood)\b.*$/i, '').trim()
     const phrase = stripTokenNoise(base)
+    const trackerOnly = isTrackerOnlyPhrase(phraseRaw)
     const isPast = looksLikePastTense(phraseRaw) || looksLikePastTense(text)
     const preferredMin: number | null = lastExplicitEndMin ?? lastExplicitMin
     let time: { startMin: number; endMin: number; consumed: string } | null = phrase ? parseTimeRange(phrase, nowMs, preferredMin) : null
@@ -568,6 +583,8 @@ export function parseCaptureNatural(rawText: string, nowMs = Date.now()): ParseN
         sourceText: phraseRaw,
       })
     }
+
+    if (trackerOnly) continue
 
     const phraseLower = phrase.toLowerCase()
     const moodOnlyPrefix = mood != null && (phraseLower === 'i' || phraseLower === "i'm" || phraseLower === 'im')

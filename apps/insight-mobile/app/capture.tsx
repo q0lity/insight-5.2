@@ -1,5 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, AppState, Image, Pressable, type PressableStateCallbackType, ScrollView, Share, StyleSheet, TextInput } from 'react-native';
+import {
+  Alert,
+  AppState,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  type PressableStateCallbackType,
+  ScrollView,
+  Share,
+  StyleSheet,
+  TextInput,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import type { ImagePickerAsset } from 'expo-image-picker';
@@ -13,11 +25,13 @@ import { useSession } from '@/src/state/session';
 import { createTask } from '@/src/storage/tasks';
 import { createTrackerLog } from '@/src/storage/trackers';
 import { getEvent, startEvent, stopEvent, updateEvent } from '@/src/storage/events';
-import { autoCategorize, detectIntent, formatSegmentsPreview, parseCapture } from '@/src/lib/schema';
+import { autoCategorize, detectIntent, parseCapture } from '@/src/lib/schema';
+import { buildOutlineFromTranscript } from '@/src/lib/notes-outline';
 import { parseCaptureNatural, type ParsedEvent } from '@/src/lib/nlp/natural';
 import { estimateWorkoutCalories, parseMealFromText, parseWorkoutFromText } from '@/src/lib/health';
-import { RECORDING_OPTIONS } from '@/src/lib/audio';
+import { IDLE_AUDIO_MODE, clearActiveRecording, createRecordingWithRetry } from '@/src/lib/audio';
 import { invokeCaptureParse } from '@/src/supabase/functions';
+import { getSupabaseSessionUser } from '@/src/supabase/helpers';
 import { upsertTranscriptSegment } from '@/src/supabase/segments';
 import { uploadCaptureAudio } from '@/src/supabase/storage';
 import { saveMeal } from '@/src/storage/nutrition';
@@ -52,17 +66,6 @@ function formatTimeMarker(date = new Date()) {
   return `[${hh}:${mm}] `;
 }
 
-async function createRecording() {
-  if (typeof Audio?.Recording?.createAsync === 'function') {
-    const result = await Audio.Recording.createAsync(RECORDING_OPTIONS);
-    return result.recording;
-  }
-  const next = new Audio.Recording();
-  await next.prepareToRecordAsync(RECORDING_OPTIONS);
-  await next.startAsync();
-  return next;
-}
-
 function formatClock(ms: number) {
   const total = Math.max(0, Math.floor(ms / 1000));
   const hours = Math.floor(total / 3600);
@@ -72,15 +75,6 @@ function formatClock(ms: number) {
 }
 
 const TIMESTAMP_LINE_RE = /^\[\d{2}:\d{2}(?::\d{2})?\]\s*$/;
-const RECORDING_AUDIO_MODE = {
-  allowsRecordingIOS: true,
-  playsInSilentModeIOS: true,
-} as const;
-const IDLE_AUDIO_MODE = {
-  allowsRecordingIOS: false,
-  playsInSilentModeIOS: true,
-} as const;
-
 let cachedImagePicker: typeof import('expo-image-picker') | null = null;
 let cachedLocation: typeof import('expo-location') | null = null;
 
@@ -1109,9 +1103,7 @@ export default function CaptureScreen() {
   const transcriptPreview = useMemo(() => (rawText.trim() ? normalizeCaptureText(rawText) : ''), [rawText]);
   const outlinePreview = useMemo(() => {
     if (!rawText.trim()) return '';
-    const parsed = parseCapture(normalizeCaptureText(rawText));
-    if (!parsed.segments.length) return normalizeCaptureText(rawText);
-    return formatSegmentsPreview(parsed.segments);
+    return buildOutlineFromTranscript(normalizeCaptureText(rawText), { anchorMs: Date.now() });
   }, [rawText]);
   const outlineStats = useMemo(() => {
     if (!rawText.trim()) {
@@ -1224,6 +1216,7 @@ export default function CaptureScreen() {
     return () => {
       if (recordingRef.current) {
         recordingRef.current.stopAndUnloadAsync().catch(() => {});
+        clearActiveRecording(recordingRef.current);
         recordingRef.current = null;
       }
       void Audio.setAudioModeAsync(IDLE_AUDIO_MODE);
@@ -1380,6 +1373,20 @@ export default function CaptureScreen() {
     if (!audioAttachments.length) return;
 
     let nextAttachments = [...sourceAttachments];
+    const resolvedSession = await getSupabaseSessionUser();
+    if (!resolvedSession) {
+      nextAttachments = nextAttachments.map((item) =>
+        item.type === 'audio'
+          ? {
+              ...item,
+              status: 'ready',
+              transcription: 'Transcription pending. Sign in to process.',
+            }
+          : item
+      );
+      await persistAttachments(captureId, nextAttachments);
+      return;
+    }
     let failed = false;
     let failureMessage: string | null = null;
     const shouldAutoProcess = options?.autoProcess ?? false;
@@ -1424,7 +1431,7 @@ export default function CaptureScreen() {
           await updateInboxCaptureText(captureId, transcriptText);
           await upsertTranscriptSegment(captureId, transcriptText);
           const parsed = parseCapture(transcriptText);
-          const processed = parsed.segments.length ? formatSegmentsPreview(parsed.segments) : transcriptText;
+          const processed = buildOutlineFromTranscript(transcriptText, { anchorMs: Date.now() }) || transcriptText;
           const mergedTags = uniqStrings([...(seedTokens?.tags ?? []), ...parsed.tokens.tags]);
           const mergedContexts = uniqStrings([...(seedTokens?.contexts ?? []), ...parsed.tokens.contexts]);
           const mergedPeople = uniqStrings([...(seedTokens?.people ?? []), ...parsed.tokens.people]);
@@ -1459,9 +1466,26 @@ export default function CaptureScreen() {
           await persistAttachments(captureId, nextAttachments);
         }
       } catch (err) {
-        failed = true;
         const message = err instanceof Error ? err.message : '';
         console.error('[Capture] Transcription error:', message);
+        const isAuthFailure =
+          /supabase session not available|sign in required|sign in again|unauthorized|session expired|invalid jwt/i.test(
+            message
+          );
+        if (isAuthFailure) {
+          nextAttachments = nextAttachments.map((item) =>
+            item.id === attachment.id
+              ? {
+                  ...item,
+                  status: 'ready',
+                  transcription: 'Transcription pending. Sign in to process.',
+                }
+              : item
+          );
+          await persistAttachments(captureId, nextAttachments);
+          continue;
+        }
+        failed = true;
         if (/Supabase session not available/i.test(message)) {
           failureMessage = 'Sign in to Supabase or enable anonymous auth in your project.';
         } else if (/Edge Function error \\(404\\)/i.test(message) || /not found/i.test(message)) {
@@ -1600,6 +1624,7 @@ export default function CaptureScreen() {
       }
       await current.stopAndUnloadAsync();
       const uri = current.getURI();
+      clearActiveRecording(current);
       recordingRef.current = null;
       if (uri) {
         nextAttachment = addAudioAttachment(uri, transcriptionProvider);
@@ -1634,6 +1659,7 @@ export default function CaptureScreen() {
         } catch {
           // ignore stop failures
         }
+        clearActiveRecording(recordingRef.current);
         recordingRef.current = null;
       }
       const permission = await Audio.requestPermissionsAsync();
@@ -1641,10 +1667,7 @@ export default function CaptureScreen() {
         Alert.alert('Microphone permission needed', 'Enable mic access to record audio.');
         return;
       }
-      if (typeof Audio.setAudioModeAsync === 'function') {
-        await Audio.setAudioModeAsync(RECORDING_AUDIO_MODE);
-      }
-      const next = await createRecording();
+      const next = await createRecordingWithRetry();
       recordingRef.current = next;
       setRecordingState('recording');
     } catch (err) {
@@ -2274,7 +2297,7 @@ export default function CaptureScreen() {
         });
       }
 
-      const processedText = parsed.segments.length ? formatSegmentsPreview(parsed.segments) : normalized;
+      const processedText = buildOutlineFromTranscript(normalized, { anchorMs: nowMs }) || normalized;
       await updateInboxCapture(capture.id, {
         status: 'parsed',
         processedText,
@@ -2313,7 +2336,7 @@ export default function CaptureScreen() {
   };
 
   return (
-    <View
+    <KeyboardAvoidingView
       style={[
         styles.container,
         {
@@ -2321,7 +2344,9 @@ export default function CaptureScreen() {
           paddingTop: insets.top,
           paddingBottom: insets.bottom + 12,
         },
-      ]}>
+      ]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={insets.top + 12}>
       <View style={[styles.header, { borderColor: palette.border, backgroundColor: palette.surface }]}>
         <View style={styles.headerLeft}>
           <Text style={[styles.headerTitle, { color: palette.text }]}>Capture</Text>
@@ -2390,7 +2415,8 @@ export default function CaptureScreen() {
       <ScrollView
         contentContainerStyle={styles.body}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
         <View style={[styles.sheet, { borderColor: palette.border, backgroundColor: palette.surface }]}>
           <View style={styles.sheetHeader}>
             <Text style={[styles.sheetTitle, { color: palette.textSecondary }]}>Live transcript</Text>
@@ -2536,7 +2562,7 @@ export default function CaptureScreen() {
           </Pressable>
         </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

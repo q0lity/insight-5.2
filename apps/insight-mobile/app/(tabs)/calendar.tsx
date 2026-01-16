@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/Themed';
 import { useTheme } from '@/src/state/theme';
-import { listEvents, type CalendarEvent } from '@/src/storage/events';
+import { listEvents, startEvent, updateEvent, type CalendarEvent } from '@/src/storage/events';
 import { DayView } from '@/src/components/calendar/DayView';
 import { WeekView } from '@/src/components/calendar/WeekView';
 import { MonthView } from '@/src/components/calendar/MonthView';
@@ -88,6 +88,24 @@ export default function CalendarScreen() {
     router.push(`/event/${event.id}`);
   };
 
+  const handleEventUpdate = async (eventId: string, patch: { startAt: number; endAt: number }) => {
+    const updated = await updateEvent(eventId, patch);
+    if (!updated) return;
+    setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, ...patch } : ev)));
+  };
+
+  const handleCreateEvent = async (range: { startAt: number; endAt: number }) => {
+    const created = await startEvent({
+      title: 'New Event',
+      kind: 'event',
+      startAt: range.startAt,
+      endAt: range.endAt,
+      estimateMinutes: Math.max(15, Math.round((range.endAt - range.startAt) / 60000)),
+    });
+    setEvents((prev) => [created, ...prev]);
+    router.push(`/event/${created.id}`);
+  };
+
   const handleDayPress = (date: Date) => {
     setCurrentDate(date);
     setViewMode('Day');
@@ -161,7 +179,13 @@ export default function CalendarScreen() {
 
       <View style={styles.viewContainer}>
         {viewMode === 'Day' && (
-          <DayView date={currentDate} events={events} onEventPress={handleEventPress} />
+          <DayView
+            date={currentDate}
+            events={events}
+            onEventPress={handleEventPress}
+            onEventUpdate={handleEventUpdate}
+            onCreateEvent={handleCreateEvent}
+          />
         )}
         {viewMode === 'Week' && (
           <WeekView

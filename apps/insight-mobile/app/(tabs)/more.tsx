@@ -54,6 +54,7 @@ const MENU_SECTIONS: MenuSection[] = [
   {
     title: 'Insights',
     items: [
+      { label: 'Assistant', icon: 'sparkle', route: '/assistant', color: '#22C55E' },
       { label: 'Reports', icon: 'barChart', route: '/reports', color: '#10B981' },
       { label: 'Reflections', icon: 'sparkle', route: '/reflections', color: '#6366F1' },
     ],
