@@ -62,6 +62,11 @@ Mobile adaptations:
 - Day timeline with pinch/zoom density (optional)
 - Quick add button + voice add
 - Drag/drop reschedule and resize
+- All-day lane sits above the time grid and holds all-day events plus unscheduled tasks (drag into grid).
+- Read-only calendars render as events with a lock state; visible but not synced back.
+
+### Settings / Onboarding
+- Default auto-start is configurable at onboarding (auto-start on by default).
 
 ### Tasks
 - Adjustable columns (persisted per view)

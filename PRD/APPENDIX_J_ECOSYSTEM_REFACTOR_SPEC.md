@@ -34,12 +34,13 @@ This appendix formalizes the refactor for parsing, categorization, and the UI su
 - Confidence thresholds:
   - >= 0.65: apply silently
   - 0.4–0.64: apply but show review chip
-  - < 0.4: ask a clarification card
+  - < 0.4: direct prompt to choose a category (default suggestion preselected; user can deselect)
 
 ### Category Resolution (hierarchical)
 - Return `categoryPath[]` (ex: ["Professional", "Insight", "Coding"]).
 - Use a synonym map (Insight => Professional/Insight).
 - Prevent drift: if a known title has a stable categoryPath, prefer it.
+- Auto-create tasks from extraction; review cards default to selected so users can deselect.
 
 ### Purchase vs Consume
 - Purchase verbs: buy, bought, purchased, picked up, grabbed, got.
@@ -93,6 +94,7 @@ Rules:
 - Category/Project are auto-suggested but editable inline.
 - Remove the marketing tagline; keep a clean Tasks header + filters.
 - Sorting applies to visible columns and persists per view.
+- Unscheduled tasks surface in the all-day lane for drag-into-calendar behavior.
 
 ### Goals Plan Split Panel (Outline + Gantt)
 ```
@@ -140,6 +142,9 @@ Cost: $__
 4) Goals split panel (outline + Gantt sync).
 5) Habits/trackers cleanup (guardrails + dedupe).
 6) Calendar auto-start + external sync alignment.
+
+Defaults:
+- Auto-start is enabled by default and configurable in onboarding.
 
 ## J7) Edge Cases to Cover
 - "Coding Insight again" should re-use Professional/Insight.

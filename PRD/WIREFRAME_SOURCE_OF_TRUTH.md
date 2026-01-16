@@ -488,11 +488,14 @@ This section is the source-of-truth for where every input routes and where it re
 - Inputs: accept/reject/edit, apply-all.
 - Output: commits entries, tasks, trackers, habits; updates calendar markers and unified entries list.
 - Tests: accept writes all linked entities; reject removes proposal; edit updates chips and timestamps.
+- Low-confidence category prompts show direct pickers with a preselected suggestion; users can deselect.
 
 **Calendar**
 - Inputs: drag/resize, quick add, toggle tracker/habit markers, click markers.
 - Output: updates entry times; markers open entry detail; inline habit blocks render inside parent event.
 - Tests: drag reschedules start/end; markers show correct value and time; embedded blocks do not create separate events.
+- All-day lane includes all-day events plus unscheduled tasks; drag tasks into time grid to schedule.
+- Read-only calendars render locked events (visible, not synced back).
 
 **Unified Entries List**
 - Inputs: check-off tasks, open entry, filter by chip.

@@ -52,6 +52,7 @@ Examples:
 - `frontmatter.purchaseItems`: optional array of {name, qty, unit?}.
 - `frontmatter.consumeItems`: optional array of {name, qty, unit?}.
 - `frontmatter.subtasks`: optional array of {title, status, estimateMinutes?}.
+- `frontmatter.readOnly`: optional boolean for imported calendar items (no outbound sync).
 - `source`: `app|import|calendar|migration`.
 - `embedding`: vector(1536) for semantic search.
 
