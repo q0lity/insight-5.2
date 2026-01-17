@@ -1923,6 +1923,12 @@ select:focus-visible {
   border-color: var(--border2);
 }
 
+.detailNotesActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .detailAiBtn {
   display: inline-flex;
   align-items: center;
@@ -5264,6 +5270,80 @@ select:focus-visible {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
+.taskColumnPicker {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.taskColumnBtn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.taskColumnBtn:hover {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.taskColumnMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow2);
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  z-index: 20;
+}
+
+.taskColumnMenuTitle {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.taskColumnOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.taskColumnOption input {
+  width: 14px;
+  height: 14px;
+}
+
+.taskColumnReset {
+  height: 30px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+}
+
 .taskQuickAdd {
   display: flex;
   align-items: center;
@@ -5507,9 +5587,15 @@ select:focus-visible {
   cursor: pointer;
 }
 
+.taskCardAction:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 /* Tasks table */
 .taskTable {
-  --task-grid: 48px minmax(220px, 2fr) minmax(140px, 1fr) 110px 110px 110px 140px 140px minmax(160px, 1fr) 90px 110px 110px;
+  --task-grid: 48px minmax(220px, 2fr) 90px minmax(140px, 1fr) 110px 110px 110px 140px 140px minmax(160px, 1fr) 90px 110px 110px;
   border-radius: 22px;
   border: 1px solid var(--border);
   background: var(--panel);
@@ -5530,6 +5616,42 @@ select:focus-visible {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted);
+}
+
+.taskColSort {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: inherit;
+  font-weight: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.taskColSort.active {
+  color: var(--text);
+}
+
+.taskSortIcon {
+  display: inline-flex;
+  opacity: 0.3;
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+
+.taskSortIcon.desc {
+  opacity: 0.8;
+}
+
+.taskSortIcon.asc {
+  opacity: 0.8;
+  transform: rotate(180deg);
 }
 
 .taskTableBody {
@@ -5576,6 +5698,35 @@ select:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.taskCol.start {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.taskTableAction {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.taskTableAction.active {
+  border-color: rgba(34, 197, 94, 0.5);
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.taskTableAction:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .taskCheck {

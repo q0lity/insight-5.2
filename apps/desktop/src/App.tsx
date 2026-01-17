@@ -43,7 +43,6 @@ import { EcosystemView } from './workspace/views/ecosystem'
 import { ProjectsView } from './workspace/views/projects'
 import { TrackersView } from './workspace/views/trackers'
 import { HabitsView } from './workspace/views/habits'
-import { basePoints, multiplierFor, pointsForMinutes } from './scoring/points'
 import { loadCustomTaxonomy, saveCustomTaxonomy } from './taxonomy/custom'
 import { categoriesFromStarter, subcategoriesFromStarter } from './taxonomy/starter'
 import { loadTaxonomyRules, TAXONOMY_RULES_CHANGED_EVENT, type TaxonomyRule } from './taxonomy/rules'
@@ -820,14 +819,6 @@ function uniqStrings(values: string[]) {
     out.push(s)
   }
   return out
-}
-
-function formatMinutesSpan(totalMinutes: number) {
-  const mins = Math.max(0, Math.round(totalMinutes))
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  if (h > 0) return `${h}h ${m}m`
-  return `${m}m`
 }
 
 const PINNED_GROUP_ORDER_KEY = 'insight5.explorer.pinnedGroupOrder.v1'
@@ -1870,15 +1861,6 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     if (/\b(study|read|reading|learn|code|research|write|writing)\b/.test(t)) out.add('INT')
     if (/\b(meet|meeting|call|talk|chat|social|family|friends)\b/.test(t)) out.add('PER')
     return [...out]
-  }
-
-  function pointsForEventAt(ev: CalendarEvent, nowMs: number) {
-    const base = basePoints(ev.importance, ev.difficulty)
-    if (base <= 0) return 0
-    const endAt = ev.active ? nowMs : ev.endAt
-    const minutes = Math.max(0, Math.round((endAt - ev.startAt) / (60 * 1000)))
-    const mult = multiplierFor(ev.goal ?? null, ev.project ?? null)
-    return pointsForMinutes(base, minutes, mult)
   }
 
   function autoFillEventFromText(ev: CalendarEvent) {
@@ -5442,13 +5424,6 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
     return () => window.clearInterval(id)
   }, [selectedEvent?.active, hasRunningNoteTask])
 
-  const selectedEventMinutes = selectedEvent
-    ? Math.max(0, Math.round(((selectedEvent.active ? nowTick : selectedEvent.endAt) - selectedEvent.startAt) / (60 * 1000)))
-    : 0
-  const selectedEventBase = selectedEvent ? basePoints(selectedEvent.importance, selectedEvent.difficulty) : 0
-  const selectedEventMult = selectedEvent ? multiplierFor(selectedEvent.goal ?? null, selectedEvent.project ?? null) : 1
-  const selectedEventPoints = selectedEvent ? pointsForEventAt(selectedEvent, nowTick) : 0
-
   const explorerTasks = useMemo(() => {
     const needle = explorerTaskQuery.trim().toLowerCase()
     const base = tasks.filter((t) => t.status !== 'done')
@@ -6363,16 +6338,18 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
 	                    aria-label="Toggle AI">
 	                    <Icon name="sparkle" size={16} />
 	                  </button>
-	                  <button
-	                    className="detailsIconBtn"
-	                    onClick={() => {
-	                      if (rightMode === 'ai') openView('assistant')
-	                      else setDocOpen(true)
-	                    }}
-	                    aria-label={rightMode === 'ai' ? 'Open full chat' : 'Open page'}>
-	                    <Icon name="maximize" size={16} />
-	                  </button>
-	                </>
+                  {rightMode === 'ai' || selection.kind === 'task' ? (
+                    <button
+                      className="detailsIconBtn"
+                      onClick={() => {
+                        if (rightMode === 'ai') openView('assistant')
+                        else setDocOpen(true)
+                      }}
+                      aria-label={rightMode === 'ai' ? 'Open full chat' : 'Open page'}>
+                      <Icon name="maximize" size={16} />
+                    </button>
+                  ) : null}
+                </>
                 )}
 	              <button className="detailsIconBtn" onClick={() => setRightCollapsed(true)} aria-label="Collapse right panel">
 	                <Icon name="panelRight" size={16} />
@@ -6952,17 +6929,30 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                   habitNames={habitDefs.map((h) => h.name).filter(Boolean)}
                   headerLabel="Notes"
                   headerActions={
-                    <button
-                      className="detailInlineBtn"
-                      onClick={() => {
-                        setCaptureDraft('')
-                        setCaptureInterim('')
-                        openCapture({ attachEventId: selectedEvent.id })
-                      }}
-                      type="button">
-                      <Icon name="mic" size={12} />
-                      Transcribe
-                    </button>
+                    <div className="detailNotesActions">
+                      <button
+                        className="detailInlineBtn"
+                        onClick={() => {
+                          setDocTab('notes')
+                          setDocMode('edit')
+                          setDocOpen(true)
+                        }}
+                        type="button">
+                        <Icon name="maximize" size={12} />
+                        Expand
+                      </button>
+                      <button
+                        className="detailInlineBtn"
+                        onClick={() => {
+                          setCaptureDraft('')
+                          setCaptureInterim('')
+                          openCapture({ attachEventId: selectedEvent.id })
+                        }}
+                        type="button">
+                        <Icon name="mic" size={12} />
+                        Transcribe
+                      </button>
+                    </div>
                   }
                 />
                 <button
@@ -7192,26 +7182,6 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                       }}
                       placeholder="Home"
                     />
-                  </div>
-                </label>
-              </div>
-              <div className="detailGrid">
-                <label>
-                  Points
-                  <div className="detailPoints">
-                    <div className="detailPointsValue">{selectedEventPoints.toFixed(1)}</div>
-                    <div className="detailPointsMeta">
-                      {selectedEventBase} × {formatMinutesSpan(selectedEventMinutes)} ÷ 60 × {selectedEventMult.toFixed(2)}
-                    </div>
-                  </div>
-                </label>
-                <label>
-                  Running
-                  <div className="detailPoints">
-                    <div className="detailPointsValue">{selectedEvent.active ? 'Active' : '—'}</div>
-                    <div className="detailPointsMeta">
-                      {selectedEvent.active ? `${formatMinutesSpan(selectedEventMinutes)} elapsed` : 'Not running'}
-                    </div>
                   </div>
                 </label>
               </div>
@@ -8781,26 +8751,6 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
                             }}
                             placeholder="Home"
                           />
-                        </div>
-                      </label>
-                    </div>
-                    <div className="detailGrid">
-                      <label>
-                        Points
-                        <div className="detailPoints">
-                          <div className="detailPointsValue">{selectedEventPoints.toFixed(1)}</div>
-                          <div className="detailPointsMeta">
-                            {selectedEventBase} × {formatMinutesSpan(selectedEventMinutes)} ÷ 60 × {selectedEventMult.toFixed(2)}
-                          </div>
-                        </div>
-                      </label>
-                      <label>
-                        Running
-                        <div className="detailPoints">
-                          <div className="detailPointsValue">{selectedEvent.active ? 'Active' : '—'}</div>
-                          <div className="detailPointsMeta">
-                            {selectedEvent.active ? `${formatMinutesSpan(selectedEventMinutes)} elapsed` : 'Not running'}
-                          </div>
                         </div>
                       </label>
                     </div>
