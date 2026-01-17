@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, TextInput, FlatList } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,98 @@ import { ProgressRing } from '@/src/components/charts';
 import { listProjects, addProject, deleteProject, type Project } from '@/src/storage/projects';
 import { listEvents, type MobileEvent } from '@/src/storage/events';
 import { loadMultipliers, upsertProjectMultiplier, getProjectMultiplierSync, type MultipliersState } from '@/src/storage/multipliers';
+
+type ProjectItemProps = {
+  item: Project;
+  stats: { sessions: number; minutes: number; activeDays: number };
+  palette: ReturnType<typeof useTheme>['palette'];
+  multiplierValue: number;
+  onPress: () => void;
+  onDelete: () => void;
+  onMultiplierChange: (value: number) => void;
+};
+
+const formatMins = (m: number) => (m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`);
+
+const ProjectItem = React.memo(function ProjectItem({
+  item,
+  stats,
+  palette,
+  multiplierValue,
+  onPress,
+  onDelete,
+  onMultiplierChange,
+}: ProjectItemProps) {
+  const statusColor = item.status === 'active' ? '#7BAF7B' : palette.textSecondary;
+  return (
+    <TouchableOpacity
+      style={[styles.projectItem, { backgroundColor: palette.surface }]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.projectLeft}>
+        <ProgressRing
+          progress={Math.min(stats.activeDays / 14, 1)}
+          size={48}
+          strokeWidth={5}
+          color={statusColor}
+        />
+        <Text style={[styles.daysText, { color: palette.text }]}>{stats.activeDays}</Text>
+      </View>
+      <View style={styles.projectInfo}>
+        <View style={styles.nameRow}>
+          <Text style={[styles.projectName, { color: palette.text }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+            <Text style={[styles.statusText, { color: statusColor }]}>
+              {item.status === 'active' ? 'Active' : 'Done'}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.statsRow}>
+          <Text style={[styles.statText, { color: palette.textSecondary }]}>
+            {stats.sessions} sessions
+          </Text>
+          <Text style={[styles.statDot, { color: palette.textSecondary }]}>·</Text>
+          <Text style={[styles.statText, { color: palette.textSecondary }]}>
+            {formatMins(stats.minutes)}
+          </Text>
+        </View>
+        <View style={styles.multiplierRow}>
+          <Text style={[styles.multiplierLabel, { color: palette.textSecondary }]}>Multiplier</Text>
+          <Text style={[styles.multiplierValue, { color: palette.tint }]}>
+            {multiplierValue.toFixed(2)}x
+          </Text>
+        </View>
+        <Slider
+          minimumValue={0.1}
+          maximumValue={3}
+          step={0.1}
+          value={multiplierValue}
+          onValueChange={onMultiplierChange}
+          minimumTrackTintColor={palette.tint}
+          maximumTrackTintColor={palette.border}
+          thumbTintColor={palette.tint}
+        />
+      </View>
+      <View style={styles.projectRight}>
+        <TouchableOpacity
+          onPress={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          style={styles.deleteButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <InsightIcon name="plus" size={18} color={palette.border} />
+        </TouchableOpacity>
+        <InsightIcon name="chevronRight" size={20} color={palette.textSecondary} />
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 export default function ProjectsScreen() {
   const router = useRouter();
@@ -68,11 +160,37 @@ export default function ProjectsScreen() {
     await loadData();
   }
 
-  const updateMultiplier = async (projectName: string, value: number) => {
+  const updateMultiplier = useCallback(async (projectName: string, value: number) => {
     await upsertProjectMultiplier(projectName, value);
     const next = await loadMultipliers();
     setMultipliers(next);
-  };
+  }, []);
+
+  const keyExtractor = useCallback((item: Project) => item.id, []);
+
+  const renderItem = useCallback(({ item }: { item: Project }) => {
+    const stats = projectStats[item.id] ?? { sessions: 0, minutes: 0, activeDays: 0 };
+    const multiplierValue = getProjectMultiplierSync(item.name, multipliers);
+    return (
+      <ProjectItem
+        item={item}
+        stats={stats}
+        palette={palette}
+        multiplierValue={multiplierValue}
+        onPress={() => router.push(`/project/${item.id}`)}
+        onDelete={() => handleDeleteProject(item.id)}
+        onMultiplierChange={(value) => void updateMultiplier(item.name, value)}
+      />
+    );
+  }, [projectStats, multipliers, palette, router, updateMultiplier]);
+
+  const ListEmptyComponent = useCallback(() => (
+    <View style={[styles.card, { backgroundColor: palette.surface }]}>
+      <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
+        No active projects yet. Group your tasks into projects to stay organized.
+      </Text>
+    </View>
+  ), [palette]);
 
   return (
     <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
@@ -110,88 +228,14 @@ export default function ProjectsScreen() {
 
       <FlatList
         data={projects}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={[styles.card, { backgroundColor: palette.surface }]}>
-            <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
-              No active projects yet. Group your tasks into projects to stay organized.
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => {
-          const stats = projectStats[item.id] ?? { sessions: 0, minutes: 0, activeDays: 0 };
-          const formatMins = (m: number) => (m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`);
-          const statusColor = item.status === 'active' ? '#7BAF7B' : palette.textSecondary;
-          return (
-            <TouchableOpacity
-              style={[styles.projectItem, { backgroundColor: palette.surface }]}
-              onPress={() => router.push(`/project/${item.id}`)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.projectLeft}>
-                <ProgressRing
-                  progress={Math.min(stats.activeDays / 14, 1)}
-                  size={48}
-                  strokeWidth={5}
-                  color={statusColor}
-                />
-                <Text style={[styles.daysText, { color: palette.text }]}>{stats.activeDays}</Text>
-              </View>
-              <View style={styles.projectInfo}>
-                <View style={styles.nameRow}>
-                  <Text style={[styles.projectName, { color: palette.text }]} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
-                    <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                    <Text style={[styles.statusText, { color: statusColor }]}>
-                      {item.status === 'active' ? 'Active' : 'Done'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.statsRow}>
-                  <Text style={[styles.statText, { color: palette.textSecondary }]}>
-                    {stats.sessions} sessions
-                  </Text>
-                  <Text style={[styles.statDot, { color: palette.textSecondary }]}>·</Text>
-                  <Text style={[styles.statText, { color: palette.textSecondary }]}>
-                    {formatMins(stats.minutes)}
-                  </Text>
-                </View>
-                <View style={styles.multiplierRow}>
-                  <Text style={[styles.multiplierLabel, { color: palette.textSecondary }]}>Multiplier</Text>
-                  <Text style={[styles.multiplierValue, { color: palette.tint }]}>
-                    {getProjectMultiplierSync(item.name, multipliers).toFixed(2)}x
-                  </Text>
-                </View>
-                <Slider
-                  minimumValue={0.1}
-                  maximumValue={3}
-                  step={0.1}
-                  value={getProjectMultiplierSync(item.name, multipliers)}
-                  onValueChange={(value) => void updateMultiplier(item.name, value)}
-                  minimumTrackTintColor={palette.tint}
-                  maximumTrackTintColor={palette.border}
-                  thumbTintColor={palette.tint}
-                />
-              </View>
-              <View style={styles.projectRight}>
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleDeleteProject(item.id);
-                  }}
-                  style={styles.deleteButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <InsightIcon name="plus" size={18} color={palette.border} />
-                </TouchableOpacity>
-                <InsightIcon name="chevronRight" size={20} color={palette.textSecondary} />
-              </View>
-            </TouchableOpacity>
-          );
-        }}
+        ListEmptyComponent={ListEmptyComponent}
+        renderItem={renderItem}
+        initialNumToRender={10}
+        maxToRenderPerBatch={5}
+        windowSize={5}
+        removeClippedSubviews={true}
       />
     </View>
   );

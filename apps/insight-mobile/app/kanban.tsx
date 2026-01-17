@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FlatList, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -28,6 +28,104 @@ function parseQuickTaskInput(raw: string) {
   }
   return { title: titleParts.join(' ').trim(), tags: tags.slice(0, 12) };
 }
+
+type KanbanCardProps = {
+  task: Task;
+  columnKey: TaskStatus;
+  palette: ReturnType<typeof import('@/src/state/theme').useTheme>['palette'];
+  onMoveTask: (task: Task, status: TaskStatus) => void;
+};
+
+const KanbanCard = React.memo(function KanbanCard({
+  task,
+  columnKey,
+  palette,
+  onMoveTask,
+}: KanbanCardProps) {
+  const nextStatuses: TaskStatus[] = COLUMNS.map((c) => c.key).filter((k) => k !== columnKey);
+
+  return (
+    <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+      <Text style={[styles.cardTitle, { color: palette.text }]} numberOfLines={2}>
+        {task.title}
+      </Text>
+      <View style={styles.cardMeta}>
+        <Text style={{ color: palette.textSecondary, fontSize: 12 }}>
+          {task.dueAt ? formatShortDate(task.dueAt) : 'No due'}
+        </Text>
+        {task.tags && task.tags.length > 0 && (
+          <View style={[styles.tag, { backgroundColor: palette.tintLight }]}>
+            <Text style={{ color: palette.tint, fontSize: 10 }}>#{task.tags[0]}</Text>
+          </View>
+        )}
+      </View>
+      <View style={styles.cardActions}>
+        {nextStatuses.slice(0, 2).map((status) => (
+          <TouchableOpacity
+            key={status}
+            style={[styles.moveButton, { borderColor: palette.border }]}
+            onPress={() => onMoveTask(task, status)}
+          >
+            <Text style={{ color: palette.textSecondary, fontSize: 11 }}>
+              {status === 'done' ? 'Done' : status === 'in_progress' ? 'Start' : status === 'todo' ? 'Reopen' : 'Cancel'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+});
+
+type KanbanColumnProps = {
+  col: { key: TaskStatus; label: string; items: Task[] };
+  palette: ReturnType<typeof import('@/src/state/theme').useTheme>['palette'];
+  onMoveTask: (task: Task, status: TaskStatus) => void;
+};
+
+const KanbanColumn = React.memo(function KanbanColumn({
+  col,
+  palette,
+  onMoveTask,
+}: KanbanColumnProps) {
+  const keyExtractor = useCallback((item: Task) => item.id, []);
+
+  const renderItem = useCallback(({ item }: { item: Task }) => (
+    <KanbanCard
+      task={item}
+      columnKey={col.key}
+      palette={palette}
+      onMoveTask={onMoveTask}
+    />
+  ), [col.key, palette, onMoveTask]);
+
+  const ListEmptyComponent = useCallback(() => (
+    <View style={styles.emptyColumn}>
+      <Text style={{ color: palette.textSecondary, fontSize: 12 }}>No tasks</Text>
+    </View>
+  ), [palette]);
+
+  return (
+    <View style={[styles.column, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}>
+      <View style={styles.columnHeader}>
+        <Text style={[styles.columnTitle, { color: palette.text }]}>{col.label}</Text>
+        <View style={[styles.countBadge, { backgroundColor: palette.tintLight }]}>
+          <Text style={{ color: palette.tint, fontSize: 12 }}>{col.items.length}</Text>
+        </View>
+      </View>
+      <FlatList
+        data={col.items}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        ListEmptyComponent={ListEmptyComponent}
+        showsVerticalScrollIndicator={false}
+        style={styles.columnBody}
+        initialNumToRender={8}
+        maxToRenderPerBatch={4}
+        windowSize={3}
+      />
+    </View>
+  );
+});
 
 export default function KanbanScreen() {
   const router = useRouter();
@@ -60,48 +158,13 @@ export default function KanbanScreen() {
     refreshTasks();
   };
 
-  const moveTask = async (task: Task, status: TaskStatus) => {
+  const moveTask = useCallback(async (task: Task, status: TaskStatus) => {
     await updateTask(task.id, {
       status,
       completedAt: status === 'done' ? Date.now() : null,
     });
     refreshTasks();
-  };
-
-  const renderCard = (task: Task, columnKey: TaskStatus) => {
-    const nextStatuses: TaskStatus[] = COLUMNS.map((c) => c.key).filter((k) => k !== columnKey);
-
-    return (
-      <View key={task.id} style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-        <Text style={[styles.cardTitle, { color: palette.text }]} numberOfLines={2}>
-          {task.title}
-        </Text>
-        <View style={styles.cardMeta}>
-          <Text style={{ color: palette.textSecondary, fontSize: 12 }}>
-            {task.dueAt ? formatShortDate(task.dueAt) : 'No due'}
-          </Text>
-          {task.tags && task.tags.length > 0 && (
-            <View style={[styles.tag, { backgroundColor: palette.tintLight }]}>
-              <Text style={{ color: palette.tint, fontSize: 10 }}>#{task.tags[0]}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.cardActions}>
-          {nextStatuses.slice(0, 2).map((status) => (
-            <TouchableOpacity
-              key={status}
-              style={[styles.moveButton, { borderColor: palette.border }]}
-              onPress={() => moveTask(task, status)}
-            >
-              <Text style={{ color: palette.textSecondary, fontSize: 11 }}>
-                {status === 'done' ? 'Done' : status === 'in_progress' ? 'Start' : status === 'todo' ? 'Reopen' : 'Cancel'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-    );
-  };
+  }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
@@ -129,22 +192,12 @@ export default function KanbanScreen() {
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.boardContainer}>
         {columns.map((col) => (
-          <View key={col.key} style={[styles.column, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}>
-            <View style={styles.columnHeader}>
-              <Text style={[styles.columnTitle, { color: palette.text }]}>{col.label}</Text>
-              <View style={[styles.countBadge, { backgroundColor: palette.tintLight }]}>
-                <Text style={{ color: palette.tint, fontSize: 12 }}>{col.items.length}</Text>
-              </View>
-            </View>
-            <ScrollView style={styles.columnBody} showsVerticalScrollIndicator={false}>
-              {col.items.map((task) => renderCard(task, col.key))}
-              {col.items.length === 0 && (
-                <View style={styles.emptyColumn}>
-                  <Text style={{ color: palette.textSecondary, fontSize: 12 }}>No tasks</Text>
-                </View>
-              )}
-            </ScrollView>
-          </View>
+          <KanbanColumn
+            key={col.key}
+            col={col}
+            palette={palette}
+            onMoveTask={moveTask}
+          />
         ))}
       </ScrollView>
     </View>

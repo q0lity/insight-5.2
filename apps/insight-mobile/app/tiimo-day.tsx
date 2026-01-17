@@ -88,9 +88,10 @@ export default function TiimoDayScreen() {
     if (isToday && scrollRef.current) {
       const nowMinute = minuteOfDay(Date.now());
       const scrollY = Math.max(0, ((nowMinute / 60) - 1) * HOUR_HEIGHT);
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         scrollRef.current?.scrollTo({ y: scrollY, animated: false });
       }, 100);
+      return () => clearTimeout(timeoutId);
     }
   }, [isToday, date]);
 

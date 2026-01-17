@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   StyleSheet,
@@ -28,6 +28,84 @@ const SEGMENTS: { key: EntityType; label: string; icon: string }[] = [
   { key: 'contexts', label: 'Contexts', icon: '~' },
   { key: 'skills', label: 'Skills', icon: '★' },
 ];
+
+function getPrefix(type: EntityType): string {
+  switch (type) {
+    case 'tags':
+      return '#';
+    case 'people':
+      return '@';
+    case 'contexts':
+      return '~';
+    case 'skills':
+      return '';
+  }
+}
+
+function getColor(type: EntityType, palette: ReturnType<typeof useTheme>['palette']): string {
+  switch (type) {
+    case 'tags':
+      return palette.tint;
+    case 'people':
+      return '#8B7EC8';
+    case 'contexts':
+      return '#7BAF7B';
+    case 'skills':
+      return '#D4A574';
+  }
+}
+
+function formatRelativeTime(ts: number): string {
+  const now = Date.now();
+  const diff = now - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
+
+type EntityItemProps = {
+  item: EntityStat;
+  entityType: EntityType;
+  palette: ReturnType<typeof useTheme>['palette'];
+};
+
+const EntityItem = React.memo(function EntityItem({
+  item,
+  entityType,
+  palette,
+}: EntityItemProps) {
+  const color = getColor(entityType, palette);
+  const prefix = getPrefix(entityType);
+  return (
+    <TouchableOpacity
+      style={[styles.entityItem, { backgroundColor: palette.surface }]}
+      onPress={() => {}}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.entityIcon, { backgroundColor: `${color}15` }]}>
+        <Text style={[styles.entityIconText, { color }]}>
+          {prefix}
+        </Text>
+      </View>
+      <View style={styles.entityInfo}>
+        <Text style={[styles.entityName, { color: palette.text }]}>
+          {prefix}{item.name}
+        </Text>
+        <Text style={[styles.entityMeta, { color: palette.textSecondary }]}>
+          {item.count} {item.count === 1 ? 'event' : 'events'} · Last used {formatRelativeTime(item.lastUsed)}
+        </Text>
+      </View>
+      <View style={[styles.countBadge, { backgroundColor: `${color}15` }]}>
+        <Text style={[styles.countText, { color }]}>{item.count}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 export default function TagsScreen() {
   const router = useRouter();
@@ -115,33 +193,7 @@ export default function TagsScreen() {
     return stats.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()));
   }, [entityStats, activeSegment, search]);
 
-  const formatRelativeTime = (ts: number): string => {
-    const now = Date.now();
-    const diff = now - ts;
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    if (days < 7) return `${days}d ago`;
-    if (days < 30) return `${Math.floor(days / 7)}w ago`;
-    return `${Math.floor(days / 30)}mo ago`;
-  };
-
-  const getPrefix = (type: EntityType): string => {
-    switch (type) {
-      case 'tags':
-        return '#';
-      case 'people':
-        return '@';
-      case 'contexts':
-        return '~';
-      case 'skills':
-        return '';
-    }
-  };
-
-  const getEmptyMessage = (type: EntityType): string => {
+  const getEmptyMessage = useCallback((type: EntityType): string => {
     switch (type) {
       case 'tags':
         return 'No tags found. Add #tags to your events to see them here.';
@@ -152,20 +204,30 @@ export default function TagsScreen() {
       case 'skills':
         return 'No skills found. Track skills in your events to monitor growth.';
     }
-  };
+  }, []);
 
-  const getColor = (type: EntityType): string => {
-    switch (type) {
-      case 'tags':
-        return palette.tint;
-      case 'people':
-        return '#8B7EC8';
-      case 'contexts':
-        return '#7BAF7B';
-      case 'skills':
-        return '#D4A574';
-    }
-  };
+  const keyExtractor = useCallback((item: EntityStat) => item.name, []);
+
+  const renderItem = useCallback(({ item }: { item: EntityStat }) => (
+    <EntityItem
+      item={item}
+      entityType={activeSegment}
+      palette={palette}
+    />
+  ), [activeSegment, palette]);
+
+  const ListEmptyComponent = useCallback(() => (
+    <View style={[styles.emptyCard, { backgroundColor: palette.surface }]}>
+      <View style={[styles.emptyIcon, { backgroundColor: palette.borderLight }]}>
+        <Text style={[styles.emptyIconText, { color: palette.textSecondary }]}>
+          {getPrefix(activeSegment) || '?'}
+        </Text>
+      </View>
+      <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
+        {getEmptyMessage(activeSegment)}
+      </Text>
+    </View>
+  ), [palette, activeSegment, getEmptyMessage]);
 
   return (
     <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
@@ -250,47 +312,14 @@ export default function TagsScreen() {
 
       <FlatList
         data={filteredStats}
-        keyExtractor={(item) => item.name}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={[styles.emptyCard, { backgroundColor: palette.surface }]}>
-            <View style={[styles.emptyIcon, { backgroundColor: palette.borderLight }]}>
-              <Text style={[styles.emptyIconText, { color: palette.textSecondary }]}>
-                {getPrefix(activeSegment) || '?'}
-              </Text>
-            </View>
-            <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
-              {getEmptyMessage(activeSegment)}
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => {
-          const color = getColor(activeSegment);
-          return (
-            <TouchableOpacity
-              style={[styles.entityItem, { backgroundColor: palette.surface }]}
-              onPress={() => {}}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.entityIcon, { backgroundColor: `${color}15` }]}>
-                <Text style={[styles.entityIconText, { color }]}>
-                  {getPrefix(activeSegment)}
-                </Text>
-              </View>
-              <View style={styles.entityInfo}>
-                <Text style={[styles.entityName, { color: palette.text }]}>
-                  {getPrefix(activeSegment)}{item.name}
-                </Text>
-                <Text style={[styles.entityMeta, { color: palette.textSecondary }]}>
-                  {item.count} {item.count === 1 ? 'event' : 'events'} · Last used {formatRelativeTime(item.lastUsed)}
-                </Text>
-              </View>
-              <View style={[styles.countBadge, { backgroundColor: `${color}15` }]}>
-                <Text style={[styles.countText, { color }]}>{item.count}</Text>
-              </View>
-            </TouchableOpacity>
-          );
-        }}
+        ListEmptyComponent={ListEmptyComponent}
+        renderItem={renderItem}
+        initialNumToRender={10}
+        maxToRenderPerBatch={5}
+        windowSize={5}
+        removeClippedSubviews={true}
       />
     </View>
   );

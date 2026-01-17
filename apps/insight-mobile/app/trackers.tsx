@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -53,6 +53,113 @@ function parseTrackerValueInput(raw: string): number | string | boolean {
   if (Number.isFinite(num) && trimmed !== '') return num;
   return trimmed;
 }
+
+type TrackerLogItemProps = {
+  log: TrackerLogEntry;
+  palette: ReturnType<typeof import('@/src/state/theme').useTheme>['palette'];
+  isEditing: boolean;
+  editingValue: string;
+  onEditingValueChange: (value: string) => void;
+  onPress: () => void;
+  onLongPress: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+};
+
+const TrackerLogItem = React.memo(function TrackerLogItem({
+  log,
+  palette,
+  isEditing,
+  editingValue,
+  onEditingValueChange,
+  onPress,
+  onLongPress,
+  onSave,
+  onCancel,
+}: TrackerLogItemProps) {
+  return (
+    <View style={styles.logItem}>
+      <Pressable
+        style={styles.logRow}
+        onPress={onPress}
+        onLongPress={onLongPress}
+      >
+        <View style={styles.logLeft}>
+          <Text style={[styles.logTitle, { color: palette.text }]}>{log.trackerLabel}</Text>
+          <Text style={[styles.logMeta, { color: palette.textSecondary }]}>{formatTime(log.occurredAt)}</Text>
+        </View>
+        <View style={[styles.logPill, { borderColor: palette.tint }]}>
+          <Text style={[styles.logValue, { color: palette.tint }]}>
+            {formatTrackerValue(log)}{log.unit ? ` ${log.unit}` : ''}
+          </Text>
+        </View>
+      </Pressable>
+      {isEditing ? (
+        <View style={styles.logEditRow}>
+          <TextInput
+            value={editingValue}
+            onChangeText={onEditingValueChange}
+            placeholder="New value"
+            placeholderTextColor={palette.textSecondary}
+            style={[styles.logEditInput, { color: palette.text, backgroundColor: palette.surface, borderColor: palette.border }]}
+          />
+          <TouchableOpacity style={[styles.logEditButton, { backgroundColor: palette.tint }]} onPress={onSave}>
+            <Text style={styles.logEditButtonText}>Save</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.logEditButton, styles.logEditButtonGhost]} onPress={onCancel}>
+            <Text style={[styles.logEditButtonText, { color: palette.text }]}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+    </View>
+  );
+});
+
+type TrackerGroupProps = {
+  group: TrackerGroup;
+  palette: ReturnType<typeof import('@/src/state/theme').useTheme>['palette'];
+  isLast: boolean;
+  editingId: string | null;
+  editingValue: string;
+  onEditingValueChange: (value: string) => void;
+  onLogPress: (log: TrackerLogEntry) => void;
+  onLogLongPress: (log: TrackerLogEntry) => void;
+  onSaveEdit: (log: TrackerLogEntry) => void;
+  onCancelEdit: () => void;
+};
+
+const TrackerGroupComponent = React.memo(function TrackerGroupComponent({
+  group,
+  palette,
+  isLast,
+  editingId,
+  editingValue,
+  onEditingValueChange,
+  onLogPress,
+  onLogLongPress,
+  onSaveEdit,
+  onCancelEdit,
+}: TrackerGroupProps) {
+  return (
+    <View style={[styles.group, isLast && { borderBottomWidth: 0 }]}>
+      <Text style={[styles.groupLabel, { color: palette.textSecondary }]}>{group.label}</Text>
+      {group.logs.map((log) => (
+        <TrackerLogItem
+          key={log.id}
+          log={log}
+          palette={palette}
+          isEditing={editingId === log.id}
+          editingValue={editingValue}
+          onEditingValueChange={onEditingValueChange}
+          onPress={() => onLogPress(log)}
+          onLongPress={() => onLogLongPress(log)}
+          onSave={() => onSaveEdit(log)}
+          onCancel={onCancelEdit}
+        />
+      ))}
+    </View>
+  );
+});
 
 export default function TrackersScreen() {
   const router = useRouter();
@@ -121,7 +228,7 @@ export default function TrackersScreen() {
     cancelEdit();
   };
 
-  const confirmDelete = (log: TrackerLogEntry) => {
+  const confirmDelete = useCallback((log: TrackerLogEntry) => {
     Alert.alert('Delete tracker log?', `${log.trackerLabel} ${formatTrackerValue(log)}`, [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -134,7 +241,15 @@ export default function TrackersScreen() {
         },
       },
     ]);
-  };
+  }, [editingId]);
+
+  const handleLogPress = useCallback((log: TrackerLogEntry) => {
+    router.push(`/tracker/${encodeURIComponent(log.trackerKey)}`);
+  }, [router]);
+
+  const handleSaveEdit = useCallback((log: TrackerLogEntry) => {
+    void saveEdit(log);
+  }, []);
 
   const summary = useMemo(() => {
     const unique = new Set<string>();
@@ -278,44 +393,19 @@ export default function TrackersScreen() {
             </View>
           ) : (
             grouped.map((group, idx) => (
-              <View key={group.key} style={[styles.group, idx === grouped.length - 1 && { borderBottomWidth: 0 }]}>
-                <Text style={[styles.groupLabel, { color: palette.textSecondary }]}>{group.label}</Text>
-                {group.logs.map((log) => (
-                  <View key={log.id} style={styles.logItem}>
-                    <Pressable
-                      style={styles.logRow}
-                      onPress={() => router.push(`/tracker/${encodeURIComponent(log.trackerKey)}`)}
-                      onLongPress={() => confirmDelete(log)}>
-                      <View style={styles.logLeft}>
-                        <Text style={[styles.logTitle, { color: palette.text }]}>{log.trackerLabel}</Text>
-                        <Text style={[styles.logMeta, { color: palette.textSecondary }]}>{formatTime(log.occurredAt)}</Text>
-                      </View>
-                      <View style={[styles.logPill, { borderColor: palette.tint }]}>
-                        <Text style={[styles.logValue, { color: palette.tint }]}>
-                          {formatTrackerValue(log)}{log.unit ? ` ${log.unit}` : ''}
-                        </Text>
-                      </View>
-                    </Pressable>
-                    {editingId === log.id ? (
-                      <View style={styles.logEditRow}>
-                        <TextInput
-                          value={editingValue}
-                          onChangeText={setEditingValue}
-                          placeholder="New value"
-                          placeholderTextColor={palette.textSecondary}
-                          style={[styles.logEditInput, { color: palette.text, backgroundColor: palette.surface, borderColor: palette.border }]}
-                        />
-                        <TouchableOpacity style={[styles.logEditButton, { backgroundColor: palette.tint }]} onPress={() => void saveEdit(log)}>
-                          <Text style={styles.logEditButtonText}>Save</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.logEditButton, styles.logEditButtonGhost]} onPress={cancelEdit}>
-                          <Text style={[styles.logEditButtonText, { color: palette.text }]}>Cancel</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ) : null}
-                  </View>
-                ))}
-              </View>
+              <TrackerGroupComponent
+                key={group.key}
+                group={group}
+                palette={palette}
+                isLast={idx === grouped.length - 1}
+                editingId={editingId}
+                editingValue={editingValue}
+                onEditingValueChange={setEditingValue}
+                onLogPress={handleLogPress}
+                onLogLongPress={confirmDelete}
+                onSaveEdit={handleSaveEdit}
+                onCancelEdit={cancelEdit}
+              />
             ))
           )}
         </View>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, TextInput, FlatList } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,87 @@ import { ProgressRing } from '@/src/components/charts';
 import { listGoals, addGoal, deleteGoal, type Goal } from '@/src/storage/goals';
 import { listEvents, type MobileEvent } from '@/src/storage/events';
 import { loadMultipliers, upsertGoalMultiplier, getGoalMultiplierSync, type MultipliersState } from '@/src/storage/multipliers';
+
+type GoalItemProps = {
+  item: Goal;
+  stats: { sessions: number; minutes: number; streak: number };
+  palette: ReturnType<typeof useTheme>['palette'];
+  multiplierValue: number;
+  onPress: () => void;
+  onDelete: () => void;
+  onMultiplierChange: (value: number) => void;
+};
+
+const formatMins = (m: number) => (m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`);
+
+const GoalItem = React.memo(function GoalItem({
+  item,
+  stats,
+  palette,
+  multiplierValue,
+  onPress,
+  onDelete,
+  onMultiplierChange,
+}: GoalItemProps) {
+  return (
+    <TouchableOpacity
+      style={[styles.goalItem, { backgroundColor: palette.surface }]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.goalLeft}>
+        <ProgressRing
+          progress={Math.min(stats.streak / 7, 1)}
+          size={48}
+          strokeWidth={5}
+          color={palette.tint}
+        />
+        <Text style={[styles.streakText, { color: palette.text }]}>{stats.streak}</Text>
+      </View>
+      <View style={styles.goalInfo}>
+        <Text style={[styles.goalName, { color: palette.text }]}>{item.name}</Text>
+        <View style={styles.statsRow}>
+          <Text style={[styles.statText, { color: palette.textSecondary }]}>
+            {stats.sessions} sessions
+          </Text>
+          <Text style={[styles.statDot, { color: palette.textSecondary }]}>·</Text>
+          <Text style={[styles.statText, { color: palette.textSecondary }]}>
+            {formatMins(stats.minutes)}
+          </Text>
+        </View>
+        <View style={styles.multiplierRow}>
+          <Text style={[styles.multiplierLabel, { color: palette.textSecondary }]}>Multiplier</Text>
+          <Text style={[styles.multiplierValue, { color: palette.tint }]}>
+            {multiplierValue.toFixed(2)}x
+          </Text>
+        </View>
+        <Slider
+          minimumValue={0.1}
+          maximumValue={3}
+          step={0.1}
+          value={multiplierValue}
+          onValueChange={onMultiplierChange}
+          minimumTrackTintColor={palette.tint}
+          maximumTrackTintColor={palette.border}
+          thumbTintColor={palette.tint}
+        />
+      </View>
+      <View style={styles.goalRight}>
+        <TouchableOpacity
+          onPress={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          style={styles.deleteButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <InsightIcon name="plus" size={18} color={palette.border} />
+        </TouchableOpacity>
+        <InsightIcon name="chevronRight" size={20} color={palette.textSecondary} />
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 export default function GoalsScreen() {
   const router = useRouter();
@@ -79,11 +160,41 @@ export default function GoalsScreen() {
     await loadData();
   }
 
-  const updateMultiplier = async (goalName: string, value: number) => {
+  const updateMultiplier = useCallback(async (goalName: string, value: number) => {
     await upsertGoalMultiplier(goalName, value);
     const next = await loadMultipliers();
     setMultipliers(next);
-  };
+  }, []);
+
+  const handleDeleteGoalCallback = useCallback((id: string) => {
+    handleDeleteGoal(id);
+  }, []);
+
+  const keyExtractor = useCallback((item: Goal) => item.id, []);
+
+  const renderItem = useCallback(({ item }: { item: Goal }) => {
+    const stats = goalStats[item.id] ?? { sessions: 0, minutes: 0, streak: 0 };
+    const multiplierValue = getGoalMultiplierSync(item.name, multipliers);
+    return (
+      <GoalItem
+        item={item}
+        stats={stats}
+        palette={palette}
+        multiplierValue={multiplierValue}
+        onPress={() => router.push(`/goal/${item.id}`)}
+        onDelete={() => handleDeleteGoal(item.id)}
+        onMultiplierChange={(value) => void updateMultiplier(item.name, value)}
+      />
+    );
+  }, [goalStats, multipliers, palette, router, updateMultiplier]);
+
+  const ListEmptyComponent = useCallback(() => (
+    <View style={[styles.card, { backgroundColor: palette.surface }]}>
+      <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
+        No active goals yet. Add one to start tracking your progress.
+      </Text>
+    </View>
+  ), [palette]);
 
   return (
     <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
@@ -121,77 +232,14 @@ export default function GoalsScreen() {
 
       <FlatList
         data={goals}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={[styles.card, { backgroundColor: palette.surface }]}>
-            <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
-              No active goals yet. Add one to start tracking your progress.
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => {
-          const stats = goalStats[item.id] ?? { sessions: 0, minutes: 0, streak: 0 };
-          const formatMins = (m: number) => (m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`);
-          return (
-            <TouchableOpacity
-              style={[styles.goalItem, { backgroundColor: palette.surface }]}
-              onPress={() => router.push(`/goal/${item.id}`)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.goalLeft}>
-                <ProgressRing
-                  progress={Math.min(stats.streak / 7, 1)}
-                  size={48}
-                  strokeWidth={5}
-                  color={palette.tint}
-                />
-                <Text style={[styles.streakText, { color: palette.text }]}>{stats.streak}</Text>
-              </View>
-              <View style={styles.goalInfo}>
-                <Text style={[styles.goalName, { color: palette.text }]}>{item.name}</Text>
-                <View style={styles.statsRow}>
-                  <Text style={[styles.statText, { color: palette.textSecondary }]}>
-                    {stats.sessions} sessions
-                  </Text>
-                  <Text style={[styles.statDot, { color: palette.textSecondary }]}>·</Text>
-                  <Text style={[styles.statText, { color: palette.textSecondary }]}>
-                    {formatMins(stats.minutes)}
-                  </Text>
-                </View>
-                <View style={styles.multiplierRow}>
-                  <Text style={[styles.multiplierLabel, { color: palette.textSecondary }]}>Multiplier</Text>
-                  <Text style={[styles.multiplierValue, { color: palette.tint }]}>
-                    {getGoalMultiplierSync(item.name, multipliers).toFixed(2)}x
-                  </Text>
-                </View>
-                <Slider
-                  minimumValue={0.1}
-                  maximumValue={3}
-                  step={0.1}
-                  value={getGoalMultiplierSync(item.name, multipliers)}
-                  onValueChange={(value) => void updateMultiplier(item.name, value)}
-                  minimumTrackTintColor={palette.tint}
-                  maximumTrackTintColor={palette.border}
-                  thumbTintColor={palette.tint}
-                />
-              </View>
-              <View style={styles.goalRight}>
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleDeleteGoal(item.id);
-                  }}
-                  style={styles.deleteButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <InsightIcon name="plus" size={18} color={palette.border} />
-                </TouchableOpacity>
-                <InsightIcon name="chevronRight" size={20} color={palette.textSecondary} />
-              </View>
-            </TouchableOpacity>
-          );
-        }}
+        ListEmptyComponent={ListEmptyComponent}
+        renderItem={renderItem}
+        initialNumToRender={10}
+        maxToRenderPerBatch={5}
+        windowSize={5}
+        removeClippedSubviews={true}
       />
     </View>
   );

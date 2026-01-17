@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FlatList, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,6 +11,83 @@ import { computeXp, formatXp } from '@/src/utils/points';
 type FilterKey = 'inbox' | 'today' | 'next7' | 'all' | 'done';
 
 const FILTERS: FilterKey[] = ['inbox', 'today', 'next7', 'all', 'done'];
+
+type TaskCardProps = {
+  task: Task;
+  palette: ReturnType<typeof useTheme>['palette'];
+  onToggleDone: (task: Task) => void;
+  onMoveTask: (task: Task, status: TaskStatus) => void;
+  onNavigateKanban: () => void;
+};
+
+const TaskCard = React.memo(function TaskCard({
+  task,
+  palette,
+  onToggleDone,
+  onMoveTask,
+  onNavigateKanban,
+}: TaskCardProps) {
+  const estimate = task.estimateMinutes ?? 30;
+  const xp = computeXp({
+    importance: task.importance ?? 5,
+    difficulty: task.difficulty ?? 5,
+    durationMinutes: estimate,
+  });
+  return (
+    <View style={[styles.taskCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+      <View style={styles.taskHeader}>
+        <Text style={[styles.taskTitle, { color: palette.text }]}>{task.title}</Text>
+        <TouchableOpacity onPress={() => onToggleDone(task)}>
+          <Text style={{ color: palette.tint }}>{task.status === 'done' ? 'Undo' : 'Done'}</Text>
+        </TouchableOpacity>
+      </View>
+      <Text style={{ color: palette.textSecondary }}>
+        {task.dueAt ? `Due ${formatShortDate(task.dueAt)}` : 'No due date'} · {estimate}m · +{formatXp(xp)} XP
+      </Text>
+      <View style={styles.taskMetaRow}>
+        <Text style={{ color: palette.textSecondary }}>
+          {(task.tags ?? [])
+            .slice(0, 3)
+            .map((t) => `#${t}`)
+            .join(' ')}
+        </Text>
+        <Text style={{ color: palette.textSecondary }}>{task.status.replace('_', ' ')}</Text>
+      </View>
+      <View style={styles.taskActions}>
+        <TouchableOpacity
+          style={[styles.taskAction, { borderColor: palette.border }]}
+          onPress={onNavigateKanban}
+        >
+          <Text style={{ color: palette.text }}>Kanban</Text>
+        </TouchableOpacity>
+        {task.status !== 'in_progress' ? (
+          <TouchableOpacity
+            style={[styles.taskAction, { borderColor: palette.border }]}
+            onPress={() => onMoveTask(task, 'in_progress')}
+          >
+            <Text style={{ color: palette.text }}>Start</Text>
+          </TouchableOpacity>
+        ) : null}
+        {task.status !== 'canceled' ? (
+          <TouchableOpacity
+            style={[styles.taskAction, { borderColor: palette.border }]}
+            onPress={() => onMoveTask(task, 'canceled')}
+          >
+            <Text style={{ color: palette.textSecondary }}>Cancel</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </View>
+  );
+});
+
+const EmptyTasksState = React.memo(function EmptyTasksState({ palette }: { palette: ReturnType<typeof useTheme>['palette'] }) {
+  return (
+    <View style={styles.emptyState}>
+      <Text style={{ color: palette.textSecondary }}>No tasks found</Text>
+    </View>
+  );
+});
 
 function startOfDayMs(d: Date) {
   const x = new Date(d);
@@ -109,73 +186,38 @@ export default function TasksScreen() {
     refreshTasks();
   };
 
-  const toggleDone = async (task: Task) => {
+  const toggleDone = useCallback(async (task: Task) => {
     await updateTask(task.id, {
       status: task.status === 'done' ? 'todo' : 'done',
       completedAt: task.status === 'done' ? null : Date.now(),
     });
     refreshTasks();
-  };
+  }, []);
 
-  const moveTask = async (task: Task, status: TaskStatus) => {
+  const moveTask = useCallback(async (task: Task, status: TaskStatus) => {
     await updateTask(task.id, { status });
     refreshTasks();
-  };
+  }, []);
 
-  const renderTaskCard = (task: Task) => {
-    const estimate = task.estimateMinutes ?? 30;
-    const xp = computeXp({
-      importance: task.importance ?? 5,
-      difficulty: task.difficulty ?? 5,
-      durationMinutes: estimate,
-    });
-    return (
-      <View key={task.id} style={[styles.taskCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-        <View style={styles.taskHeader}>
-          <Text style={[styles.taskTitle, { color: palette.text }]}>{task.title}</Text>
-          <TouchableOpacity onPress={() => toggleDone(task)}>
-            <Text style={{ color: palette.tint }}>{task.status === 'done' ? 'Undo' : 'Done'}</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={{ color: palette.textSecondary }}>
-          {task.dueAt ? `Due ${formatShortDate(task.dueAt)}` : 'No due date'} · {estimate}m · +{formatXp(xp)} XP
-        </Text>
-        <View style={styles.taskMetaRow}>
-          <Text style={{ color: palette.textSecondary }}>
-            {(task.tags ?? [])
-              .slice(0, 3)
-              .map((t) => `#${t}`)
-              .join(' ')}
-          </Text>
-          <Text style={{ color: palette.textSecondary }}>{task.status.replace('_', ' ')}</Text>
-        </View>
-        <View style={styles.taskActions}>
-          <TouchableOpacity
-            style={[styles.taskAction, { borderColor: palette.border }]}
-            onPress={() => router.push('/kanban')}
-          >
-            <Text style={{ color: palette.text }}>Kanban</Text>
-          </TouchableOpacity>
-          {task.status !== 'in_progress' ? (
-            <TouchableOpacity
-              style={[styles.taskAction, { borderColor: palette.border }]}
-              onPress={() => moveTask(task, 'in_progress')}
-            >
-              <Text style={{ color: palette.text }}>Start</Text>
-            </TouchableOpacity>
-          ) : null}
-          {task.status !== 'canceled' ? (
-            <TouchableOpacity
-              style={[styles.taskAction, { borderColor: palette.border }]}
-              onPress={() => moveTask(task, 'canceled')}
-            >
-              <Text style={{ color: palette.textSecondary }}>Cancel</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
-      </View>
-    );
-  };
+  const navigateKanban = useCallback(() => {
+    router.push('/kanban');
+  }, [router]);
+
+  const keyExtractor = useCallback((item: Task) => item.id, []);
+
+  const renderItem = useCallback(({ item }: { item: Task }) => (
+    <TaskCard
+      task={item}
+      palette={palette}
+      onToggleDone={toggleDone}
+      onMoveTask={moveTask}
+      onNavigateKanban={navigateKanban}
+    />
+  ), [palette, toggleDone, moveTask, navigateKanban]);
+
+  const ListEmptyComponent = useCallback(() => (
+    <EmptyTasksState palette={palette} />
+  ), [palette]);
 
   return (
     <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
@@ -230,14 +272,17 @@ export default function TasksScreen() {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.listContent}>
-        {filtered.map((task) => renderTaskCard(task))}
-        {filtered.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={{ color: palette.textSecondary }}>No tasks found</Text>
-          </View>
-        )}
-      </ScrollView>
+      <FlatList
+        data={filtered}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={ListEmptyComponent}
+        initialNumToRender={10}
+        maxToRenderPerBatch={5}
+        windowSize={5}
+        removeClippedSubviews={true}
+      />
     </View>
   );
 }
