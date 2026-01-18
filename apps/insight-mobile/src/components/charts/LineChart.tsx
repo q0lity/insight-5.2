@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Stop } from 'react-native-svg';
+import { LineChart as GiftedLineChart } from 'react-native-gifted-charts/dist/LineChart';
 
 import { useTheme } from '@/src/state/theme';
 
@@ -17,8 +17,6 @@ export type LineChartProps = {
   height?: number;
   /** Line color */
   color?: string;
-  /** Show area fill under the line */
-  showArea?: boolean;
   /** Show data points */
   showPoints?: boolean;
   /** Show horizontal grid lines */
@@ -27,42 +25,10 @@ export type LineChartProps = {
   emptyMessage?: string;
 };
 
-function mapToPath(
-  points: DataPoint[],
-  width: number,
-  height: number,
-  padding: number
-): string {
-  if (points.length === 0) return '';
-
-  const xs = points.map((p) => p.x);
-  const ys = points.map((p) => p.y);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-
-  const xScale = (x: number) => {
-    if (maxX === minX) return padding;
-    return padding + ((x - minX) / (maxX - minX)) * (width - padding * 2);
-  };
-
-  const yScale = (y: number) => {
-    if (maxY === minY) return height - padding;
-    const t = (y - minY) / (maxY - minY);
-    return height - padding - t * (height - padding * 2);
-  };
-
-  return points
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${xScale(p.x).toFixed(2)} ${yScale(p.y).toFixed(2)}`)
-    .join(' ');
-}
-
 export function LineChart({
   points,
   height = 160,
   color,
-  showArea = true,
   showPoints = true,
   showGrid = true,
   emptyMessage = 'No data yet',
@@ -70,45 +36,36 @@ export function LineChart({
   const { palette, isDark } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
 
-  const width = screenWidth - 32;
-  const padding = 24;
+  const chartWidth = screenWidth - 64;
   const strokeColor = color ?? palette.tint;
 
-  const { linePath, areaPath, scaledPoints } = useMemo(() => {
-    if (points.length < 2) {
-      return { linePath: '', areaPath: '', scaledPoints: [] };
-    }
-
-    const xs = points.map((p) => p.x);
-    const ys = points.map((p) => p.y);
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-
-    const xScale = (x: number) => {
-      if (maxX === minX) return padding;
-      return padding + ((x - minX) / (maxX - minX)) * (width - padding * 2);
-    };
-
-    const yScale = (y: number) => {
-      if (maxY === minY) return height - padding;
-      const t = (y - minY) / (maxY - minY);
-      return height - padding - t * (height - padding * 2);
-    };
-
-    const line = mapToPath(points, width, height, padding);
-    const area = `${line} L ${width - padding} ${height - padding} L ${padding} ${height - padding} Z`;
-
-    const scaled = points.map((p) => ({
-      x: xScale(p.x),
-      y: yScale(p.y),
-    }));
-
-    return { linePath: line, areaPath: area, scaledPoints: scaled };
-  }, [points, width, height, padding]);
-
   const gridColor = isDark ? 'rgba(148,163,184,0.15)' : 'rgba(0,0,0,0.08)';
+
+  const chartData = useMemo(() => {
+    if (points.length < 2) return [];
+
+    // Sort by x value to ensure proper line drawing
+    const sortedPoints = [...points].sort((a, b) => a.x - b.x);
+
+    return sortedPoints.map((point) => ({
+      value: point.y,
+      label: point.label,
+      dataPointText: point.label,
+    }));
+  }, [points]);
+
+  const { maxValue, minValue } = useMemo(() => {
+    if (chartData.length === 0) return { maxValue: 1, minValue: 0 };
+    const values = chartData.map((d) => d.value);
+    const max = Math.max(...values);
+    const min = Math.min(...values);
+    // Add some padding to the range
+    const range = max - min || 1;
+    return {
+      maxValue: max + range * 0.1,
+      minValue: Math.max(0, min - range * 0.1),
+    };
+  }, [chartData]);
 
   if (points.length < 2) {
     return (
@@ -123,89 +80,97 @@ export function LineChart({
     );
   }
 
+  // Calculate spacing based on data points
+  const pointCount = chartData.length;
+  const spacing = Math.max(20, (chartWidth - 60) / Math.max(1, pointCount - 1));
+
   return (
-    <Svg width={width} height={height}>
-      <Defs>
-        <LinearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor={strokeColor} stopOpacity={0.3} />
-          <Stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
-        </LinearGradient>
-      </Defs>
-
-      {/* Grid lines */}
-      {showGrid && (
-        <G>
-          {[0, 0.5, 1].map((t, i) => {
-            const y = padding + t * (height - padding * 2);
-            return (
-              <Line
-                key={i}
-                x1={padding}
-                y1={y}
-                x2={width - padding}
-                y2={y}
-                stroke={gridColor}
-                strokeWidth={1}
-              />
-            );
-          })}
-        </G>
-      )}
-
-      {/* Area fill */}
-      {showArea && <Path d={areaPath} fill="url(#areaGradient)" />}
-
-      {/* Line */}
-      <Path
-        d={linePath}
-        fill="none"
-        stroke={strokeColor}
-        strokeWidth={3}
-        strokeLinecap="round"
-        strokeLinejoin="round"
+    <View style={styles.container}>
+      <GiftedLineChart
+        data={chartData}
+        width={chartWidth}
+        height={height - 40}
+        spacing={spacing}
+        initialSpacing={20}
+        endSpacing={20}
+        // Line styling
+        color={strokeColor}
+        thickness={3}
+        curved
+        curvature={0.2}
+        isAnimated
+        animationDuration={800}
+        areaChart={false}
+        // Data points
+        hideDataPoints={!showPoints}
+        dataPointsColor={isDark ? '#1C1C1E' : '#FFFFFF'}
+        dataPointsRadius={5}
+        focusedDataPointColor={strokeColor}
+        // Point border
+        textShiftY={-10}
+        textColor={palette.textSecondary}
+        textFontSize={10}
+        // Grid and axes
+        maxValue={maxValue}
+        noOfSections={showGrid ? 3 : 0}
+        rulesColor={gridColor}
+        rulesType="solid"
+        rulesThickness={1}
+        hideRules={!showGrid}
+        xAxisColor="transparent"
+        yAxisColor="transparent"
+        hideYAxisText
+        // Disable interaction
+        disableScroll
+        // Custom data point rendering for border effect
+        customDataPoint={showPoints ? () => (
+          <View
+            style={[
+              styles.dataPoint,
+              {
+                backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                borderColor: strokeColor,
+              },
+            ]}
+          />
+        ) : undefined}
       />
-
-      {/* Points */}
-      {showPoints &&
-        scaledPoints.map((p, i) => (
-          <G key={i}>
-            <Circle
-              cx={p.x}
-              cy={p.y}
-              r={5}
-              fill={isDark ? '#1C1C1E' : '#FFFFFF'}
-              stroke={strokeColor}
-              strokeWidth={3}
-            />
-          </G>
-        ))}
-    </Svg>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 8,
   },
   emptyCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     borderWidth: 2,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyIcon: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '600',
   },
   emptyText: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  dataPoint: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 3,
   },
 });

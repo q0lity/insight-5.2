@@ -1,10 +1,14 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Text } from '@/components/Themed';
 import { useTheme } from '@/src/state/theme';
 import { InsightIcon, type InsightIconName } from '@/src/components/InsightIcon';
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
+import { LuxHeader } from '@/components/LuxHeader';
 
 type MenuItem = {
   label: string;
@@ -22,7 +26,7 @@ const MENU_SECTIONS: MenuSection[] = [
   {
     title: 'Capture',
     items: [
-      { label: 'Voice', icon: 'mic', route: '/voice', color: '#D95D39' },
+      { label: 'Voice', icon: 'mic', route: '/capture', color: '#D95D39' },
       { label: 'Focus', icon: 'zap', route: '/focus', color: '#F59E0B' },
       { label: 'Notes', icon: 'file', route: '/notes', color: '#3B82F6' },
     ],
@@ -81,13 +85,13 @@ export default function MoreScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: palette.text }]}>More</Text>
-        <Text style={[styles.headerSubtitle, { color: palette.textSecondary }]}>
-          All features at your fingertips
-        </Text>
-      </View>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+      <LuxHeader
+        overline="More"
+        title="Explore"
+        subtitle="All features at your fingertips"
+        style={styles.header}
+      />
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -103,24 +107,19 @@ export default function MoreScreen() {
                 <TouchableOpacity
                   key={item.label}
                   activeOpacity={0.7}
-                  style={[
-                    styles.card,
-                    {
-                      backgroundColor: palette.surface,
-                      borderColor: palette.border,
-                    },
-                  ]}
                   onPress={() => router.push(item.route as any)}
                 >
-                  <View
-                    style={[
-                      styles.iconCircle,
-                      { backgroundColor: `${item.color}${isDark ? '30' : '15'}` },
-                    ]}
-                  >
-                    <InsightIcon name={item.icon} size={22} color={item.color} />
-                  </View>
-                  <Text style={[styles.cardLabel, { color: palette.text }]}>{item.label}</Text>
+                  <LuxCard style={styles.card}>
+                    <View
+                      style={[
+                        styles.iconCircle,
+                        { backgroundColor: `${item.color}${isDark ? '30' : '15'}` },
+                      ]}
+                    >
+                      <InsightIcon name={item.icon} size={22} color={item.color} />
+                    </View>
+                    <Text style={[styles.cardLabel, { color: palette.text }]}>{item.label}</Text>
+                  </LuxCard>
                 </TouchableOpacity>
               ))}
             </View>
@@ -133,7 +132,7 @@ export default function MoreScreen() {
           <View style={styles.quickActions}>
             <TouchableOpacity
               style={[styles.quickAction, { backgroundColor: palette.tint }]}
-              onPress={() => router.push('/voice')}
+              onPress={() => router.push('/capture')}
             >
               <InsightIcon name="mic" size={20} color="#FFFFFF" />
               <Text style={styles.quickActionText}>Voice Capture</Text>
@@ -148,9 +147,9 @@ export default function MoreScreen() {
           </View>
         </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 70 }} />
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
@@ -159,80 +158,66 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  headerTitle: {
-    fontSize: 34,
-    fontWeight: '900',
-    fontFamily: 'Figtree',
-    letterSpacing: -0.5,
-  },
-  headerSubtitle: {
-    fontSize: 15,
-    fontWeight: '500',
-    fontFamily: 'Figtree',
-    marginTop: 4,
+    paddingHorizontal: 14,
+    paddingTop: 11,
+    paddingBottom: 6,
   },
   content: {
-    padding: 16,
-    paddingTop: 8,
+    padding: 11,
+    paddingTop: 6,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 17,
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     fontFamily: 'Figtree',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: 12,
+    marginBottom: 8,
     marginLeft: 4,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
   },
   card: {
     width: '31%',
     aspectRatio: 1,
-    padding: 14,
-    borderRadius: 20,
-    borderWidth: 1,
+    padding: 10,
     justifyContent: 'space-between',
   },
   iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 31,
+    height: 31,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardLabel: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '700',
     fontFamily: 'Figtree',
     letterSpacing: -0.2,
   },
   quickActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   quickAction: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 16,
+    gap: 6,
+    paddingVertical: 11,
+    borderRadius: 11,
   },
   quickActionText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },

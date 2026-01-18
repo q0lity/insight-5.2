@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/state/theme';
 import { InsightIcon } from '@/src/components/InsightIcon';
 import { listEvents, type MobileEvent } from '@/src/storage/events';
+import { Screen } from '@/components/Screen';
 
 type EntityType = 'tags' | 'people' | 'contexts' | 'skills';
 
@@ -230,13 +231,13 @@ export default function TagsScreen() {
   ), [palette, activeSegment, getEmptyMessage]);
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <InsightIcon name="chevronLeft" size={24} color={palette.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: palette.text }]}>Entities</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 28 }} />
       </View>
 
       {/* Segment Control */}
@@ -321,7 +322,7 @@ export default function TagsScreen() {
         windowSize={5}
         removeClippedSubviews={true}
       />
-    </View>
+    </Screen>
   );
 }
 
@@ -333,25 +334,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -0.5,
   },
   backButton: {
-    padding: 8,
+    padding: 6,
   },
   segmentContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 11,
+    paddingBottom: 8,
   },
   segmentRow: {
     flexDirection: 'row',
-    borderRadius: 16,
+    borderRadius: 11,
     padding: 4,
     gap: 4,
   },
@@ -361,98 +362,98 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+    borderRadius: 8,
   },
   segmentIcon: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'SpaceMono',
   },
   segmentLabel: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   segmentBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     paddingVertical: 2,
-    borderRadius: 8,
+    borderRadius: 6,
     marginLeft: 2,
   },
   segmentCount: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   searchContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 11,
+    paddingBottom: 8,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
-    borderRadius: 14,
-    paddingHorizontal: 14,
+    height: 34,
+    borderRadius: 10,
+    paddingHorizontal: 10,
     borderWidth: 1,
-    gap: 10,
+    gap: 7,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 10,
     fontFamily: 'Figtree',
   },
   listContent: {
-    padding: 16,
-    gap: 10,
+    padding: 11,
+    gap: 7,
   },
   emptyCard: {
-    padding: 32,
-    borderRadius: 24,
+    padding: 22,
+    borderRadius: 17,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.16)',
     alignItems: 'center',
-    gap: 16,
+    gap: 11,
   },
   emptyIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 39,
+    height: 39,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyIconText: {
-    fontSize: 24,
+    fontSize: 17,
     fontWeight: '700',
     fontFamily: 'SpaceMono',
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 10,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 15,
     fontFamily: 'Figtree',
-    paddingHorizontal: 16,
+    paddingHorizontal: 11,
   },
   entityItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 16,
+    padding: 10,
+    borderRadius: 11,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.16)',
-    gap: 12,
+    gap: 8,
   },
   entityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   entityIconText: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '700',
     fontFamily: 'SpaceMono',
   },
@@ -460,23 +461,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   entityName: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
     marginBottom: 2,
   },
   entityMeta: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '500',
     fontFamily: 'Figtree',
   },
   countBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 7,
   },
   countText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },

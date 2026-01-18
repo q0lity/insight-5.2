@@ -10,6 +10,8 @@ import { ProgressRing } from '@/src/components/charts';
 import { listGoals, addGoal, deleteGoal, type Goal } from '@/src/storage/goals';
 import { listEvents, type MobileEvent } from '@/src/storage/events';
 import { loadMultipliers, upsertGoalMultiplier, getGoalMultiplierSync, type MultipliersState } from '@/src/storage/multipliers';
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
 
 type GoalItemProps = {
   item: Goal;
@@ -189,21 +191,21 @@ export default function GoalsScreen() {
   }, [goalStats, multipliers, palette, router, updateMultiplier]);
 
   const ListEmptyComponent = useCallback(() => (
-    <View style={[styles.card, { backgroundColor: palette.surface }]}>
+    <LuxCard style={[styles.card, { backgroundColor: palette.surface }]}>
       <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
         No active goals yet. Add one to start tracking your progress.
       </Text>
-    </View>
+    </LuxCard>
   ), [palette]);
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <InsightIcon name="chevronLeft" size={24} color={palette.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: palette.text }]}>Goals</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 28 }} />
       </View>
 
       <View style={styles.inputContainer}>
@@ -241,7 +243,7 @@ export default function GoalsScreen() {
         windowSize={5}
         removeClippedSubviews={true}
       />
-    </View>
+    </Screen>
   );
 }
 
@@ -253,65 +255,65 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -0.5,
   },
   backButton: {
-    padding: 8,
+    padding: 6,
   },
   inputContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    gap: 8,
   },
   input: {
     flex: 1,
-    height: 52,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    fontSize: 16,
+    height: 36,
+    borderRadius: 11,
+    paddingHorizontal: 11,
+    fontSize: 11,
     fontFamily: 'Figtree',
     borderWidth: 1,
   },
   addButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
   listContent: {
-    padding: 16,
-    gap: 12,
+    padding: 11,
+    gap: 8,
   },
   card: {
-    padding: 24,
-    borderRadius: 24,
+    padding: 17,
+    borderRadius: 17,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.16)',
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 15,
+    fontSize: 10,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 15,
     fontFamily: 'Figtree',
   },
   goalItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 20,
+    padding: 11,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.16)',
-    gap: 12,
+    gap: 8,
   },
   goalLeft: {
     alignItems: 'center',
@@ -320,7 +322,7 @@ const styles = StyleSheet.create({
   },
   streakText: {
     position: 'absolute',
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
@@ -329,10 +331,10 @@ const styles = StyleSheet.create({
   },
   goalRight: {
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   goalName: {
-    fontSize: 17,
+    fontSize: 12,
     fontWeight: '700',
     fontFamily: 'Figtree',
     marginBottom: 2,
@@ -340,16 +342,16 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
+    gap: 4,
+    marginBottom: 6,
   },
   statText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   statDot: {
-    fontSize: 12,
+    fontSize: 8,
   },
   multiplierRow: {
     flexDirection: 'row',
@@ -357,12 +359,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   multiplierLabel: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   multiplierValue: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },

@@ -1,17 +1,24 @@
-import { TouchableOpacity, TouchableOpacityProps, StyleSheet } from 'react-native';
+import { StyleSheet, type ViewStyle, type StyleProp } from 'react-native';
+import { MotiPressable } from 'moti/interactions';
+import * as Haptics from 'expo-haptics';
 import { Text } from './Themed';
 import { useTheme } from '@/src/state/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
 
-interface ButtonProps extends TouchableOpacityProps {
+interface ButtonProps {
   title: string;
   variant?: ButtonVariant;
   loading?: boolean;
+  disabled?: boolean;
+  enableHaptics?: boolean;
+  style?: StyleProp<ViewStyle>;
+  onPress?: () => void;
+  testID?: string;
 }
 
-export function Button({ title, variant = 'primary', loading, style, disabled, ...props }: ButtonProps) {
-  const { palette } = useTheme();
+export function Button({ title, variant = 'primary', loading, style, disabled, enableHaptics = true, onPress, testID }: ButtonProps) {
+  const { palette, sizes } = useTheme();
 
   const getBackgroundColor = () => {
     if (disabled) return palette.borderLight;
@@ -48,8 +55,28 @@ export function Button({ title, variant = 'primary', loading, style, disabled, .
     }
   };
 
+  const handlePress = () => {
+    if (enableHaptics) {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    onPress?.();
+  };
+
   return (
-    <TouchableOpacity
+    <MotiPressable
+      onPress={handlePress}
+      disabled={disabled || loading}
+      animate={({ pressed }) => {
+        'worklet';
+        return {
+          scale: pressed ? 0.95 : 1,
+        };
+      }}
+      transition={{
+        type: 'timing',
+        duration: 100,
+      }}
+      testID={testID}
       style={[
         styles.button,
         {
@@ -57,29 +84,28 @@ export function Button({ title, variant = 'primary', loading, style, disabled, .
           borderColor: getBorderColor(),
           borderWidth: variant === 'outline' ? 1 : 0,
           opacity: loading ? 0.7 : 1,
+          height: sizes.buttonHeightSmall,
+          borderRadius: sizes.borderRadiusSmall,
+          paddingHorizontal: sizes.spacing + 6,
+          shadowOpacity: 0,
+          elevation: 0,
         },
         style,
       ]}
-      disabled={disabled || loading}
-      {...props}
     >
-      <Text style={[styles.text, { color: getTextColor() }]}>
+      <Text style={[styles.text, { color: getTextColor(), fontSize: sizes.bodyText }]}>
         {loading ? 'Loading...' : title}
       </Text>
-    </TouchableOpacity>
+    </MotiPressable>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    height: 52,
-    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
   },
   text: {
-    fontSize: 16,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },

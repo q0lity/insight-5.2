@@ -5,6 +5,8 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Text, View } from '@/components/Themed';
 import { useTheme, ThemeMode } from '@/src/state/theme';
 import { useAuth } from '@/src/state/auth';
+import { LuxCard } from '@/components/LuxCard';
+import { LuxHeader } from '@/components/LuxHeader';
 
 type SettingRowProps = {
   icon: keyof typeof FontAwesome.glyphMap;
@@ -42,11 +44,17 @@ export default function SettingsScreen() {
   const { session, signOut, forceReauthenticate } = useAuth();
   const insets = useSafeAreaInsets();
 
+  const themeOptions: { value: ThemeMode; label: string }[] = [
+    { value: 'warm', label: 'White / Orange' },
+    { value: 'oliveOrange', label: 'Olive / Orange' },
+    { value: 'midnight', label: 'Navy / Orange' },
+    { value: 'midnightNeon', label: 'Black / Neon' },
+  ];
+
   const handleThemeChange = () => {
-    const modes: ThemeMode[] = ['system', 'light', 'dark'];
-    const currentIndex = modes.indexOf(themeMode);
-    const nextIndex = (currentIndex + 1) % modes.length;
-    setThemeMode(modes[nextIndex]);
+    const currentIndex = themeOptions.findIndex((mode) => mode.value === themeMode);
+    const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % themeOptions.length;
+    setThemeMode(themeOptions[nextIndex].value);
   };
 
   const handleDensityChange = () => {
@@ -75,28 +83,26 @@ export default function SettingsScreen() {
     );
   };
 
-  const themeLabel = themeMode === 'system' ? 'System' : themeMode === 'dark' ? 'Dark' : 'Light';
-  const densityLabel = displayMode === 'compact' ? 'Impact' : 'Large';
+  const themeLabel = themeOptions.find((mode) => mode.value === themeMode)?.label ?? 'Warm';
+  const densityLabel = displayMode === 'compact' ? 'Compact' : 'Large';
 
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: palette.background }]}
-      contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 100 }}
+      contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 70 }}
     >
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: palette.text }]}>Settings</Text>
-      </View>
+      <LuxHeader overline="Settings" title="Appearance & Account" style={styles.header} />
 
-      <View style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+      <LuxCard style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
         <Text style={[styles.sectionTitle, { color: palette.textSecondary }]}>Account</Text>
         <SettingRow
           icon="user"
           label="Email"
           value={session?.user?.email ?? 'Not signed in'}
         />
-      </View>
+      </LuxCard>
 
-      <View style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+      <LuxCard style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
         <Text style={[styles.sectionTitle, { color: palette.textSecondary }]}>Appearance</Text>
         <SettingRow
           icon="moon-o"
@@ -110,9 +116,9 @@ export default function SettingsScreen() {
           value={densityLabel}
           onPress={handleDensityChange}
         />
-      </View>
+      </LuxCard>
 
-      <View style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+      <LuxCard style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
         <Text style={[styles.sectionTitle, { color: palette.textSecondary }]}>Actions</Text>
         <SettingRow
           icon="refresh"
@@ -125,7 +131,7 @@ export default function SettingsScreen() {
           onPress={handleSignOut}
           danger
         />
-      </View>
+      </LuxCard>
 
       <View style={styles.footer}>
         <Text style={[styles.footerText, { color: palette.textSecondary }]}>
@@ -141,62 +147,57 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    fontFamily: 'Figtree',
+    paddingHorizontal: 14,
+    marginBottom: 17,
   },
   section: {
-    marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 20,
+    marginHorizontal: 14,
+    marginBottom: 11,
+    borderRadius: 14,
     borderWidth: 1,
     overflow: 'hidden',
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 11,
+    paddingTop: 11,
+    paddingBottom: 6,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 11,
+    paddingVertical: 10,
     borderBottomWidth: 1,
   },
   settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   settingLabel: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   settingValue: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '500',
     fontFamily: 'Figtree',
-    marginRight: 8,
+    marginRight: 6,
   },
   footer: {
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 40,
+    marginTop: 17,
+    marginBottom: 28,
   },
   footerText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '500',
     fontFamily: 'Figtree',
   },

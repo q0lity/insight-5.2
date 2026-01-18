@@ -8,48 +8,48 @@ interface InputProps extends TextInputProps {
 }
 
 export function Input({ label, error, style, ...props }: InputProps) {
-  const { palette } = useTheme();
+  const { palette, sizes } = useTheme();
 
   return (
-    <View style={styles.container}>
-      {label && <Text style={[styles.label, { color: palette.text }]}>{label}</Text>}
+    <View style={[styles.container, { gap: sizes.spacingSmall }]}>
+      {label && (
+        <Text style={[styles.label, { color: palette.text, fontSize: sizes.smallText }]}>{label}</Text>
+      )}
       <TextInput
         placeholderTextColor={palette.textSecondary}
         style={[
           styles.input,
           {
-            backgroundColor: palette.background,
+            backgroundColor: palette.surface,
             borderColor: error ? palette.error : palette.border,
             color: palette.text,
+            height: sizes.buttonHeightSmall,
+            borderRadius: sizes.borderRadiusSmall,
+            paddingHorizontal: sizes.spacing + 4,
+            fontSize: sizes.bodyText,
+            shadowOpacity: 0,
+            elevation: 0,
           },
           style,
         ]}
         {...props}
       />
-      {error && <Text style={[styles.error, { color: palette.error }]}>{error}</Text>}
+      {error && <Text style={[styles.error, { color: palette.error, fontSize: sizes.tinyText + 2 }]}>{error}</Text>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: 8,
-  },
+  container: {},
   label: {
-    fontSize: 13,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   input: {
-    height: 52,
-    borderRadius: 16,
-    paddingHorizontal: 16,
     borderWidth: 1,
-    fontSize: 15,
     fontFamily: 'Figtree',
   },
   error: {
-    fontSize: 12,
     fontFamily: 'Figtree',
   },
 });

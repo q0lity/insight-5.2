@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/state/theme';
 import { getMeal, deleteMeal } from '@/src/storage/nutrition';
 import type { MealEntry } from '@/src/lib/health';
+import { Screen } from '@/components/Screen';
 
 export default function MealDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -54,18 +55,18 @@ export default function MealDetailScreen() {
 
   if (!meal) {
     return (
-      <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+      <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="chevron-back" size={24} color={palette.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: palette.text }]}>Meal</Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 28 }} />
         </View>
         <View style={styles.loadingWrap}>
           <Text style={[styles.loadingText, { color: palette.textSecondary }]}>Loading...</Text>
         </View>
-      </View>
+      </Screen>
     );
   }
 
@@ -191,15 +192,15 @@ export default function MealDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backButton: { padding: 6 },
+  backButton: { padding: 4 },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
     flex: 1,
     textAlign: 'center',
@@ -210,38 +211,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: 10,
   },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    gap: 16,
+    paddingHorizontal: 14,
+    paddingBottom: 28,
+    gap: 11,
   },
   metaCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
-    gap: 8,
+    borderRadius: 13,
+    padding: 11,
+    gap: 6,
   },
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   metaLabel: {
-    fontSize: 13,
+    fontSize: 9,
   },
   metaValue: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
   },
   macroCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
-    gap: 12,
+    borderRadius: 13,
+    padding: 11,
+    gap: 8,
   },
   macroTitle: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '700',
   },
   macroGrid: {
@@ -252,38 +253,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   macroValue: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
   },
   macroLabel: {
-    fontSize: 11,
+    fontSize: 8,
     marginTop: 2,
   },
   macroExtra: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 11,
   },
   macroExtraText: {
-    fontSize: 12,
+    fontSize: 8,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '700',
-    marginTop: 8,
+    marginTop: 6,
   },
   emptyCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 24,
+    borderRadius: 13,
+    padding: 17,
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 9,
   },
   itemCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
+    borderRadius: 13,
+    padding: 11,
     gap: 4,
   },
   itemHeader: {
@@ -292,32 +293,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   itemName: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
     flex: 1,
   },
   itemCalories: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
   },
   itemQuantity: {
-    fontSize: 12,
+    fontSize: 8,
   },
   itemMacros: {
-    fontSize: 12,
+    fontSize: 8,
   },
   itemNotes: {
-    fontSize: 12,
+    fontSize: 8,
     fontStyle: 'italic',
     marginTop: 4,
   },
   notesCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
+    borderRadius: 13,
+    padding: 11,
   },
   notesText: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 9,
+    lineHeight: 14,
   },
 });

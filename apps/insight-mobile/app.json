@@ -18,7 +18,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.dgu.insight-mobile",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "Allow Insight to record audio for voice capture."
       }
     },
     "android": {
@@ -26,7 +27,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0B1020"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.dgu.insightmobile"
     },
     "web": {
       "bundler": "metro",

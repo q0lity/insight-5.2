@@ -5,6 +5,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import type { ImagePickerAsset } from 'expo-image-picker';
 
 import { Text, View } from '@/components/Themed';
+import { Screen } from '@/components/Screen';
 import { useTheme } from '@/src/state/theme';
 import { addInboxCapture, listInboxCaptures, updateInboxCapture, updateInboxCaptureText, type CaptureAttachment, type InboxCapture } from '@/src/storage/inbox';
 import { useSession } from '@/src/state/session';
@@ -14,7 +15,8 @@ import { getEvent, startEvent, stopEvent, updateEvent } from '@/src/storage/even
 import { autoCategorize, detectIntent, formatSegmentsPreview, parseCapture } from '@/src/lib/schema';
 import { parseCaptureNatural, type ParsedEvent } from '@/src/lib/nlp/natural';
 import { estimateWorkoutCalories, parseMealFromText, parseWorkoutFromText } from '@/src/lib/health';
-import { getRecordingOptions } from '@/src/lib/audio';
+import { clearActiveRecording, createRecordingWithRetry, getAudioModule, getRecordingOptions, IDLE_AUDIO_MODE } from '@/src/lib/audio';
+import { getDeepgramApiKey, transcribeAudioUriWithDeepgram } from '@/src/lib/deepgram';
 import { invokeCaptureParse } from '@/src/supabase/functions';
 import { upsertTranscriptSegment } from '@/src/supabase/segments';
 import { uploadCaptureAudio } from '@/src/supabase/storage';
@@ -59,21 +61,15 @@ function formatClock(ms: number) {
 }
 
 const TIMESTAMP_LINE_RE = /^\[\d{2}:\d{2}(?::\d{2})?\]\s*$/;
+const DEEPGRAM_SEGMENT_MS = 3000;
+type DeepgramSegment = {
+  uri: string;
+  attachmentId: string;
+};
 type Recording = import('expo-av').Audio.Recording;
 
 let cachedImagePicker: typeof import('expo-image-picker') | null = null;
 let cachedLocation: typeof import('expo-location') | null = null;
-let cachedAudio: typeof import('expo-av') | null = null;
-
-function getAudioModule() {
-  if (cachedAudio) return cachedAudio;
-  try {
-    cachedAudio = require('expo-av');
-    return cachedAudio;
-  } catch {
-    return null;
-  }
-}
 
 function getImagePickerModule() {
   if (cachedImagePicker) return cachedImagePicker;
@@ -997,7 +993,11 @@ export default function CaptureScreen() {
   const [noteMode, setNoteMode] = useState<'raw' | 'transcript' | 'outline'>('raw');
   const [saving, setSaving] = useState(false);
   const [attachments, setAttachments] = useState<CaptureAttachment[]>([]);
-  const [transcriptionProvider, setTranscriptionProvider] = useState<'supabase' | 'whisper'>('supabase');
+  const deepgramApiKey = getDeepgramApiKey();
+  const liveTranscriptionEnabled = Boolean(deepgramApiKey);
+  const [transcriptionProvider, setTranscriptionProvider] = useState<'supabase' | 'whisper' | 'deepgram'>(
+    deepgramApiKey ? 'deepgram' : 'supabase'
+  );
   const [recording, setRecording] = useState<Recording | null>(null);
   const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'processing'>('idle');
   const [importance, setImportance] = useState(5);
@@ -1026,6 +1026,11 @@ export default function CaptureScreen() {
   const pendingMarkerRef = useRef(false);
   const pendingDividerRef = useRef(false);
   const isRecordingStartingRef = useRef(false);
+  const recordingRef = useRef<Recording | null>(null);
+  const liveTranscriptionRef = useRef(false);
+  const segmentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const segmentInFlightRef = useRef(false);
+  const segmentQueueRef = useRef<DeepgramSegment[]>([]);
   const rawTextRef = useRef('');
   const { palette, sizes, isDark } = useTheme();
   const { active, startSession, stopSession } = useSession();
@@ -1040,7 +1045,6 @@ export default function CaptureScreen() {
   }, [active, now, elapsedMs]);
 
   const hasAttachments = useMemo(() => attachments.length > 0, [attachments]);
-  const hasAudio = useMemo(() => attachments.some((item) => item.type === 'audio'), [attachments]);
   const canSave = useMemo(
     () => (rawText.trim().length > 0 || hasAttachments) && !saving,
     [rawText, hasAttachments, saving]
@@ -1084,6 +1088,16 @@ export default function CaptureScreen() {
     const minutesLabel = estimateMinutesValue != null ? `${estimateMinutesValue}m` : '--';
     return `${importance} × ${difficulty} × ${minutesLabel} ÷ 60 × ${goalMultiplier.toFixed(2)}`;
   }, [importance, difficulty, estimateMinutesValue, goalMultiplier]);
+  const transcriptionOptions = useMemo(() => {
+    const options = [
+      { key: 'supabase', label: 'Supabase' },
+      { key: 'whisper', label: 'Whisper' },
+    ];
+    if (deepgramApiKey) {
+      options.push({ key: 'deepgram', label: 'Deepgram' });
+    }
+    return options;
+  }, [deepgramApiKey]);
   const waveformBars = useMemo(
     () => [6, 10, 14, 20, 12, 8, 16, 22, 14, 10, 18, 24, 12, 8, 16, 20, 10, 6, 12],
     []
@@ -1223,7 +1237,11 @@ export default function CaptureScreen() {
     queueAttachmentUpdate(id, { analysis: 'Vision summary queued (analysis pending).' });
   };
 
-  const addAudioAttachment = (uri: string, provider: 'supabase' | 'whisper') => {
+  const addAudioAttachment = (
+    uri: string,
+    provider: 'supabase' | 'whisper' | 'deepgram',
+    options?: { label?: string; metadata?: Record<string, unknown> }
+  ) => {
     const id = `att_${Date.now()}_${Math.random().toString(16).slice(2)}`;
     const next: CaptureAttachment = {
       id,
@@ -1231,13 +1249,20 @@ export default function CaptureScreen() {
       createdAt: Date.now(),
       status: 'pending',
       uri,
-      label: 'Voice memo',
-      metadata: { provider },
+      label: options?.label ?? 'Voice memo',
+      metadata: { provider, ...(options?.metadata ?? {}) },
     };
     setAttachments((prev) => [next, ...prev]);
+    const queuedLabel =
+      provider === 'deepgram'
+        ? 'Deepgram transcription queued.'
+        : provider === 'whisper'
+          ? 'Whisper transcription queued.'
+          : 'Supabase transcription queued.';
     queueAttachmentUpdate(id, {
-      transcription: provider === 'whisper' ? 'Whisper transcription queued.' : 'Supabase transcription queued.',
+      transcription: queuedLabel,
     });
+    return next;
   };
 
   const addLocationAttachment = async () => {
@@ -1294,14 +1319,74 @@ export default function CaptureScreen() {
     sourceAttachments: CaptureAttachment[],
     seedTokens?: { tags: string[]; contexts: string[]; people: string[] }
   ) => {
-    const audioAttachments = sourceAttachments.filter((item) => item.type === 'audio' && item.uri);
-    if (!audioAttachments.length) return;
+    const deepgramAttachments = deepgramApiKey
+      ? sourceAttachments.filter(
+          (item) =>
+            item.type === 'audio' &&
+            item.uri &&
+            item.metadata?.provider === 'deepgram' &&
+            item.metadata?.source !== 'live'
+        )
+      : [];
+    const supabaseAttachments = sourceAttachments.filter(
+      (item) =>
+        item.type === 'audio' &&
+        item.uri &&
+        (item.metadata?.provider !== 'deepgram' || !deepgramApiKey)
+    );
+
+    if (!deepgramAttachments.length && !supabaseAttachments.length) return;
 
     let nextAttachments = [...sourceAttachments];
+
+    if (deepgramApiKey && deepgramAttachments.length) {
+      for (const attachment of deepgramAttachments) {
+        if (!attachment.uri) continue;
+        try {
+          const transcriptText = await transcribeAudioUriWithDeepgram(attachment.uri);
+          if (transcriptText) {
+            await updateInboxCaptureText(captureId, transcriptText);
+            await upsertTranscriptSegment(captureId, transcriptText);
+            const parsed = parseCapture(transcriptText);
+            const processed = parsed.segments.length ? formatSegmentsPreview(parsed.segments) : transcriptText;
+            const mergedTags = uniqStrings([...(seedTokens?.tags ?? []), ...parsed.tokens.tags]);
+            const mergedContexts = uniqStrings([...(seedTokens?.contexts ?? []), ...parsed.tokens.contexts]);
+            const mergedPeople = uniqStrings([...(seedTokens?.people ?? []), ...parsed.tokens.people]);
+            await updateInboxCapture(captureId, {
+              processedText: processed,
+              tags: mergedTags,
+              contexts: mergedContexts,
+              people: mergedPeople,
+            });
+          }
+          nextAttachments = nextAttachments.map((item) =>
+            item.id === attachment.id
+              ? {
+                  ...item,
+                  status: 'ready',
+                  transcription: transcriptText || item.transcription || null,
+                }
+              : item
+          );
+          await persistAttachments(captureId, nextAttachments);
+        } catch (err) {
+          console.warn('[Capture] Deepgram transcription error:', err);
+          nextAttachments = nextAttachments.map((item) =>
+            item.id === attachment.id
+              ? { ...item, status: 'failed', transcription: 'Transcription failed.' }
+              : item
+          );
+          await persistAttachments(captureId, nextAttachments);
+        }
+      }
+    }
+
+    if (!supabaseAttachments.length) return;
+
     let failed = false;
     let failureMessage: string | null = null;
 
-    for (const attachment of audioAttachments) {
+    for (const attachment of supabaseAttachments) {
       if (!attachment.uri) continue;
       try {
         const upload = await uploadCaptureAudio({
@@ -1396,6 +1481,261 @@ export default function CaptureScreen() {
     if (failed) {
       Alert.alert('Transcription failed', failureMessage ?? 'One or more audio clips could not be transcribed.');
     }
+  };
+
+  const appendTranscriptChunk = useCallback((chunk: string) => {
+    const trimmed = chunk.trim();
+    if (!trimmed) return;
+    const now = Date.now();
+    lastInputAtRef.current = now;
+    setRawText((prev) => {
+      const base = prev.trimEnd();
+      const next = base ? `${base} ${trimmed}` : trimmed;
+      rawTextRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const processDeepgramQueue = useCallback(async () => {
+    if (!deepgramApiKey || segmentInFlightRef.current) return;
+    const next = segmentQueueRef.current.shift();
+    if (!next) return;
+    segmentInFlightRef.current = true;
+    try {
+      const transcript = await transcribeAudioUriWithDeepgram(next.uri);
+      if (transcript) {
+        appendTranscriptChunk(transcript);
+      }
+      setAttachments((prev) =>
+        prev.map((item) =>
+          item.id === next.attachmentId
+            ? {
+                ...item,
+                status: 'ready',
+                transcription: transcript || item.transcription || null,
+              }
+            : item
+        )
+      );
+    } catch (err) {
+      console.warn('[Capture] Deepgram segment failed', err);
+      setAttachments((prev) =>
+        prev.map((item) =>
+          item.id === next.attachmentId
+            ? {
+                ...item,
+                status: 'failed',
+                transcription: 'Transcription failed.',
+              }
+            : item
+        )
+      );
+    } finally {
+      segmentInFlightRef.current = false;
+      if (segmentQueueRef.current.length) {
+        void processDeepgramQueue();
+      }
+    }
+  }, [appendTranscriptChunk, deepgramApiKey]);
+
+  const transcribeDeepgramSegment = useCallback(
+    (segment: DeepgramSegment) => {
+      if (!deepgramApiKey) return;
+      segmentQueueRef.current.push(segment);
+      void processDeepgramQueue();
+    },
+    [deepgramApiKey, processDeepgramQueue]
+  );
+
+  function addLiveAudioSegment(uri: string) {
+    const attachment = addAudioAttachment(uri, 'deepgram', {
+      label: 'Live segment',
+      metadata: { source: 'live' },
+    });
+    transcribeDeepgramSegment({ uri, attachmentId: attachment.id });
+    return attachment;
+  }
+
+  const clearSegmentTimer = () => {
+    if (segmentTimerRef.current) {
+      clearTimeout(segmentTimerRef.current);
+      segmentTimerRef.current = null;
+    }
+  };
+
+  const stopLiveTranscription = async () => {
+    liveTranscriptionRef.current = false;
+    clearSegmentTimer();
+    let finalAttachment: CaptureAttachment | null = null;
+    if (recordingRef.current) {
+      try {
+        await recordingRef.current.stopAndUnloadAsync();
+      } catch {
+        // ignore stop failures
+      } finally {
+        const uri = recordingRef.current.getURI();
+        if (uri) {
+          finalAttachment = addLiveAudioSegment(uri);
+        }
+        clearActiveRecording(recordingRef.current);
+        recordingRef.current = null;
+        setRecording(null);
+      }
+    }
+    const Audio = getAudioModule()?.Audio;
+    if (Audio?.setAudioModeAsync) {
+      try {
+        await Audio.setAudioModeAsync(IDLE_AUDIO_MODE);
+      } catch {
+        // ignore audio mode reset errors
+      }
+    }
+    setRecordingState('idle');
+    return finalAttachment;
+  };
+
+  const startLiveSegment = async () => {
+    if (!liveTranscriptionRef.current) return;
+    const next = await createRecordingWithRetry();
+    recordingRef.current = next;
+    setRecording(next);
+    setRecordingState('recording');
+    clearSegmentTimer();
+    segmentTimerRef.current = setTimeout(async () => {
+      if (!recordingRef.current || !liveTranscriptionRef.current) return;
+      const current = recordingRef.current;
+      try {
+        await current.stopAndUnloadAsync();
+      } catch {
+        // ignore stop failures
+      } finally {
+        const uri = current.getURI();
+        clearActiveRecording(current);
+        recordingRef.current = null;
+        if (uri) {
+          addLiveAudioSegment(uri);
+        }
+      }
+      if (liveTranscriptionRef.current) {
+        void startLiveSegment();
+      }
+    }, DEEPGRAM_SEGMENT_MS);
+  };
+
+  const startLiveTranscription = async () => {
+    if (recordingState !== 'idle' || isRecordingStartingRef.current) return;
+    isRecordingStartingRef.current = true;
+    try {
+      const Audio = getAudioModule()?.Audio;
+      if (!Audio?.requestPermissionsAsync || !Audio?.Recording) {
+        Alert.alert('Recording unavailable', 'Audio recording is not available in this build.');
+        return;
+      }
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Microphone permission needed', 'Enable mic access to record audio.');
+        return;
+      }
+      liveTranscriptionRef.current = true;
+      await startLiveSegment();
+    } catch (err) {
+      console.error('Audio recording start failed', err);
+      const message = err instanceof Error ? err.message : 'Unable to start audio recording.';
+      Alert.alert('Recording failed', message);
+      await stopLiveTranscription();
+    } finally {
+      isRecordingStartingRef.current = false;
+    }
+  };
+
+  const stopRecording = async () => {
+    if (liveTranscriptionRef.current) {
+      return await stopLiveTranscription();
+    }
+    if (recordingState !== 'recording') return null;
+    let nextAttachment: CaptureAttachment | null = null;
+    setRecordingState('processing');
+    try {
+      const current = recordingRef.current ?? recording;
+      if (!current) {
+        throw new Error('No active recording.');
+      }
+      await current.stopAndUnloadAsync();
+      const uri = current.getURI();
+      clearActiveRecording(current);
+      recordingRef.current = null;
+      setRecording(null);
+      if (uri) {
+        nextAttachment = addAudioAttachment(uri, transcriptionProvider);
+      }
+    } catch {
+      Alert.alert('Recording failed', 'Unable to stop the recording.');
+    } finally {
+      const Audio = getAudioModule()?.Audio;
+      if (Audio?.setAudioModeAsync) {
+        try {
+          await Audio.setAudioModeAsync(IDLE_AUDIO_MODE);
+        } catch {
+          // ignore audio mode reset errors
+        }
+      }
+      setRecordingState('idle');
+    }
+    return nextAttachment;
+  };
+
+  const startRecording = async () => {
+    if (recordingState !== 'idle' || isRecordingStartingRef.current) return;
+    if (liveTranscriptionEnabled && transcriptionProvider === 'deepgram') {
+      await startLiveTranscription();
+      return;
+    }
+    isRecordingStartingRef.current = true;
+    try {
+      const Audio = getAudioModule()?.Audio;
+      const recordingOptions = getRecordingOptions();
+      if (!Audio?.requestPermissionsAsync || !Audio?.Recording || !recordingOptions) {
+        Alert.alert('Recording unavailable', 'Audio recording is not available in this build.');
+        return;
+      }
+      if (recordingRef.current) {
+        try {
+          const status = await recordingRef.current.getStatusAsync();
+          if (status.isLoaded) {
+            await recordingRef.current.stopAndUnloadAsync();
+          }
+        } catch {
+          // ignore stop failures
+        }
+        clearActiveRecording(recordingRef.current);
+        recordingRef.current = null;
+      }
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Microphone permission needed', 'Enable mic access to record audio.');
+        return;
+      }
+      const next = await createRecordingWithRetry();
+      recordingRef.current = next;
+      setRecording(next);
+      setRecordingState('recording');
+    } catch (err) {
+      console.error('Audio recording start failed', err);
+      const message = err instanceof Error ? err.message : 'Unable to start audio recording.';
+      Alert.alert('Recording failed', message);
+      setRecordingState('idle');
+    } finally {
+      isRecordingStartingRef.current = false;
+    }
+  };
+
+  const toggleRecording = async () => {
+    if (recordingState === 'processing') return;
+    if (recordingState === 'recording') {
+      await stopRecording();
+      return;
+    }
+    await startRecording();
   };
 
   const addTimestampLine = () => {
@@ -1497,60 +1837,22 @@ export default function CaptureScreen() {
     addImageAttachment(result.assets[0], 'library');
   };
 
-  const toggleRecording = async () => {
-    if (recordingState === 'processing' || isRecordingStartingRef.current) return;
-    const Audio = getAudioModule()?.Audio;
-    const recordingOptions = getRecordingOptions();
-    if (!Audio?.requestPermissionsAsync || !Audio?.Recording || !recordingOptions) {
-      Alert.alert('Recording unavailable', 'Audio recording is not available in this build.');
-      return;
-    }
-    if (recording) {
-      setRecordingState('processing');
-      try {
-        await recording.stopAndUnloadAsync();
-        const uri = recording.getURI();
-        if (uri) {
-          addAudioAttachment(uri, transcriptionProvider);
-        }
-      } catch {
-        Alert.alert('Recording failed', 'Unable to stop the recording.');
-      } finally {
-        setRecording(null);
-        setRecordingState('idle');
-      }
-      return;
-    }
-
-    isRecordingStartingRef.current = true;
-    try {
-      const permission = await Audio.requestPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('Microphone permission needed', 'Enable mic access to record audio.');
-        return;
-      }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const next = new Audio.Recording();
-      await next.prepareToRecordAsync(recordingOptions);
-      await next.startAsync();
-      setRecording(next);
-      setRecordingState('recording');
-    } catch {
-      Alert.alert('Recording failed', 'Unable to start audio recording.');
-      setRecordingState('idle');
-    } finally {
-      isRecordingStartingRef.current = false;
-    }
-  };
-
   async function onSave() {
     if (!canSave) return;
     setSaving(true);
     try {
+      let attachmentsForSave = attachments;
+      if (recordingState === 'recording') {
+        const stoppedAttachment = await stopRecording();
+        if (stoppedAttachment) {
+          attachmentsForSave = [stoppedAttachment, ...attachmentsForSave];
+        }
+      }
+      const hasAudioForSave = attachmentsForSave.some((item) => item.type === 'audio');
       const trimmed = rawText.trim();
       const normalized = trimmed.length > 0 ? normalizeCaptureText(trimmed) : '';
-      const fallbackRawText = trimmed || (hasAudio ? '[Audio capture pending transcription]' : '');
-      const processedText = normalized || (hasAudio ? 'Audio transcription pending.' : '');
+      const fallbackRawText = trimmed || (hasAudioForSave ? '[Audio capture pending transcription]' : '');
+      const processedText = normalized || (hasAudioForSave ? 'Audio transcription pending.' : '');
       const command = appendEventId ? null : detectDrivingCommand(rawText);
       if (command?.action === 'start') {
         if (active?.locked) {
@@ -1590,7 +1892,7 @@ export default function CaptureScreen() {
         void stopSession();
       }
 
-      const saved = await addInboxCapture(fallbackRawText, attachments, {
+      const saved = await addInboxCapture(fallbackRawText, attachmentsForSave, {
         importance,
         difficulty,
         tags,
@@ -1692,15 +1994,14 @@ export default function CaptureScreen() {
         });
       }
 
-      const shouldTranscribe = transcriptionProvider === 'supabase' || transcriptionProvider === 'whisper';
-      if (shouldTranscribe) {
-        if (hasAudio) {
-          await transcribeAudioAttachments(saved.id, attachments, {
-            tags,
-            contexts,
-            people,
-          });
-        }
+      const shouldTranscribe =
+        transcriptionProvider === 'supabase' || transcriptionProvider === 'whisper' || transcriptionProvider === 'deepgram';
+      if (shouldTranscribe && hasAudioForSave) {
+        await transcribeAudioAttachments(saved.id, attachmentsForSave, {
+          tags,
+          contexts,
+          people,
+        });
       }
       await refreshInbox();
       if (appendEventId && normalized) {
@@ -2175,7 +2476,7 @@ export default function CaptureScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.recordCard}>
           <View style={styles.recordHeader}>
@@ -2705,10 +3006,7 @@ export default function CaptureScreen() {
 
         <Text style={styles.sectionLabel}>Transcription</Text>
         <View style={styles.segmentRow}>
-          {[
-            { key: 'supabase', label: 'Supabase' },
-            { key: 'whisper', label: 'Whisper' },
-          ].map((option) => {
+          {transcriptionOptions.map((option) => {
             const activeOption = transcriptionProvider === option.key;
             return (
               <Pressable
@@ -2720,7 +3018,7 @@ export default function CaptureScreen() {
                     borderColor: palette.border,
                   },
                 ]}
-                onPress={() => setTranscriptionProvider(option.key as 'supabase' | 'whisper')}>
+                onPress={() => setTranscriptionProvider(option.key as 'supabase' | 'whisper' | 'deepgram')}>
                 <Text style={styles.segmentText}>{option.label}</Text>
               </Pressable>
             );
@@ -2749,7 +3047,13 @@ export default function CaptureScreen() {
                       ? 'Processing...'
                       : item.transcription || item.analysis || 'Ready'}
                     {item.type === 'audio' && item.metadata?.provider
-                      ? ` - ${item.metadata.provider === 'whisper' ? 'Whisper' : 'Supabase'}`
+                      ? ` - ${
+                          item.metadata.provider === 'deepgram'
+                            ? 'Deepgram'
+                            : item.metadata.provider === 'whisper'
+                              ? 'Whisper'
+                              : 'Supabase'
+                        }`
                       : ''}
                   </Text>
                 </View>
@@ -2808,24 +3112,24 @@ export default function CaptureScreen() {
           <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Send'}</Text>
         </Pressable>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    padding: 14,
   },
   scroll: {
-    gap: 16,
-    paddingBottom: 120,
+    gap: 11,
+    paddingBottom: 84,
   },
   recordCard: {
     backgroundColor: '#111315',
-    borderRadius: 24,
-    padding: 18,
-    gap: 12,
+    borderRadius: 17,
+    padding: 13,
+    gap: 8,
   },
   recordHeader: {
     flexDirection: 'row',
@@ -2835,16 +3139,16 @@ const styles = StyleSheet.create({
   recordHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   recordHeaderRight: {
-    width: 24,
+    width: 17,
     alignItems: 'flex-end',
   },
   recordDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: '#F59E0B',
   },
   recordTitle: {
@@ -2856,11 +3160,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    minHeight: 48,
+    minHeight: 34,
   },
   waveBar: {
-    width: 3,
-    borderRadius: 999,
+    width: 12,
+    borderRadius: 699,
     backgroundColor: 'rgba(255,255,255,0.45)',
   },
   recordPrompt: {
@@ -2871,30 +3175,30 @@ const styles = StyleSheet.create({
   recordSubPrompt: {
     color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: 8,
   },
   recordControls: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 6,
+    marginTop: 4,
   },
   recordControl: {
-    minWidth: 64,
+    minWidth: 45,
     alignItems: 'center',
   },
   recordControlText: {
     color: 'rgba(255,255,255,0.7)',
     fontWeight: '600',
-    fontSize: 12,
+    fontSize: 8,
   },
   recordControlDisabled: {
     opacity: 0.4,
   },
   recordButton: {
-    width: 74,
-    height: 44,
-    borderRadius: 20,
+    width: 52,
+    height: 31,
+    borderRadius: 14,
     borderWidth: 2,
     borderColor: '#D95D39',
     alignItems: 'center',
@@ -2905,17 +3209,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(217,93,57,0.18)',
   },
   recordButtonInner: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
+    width: 24,
+    height: 24,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#D95D39',
   },
   recordStop: {
-    width: 14,
-    height: 14,
-    borderRadius: 3,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: '#FFFFFF',
   },
   recordDotInner: {
@@ -2925,29 +3229,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   activeCard: {
-    borderRadius: 24,
-    padding: 20,
+    borderRadius: 17,
+    padding: 14,
     borderWidth: 1,
-    gap: 10,
+    gap: 7,
     alignItems: 'center',
   },
   activeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   activeStatus: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 1,
   },
   activeTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '800',
     textAlign: 'center',
     fontFamily: 'Figtree',
@@ -2957,42 +3261,42 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   activeClock: {
-    fontSize: 38,
+    fontSize: 27,
     fontWeight: '900',
     fontFamily: 'System',
     textAlign: 'right',
   },
   activeRemaining: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
     textAlign: 'right',
   },
   activeActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     width: '100%',
   },
   activeButton: {
     flex: 1,
-    height: 40,
-    borderRadius: 12,
+    height: 28,
+    borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   activeButtonText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   activeButtonTextLight: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
     color: '#FFFFFF',
   },
   notesCard: {
-    gap: 10,
+    gap: 7,
   },
   notesHeader: {
     flexDirection: 'row',
@@ -3001,7 +3305,7 @@ const styles = StyleSheet.create({
   },
   notesActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     alignItems: 'center',
   },
   notesToolbar: {
@@ -3010,32 +3314,32 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   timestampButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 699,
     backgroundColor: 'rgba(217,93,57,0.12)',
   },
   timestampText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     color: '#D95D39',
   },
   modeRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   sendButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(217,93,57,0.12)',
   },
   modePill: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 11,
+    borderRadius: 699,
     borderWidth: 1,
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
@@ -3052,25 +3356,25 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
   processedCard: {
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 10,
+    padding: 8,
     borderWidth: 1,
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   processedText: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 9,
+    lineHeight: 13,
     opacity: 0.8,
   },
   previewEvent: {
     gap: 4,
-    paddingBottom: 10,
-    marginBottom: 10,
+    paddingBottom: 7,
+    marginBottom: 7,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(148,163,184,0.16)',
   },
   previewEventLabel: {
-    fontSize: 11,
+    fontSize: 8,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     fontWeight: '700',
@@ -3080,39 +3384,39 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   previewEventMeta: {
-    fontSize: 12,
+    fontSize: 8,
     opacity: 0.6,
   },
   reviewSection: {
-    gap: 12,
+    gap: 8,
   },
   reviewEmpty: {
     opacity: 0.6,
   },
   reviewCard: {
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 10,
+    padding: 8,
     borderWidth: 1,
     borderColor: 'rgba(28,28,30,0.1)',
     backgroundColor: 'rgba(255,255,255,0.05)',
-    gap: 6,
+    gap: 4,
   },
   reviewTitle: {
     fontWeight: '700',
   },
   reviewMeta: {
-    fontSize: 12,
+    fontSize: 8,
     opacity: 0.6,
   },
   reviewActions: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 6,
+    gap: 7,
+    marginTop: 4,
   },
   reviewButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 699,
   },
   reviewButtonPrimary: {
     backgroundColor: 'rgba(217,93,57,0.18)',
@@ -3124,37 +3428,37 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   frontmatter: {
-    gap: 14,
+    gap: 10,
   },
   sectionLabel: {
-    fontSize: 12,
+    fontSize: 8,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     fontWeight: '700',
     opacity: 0.7,
   },
   fieldRow: {
-    gap: 8,
+    gap: 6,
   },
   fieldLabel: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     opacity: 0.7,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
     alignItems: 'center',
   },
   chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 699,
     backgroundColor: 'rgba(217,93,57,0.12)',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   contextChip: {
     backgroundColor: 'rgba(59,130,246,0.12)',
@@ -3176,62 +3480,62 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   chipRemove: {
-    fontSize: 12,
+    fontSize: 8,
     opacity: 0.7,
   },
   chipHint: {
     opacity: 0.6,
   },
   chipInput: {
-    minWidth: 120,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    minWidth: 84,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     alignItems: 'flex-start',
   },
   gridItem: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
   smallInput: {
-    minHeight: 40,
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    minHeight: 28,
+    borderRadius: 8,
+    paddingHorizontal: 8,
     borderWidth: 1,
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
   pointsCard: {
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    borderRadius: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 8,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
     borderColor: 'rgba(28,28,30,0.08)',
     gap: 4,
   },
   pointsValue: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '700',
   },
   pointsMeta: {
-    fontSize: 12,
+    fontSize: 8,
     opacity: 0.6,
   },
   scaleGroup: {
-    gap: 8,
+    gap: 6,
   },
   scaleRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     flexWrap: 'wrap',
   },
   scalePill: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -3252,25 +3556,25 @@ const styles = StyleSheet.create({
   },
   attachments: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 7,
   },
   segmentRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   segment: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 699,
     borderWidth: 1,
   },
   segmentText: {
     fontWeight: '700',
   },
   attachButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.06)',
@@ -3282,32 +3586,32 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(217,93,57,0.12)',
   },
   recordingHint: {
-    fontSize: 12,
+    fontSize: 8,
     opacity: 0.7,
   },
   attachmentList: {
-    gap: 10,
+    gap: 7,
   },
   attachmentCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    padding: 10,
-    borderRadius: 12,
+    gap: 7,
+    padding: 7,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(28,28,30,0.08)',
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
   attachmentPreview: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 7,
     backgroundColor: 'rgba(28,28,30,0.08)',
   },
   attachmentIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.08)',
@@ -3322,20 +3626,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   attachmentMeta: {
-    fontSize: 12,
+    fontSize: 8,
     opacity: 0.7,
   },
   attachmentRemove: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 17,
+    height: 17,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   input: {
-    minHeight: 220,
-    borderRadius: 14,
-    padding: 12,
+    minHeight: 154,
+    borderRadius: 10,
+    padding: 8,
     borderWidth: 1,
     textAlignVertical: 'top',
     backgroundColor: 'rgba(255,255,255,0.04)',
@@ -3343,10 +3647,10 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: 44,
-    borderRadius: 12,
+    height: 31,
+    borderRadius: 8,
     backgroundColor: '#D95D39',
-    marginTop: 8,
+    marginTop: 6,
   },
   buttonPressed: {
     opacity: 0.9,

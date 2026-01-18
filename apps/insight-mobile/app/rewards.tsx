@@ -10,6 +10,7 @@ import { InsightIcon, type InsightIconName } from '@/src/components/InsightIcon'
 import { listEvents, type MobileEvent } from '@/src/storage/events';
 import { RadarChart } from '@/src/components/charts/RadarChart';
 import { ProgressRing } from '@/src/components/charts/ProgressRing';
+import { LuxCard } from '@/components/LuxCard';
 import {
   getStreakInfo,
   daysToNextMilestone,
@@ -212,7 +213,7 @@ export default function RewardsScreen() {
 
         {/* Character Stats Radar */}
         <Animated.View entering={FadeInDown.delay(100).duration(400)}>
-          <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <LuxCard style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
             <Text style={[styles.sectionTitle, { color: palette.text }]}>Character Stats</Text>
             <View style={styles.radarContainer}>
               <RadarChart
@@ -230,15 +231,15 @@ export default function RewardsScreen() {
                 </View>
               ))}
             </View>
-          </View>
+          </LuxCard>
         </Animated.View>
 
         {/* 1% Journey Section */}
         {streakData && (
           <Animated.View entering={FadeInDown.delay(200).duration(400)}>
-            <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <LuxCard style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <View style={styles.streakHeader}>
-                <Text style={{ fontSize: 24 }}>🔥</Text>
+                <Text style={{ fontSize: 17 }}>🔥</Text>
                 <Text style={[styles.sectionTitle, { color: palette.text, marginTop: 0 }]}>1% Journey</Text>
               </View>
 
@@ -293,13 +294,13 @@ export default function RewardsScreen() {
                   <Text style={[styles.xpValue, { color: palette.text }]}>{streakData.totalActiveDays}</Text>
                 </View>
               </View>
-            </View>
+            </LuxCard>
           </Animated.View>
         )}
 
         {/* Achievement Badges */}
         <Animated.View entering={FadeInDown.delay(300).duration(400)}>
-          <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <LuxCard style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
             <Text style={[styles.sectionTitle, { color: palette.text }]}>Achievements</Text>
             <View style={styles.badgesGrid}>
               {ACHIEVEMENTS.map((a) => {
@@ -335,12 +336,12 @@ export default function RewardsScreen() {
                 );
               })}
             </View>
-          </View>
+          </LuxCard>
         </Animated.View>
 
         {/* Points History */}
         <Animated.View entering={FadeInDown.delay(400).duration(400)}>
-          <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <LuxCard style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
             <Text style={[styles.sectionTitle, { color: palette.text }]}>Points History</Text>
             <View style={styles.historyRow}>
               {pointsHistory.map((day, idx) => {
@@ -364,11 +365,11 @@ export default function RewardsScreen() {
                 );
               })}
             </View>
-          </View>
+          </LuxCard>
         </Animated.View>
 
         {/* Reward Store */}
-        <Text style={[styles.sectionTitle, { color: palette.text, marginTop: 8 }]}>Reward Store</Text>
+        <Text style={[styles.sectionTitle, { color: palette.text, marginTop: 6 }]}>Reward Store</Text>
 
         <View style={styles.grid}>
           {STORE.map((item) => (
@@ -405,22 +406,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -0.5,
   },
   backButton: {
-    padding: 8,
+    padding: 6,
   },
   goldBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   goldText: {
     color: '#EAB308',
@@ -428,27 +429,27 @@ const styles = StyleSheet.create({
     fontFamily: 'Figtree',
   },
   scroll: {
-    padding: 20,
-    gap: 20,
-    paddingBottom: 60,
+    padding: 14,
+    gap: 14,
+    paddingBottom: 42,
   },
   levelCard: {
-    padding: 30,
-    borderRadius: 32,
+    padding: 21,
+    borderRadius: 22,
     borderWidth: 1,
     alignItems: 'center',
-    gap: 24,
+    gap: 17,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.05,
     shadowRadius: 12,
     elevation: 2,
   },
   card: {
-    padding: 24,
-    borderRadius: 24,
+    padding: 17,
+    borderRadius: 17,
     borderWidth: 1,
-    gap: 20,
+    gap: 14,
   },
   progressContainer: {
     alignItems: 'center',
@@ -459,99 +460,99 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   levelLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 1,
   },
   levelValue: {
-    fontSize: 36,
+    fontSize: 25,
     fontWeight: '900',
     fontFamily: 'Figtree',
   },
   xpRow: {
     flexDirection: 'row',
     width: '100%',
-    gap: 16,
+    gap: 11,
   },
   xpItem: {
     flex: 1,
-    padding: 16,
-    borderRadius: 20,
+    padding: 11,
+    borderRadius: 14,
     backgroundColor: 'rgba(0,0,0,0.02)',
     alignItems: 'center',
     gap: 4,
   },
   xpLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   xpValue: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '900',
     fontFamily: 'Figtree',
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   radarContainer: {
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 12,
+    gap: 8,
   },
   statItem: {
     alignItems: 'center',
-    width: 50,
+    width: 35,
   },
   statLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '700',
   },
   statValue: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '800',
   },
   streakHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   milestoneProgress: {
     width: '100%',
-    gap: 8,
+    gap: 6,
   },
   milestoneLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   milestoneText: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '700',
   },
   progressBar: {
-    height: 8,
-    borderRadius: 4,
+    height: 12,
+    borderRadius: 6,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 6,
   },
   messageBox: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 11,
+    borderRadius: 11,
     width: '100%',
   },
   messageText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
     textAlign: 'center',
     fontStyle: 'italic',
@@ -559,32 +560,32 @@ const styles = StyleSheet.create({
   badgesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
   },
   badge: {
     width: '47%',
-    padding: 14,
-    borderRadius: 16,
+    padding: 10,
+    borderRadius: 11,
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   badgeLocked: {
     opacity: 0.5,
   },
   badgeIcon: {
-    fontSize: 28,
+    fontSize: 20,
   },
   badgeIconLocked: {
     opacity: 0.4,
     filter: 'grayscale(1)',
   },
   badgeName: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '800',
     textAlign: 'center',
   },
   badgeDesc: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -592,7 +593,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    gap: 8,
+    gap: 6,
   },
   historyItem: {
     flex: 1,
@@ -600,35 +601,35 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   historyBarContainer: {
-    height: 60,
+    height: 42,
     justifyContent: 'flex-end',
   },
   historyBar: {
-    width: 24,
+    width: 17,
     borderRadius: 6,
-    minHeight: 4,
+    minHeight: 12,
   },
   historyLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '700',
   },
   historyValue: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '800',
   },
   grid: {
-    gap: 16,
+    gap: 11,
   },
   rewardCard: {
-    padding: 20,
-    borderRadius: 24,
+    padding: 14,
+    borderRadius: 17,
     borderWidth: 1,
-    gap: 16,
+    gap: 11,
   },
   iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -636,35 +637,35 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   rewardName: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   rewardDesc: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '500',
-    lineHeight: 20,
+    lineHeight: 14,
   },
   rewardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 16,
+    paddingTop: 11,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.05)',
   },
   rewardCost: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   redeemBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
   },
   redeemText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },

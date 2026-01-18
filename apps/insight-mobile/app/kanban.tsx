@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/Themed';
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
 import { useTheme } from '@/src/state/theme';
 import { createTask, listTasks, updateTask, type Task, type TaskStatus } from '@/src/storage/tasks';
 
@@ -45,17 +47,17 @@ const KanbanCard = React.memo(function KanbanCard({
   const nextStatuses: TaskStatus[] = COLUMNS.map((c) => c.key).filter((k) => k !== columnKey);
 
   return (
-    <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+    <LuxCard style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
       <Text style={[styles.cardTitle, { color: palette.text }]} numberOfLines={2}>
         {task.title}
       </Text>
       <View style={styles.cardMeta}>
-        <Text style={{ color: palette.textSecondary, fontSize: 12 }}>
+        <Text style={{ color: palette.textSecondary, fontSize: 8 }}>
           {task.dueAt ? formatShortDate(task.dueAt) : 'No due'}
         </Text>
         {task.tags && task.tags.length > 0 && (
           <View style={[styles.tag, { backgroundColor: palette.tintLight }]}>
-            <Text style={{ color: palette.tint, fontSize: 10 }}>#{task.tags[0]}</Text>
+            <Text style={{ color: palette.tint, fontSize: 8 }}>#{task.tags[0]}</Text>
           </View>
         )}
       </View>
@@ -66,13 +68,13 @@ const KanbanCard = React.memo(function KanbanCard({
             style={[styles.moveButton, { borderColor: palette.border }]}
             onPress={() => onMoveTask(task, status)}
           >
-            <Text style={{ color: palette.textSecondary, fontSize: 11 }}>
+            <Text style={{ color: palette.textSecondary, fontSize: 8 }}>
               {status === 'done' ? 'Done' : status === 'in_progress' ? 'Start' : status === 'todo' ? 'Reopen' : 'Cancel'}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
-    </View>
+    </LuxCard>
   );
 });
 
@@ -100,7 +102,7 @@ const KanbanColumn = React.memo(function KanbanColumn({
 
   const ListEmptyComponent = useCallback(() => (
     <View style={styles.emptyColumn}>
-      <Text style={{ color: palette.textSecondary, fontSize: 12 }}>No tasks</Text>
+      <Text style={{ color: palette.textSecondary, fontSize: 8 }}>No tasks</Text>
     </View>
   ), [palette]);
 
@@ -109,7 +111,7 @@ const KanbanColumn = React.memo(function KanbanColumn({
       <View style={styles.columnHeader}>
         <Text style={[styles.columnTitle, { color: palette.text }]}>{col.label}</Text>
         <View style={[styles.countBadge, { backgroundColor: palette.tintLight }]}>
-          <Text style={{ color: palette.tint, fontSize: 12 }}>{col.items.length}</Text>
+          <Text style={{ color: palette.tint, fontSize: 8 }}>{col.items.length}</Text>
         </View>
       </View>
       <FlatList
@@ -167,7 +169,7 @@ export default function KanbanScreen() {
   }, []);
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Text style={{ color: palette.tint }}>← Back</Text>
@@ -200,7 +202,7 @@ export default function KanbanScreen() {
           />
         ))}
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
@@ -210,67 +212,67 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    gap: 12,
+    padding: 11,
+    gap: 8,
   },
   backButton: { paddingVertical: 4 },
-  headerTitle: { fontSize: 18, fontWeight: '700', flex: 1 },
-  inputRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingBottom: 12 },
-  input: { flex: 1, height: 40, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12 },
-  addButton: { paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
-  boardContainer: { padding: 16, gap: 12 },
+  headerTitle: { fontSize: 13, fontWeight: '700', flex: 1 },
+  inputRow: { flexDirection: 'row', gap: 7, paddingHorizontal: 11, paddingBottom: 8 },
+  input: { flex: 1, height: 28, borderRadius: 8, borderWidth: 1, paddingHorizontal: 8 },
+  addButton: { paddingHorizontal: 11, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
+  boardContainer: { padding: 11, gap: 8 },
   column: {
-    width: 260,
+    width: 182,
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
-    marginRight: 12,
+    borderRadius: 11,
+    padding: 8,
+    marginRight: 8,
     maxHeight: '100%',
   },
   columnHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  columnTitle: { fontWeight: '700', fontSize: 14 },
+  columnTitle: { fontWeight: '700', fontSize: 10 },
   countBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: 7,
   },
-  columnBody: { flex: 1, gap: 8 },
+  columnBody: { flex: 1, gap: 6 },
   card: {
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    gap: 8,
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 6,
+    gap: 6,
   },
-  cardTitle: { fontWeight: '600', fontSize: 14 },
+  cardTitle: { fontWeight: '600', fontSize: 10 },
   cardMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   tag: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     paddingVertical: 2,
     borderRadius: 6,
   },
   cardActions: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 4,
     marginTop: 4,
   },
   moveButton: {
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 8,
+    borderRadius: 6,
+    paddingHorizontal: 6,
     paddingVertical: 4,
   },
   emptyColumn: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 14,
   },
 });

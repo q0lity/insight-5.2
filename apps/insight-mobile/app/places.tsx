@@ -19,6 +19,7 @@ import type { Place } from '@/src/storage/places';
 import { listEvents } from '@/src/storage/events';
 import type { CalendarEvent } from '@/src/storage/events';
 import { extractPlaces } from '@/src/lib/notes';
+import { Screen } from '@/components/Screen';
 
 type PlaceWithStats = Place & {
   visitCount: number;
@@ -116,7 +117,7 @@ export default function PlacesScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color={palette.text} />
@@ -199,98 +200,98 @@ export default function PlacesScreen() {
           ))
         )}
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backButton: { padding: 6 },
+  backButton: { padding: 4 },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
   },
   statsRow: {
-    paddingHorizontal: 20,
-    marginBottom: 12,
+    paddingHorizontal: 14,
+    marginBottom: 8,
   },
   statBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    gap: 6,
+    gap: 4,
     borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderRadius: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   statText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
   },
   addRow: {
-    marginHorizontal: 20,
-    marginBottom: 12,
+    marginHorizontal: 14,
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 10,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 7,
   },
   addInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 10,
   },
   addButton: {
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    borderRadius: 7,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
   },
   addButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
-    fontSize: 13,
+    fontSize: 9,
   },
   searchRow: {
-    paddingHorizontal: 20,
-    marginBottom: 12,
+    paddingHorizontal: 14,
+    marginBottom: 8,
   },
   searchInput: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    gap: 6,
   },
   searchText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 10,
   },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    gap: 10,
+    paddingHorizontal: 14,
+    paddingBottom: 28,
+    gap: 7,
   },
   emptyCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 32,
+    borderRadius: 13,
+    padding: 22,
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 10,
     textAlign: 'center',
   },
   card: {
@@ -298,19 +299,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 11,
+    padding: 10,
   },
   cardMain: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
     flex: 1,
   },
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -318,11 +319,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '600',
   },
   cardMeta: {
-    fontSize: 12,
+    fontSize: 8,
     marginTop: 2,
   },
 });

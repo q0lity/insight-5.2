@@ -1,16 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/Themed';
+import { Screen } from '@/components/Screen';
+import { LuxHeader } from '@/components/LuxHeader';
+import { LuxPill } from '@/components/LuxPill';
 import { useTheme } from '@/src/state/theme';
 import { listEvents, type CalendarEvent } from '@/src/storage/events';
 import { DayView } from '@/src/components/calendar/DayView';
 import { WeekView } from '@/src/components/calendar/WeekView';
 import { MonthView } from '@/src/components/calendar/MonthView';
+import { CalendarStrip } from '@/src/components/CalendarStrip';
 
 type ViewMode = 'Day' | 'Week' | 'Month';
+
+function formatDateKey(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+function getCategoryColor(category: string | null | undefined): string {
+  if (!category) return '#6B8CAE';
+  const text = category.toLowerCase();
+  if (/(work|meeting|call)/.test(text)) return '#5B5F97';
+  if (/(gym|workout|exercise)/.test(text)) return '#7BAF7B';
+  if (/(food|dinner|lunch)/.test(text)) return '#D95D39';
+  if (/(social|friend|family)/.test(text)) return '#C88B9D';
+  return '#A3B87C';
+}
 
 const VIEW_MODES: ViewMode[] = ['Day', 'Week', 'Month'];
 
@@ -45,7 +63,7 @@ function formatDateLabel(date: Date, mode: ViewMode) {
 
 export default function CalendarScreen() {
   const router = useRouter();
-  const { palette } = useTheme();
+  const { palette, sizes } = useTheme();
   const insets = useSafeAreaInsets();
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -58,6 +76,28 @@ export default function CalendarScreen() {
 
   const refreshEvents = () => {
     listEvents().then((rows) => setEvents(rows));
+  };
+
+  const activityData = useMemo(() => {
+    const data: Record<string, { count: number; colors: string[] }> = {};
+    events.forEach(event => {
+      const dateKey = formatDateKey(new Date(event.startAt));
+      if (!data[dateKey]) {
+        data[dateKey] = { count: 0, colors: [] };
+      }
+      data[dateKey].count++;
+      // Add category color (use a default if no category)
+      const color = getCategoryColor(event.category);
+      if (!data[dateKey].colors.includes(color)) {
+        data[dateKey].colors.push(color);
+      }
+    });
+    return data;
+  }, [events]);
+
+  const handleCalendarStripDateSelect = (date: Date) => {
+    setCurrentDate(date);
+    setViewMode('Day');
   };
 
   const navigatePrev = () => {
@@ -94,23 +134,21 @@ export default function CalendarScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={[styles.headerTitle, { color: palette.text }]}>Calendar</Text>
-          <Text style={[styles.headerSubtitle, { color: palette.textSecondary }]}>
-            {formatDateLabel(currentDate, viewMode)}
-          </Text>
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={[styles.agendaButton, { backgroundColor: palette.tintLight }]}
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+      <LuxHeader
+        overline="Calendar"
+        title={formatDateLabel(currentDate, viewMode)}
+        subtitle={viewMode === 'Day' ? 'Daily plan' : viewMode === 'Week' ? 'Weekly blocks' : 'Monthly view'}
+        right={
+          <LuxPill
+            label="Agenda"
+            variant="accent"
             onPress={() => router.push('/agenda')}
-          >
-            <Text style={{ color: palette.tint, fontSize: 12, fontWeight: '700' }}>Agenda</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+            accessibilityLabel="Open agenda"
+          />
+        }
+        style={[styles.header, { paddingHorizontal: sizes.spacing * 2 }]}
+      />
 
       <View style={styles.navRow}>
         <View style={styles.navButtons}>
@@ -120,12 +158,7 @@ export default function CalendarScreen() {
           >
             <Text style={{ color: palette.text }}>‹</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.todayButton, { backgroundColor: palette.surface, borderColor: palette.border }]}
-            onPress={goToToday}
-          >
-            <Text style={{ color: palette.text, fontSize: 12 }}>Today</Text>
-          </TouchableOpacity>
+          <LuxPill label="Today" variant="ghost" onPress={goToToday} />
           <TouchableOpacity
             style={[styles.navButton, { backgroundColor: palette.surface, borderColor: palette.border }]}
             onPress={navigateNext}
@@ -135,28 +168,25 @@ export default function CalendarScreen() {
         </View>
       </View>
 
-      <View style={[styles.viewModeRow, { paddingHorizontal: 16 }]}>
-        <View style={[styles.segmentRow, { backgroundColor: palette.borderLight }]}>
+      <View style={[styles.viewModeRow, { paddingHorizontal: sizes.spacing * 2 }]}>
+        <View style={styles.segmentRow}>
           {VIEW_MODES.map((mode) => (
-            <TouchableOpacity
+            <LuxPill
               key={mode}
+              label={mode}
+              active={mode === viewMode}
               onPress={() => setViewMode(mode)}
-              style={[
-                styles.segment,
-                mode === viewMode && { backgroundColor: palette.surface },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.segmentText,
-                  { color: mode === viewMode ? palette.text : palette.textSecondary },
-                ]}
-              >
-                {mode}
-              </Text>
-            </TouchableOpacity>
+            />
           ))}
         </View>
+      </View>
+
+      <View style={[styles.calendarStripContainer, { paddingHorizontal: sizes.spacing * 2 }]}>
+        <CalendarStrip
+          selectedDate={currentDate}
+          onDateSelect={handleCalendarStripDateSelect}
+          activityData={activityData}
+        />
       </View>
 
       <View style={styles.viewContainer}>
@@ -180,67 +210,37 @@ export default function CalendarScreen() {
           />
         )}
       </View>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  headerLeft: { gap: 4 },
-  headerTitle: { fontSize: 24, fontWeight: '900' },
-  headerSubtitle: { fontSize: 13, fontWeight: '600' },
-  headerActions: { flexDirection: 'row', gap: 8 },
-  agendaButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingTop: 8,
+    paddingBottom: 10,
   },
   navRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
   },
-  navButtons: { flexDirection: 'row', gap: 8 },
+  navButtons: { flexDirection: 'row', gap: 6 },
   navButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 25,
+    height: 25,
+    borderRadius: 13,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  todayButton: {
-    paddingHorizontal: 16,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  viewModeRow: { marginBottom: 12 },
+  viewModeRow: { marginBottom: 8 },
+  calendarStripContainer: { marginBottom: 12 },
   segmentRow: {
     flexDirection: 'row',
-    padding: 4,
-    borderRadius: 12,
-  },
-  segment: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  segmentText: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    flexWrap: 'wrap',
+    gap: 6,
   },
   viewContainer: { flex: 1 },
 });

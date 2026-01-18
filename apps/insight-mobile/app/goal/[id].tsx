@@ -16,6 +16,8 @@ import { InsightIcon } from '@/src/components/InsightIcon';
 import { Heatmap, ProgressRing } from '@/src/components/charts';
 import { listGoals, type Goal } from '@/src/storage/goals';
 import { listEvents, type MobileEvent } from '@/src/storage/events';
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
 import {
   loadMultipliers,
   upsertGoalMultiplier,
@@ -151,18 +153,18 @@ export default function GoalDetailScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+      <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <InsightIcon name="chevronLeft" size={24} color={palette.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: palette.text }]}>Goal</Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 28 }} />
         </View>
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, { color: palette.textSecondary }]}>Loading...</Text>
         </View>
-      </View>
+      </Screen>
     );
   }
 
@@ -174,7 +176,7 @@ export default function GoalDetailScreen() {
             <InsightIcon name="chevronLeft" size={24} color={palette.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: palette.text }]}>Goal</Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 28 }} />
         </View>
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, { color: palette.textSecondary }]}>Goal not found</Text>
@@ -194,12 +196,12 @@ export default function GoalDetailScreen() {
         <Text style={[styles.headerTitle, { color: palette.text }]} numberOfLines={1}>
           {goal.name}
         </Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 28 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         {/* Goal Info Card */}
-        <View style={[styles.card, { backgroundColor: palette.surface }]}>
+        <LuxCard style={[styles.card, { backgroundColor: palette.surface }]}>
           <Text style={[styles.goalName, { color: palette.text }]}>{goal.name}</Text>
           <Text style={[styles.goalDate, { color: palette.textSecondary }]}>
             Started {formatDate(goal.createdAt)}
@@ -221,7 +223,7 @@ export default function GoalDetailScreen() {
               thumbTintColor={palette.tint}
             />
           </View>
-        </View>
+        </LuxCard>
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
@@ -255,15 +257,15 @@ export default function GoalDetailScreen() {
         </View>
 
         {/* Activity Heatmap */}
-        <View style={[styles.card, { backgroundColor: palette.surface }]}>
+        <LuxCard style={[styles.card, { backgroundColor: palette.surface }]}>
           <Text style={[styles.sectionTitle, { color: palette.text }]}>Activity</Text>
           <View style={styles.heatmapContainer}>
             <Heatmap data={heatmapData} weeks={12} cellSize={12} color={palette.tint} />
           </View>
-        </View>
+        </LuxCard>
 
         {/* Recent Activity */}
-        <View style={[styles.card, { backgroundColor: palette.surface }]}>
+        <LuxCard style={[styles.card, { backgroundColor: palette.surface }]}>
           <Text style={[styles.sectionTitle, { color: palette.text }]}>Recent Sessions</Text>
           {events.length === 0 ? (
             <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
@@ -305,7 +307,7 @@ export default function GoalDetailScreen() {
               )}
             </View>
           )}
-        </View>
+        </LuxCard>
       </ScrollView>
     </View>
   );
@@ -319,11 +321,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -0.5,
@@ -331,7 +333,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   backButton: {
-    padding: 8,
+    padding: 6,
   },
   loadingContainer: {
     flex: 1,
@@ -339,153 +341,153 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    fontSize: 15,
+    fontSize: 10,
     fontFamily: 'Figtree',
   },
   content: {
-    padding: 16,
-    gap: 16,
-    paddingBottom: 40,
+    padding: 11,
+    gap: 11,
+    paddingBottom: 28,
   },
   card: {
-    padding: 20,
-    borderRadius: 24,
+    padding: 14,
+    borderRadius: 17,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.16)',
   },
   goalName: {
-    fontSize: 24,
+    fontSize: 17,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -0.5,
     marginBottom: 4,
   },
   goalDate: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '500',
     fontFamily: 'Figtree',
   },
   multiplierSection: {
-    marginTop: 16,
-    paddingTop: 16,
+    marginTop: 11,
+    paddingTop: 11,
     borderTopWidth: 1,
     borderTopColor: 'rgba(148, 163, 184, 0.16)',
   },
   multiplierRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   multiplierLabel: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   multiplierValue: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
   },
   statCard: {
     width: '47%',
-    padding: 16,
-    borderRadius: 20,
+    padding: 11,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.16)',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   statValue: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '800',
     fontFamily: 'Figtree',
     position: 'absolute',
     top: 37,
   },
   statBigValue: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -1,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 12,
     fontWeight: '800',
     fontFamily: 'Figtree',
-    marginBottom: 16,
+    marginBottom: 11,
   },
   heatmapContainer: {
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 10,
     fontFamily: 'Figtree',
     textAlign: 'center',
-    paddingVertical: 20,
+    paddingVertical: 14,
   },
   eventsList: {
-    gap: 12,
+    gap: 8,
   },
   eventItem: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   eventDot: {
-    width: 20,
+    width: 14,
     alignItems: 'center',
-    paddingTop: 6,
+    paddingTop: 4,
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   eventContent: {
     flex: 1,
   },
   eventTitle: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
     marginBottom: 4,
   },
   eventMeta: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   eventTime: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '500',
     fontFamily: 'Figtree',
   },
   eventDuration: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   eventPoints: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   moreText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
     fontStyle: 'italic',
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 6,
   },
 });

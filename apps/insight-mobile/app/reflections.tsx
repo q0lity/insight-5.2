@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/src/state/theme';
+import { Screen } from '@/components/Screen';
 
 type Reflection = {
   id: string;
@@ -138,7 +139,7 @@ export default function ReflectionsScreen() {
   }, []);
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color={palette.text} />
@@ -299,92 +300,92 @@ export default function ReflectionsScreen() {
           </View>
         )}
       </Modal>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backButton: { padding: 6 },
+  backButton: { padding: 4 },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
   },
   viewToggle: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 8,
-    marginBottom: 16,
+    paddingHorizontal: 14,
+    gap: 6,
+    marginBottom: 11,
   },
   toggleTab: {
     borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    borderRadius: 14,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
   },
   toggleText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
   },
   generatingCard: {
-    marginHorizontal: 20,
-    marginBottom: 16,
+    marginHorizontal: 14,
+    marginBottom: 11,
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 11,
+    padding: 14,
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   generatingText: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '600',
   },
   generatingSubtext: {
-    fontSize: 13,
+    fontSize: 9,
   },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    gap: 12,
+    paddingHorizontal: 14,
+    paddingBottom: 28,
+    gap: 8,
   },
   emptyCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 32,
+    borderRadius: 13,
+    padding: 22,
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   emptyTitle: {
-    fontSize: 17,
+    fontSize: 12,
     fontWeight: '700',
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 10,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 14,
   },
   reflectionCard: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    gap: 12,
+    borderRadius: 11,
+    padding: 11,
+    gap: 8,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -392,29 +393,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardTitle: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '700',
   },
   cardDate: {
-    fontSize: 12,
+    fontSize: 8,
     marginTop: 2,
   },
   cardSummary: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 10,
+    lineHeight: 14,
   },
   themesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 4,
   },
   themeTag: {
-    borderRadius: 8,
-    paddingHorizontal: 10,
+    borderRadius: 6,
+    paddingHorizontal: 7,
     paddingVertical: 4,
   },
   themeText: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '600',
   },
   cardFooter: {
@@ -423,7 +424,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   periodText: {
-    fontSize: 11,
+    fontSize: 8,
   },
   modalContainer: {
     flex: 1,
@@ -432,71 +433,71 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 11,
+    paddingVertical: 10,
     borderBottomWidth: 1,
   },
   modalClose: {
     padding: 4,
   },
   modalTitle: {
-    fontSize: 17,
+    fontSize: 12,
     fontWeight: '700',
   },
   modalScroll: {
-    padding: 20,
-    gap: 16,
+    padding: 14,
+    gap: 11,
   },
   periodCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     alignSelf: 'flex-start',
   },
   periodCardText: {
-    fontSize: 13,
+    fontSize: 9,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '700',
-    marginTop: 8,
+    marginTop: 6,
   },
   summaryText: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 10,
+    lineHeight: 15,
   },
   insightRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 7,
   },
   insightDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginTop: 7,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginTop: 5,
   },
   insightText: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 10,
+    lineHeight: 14,
   },
   modalThemes: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   modalThemeTag: {
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    borderRadius: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   modalThemeText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
   },
 });

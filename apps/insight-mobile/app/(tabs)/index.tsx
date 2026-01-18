@@ -10,12 +10,18 @@ import { useSession } from '@/src/state/session';
 import { listEvents, getPointsByDay, getDailyStats, type MobileEvent } from '@/src/storage/events';
 import { listTasks, completeTask, type MobileTask } from '@/src/storage/tasks';
 import { listTrackerLogs, type TrackerLogEntry } from '@/src/storage/trackers';
-import { InsightIcon } from '@/src/components/InsightIcon';
+import { InsightIcon, type InsightIconName } from '@/src/components/InsightIcon';
 import { RollingNumber } from '@/src/components/RollingNumber';
 import { MobileHeatmap, type HeatmapRange } from '@/src/components/MobileHeatmap';
 import { TrackerHeatMap } from '@/src/components/TrackerHeatMap';
 import { TrackerPieChart } from '@/src/components/TrackerPieChart';
+import { RadarChart } from '@/src/components/charts/RadarChart';
+import { RoutineItem } from '@/src/components/RoutineItem';
 import { computeXp, formatXp } from '@/src/utils/points';
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
+import { LuxHeader } from '@/components/LuxHeader';
+import { SPACING } from '@/src/constants/design-tokens';
 
 function formatClock(ms: number) {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -56,6 +62,30 @@ function formatTaskDate(timestamp: number) {
     return 'Tomorrow';
   }
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function getTaskIcon(task: MobileTask): InsightIconName {
+  const text = `${task.title} ${(task.tags ?? []).join(' ')} ${task.category ?? ''}`.toLowerCase();
+  if (/(work|meeting|call)/i.test(text)) return 'briefcase';
+  if (/(gym|workout|exercise)/i.test(text)) return 'target';
+  if (/(write|note|doc)/i.test(text)) return 'file';
+  if (/(email|message)/i.test(text)) return 'sparkle';
+  if (/(buy|shop|errand)/i.test(text)) return 'gift';
+  return 'check';
+}
+
+function formatTaskTime(timestamp: number | null | undefined): string | undefined {
+  if (!timestamp) return undefined;
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatMinutes(minutes: number | null | undefined): string | undefined {
+  if (!minutes) return undefined;
+  if (minutes < 60) return `${minutes}m`;
+  const hrs = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
 }
 
 // Event accent colors and icons based on category/type
@@ -291,6 +321,19 @@ export default function TodayScreen() {
 
   const moodAverage = useMemo(() => averageTrackerValue(trackerLogs, 'mood'), [trackerLogs]);
   const energyAverage = useMemo(() => averageTrackerValue(trackerLogs, 'energy'), [trackerLogs]);
+  const radarData = useMemo(() => {
+    const metrics = [
+      { label: 'Mood', key: 'mood' },
+      { label: 'Energy', key: 'energy' },
+      { label: 'Stress', key: 'stress' },
+      { label: 'Pain', key: 'pain' },
+    ];
+    return metrics.map((metric) => {
+      const avg = averageTrackerValue(trackerLogs, metric.key);
+      const value = avg != null ? Math.min(100, Math.round(avg * 10)) : 0;
+      return { label: metric.label, shortLabel: metric.label[0], value };
+    });
+  }, [trackerLogs]);
 
   const upcomingSuggestion = useMemo(() => {
     if (active) return null;
@@ -317,9 +360,11 @@ export default function TodayScreen() {
   const trackerCount = useMemo(() => new Set(trackerLogs.map((log) => log.trackerKey)).size, [trackerLogs]);
 
   const recentTrackerLogs = useMemo(() => trackerLogs.slice(0, 3), [trackerLogs]);
+  const sparkBars = useMemo(() => buildSparkBars(heatmapData), [heatmapData]);
+  const sparkMax = useMemo(() => Math.max(1, ...sparkBars.map((bar) => bar.value)), [sparkBars]);
 
   const quickActions = useMemo(
-    () => [
+    (): Array<{ key: string; label: string; icon: InsightIconName; onPress: () => void }> => [
       { key: 'event', label: 'Event', icon: 'calendar', onPress: () => setQuickStartOpen(true) },
       { key: 'task', label: 'Task', icon: 'check', onPress: () => router.push('/tasks') },
       { key: 'note', label: 'Note', icon: 'file', onPress: () => router.push('/capture') },
@@ -330,33 +375,35 @@ export default function TodayScreen() {
   );
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: palette.background }]}
-      contentContainerStyle={{ paddingTop: insets.top + sizes.spacing, paddingBottom: 100 }}
-    >
-      <View style={[styles.header, { paddingHorizontal: sizes.spacing + 4, marginBottom: sizes.spacing }]}>
-        <View>
-          <Text style={[styles.headerTitle, { color: palette.text, fontSize: sizes.headerTitle + 12 }]}>Dashboard</Text>
-          <Text style={[styles.headerSubtitle, { color: palette.textSecondary, fontSize: sizes.smallText }]}>Tactical Lifecycle Insights</Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.nodeBadge, { borderColor: palette.border, backgroundColor: palette.tintLight }]}
-          onPress={() => router.push('/settings')}
-        >
-          <Text style={[styles.nodeBadgeText, { color: palette.tint, fontSize: sizes.bodyText + 2 }]}>1</Text>
-        </TouchableOpacity>
-      </View>
+    <Screen style={[styles.container, { backgroundColor: palette.background }]}>
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top + sizes.spacing, paddingBottom: 70 }}
+        showsVerticalScrollIndicator={false}
+      >
+      <LuxHeader
+        overline="Dashboard"
+        title="Visualize"
+        subtitle="Tactical lifecycle insights"
+        right={
+          <TouchableOpacity
+            style={[styles.nodeBadge, { borderColor: palette.border, backgroundColor: palette.tintLight }]}
+            onPress={() => router.push('/settings')}
+          >
+            <Text style={[styles.nodeBadgeText, { color: palette.tint, fontSize: sizes.bodyText + 2 }]}>1</Text>
+          </TouchableOpacity>
+        }
+        style={[styles.header, { paddingHorizontal: SPACING.lg, marginBottom: SPACING.lg }]}
+      />
 
-      <View
+      <LuxCard
+        accent={active ? palette.tintLight : palette.borderLight}
         style={[
           styles.activeCard,
           {
-            backgroundColor: palette.surface,
-            borderColor: palette.border,
-            marginHorizontal: sizes.spacing + 4,
+            marginHorizontal: SPACING.lg,
             borderRadius: sizes.borderRadius + 8,
-            padding: sizes.cardPadding + 4,
-            gap: sizes.rowGap,
+            padding: SPACING.lg,
+            gap: SPACING.md,
           },
         ]}>
         <View style={styles.activeHeader}>
@@ -430,14 +477,14 @@ export default function TodayScreen() {
             <Text style={[styles.startBtnText, { fontSize: sizes.bodyText }]}>Start Session</Text>
           </TouchableOpacity>
         )}
-      </View>
+      </LuxCard>
 
-      <View style={[styles.quickActionsSection, { marginTop: sizes.spacing + 4, paddingHorizontal: sizes.spacing + 4, gap: sizes.spacingSmall }]}>
+      <View style={[styles.quickActionsSection, { marginTop: SPACING.lg, paddingHorizontal: SPACING.lg, gap: SPACING.md }]}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: palette.text, fontSize: sizes.sectionTitle + 2 }]}>Capture</Text>
           <Text style={[styles.sectionHint, { color: palette.textSecondary, fontSize: sizes.smallText }]}>Start here</Text>
         </View>
-        <View style={[styles.quickActionsRow, { gap: sizes.spacingSmall }]}>
+        <View style={[styles.quickActionsRow, { gap: SPACING.sm }]}>
           {quickActions.map((action) => (
             <TouchableOpacity
               key={action.key}
@@ -560,7 +607,7 @@ export default function TodayScreen() {
         </View>
       ) : null}
 
-      <View style={[styles.pulseSection, { marginTop: sizes.spacing + 12, paddingHorizontal: sizes.spacing + 4, gap: sizes.cardGap }]}>
+      <View style={[styles.pulseSection, { marginTop: SPACING.lg, paddingHorizontal: SPACING.lg, gap: SPACING.md }]}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: palette.text, fontSize: sizes.sectionTitle + 3 }]}>Today Pulse</Text>
           <Text style={[styles.sectionMeta, { color: palette.textSecondary, fontSize: sizes.smallText + 1 }]}>
@@ -568,7 +615,7 @@ export default function TodayScreen() {
           </Text>
         </View>
 
-        <View style={[styles.pulseCard, { backgroundColor: palette.surface, borderColor: palette.border, borderRadius: sizes.borderRadius, padding: sizes.cardPadding }]}>
+        <LuxCard style={styles.pulseCard}>
           <View style={[styles.pulseRow, { gap: sizes.spacingSmall }]}>
             <View style={styles.pulseStat}>
               <Text style={[styles.pulseValue, { color: palette.tint, fontSize: sizes.metricValue }]}>
@@ -597,39 +644,39 @@ export default function TodayScreen() {
           </View>
 
           {(moodAverage != null || energyAverage != null) && (
-            <View style={[styles.pulseRow, { gap: sizes.spacingSmall }]}>
+            <View style={styles.pulseMiniRow}>
               {moodAverage != null && (
-                <View style={styles.pulseStat}>
-                  <Text style={[styles.pulseValue, { color: palette.success, fontSize: sizes.metricValue }]}>
+                <View style={[styles.pulseMiniTile, { borderColor: palette.borderLight, backgroundColor: palette.surfaceAlt }]}>
+                  <Text style={[styles.pulseMiniValue, { color: palette.success }]}>
                     {moodAverage}
                   </Text>
-                  <Text style={[styles.pulseLabel, { color: palette.textSecondary, fontSize: sizes.metricLabel }]}>
+                  <Text style={[styles.pulseMiniLabel, { color: palette.textSecondary }]}>
                     Mood Avg
                   </Text>
                 </View>
               )}
               {energyAverage != null && (
-                <View style={styles.pulseStat}>
-                  <Text style={[styles.pulseValue, { color: palette.warning, fontSize: sizes.metricValue }]}>
+                <View style={[styles.pulseMiniTile, { borderColor: palette.borderLight, backgroundColor: palette.surfaceAlt }]}>
+                  <Text style={[styles.pulseMiniValue, { color: palette.warning }]}>
                     {energyAverage}
                   </Text>
-                  <Text style={[styles.pulseLabel, { color: palette.textSecondary, fontSize: sizes.metricLabel }]}>
+                  <Text style={[styles.pulseMiniLabel, { color: palette.textSecondary }]}>
                     Energy Avg
                   </Text>
                 </View>
               )}
             </View>
           )}
-        </View>
+        </LuxCard>
       </View>
 
       {/* Overview Section with Heatmap and KPIs */}
-      <View style={[styles.overviewSection, { marginTop: sizes.spacing + 12, paddingHorizontal: sizes.spacing + 4, gap: sizes.cardGap }]}>
+      <View style={[styles.overviewSection, { marginTop: SPACING.lg, paddingHorizontal: SPACING.lg, gap: SPACING.md }]}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: palette.text, fontSize: sizes.sectionTitle + 3 }]}>Overview</Text>
         </View>
 
-        <View style={[styles.overviewCard, { backgroundColor: palette.surface, borderColor: palette.border, borderRadius: sizes.borderRadius, padding: sizes.cardPadding, gap: sizes.spacing }]}>
+        <LuxCard style={styles.overviewCard}>
           <MobileHeatmap
             data={heatmapData}
             initialRange={heatmapRange}
@@ -666,12 +713,12 @@ export default function TodayScreen() {
               </View>
             </View>
           )}
-        </View>
+        </LuxCard>
       </View>
 
       {/* Upcoming Tasks Section */}
       {upcomingTasks.length > 0 && (
-        <View style={[styles.tasksSection, { marginTop: sizes.spacing + 12, paddingHorizontal: sizes.spacing + 4, gap: sizes.cardGap }]}>
+        <View style={[styles.tasksSection, { marginTop: SPACING.lg, paddingHorizontal: SPACING.lg, gap: SPACING.md }]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: palette.text, fontSize: sizes.sectionTitle + 3 }]}>Upcoming Tasks</Text>
           <TouchableOpacity onPress={() => router.push('/tasks')}>
@@ -679,99 +726,85 @@ export default function TodayScreen() {
           </TouchableOpacity>
           </View>
 
-          <View style={[styles.tasksCard, { backgroundColor: palette.surface, borderColor: palette.border, borderRadius: sizes.borderRadius }]}>
-            {upcomingTasks.map((task, idx) => (
-              <View
+          <View style={[styles.tasksCard, { gap: SPACING.sm }]}>
+            {upcomingTasks.map((task) => (
+              <RoutineItem
                 key={task.id}
-                style={[
-                  styles.taskRow,
-                  { padding: sizes.cardPadding, borderBottomColor: palette.borderLight, gap: sizes.rowGap },
-                  idx === upcomingTasks.length - 1 && { borderBottomWidth: 0 },
-                ]}>
-                <Pressable
-                  style={[
-                    styles.taskCheckbox,
-                    { borderColor: palette.tint, width: sizes.iconSizeSmall, height: sizes.iconSizeSmall, borderRadius: sizes.iconSizeSmall / 2 },
-                  ]}
-                  onPress={() => handleCompleteTask(task.id)}>
-                  {task.status === 'in_progress' && (
-                    <View style={[styles.taskCheckboxInner, { backgroundColor: palette.tint, width: sizes.iconSizeTiny / 2, height: sizes.iconSizeTiny / 2, borderRadius: sizes.iconSizeTiny / 4 }]} />
-                  )}
-                </Pressable>
-                <Pressable
-                  style={styles.taskContent}
-                  onPress={() => router.push('/tasks')}>
-                  <Text style={[styles.taskTitle, { color: palette.text, fontSize: sizes.bodyText }]} numberOfLines={1}>
-                    {task.title}
-                  </Text>
-                  {(task.dueAt || task.scheduledAt) && (
-                    <Text style={[styles.taskDue, { color: palette.textSecondary, fontSize: sizes.smallText }]}>
-                      {task.dueAt
-                        ? `Due ${formatTaskDate(task.dueAt)}`
-                        : task.scheduledAt
-                          ? `Scheduled ${formatTaskDate(task.scheduledAt)}`
-                          : ''}
-                    </Text>
-                  )}
-                </Pressable>
-                {task.importance && task.importance >= 7 && (
-                  <View style={[styles.taskPriority, { backgroundColor: `${palette.error}15`, width: sizes.iconSize, height: sizes.iconSize, borderRadius: sizes.iconSize / 2 }]}>
-                    <Text style={[styles.taskPriorityText, { color: palette.error, fontSize: sizes.smallText + 1 }]}>!</Text>
-                  </View>
-                )}
-                <TouchableOpacity
-                  style={[styles.taskStartBtn, { backgroundColor: palette.tintLight, paddingHorizontal: sizes.chipPadding, paddingVertical: sizes.spacingSmall, borderRadius: sizes.borderRadiusSmall }]}
-                  onPress={() => handleStartTask(task)}
-                >
-                  <Text style={[styles.taskStartText, { color: palette.tint, fontSize: sizes.smallText }]}>Start</Text>
-                </TouchableOpacity>
-              </View>
+                icon={getTaskIcon(task)}
+                time={formatTaskTime(task.scheduledAt ?? task.dueAt)}
+                title={task.title}
+                duration={formatMinutes(task.estimateMinutes)}
+                completed={task.status === 'done'}
+                onToggle={() => handleCompleteTask(task.id)}
+                onPress={() => router.push('/tasks')}
+              />
             ))}
           </View>
         </View>
       )}
 
-      <View style={[styles.trackerSection, { marginTop: sizes.spacing + 12, paddingHorizontal: sizes.spacing + 4, gap: sizes.cardGap }]}>
+      <View style={[styles.graphSection, { marginTop: SPACING.lg, paddingHorizontal: SPACING.lg, gap: SPACING.md }]}>
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: palette.text, fontSize: sizes.sectionTitle + 3 }]}>Trackers</Text>
+          <Text style={[styles.sectionTitle, { color: palette.text, fontSize: sizes.sectionTitle + 3 }]}>Graphs</Text>
           <TouchableOpacity onPress={() => router.push('/trackers')}>
             <Text style={[styles.seeAll, { color: palette.tint, fontSize: sizes.smallText + 1 }]}>See All</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.trackerCard, { backgroundColor: palette.surface, borderColor: palette.border, borderRadius: sizes.borderRadius, padding: sizes.cardPadding, gap: sizes.spacing }]}>
-          {/* Heat Map visualization */}
-          <View style={[styles.trackerHeatmapSection, { gap: sizes.rowGap }]}>
-            <Text style={[styles.trackerSectionLabel, { color: palette.textSecondary, fontSize: sizes.tinyText }]}>7-Day Overview</Text>
+        <View style={styles.graphGrid}>
+          <LuxCard style={styles.graphCard}>
+            <Text style={[styles.cardTitle, { color: palette.textSecondary }]}>Tracker Heatmap</Text>
             <TrackerHeatMap logs={trackerLogs} days={7} />
-          </View>
+          </LuxCard>
 
-          {/* Pie Chart visualization */}
-          <View style={[styles.trackerPieSection, { gap: sizes.rowGap, borderTopColor: palette.borderLight }]}>
-            <Text style={[styles.trackerSectionLabel, { color: palette.textSecondary, fontSize: sizes.tinyText }]}>By Category</Text>
-            <TrackerPieChart logs={trackerLogs} size={100} />
-          </View>
+          <LuxCard style={styles.graphCard}>
+            <Text style={[styles.cardTitle, { color: palette.textSecondary }]}>Category Split</Text>
+            <TrackerPieChart logs={trackerLogs} size={90} />
+          </LuxCard>
 
-          {/* Quick tracker chips - recent values */}
-          {trackerSnapshot.length > 0 && (
-            <View style={[styles.trackerQuickSection, { gap: sizes.spacingSmall, borderTopColor: palette.borderLight }]}>
-              <Text style={[styles.trackerSectionLabel, { color: palette.textSecondary, fontSize: sizes.tinyText }]}>Recent</Text>
-              <View style={[styles.trackerChipRow, { gap: sizes.spacingSmall }]}>
-                {trackerSnapshot.map((log) => (
-                  <View key={log.id} style={[styles.trackerChip, { borderColor: palette.tint, borderRadius: sizes.borderRadiusSmall, paddingHorizontal: sizes.chipPadding, paddingVertical: sizes.spacingSmall }]}>
-                    <Text style={[styles.trackerChipLabel, { color: palette.text, fontSize: sizes.tinyText }]}>{log.trackerLabel}</Text>
-                    <Text style={[styles.trackerChipValue, { color: palette.tint, fontSize: sizes.smallText + 1 }]}>
-                      {formatTrackerValue(log)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
+          <LuxCard style={styles.graphCard}>
+            <Text style={[styles.cardTitle, { color: palette.textSecondary }]}>Focus Radar</Text>
+            <RadarChart data={radarData} size={120} showLabels={false} />
+          </LuxCard>
+
+          <LuxCard style={styles.graphCard}>
+            <Text style={[styles.cardTitle, { color: palette.textSecondary }]}>Weekly XP</Text>
+            <View style={styles.sparkRow}>
+              {sparkBars.length ? (
+                sparkBars.map((bar) => {
+                  const height = Math.max(6, Math.round((bar.value / sparkMax) * 48));
+                  return (
+                    <View key={bar.label} style={styles.sparkItem}>
+                      <View style={[styles.sparkBar, { height, backgroundColor: bar.value ? palette.tint : palette.borderLight }]} />
+                      <Text style={[styles.sparkLabel, { color: palette.textSecondary }]}>{bar.label}</Text>
+                    </View>
+                  );
+                })
+              ) : (
+                <Text style={[styles.emptySpark, { color: palette.textSecondary }]}>No data yet</Text>
+              )}
             </View>
-          )}
+          </LuxCard>
+
+          <LuxCard style={styles.graphCard}>
+            <Text style={[styles.cardTitle, { color: palette.textSecondary }]}>Recent Trackers</Text>
+            <View style={styles.trackerMiniRow}>
+              {trackerSnapshot.length ? (
+                trackerSnapshot.map((log) => (
+                  <View key={log.id} style={[styles.trackerMiniTile, { borderColor: palette.borderLight }]}>
+                    <Text style={[styles.trackerMiniLabel, { color: palette.textSecondary }]}>{log.trackerLabel}</Text>
+                    <Text style={[styles.trackerMiniValue, { color: palette.tint }]}>{formatTrackerValue(log)}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={[styles.emptySpark, { color: palette.textSecondary }]}>No logs yet</Text>
+              )}
+            </View>
+          </LuxCard>
         </View>
       </View>
 
-      <View style={[styles.timelineSection, { marginTop: sizes.spacing + 12, paddingHorizontal: sizes.spacing + 4, gap: sizes.cardGap }]}>
+      <View style={[styles.timelineSection, { marginTop: SPACING.lg, paddingHorizontal: SPACING.lg, gap: SPACING.md }]}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: palette.text, fontSize: sizes.sectionTitle + 3 }]}>Today's Timeline</Text>
           <TouchableOpacity onPress={() => router.push('/calendar')}>
@@ -779,7 +812,7 @@ export default function TodayScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.timelineCard, { backgroundColor: palette.surface, borderColor: palette.border, borderRadius: sizes.borderRadius }]}>
+        <LuxCard style={[styles.timelineCard, { borderRadius: sizes.borderRadius }]}>
           {todayEvents.length ? (
             <View style={[styles.tlContainer, { paddingVertical: sizes.spacingSmall }]}>
               {todayEvents.map((event, idx) => {
@@ -852,9 +885,10 @@ export default function TodayScreen() {
               <Text style={[styles.timelineEmptyText, { color: palette.textSecondary, fontSize: sizes.smallText + 1 }]}>No events logged for today yet.</Text>
             </View>
           )}
-        </View>
+        </LuxCard>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </Screen>
   );
 }
 
@@ -867,6 +901,17 @@ function formatTrackerValue(log: TrackerLogEntry) {
   return '-';
 }
 
+type SparkBarDatum = { label: string; value: number };
+
+function buildSparkBars(data: Record<string, number>): SparkBarDatum[] {
+  const keys = Object.keys(data).sort();
+  const recent = keys.slice(-7);
+  return recent.map((key) => ({
+    label: key.slice(5).replace('-', '/'),
+    value: data[key] ?? 0,
+  }));
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -875,78 +920,71 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    marginBottom: 24,
+    paddingHorizontal: 17,
+    marginBottom: 17,
   },
   headerTitle: {
-    fontSize: 34,
+    fontSize: 24,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -1,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1.5,
     marginTop: 4,
   },
   nodeBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 31,
+    height: 31,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     backgroundColor: 'rgba(217,93,57,0.1)',
   },
   nodeBadgeText: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '800',
     color: '#D95D39',
   },
   activeCard: {
-    marginHorizontal: 24,
-    borderRadius: 32,
-    padding: 24,
-    borderWidth: 1,
-    gap: 12,
+    borderRadius: 22,
+    padding: 17,
+    gap: 8,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
   },
   activeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   activeStatus: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 1,
   },
   activeBreadcrumb: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     letterSpacing: 0.5,
     textAlign: 'center',
   },
   activeTitle: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '800',
     textAlign: 'center',
     fontFamily: 'Figtree',
   },
   activeClock: {
-    fontSize: 48,
+    fontSize: 34,
     fontWeight: '900',
     fontFamily: 'System',
     letterSpacing: -1,
@@ -956,184 +994,184 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   progressTrack: {
     flex: 1,
-    height: 6,
-    borderRadius: 3,
+    height: 12,
+    borderRadius: 6,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: 6,
   },
   progressText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
-    width: 36,
+    width: 25,
     textAlign: 'right',
   },
   activeRemaining: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
   },
   activeXp: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   activeActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     width: '100%',
   },
   activeButton: {
     flex: 1,
-    height: 40,
-    borderRadius: 12,
+    height: 28,
+    borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   activeButtonText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   activeButtonTextLight: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
     color: '#FFFFFF',
   },
   startBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 16,
+    paddingHorizontal: 17,
+    paddingVertical: 8,
+    borderRadius: 11,
     marginTop: 4,
   },
   startBtnText: {
     color: '#FFFFFF',
     fontWeight: '800',
-    fontSize: 15,
+    fontSize: 10,
   },
   modalBackdrop: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 17,
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
   modalBackdropPress: {
     ...StyleSheet.absoluteFillObject,
   },
   modalCard: {
-    borderRadius: 24,
-    padding: 20,
+    borderRadius: 17,
+    padding: 14,
     borderWidth: 1,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   modalSubtitle: {
-    marginTop: 6,
-    fontSize: 13,
+    marginTop: 4,
+    fontSize: 9,
     fontWeight: '500',
     fontFamily: 'Figtree',
   },
   modalInput: {
-    marginTop: 16,
-    borderRadius: 16,
+    marginTop: 11,
+    borderRadius: 11,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 10,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   modalActions: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
+    gap: 8,
+    marginTop: 11,
   },
   modalButton: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 11,
     borderWidth: 1,
-    paddingVertical: 12,
+    paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalButtonText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   modalButtonTextLight: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   suggestionCard: {
-    marginHorizontal: 24,
-    marginTop: 20,
-    borderRadius: 24,
+    marginHorizontal: 17,
+    marginTop: 14,
+    borderRadius: 17,
     borderWidth: 1,
-    padding: 16,
-    gap: 12,
+    padding: 11,
+    gap: 8,
   },
   suggestionMeta: {
     gap: 4,
   },
   suggestionLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
   suggestionTitle: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   suggestionTime: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
   },
   suggestionActions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 7,
   },
   suggestionButton: {
     flex: 1,
-    height: 40,
-    borderRadius: 12,
+    height: 28,
+    borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   suggestionButtonText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   suggestionButtonTextLight: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
     color: '#FFFFFF',
   },
   timelineSection: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-    gap: 16,
+    marginTop: 22,
+    paddingHorizontal: 17,
+    gap: 11,
   },
   trackerSection: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-    gap: 16,
+    marginTop: 22,
+    paddingHorizontal: 17,
+    gap: 11,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1141,17 +1179,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   sectionHint: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
   },
   quickActionsSection: {
-    marginTop: 24,
-    gap: 10,
+    marginTop: 17,
+    gap: 7,
   },
   quickActionsRow: {
     flexDirection: 'row',
@@ -1161,31 +1199,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    gap: 6,
+    gap: 4,
   },
   quickActionText: {
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   sectionMeta: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
   },
   seeAll: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
   },
   pulseSection: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-    gap: 16,
+    marginTop: 22,
+    paddingHorizontal: 17,
+    gap: 11,
   },
   pulseCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.16)',
-    padding: 20,
-    gap: 16,
+    padding: 10,
+    gap: 8,
   },
   pulseRow: {
     flexDirection: 'row',
@@ -1198,35 +1233,55 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   pulseValue: {
-    fontSize: 22,
+    fontSize: 12,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   pulseLabel: {
-    fontSize: 10,
+    fontSize: 7,
     fontWeight: '700',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
-  timelineCard: {
-    borderRadius: 24,
+  pulseMiniRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  pulseMiniTile: {
+    flex: 1,
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.16)',
+    borderRadius: 8,
+    alignItems: 'center',
+    paddingVertical: 6,
+    gap: 2,
+  },
+  pulseMiniValue: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  pulseMiniLabel: {
+    fontSize: 7,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  timelineCard: {
+    borderRadius: 12,
     overflow: 'hidden',
   },
   timelineRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    padding: 14,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(148, 163, 184, 0.08)',
-    gap: 16,
+    gap: 11,
   },
   timelineTimeCol: {
-    width: 60,
+    width: 42,
   },
   timelineTime: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '800',
   },
   timelineContent: {
@@ -1234,83 +1289,96 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   timelineTitle: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '700',
   },
   timelineCategory: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   emptyTimeline: {
-    padding: 40,
+    padding: 28,
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   timelineEmptyText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
     textAlign: 'center',
   },
-  trackerCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.16)',
-    padding: 20,
-    gap: 20,
+  graphSection: {
+    marginTop: 22,
+    paddingHorizontal: 17,
+    gap: 11,
   },
-  trackerHeatmapSection: {
-    gap: 12,
-  },
-  trackerPieSection: {
-    gap: 12,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(148, 163, 184, 0.08)',
-  },
-  trackerQuickSection: {
-    gap: 10,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(148, 163, 184, 0.08)',
-  },
-  trackerSectionLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  trackerChipRow: {
+  graphGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 16, // SPACING.md
   },
-  trackerChip: {
+  graphCard: {
+    width: '48%',
+    padding: 10,
+    gap: 6,
+  },
+  cardTitle: {
+    fontSize: 8,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  sparkRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+    minHeight: 60,
+  },
+  sparkItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 3,
+  },
+  sparkBar: {
+    width: 8,
+    borderRadius: 4,
+  },
+  sparkLabel: {
+    fontSize: 7,
+    fontWeight: '600',
+  },
+  emptySpark: {
+    fontSize: 8,
+  },
+  trackerMiniRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  trackerMiniTile: {
+    flexBasis: '48%',
     borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 8,
+    padding: 6,
     gap: 2,
   },
-  trackerChipLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+  trackerMiniLabel: {
+    fontSize: 7,
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
-  trackerChipValue: {
-    fontSize: 14,
+  trackerMiniValue: {
+    fontSize: 9,
     fontWeight: '800',
   },
   overviewSection: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-    gap: 16,
+    marginTop: 22,
+    paddingHorizontal: 17,
+    gap: 11,
   },
   overviewCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.16)',
-    padding: 20,
-    gap: 24,
+    padding: 10,
+    gap: 12,
   },
   kpiRow: {
     flexDirection: 'row',
@@ -1323,107 +1391,104 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   kpiValue: {
-    fontSize: 24,
+    fontSize: 13,
     fontWeight: '900',
     fontFamily: 'Figtree',
   },
   kpiLabel: {
-    fontSize: 10,
+    fontSize: 7,
     fontWeight: '700',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   kpiDivider: {
     width: 1,
-    height: 32,
+    height: 22,
   },
   tasksSection: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-    gap: 16,
+    marginTop: 22,
+    paddingHorizontal: 17,
+    gap: 11,
   },
   tasksCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.16)',
-    overflow: 'hidden',
+    gap: 8, // Will be overridden by inline SPACING.sm
   },
   taskRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 11,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(148, 163, 184, 0.08)',
-    gap: 12,
+    gap: 8,
   },
   taskCheckbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 15,
+    height: 15,
+    borderRadius: 8,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   taskCheckboxInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   taskContent: {
     flex: 1,
     gap: 2,
   },
   taskTitle: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   taskDue: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
   },
   taskPriority: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 17,
+    height: 17,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   taskPriorityText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '900',
   },
   taskStartBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginLeft: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginLeft: 6,
   },
   taskStartText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '700',
   },
   // New timeline styles matching desktop
   tlContainer: {
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   tlBlock: {
     flexDirection: 'row',
-    minHeight: 100,
+    minHeight: 70,
   },
   tlTimeCol: {
-    width: 56,
+    width: 39,
     paddingRight: 4,
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
   tlTime: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },
   tlLineCol: {
-    width: 48,
+    width: 34,
     alignItems: 'center',
   },
   tlLineSegment: {
@@ -1431,67 +1496,67 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tlNode: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tlActivePulse: {
     position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     opacity: 0.3,
   },
   tlContent: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 11,
     borderWidth: 1,
-    padding: 14,
-    marginVertical: 8,
-    marginLeft: 8,
-    marginRight: 16,
+    padding: 10,
+    marginVertical: 6,
+    marginLeft: 6,
+    marginRight: 11,
     gap: 4,
   },
   tlTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   tlTitle: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '800',
     fontFamily: 'Figtree',
     flex: 1,
   },
   tlActiveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   tlCategory: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
   },
   tlTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 4,
     marginTop: 4,
   },
   tlTag: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 6,
   },
   tlTagText: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '600',
   },
   tlDuration: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '700',
     textTransform: 'uppercase',
     marginTop: 4,

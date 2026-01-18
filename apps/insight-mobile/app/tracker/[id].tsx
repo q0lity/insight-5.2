@@ -6,6 +6,8 @@ import Svg, { Path, Line, Circle } from 'react-native-svg';
 
 import { useTheme } from '@/src/state/theme';
 import { InsightIcon } from '@/src/components/InsightIcon';
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
 import {
   createTrackerLog,
   deleteTrackerLog,
@@ -183,7 +185,7 @@ export default function TrackerDetailScreen() {
   const trackerLabel = logs[0]?.trackerLabel ?? trackerKey;
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <InsightIcon name="chevronLeft" size={24} color={palette.text} />
@@ -191,12 +193,12 @@ export default function TrackerDetailScreen() {
         <Text style={[styles.headerTitle, { color: palette.text }]} numberOfLines={1}>
           {trackerLabel}
         </Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 28 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Quick Log */}
-        <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <LuxCard style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <Text style={[styles.cardTitle, { color: palette.text }]}>Log Value</Text>
           <View style={styles.quickLogRow}>
             <TextInput
@@ -211,7 +213,7 @@ export default function TrackerDetailScreen() {
               <InsightIcon name="plus" size={20} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
-        </View>
+        </LuxCard>
 
         {/* Stats Grid */}
         {stats && (
@@ -241,27 +243,27 @@ export default function TrackerDetailScreen() {
 
         {/* 7-Day Heatmap */}
         <Text style={[styles.sectionTitle, { color: palette.text }]}>7-Day Heatmap</Text>
-        <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <LuxCard style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           {heatmapData.length > 0 ? (
             <HeatmapStrip data={heatmapData} palette={palette} isDark={isDark} />
           ) : (
             <Text style={[styles.emptyText, { color: palette.textSecondary }]}>No data yet</Text>
           )}
-        </View>
+        </LuxCard>
 
         {/* Trend Chart */}
         {chartData.length >= 2 && (
           <>
             <Text style={[styles.sectionTitle, { color: palette.text }]}>Trend</Text>
-            <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <LuxCard style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <MiniLineChart data={chartData} width={300} height={120} color={palette.tint} />
-            </View>
+            </LuxCard>
           </>
         )}
 
         {/* Recent Values */}
         <Text style={[styles.sectionTitle, { color: palette.text }]}>Recent Values</Text>
-        <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <LuxCard style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           {logs.length === 0 ? (
             <View style={styles.emptyState}>
               <InsightIcon name="sparkle" size={32} color={palette.textSecondary} />
@@ -285,9 +287,9 @@ export default function TrackerDetailScreen() {
               </TouchableOpacity>
             ))
           )}
-        </View>
+        </LuxCard>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
@@ -299,85 +301,85 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '900',
     letterSpacing: -0.5,
     flex: 1,
     textAlign: 'center',
   },
   backButton: {
-    padding: 8,
+    padding: 6,
   },
   scroll: {
-    padding: 20,
-    gap: 20,
-    paddingBottom: 60,
+    padding: 14,
+    gap: 14,
+    paddingBottom: 42,
   },
   card: {
-    borderRadius: 24,
+    borderRadius: 17,
     borderWidth: 1,
-    padding: 20,
+    padding: 14,
   },
   cardTitle: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '800',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   quickLogRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   input: {
     flex: 1,
-    height: 48,
-    borderRadius: 12,
+    height: 34,
+    borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 16,
-    fontSize: 16,
+    paddingHorizontal: 11,
+    fontSize: 11,
   },
   logButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
   },
   statCard: {
     width: '47%',
-    borderRadius: 20,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: 16,
+    padding: 11,
     alignItems: 'center',
   },
   statLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 1,
   },
   statValue: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '900',
     marginVertical: 4,
   },
   statUnit: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '600',
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '800',
   },
   heatmapContainer: {
-    gap: 8,
+    gap: 6,
   },
   heatmapRow: {
     flexDirection: 'row',
@@ -388,12 +390,12 @@ const styles = StyleSheet.create({
   },
   heatmapCell: {
     aspectRatio: 1,
-    borderRadius: 8,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   heatmapCellText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
   },
   heatmapLabels: {
@@ -405,16 +407,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heatmapLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '700',
   },
   emptyState: {
-    padding: 32,
+    padding: 22,
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -422,7 +424,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   logRowBorder: {
     borderBottomWidth: 1,
@@ -432,20 +434,20 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   logDate: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
   },
   logTime: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '600',
   },
   logValuePill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 11,
   },
   logValueText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '800',
   },
 });

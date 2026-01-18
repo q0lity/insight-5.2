@@ -190,7 +190,7 @@ export function MobileHeatmap({
         return palette.borderLight;
       }
       const intensity = Math.min(1, value / maxValue);
-      // Tint gradient based on intensity using theme accent
+      // Tint based on intensity using theme accent
       if (intensity < 0.25) {
         return `${accent}40`; // 25% opacity
       }
@@ -369,19 +369,19 @@ export function MobileHeatmap({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
+    gap: 8,
   },
   rangeSelectorContainer: {
     flexDirection: 'row',
-    borderRadius: 10,
-    padding: 3,
+    borderRadius: 7,
+    padding: 4,
     gap: 2,
   },
   rangeOption: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 6,
     alignItems: 'center',
   },
   rangeOptionSelected: {
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   rangeOptionText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
   },
   rangeOptionTextSelected: {
@@ -404,11 +404,11 @@ const styles = StyleSheet.create({
   },
   monthLabelsRow: {
     position: 'relative',
-    height: 16,
+    height: 12,
   },
   monthLabel: {
     position: 'absolute',
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -423,19 +423,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '600',
   },
   dayLabelFull: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '700',
   },
   scrollContent: {
-    paddingRight: 8,
+    paddingRight: 6,
   },
   weeksRow: {
     flexDirection: 'row',
-    gap: 3,
+    gap: 4,
   },
   weekColumn: {
     flexDirection: 'column',
@@ -448,22 +448,22 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   cellDayNumber: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
   },
   legendContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
   },
   legendText: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '500',
   },
   legendCells: {
     flexDirection: 'row',
-    gap: 3,
+    gap: 4,
   },
   legendCell: {
     width: 12,

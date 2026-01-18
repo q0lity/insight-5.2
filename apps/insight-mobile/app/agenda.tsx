@@ -4,6 +4,10 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/Themed';
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
+import { LuxHeader } from '@/components/LuxHeader';
+import { LuxPill } from '@/components/LuxPill';
 import { useTheme } from '@/src/state/theme';
 import { listEvents, type CalendarEvent } from '@/src/storage/events';
 
@@ -96,13 +100,18 @@ export default function AgendaScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+      <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Text style={{ color: palette.tint }}>← Back</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: palette.text }]}>Agenda</Text>
-        <Text style={{ color: palette.textSecondary }}>{events.length} events</Text>
+        <View style={styles.headerMain}>
+          <LuxHeader
+            overline="Agenda"
+            title="Upcoming schedule"
+            subtitle={`${events.length} events over 2 weeks`}
+          />
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -110,19 +119,11 @@ export default function AgendaScreen() {
           const isToday = isSameDay(group.date, today);
           return (
             <View key={group.date.toISOString()} style={styles.dayGroup}>
-              <View
-                style={[
-                  styles.dayHeader,
-                  { borderBottomColor: palette.border },
-                  isToday && { backgroundColor: palette.tintLight },
-                ]}
-              >
+              <View style={styles.dayHeader}>
                 <Text style={[styles.dayHeaderText, { color: isToday ? palette.tint : palette.text }]}>
                   {formatDayHeader(group.date, today)}
                 </Text>
-                <Text style={[styles.dayCount, { color: palette.textSecondary }]}>
-                  {group.events.length} {group.events.length === 1 ? 'event' : 'events'}
-                </Text>
+                <LuxPill label={`${group.events.length} events`} active={isToday} />
               </View>
 
               {group.events.length === 0 ? (
@@ -133,50 +134,45 @@ export default function AgendaScreen() {
                 group.events.map((ev) => (
                   <TouchableOpacity
                     key={ev.id}
-                    style={[
-                      styles.eventRow,
-                      {
-                        backgroundColor: ev.active ? palette.tintLight : palette.surface,
-                        borderColor: ev.active ? palette.tint : palette.border,
-                      },
-                    ]}
                     onPress={() => handleEventPress(ev)}
                   >
-                    <View style={[styles.eventStripe, { backgroundColor: palette.tint }]} />
-                    <View style={styles.eventTime}>
-                      <Text style={[styles.timeText, { color: palette.text }]}>
-                        {formatTime(ev.startAt)}
-                      </Text>
-                      <Text style={[styles.durationText, { color: palette.textSecondary }]}>
-                        {formatDuration(ev.startAt, ev.endAt)}
-                      </Text>
-                    </View>
-                    <View style={styles.eventDetails}>
-                      <Text style={[styles.eventTitle, { color: palette.text }]} numberOfLines={1}>
-                        {ev.title}
-                      </Text>
-                      {ev.tags && ev.tags.length > 0 && (
-                        <Text style={[styles.eventTags, { color: palette.tint }]} numberOfLines={1}>
-                          {ev.tags.slice(0, 3).map((t) => `#${t}`).join(' ')}
+                    <LuxCard style={styles.eventRow} accent={ev.active ? palette.tint : palette.borderLight}>
+                      <View style={[styles.eventStripe, { backgroundColor: palette.tint }]} />
+                      <View style={styles.eventTime}>
+                        <Text style={[styles.timeText, { color: palette.text }]}>
+                          {formatTime(ev.startAt)}
                         </Text>
-                      )}
-                      {ev.category && (
-                        <Text style={[styles.eventCategory, { color: palette.textSecondary }]}>
-                          {ev.category}
-                          {ev.subcategory ? ` / ${ev.subcategory}` : ''}
+                        <Text style={[styles.durationText, { color: palette.textSecondary }]}>
+                          {formatDuration(ev.startAt, ev.endAt)}
                         </Text>
+                      </View>
+                      <View style={styles.eventDetails}>
+                        <Text style={[styles.eventTitle, { color: palette.text }]} numberOfLines={1}>
+                          {ev.title}
+                        </Text>
+                        {ev.tags && ev.tags.length > 0 && (
+                          <Text style={[styles.eventTags, { color: palette.tint }]} numberOfLines={1}>
+                            {ev.tags.slice(0, 3).map((t) => `#${t}`).join(' ')}
+                          </Text>
+                        )}
+                        {ev.category && (
+                          <Text style={[styles.eventCategory, { color: palette.textSecondary }]}>
+                            {ev.category}
+                            {ev.subcategory ? ` / ${ev.subcategory}` : ''}
+                          </Text>
+                        )}
+                      </View>
+                      {ev.active && (
+                        <View style={[styles.activeBadge, { backgroundColor: palette.tint }]}>
+                          <Text style={styles.activeBadgeText}>LIVE</Text>
+                        </View>
                       )}
-                    </View>
-                    {ev.active && (
-                      <View style={[styles.activeBadge, { backgroundColor: palette.tint }]}>
-                        <Text style={styles.activeBadgeText}>LIVE</Text>
-                      </View>
-                    )}
-                    {ev.completedAt && (
-                      <View style={[styles.completedBadge, { backgroundColor: palette.success }]}>
-                        <Text style={styles.completedBadgeText}>✓</Text>
-                      </View>
-                    )}
+                      {ev.completedAt && (
+                        <View style={[styles.completedBadge, { backgroundColor: palette.success }]}>
+                          <Text style={styles.completedBadgeText}>✓</Text>
+                        </View>
+                      )}
+                    </LuxCard>
                   </TouchableOpacity>
                 ))
               )}
@@ -190,46 +186,43 @@ export default function AgendaScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
+  headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    gap: 12,
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingBottom: 8,
   },
+  headerMain: { flex: 1 },
   backButton: { paddingVertical: 4 },
-  headerTitle: { fontSize: 18, fontWeight: '700', flex: 1 },
-  scrollContent: { paddingBottom: 100 },
-  dayGroup: { marginBottom: 8 },
+  scrollContent: { paddingBottom: 70 },
+  dayGroup: { marginBottom: 6 },
   dayHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
   },
-  dayHeaderText: { fontSize: 14, fontWeight: '700' },
-  dayCount: { fontSize: 12 },
+  dayHeaderText: { fontSize: 10, fontWeight: '700' },
+  dayCount: { fontSize: 8 },
   emptyDay: {
-    paddingVertical: 20,
-    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 11,
     alignItems: 'center',
   },
   eventRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
+    marginHorizontal: 11,
+    marginTop: 6,
+    padding: 8,
     overflow: 'hidden',
   },
   eventStripe: {
@@ -237,42 +230,42 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: 4,
+    width: 12,
   },
   eventTime: {
-    width: 70,
-    marginLeft: 8,
+    width: 49,
+    marginLeft: 6,
   },
-  timeText: { fontSize: 13, fontWeight: '700' },
-  durationText: { fontSize: 11, marginTop: 2 },
-  eventDetails: { flex: 1, marginLeft: 12 },
-  eventTitle: { fontSize: 14, fontWeight: '700' },
-  eventTags: { fontSize: 11, marginTop: 2 },
-  eventCategory: { fontSize: 11, marginTop: 2 },
+  timeText: { fontSize: 9, fontWeight: '700' },
+  durationText: { fontSize: 8, marginTop: 2 },
+  eventDetails: { flex: 1, marginLeft: 8 },
+  eventTitle: { fontSize: 10, fontWeight: '700' },
+  eventTags: { fontSize: 8, marginTop: 2 },
+  eventCategory: { fontSize: 8, marginTop: 2 },
   activeBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 6,
   },
   activeBadgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
   },
   completedBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 17,
+    height: 17,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   completedBadgeText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
   },
   emptyState: {
-    paddingVertical: 60,
+    paddingVertical: 42,
     alignItems: 'center',
   },
 });

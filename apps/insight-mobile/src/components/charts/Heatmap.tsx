@@ -225,7 +225,7 @@ export function Heatmap({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 8,
+    gap: 6,
   },
   headerRow: {
     flexDirection: 'row',
@@ -233,27 +233,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   label: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   legendRow: {
     flexDirection: 'row',
-    gap: 3,
+    gap: 4,
   },
   legendCell: {
-    width: 10,
-    height: 10,
+    width: 12,
+    height: 12,
     borderRadius: 2,
   },
   monthRow: {
     position: 'relative',
-    height: 14,
+    height: 12,
   },
   monthLabel: {
     position: 'absolute',
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   dayLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '600',
   },
 });

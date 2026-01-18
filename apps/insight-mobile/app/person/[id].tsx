@@ -11,6 +11,7 @@ import type { Person } from '@/src/storage/people';
 import { listEvents } from '@/src/storage/events';
 import type { CalendarEvent } from '@/src/storage/events';
 import { extractPeople } from '@/src/lib/notes';
+import { Screen } from '@/components/Screen';
 
 export default function PersonDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -88,18 +89,18 @@ export default function PersonDetailScreen() {
 
   if (!person) {
     return (
-      <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+      <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="chevron-back" size={24} color={palette.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: palette.text }]}>Person</Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 28 }} />
         </View>
         <View style={styles.loadingWrap}>
           <Text style={[styles.loadingText, { color: palette.textSecondary }]}>Loading...</Text>
         </View>
-      </View>
+      </Screen>
     );
   }
 
@@ -185,15 +186,15 @@ export default function PersonDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backButton: { padding: 6 },
+  backButton: { padding: 4 },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '700',
     flex: 1,
     textAlign: 'center',
@@ -204,103 +205,103 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: 10,
   },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    gap: 16,
+    paddingHorizontal: 14,
+    paddingBottom: 28,
+    gap: 11,
   },
   profileCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 24,
+    borderRadius: 13,
+    padding: 17,
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   avatarLarge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   avatarLargeText: {
     color: '#FFFFFF',
     fontWeight: '800',
-    fontSize: 28,
+    fontSize: 20,
   },
   profileName: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '700',
   },
   profileMeta: {
-    fontSize: 13,
+    fontSize: 9,
   },
   statsGrid: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   statCard: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 11,
+    padding: 11,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 17,
     fontWeight: '800',
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 8,
     marginTop: 4,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '700',
-    marginTop: 8,
+    marginTop: 6,
   },
   emptyCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 24,
+    borderRadius: 13,
+    padding: 17,
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 9,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 14,
   },
   eventCard: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
-    gap: 6,
+    borderRadius: 11,
+    padding: 10,
+    gap: 4,
   },
   eventHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: 6,
   },
   eventTitle: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
     flex: 1,
   },
   eventDate: {
-    fontSize: 11,
+    fontSize: 8,
   },
   eventMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   eventCategory: {
-    fontSize: 11,
+    fontSize: 8,
   },
   eventDuration: {
-    fontSize: 11,
+    fontSize: 8,
   },
 });

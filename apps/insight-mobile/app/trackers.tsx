@@ -7,6 +7,7 @@ import { useTheme } from '@/src/state/theme';
 import { InsightIcon } from '@/src/components/InsightIcon';
 import { TrackerHeatMap } from '@/src/components/TrackerHeatMap';
 import { TrackerPieChart } from '@/src/components/TrackerPieChart';
+import { Screen } from '@/components/Screen';
 import {
   createTrackerLog,
   deleteTrackerLog,
@@ -283,13 +284,13 @@ export default function TrackersScreen() {
   }, [logs]);
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <InsightIcon name="chevronLeft" size={24} color={palette.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: palette.text }]}>Trackers</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 28 }} />
       </View>
 
       <View style={styles.rangeContainer}>
@@ -410,7 +411,7 @@ export default function TrackersScreen() {
           )}
         </View>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
@@ -422,31 +423,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '900',
     letterSpacing: -0.5,
   },
   backButton: {
-    padding: 8,
+    padding: 6,
   },
   rangeContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: 14,
+    marginBottom: 11,
   },
   rangeRow: {
     flexDirection: 'row',
     padding: 4,
-    borderRadius: 12,
+    borderRadius: 8,
   },
   rangeBtn: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 6,
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 7,
   },
   activeShadow: {
     shadowColor: '#000',
@@ -456,141 +457,141 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   rangeText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   scroll: {
-    padding: 20,
-    gap: 24,
-    paddingBottom: 60,
+    padding: 14,
+    gap: 17,
+    paddingBottom: 42,
   },
   quickLogCard: {
-    borderRadius: 24,
+    borderRadius: 17,
     borderWidth: 1,
-    padding: 20,
-    gap: 12,
+    padding: 14,
+    gap: 8,
   },
   quickLogTitle: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   quickLogRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   quickLogInput: {
     flex: 1,
-    height: 44,
-    borderRadius: 12,
+    height: 31,
+    borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    fontSize: 14,
+    paddingHorizontal: 8,
+    fontSize: 10,
   },
   quickLogInputSmall: {
-    width: 60,
-    height: 44,
-    borderRadius: 12,
+    width: 42,
+    height: 31,
+    borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    fontSize: 14,
+    paddingHorizontal: 8,
+    fontSize: 10,
     textAlign: 'center',
   },
   quickLogButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 31,
+    height: 31,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   trackerChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   trackerChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 11,
   },
   trackerChipText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
   },
   statsOverview: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 11,
   },
   overviewCard: {
     flex: 1,
-    padding: 20,
-    borderRadius: 24,
+    padding: 14,
+    borderRadius: 17,
     borderWidth: 1,
     gap: 4,
   },
   overviewLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 1,
   },
   overviewValue: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '900',
   },
   highlightCard: {
-    borderRadius: 24,
+    borderRadius: 17,
     borderWidth: 1,
-    padding: 20,
+    padding: 14,
     gap: 4,
   },
   highlightLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 1,
   },
   highlightValue: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '900',
   },
   highlightMeta: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '800',
   },
   chartCard: {
-    borderRadius: 24,
+    borderRadius: 17,
     borderWidth: 1,
-    padding: 20,
+    padding: 14,
   },
   timelineCard: {
-    borderRadius: 24,
+    borderRadius: 17,
     borderWidth: 1,
     overflow: 'hidden',
   },
   emptyState: {
-    padding: 40,
+    padding: 28,
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
   },
   group: {
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(148, 163, 184, 0.08)',
-    padding: 20,
-    gap: 12,
-  },
-  logItem: {
+    padding: 14,
     gap: 8,
   },
+  logItem: {
+    gap: 6,
+  },
   groupLabel: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 1,
     textTransform: 'uppercase',
@@ -599,25 +600,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 8,
   },
   logEditRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   logEditInput: {
     flex: 1,
-    height: 40,
-    borderRadius: 12,
+    height: 28,
+    borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    fontSize: 13,
+    paddingHorizontal: 7,
+    fontSize: 9,
   },
   logEditButton: {
-    height: 40,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    height: 28,
+    paddingHorizontal: 8,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -627,7 +628,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(148, 163, 184, 0.2)',
   },
   logEditButtonText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     color: '#FFFFFF',
   },
@@ -635,21 +636,21 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   logTitle: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '700',
   },
   logMeta: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '600',
   },
   logPill: {
     borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderRadius: 11,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   logValue: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '800',
   },
 });

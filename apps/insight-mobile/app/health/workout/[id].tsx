@@ -9,6 +9,7 @@ import { useTheme } from '@/src/state/theme';
 import { getWorkout, deleteWorkout } from '@/src/storage/workouts';
 import { formatDuration, formatSetSummary, resolveWorkoutMinutes } from '@/src/lib/health';
 import type { ExerciseSet, WorkoutEntry } from '@/src/lib/health';
+import { Screen } from '@/components/Screen';
 
 function formatPace(set: ExerciseSet) {
   if (!set.distance || !set.duration) return null;
@@ -64,18 +65,18 @@ export default function WorkoutDetailScreen() {
 
   if (!workout) {
     return (
-      <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+      <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="chevron-back" size={24} color={palette.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: palette.text }]}>Workout</Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 28 }} />
         </View>
         <View style={styles.loadingWrap}>
           <Text style={[styles.loadingText, { color: palette.textSecondary }]}>Loading...</Text>
         </View>
-      </View>
+      </Screen>
     );
   }
 
@@ -180,15 +181,15 @@ export default function WorkoutDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backButton: { padding: 6 },
+  backButton: { padding: 4 },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
     flex: 1,
     textAlign: 'center',
@@ -199,49 +200,49 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: 10,
   },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    gap: 16,
+    paddingHorizontal: 14,
+    paddingBottom: 28,
+    gap: 11,
   },
   metaCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
-    gap: 8,
+    borderRadius: 13,
+    padding: 11,
+    gap: 6,
   },
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   metaLabel: {
-    fontSize: 13,
+    fontSize: 9,
   },
   metaValue: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '700',
-    marginTop: 8,
+    marginTop: 6,
   },
   emptyCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 24,
+    borderRadius: 13,
+    padding: 17,
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 9,
   },
   exerciseCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
-    gap: 8,
+    borderRadius: 13,
+    padding: 11,
+    gap: 6,
   },
   exerciseHeader: {
     flexDirection: 'row',
@@ -249,43 +250,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   exerciseTitle: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '700',
   },
   exerciseType: {
-    fontSize: 12,
+    fontSize: 8,
   },
   muscleGroups: {
-    fontSize: 12,
+    fontSize: 8,
   },
   noSets: {
-    fontSize: 12,
+    fontSize: 8,
   },
   setRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 8,
+    gap: 6,
   },
   setIndex: {
-    fontSize: 12,
-    width: 48,
+    fontSize: 8,
+    width: 34,
   },
   setDetail: {
-    fontSize: 13,
+    fontSize: 9,
     flex: 1,
   },
   exerciseNotes: {
-    fontSize: 12,
+    fontSize: 8,
     fontStyle: 'italic',
     marginTop: 4,
   },
   notesCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
+    borderRadius: 13,
+    padding: 11,
   },
   notesText: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 9,
+    lineHeight: 14,
   },
 });

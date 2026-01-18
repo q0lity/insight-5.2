@@ -2,9 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
-  View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
@@ -12,11 +10,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/src/state/theme';
+import { Text, View } from '@/components/Themed';
 import { listEvents } from '@/src/storage/events';
 import type { CalendarEvent } from '@/src/storage/events';
 import { listInboxCaptures } from '@/src/storage/inbox';
 import type { InboxCapture } from '@/src/storage/inbox';
 import { firstLine, extractTags, formatRelativeDate } from '@/src/lib/notes';
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
+import { LuxHeader } from '@/components/LuxHeader';
+import { LuxPill } from '@/components/LuxPill';
 
 type FilterMode = 'all' | 'events' | 'captures';
 
@@ -42,6 +45,19 @@ function formatDuration(startMs: number, endMs: number) {
   const hrs = Math.floor(mins / 60);
   const remainMins = mins % 60;
   return remainMins > 0 ? `${hrs}h ${remainMins}m` : `${hrs}h`;
+}
+
+function shouldHideTimelineEvent(event: CalendarEvent) {
+  const raw = (event as any).frontmatter;
+  if (!raw || typeof raw !== 'string') return false;
+  try {
+    const fm = JSON.parse(raw) as Record<string, unknown>;
+    if (fm.hiddenInTimeline === true) return true;
+    if (fm.routineStepId || fm.routineStepIndex != null) return true;
+  } catch {
+    return false;
+  }
+  return false;
 }
 
 function isoDayFromMs(ms: number) {
@@ -93,6 +109,7 @@ export default function TimelineScreen() {
 
     if (filterMode !== 'captures') {
       for (const ev of events) {
+        if (shouldHideTimelineEvent(ev)) continue;
         result.push({
           id: ev.id,
           kind: 'event',
@@ -143,13 +160,19 @@ export default function TimelineScreen() {
   }, [items]);
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+      <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color={palette.text} />
+          <Ionicons name="chevron-back" size={22} color={palette.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: palette.text }]}>Timeline</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerMain}>
+          <LuxHeader
+            overline="Timeline"
+            title="Activity feed"
+            subtitle="Calendar events and captures"
+          />
+        </View>
+        <View style={{ width: 28 }} />
       </View>
 
       <View style={styles.statsRow}>
@@ -163,37 +186,23 @@ export default function TimelineScreen() {
 
       <View style={styles.filterRow}>
         {(['all', 'events', 'captures'] as FilterMode[]).map((mode) => (
-          <TouchableOpacity
+          <LuxPill
             key={mode}
-            style={[
-              styles.filterTab,
-              {
-                backgroundColor: filterMode === mode ? palette.tint : palette.surface,
-                borderColor: palette.border,
-              },
-            ]}
+            label={mode}
+            active={filterMode === mode}
             onPress={() => setFilterMode(mode)}
-          >
-            <Text
-              style={[
-                styles.filterTabText,
-                { color: filterMode === mode ? '#FFFFFF' : palette.text },
-              ]}
-            >
-              {mode.charAt(0).toUpperCase() + mode.slice(1)}
-            </Text>
-          </TouchableOpacity>
+          />
         ))}
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {groupedByDay.days.length === 0 ? (
-          <View style={[styles.emptyCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <LuxCard style={styles.emptyCard}>
             <Ionicons name="time-outline" size={32} color={palette.textSecondary} />
             <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
               Your timeline awaits. Start capturing moments to see them here.
             </Text>
-          </View>
+          </LuxCard>
         ) : (
           groupedByDay.days.map((day) => {
             const dayItems = groupedByDay.groups.get(day) ?? [];
@@ -229,50 +238,53 @@ export default function TimelineScreen() {
                     </View>
 
                     <TouchableOpacity
-                      style={[styles.itemCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
+                      style={styles.itemCardWrap}
                       onPress={() => {
                         if (item.kind === 'capture') {
                           router.push(`/note/${item.id}`);
                         }
                       }}
                     >
-                      <View style={styles.itemCardHeader}>
-                        <View style={[styles.itemIcon, { backgroundColor: item.kind === 'event' ? palette.tint : palette.border }]}>
-                          <Ionicons
-                            name={item.kind === 'event' ? (item.isTask ? 'checkbox-outline' : 'calendar') : 'document-text'}
-                            size={14}
-                            color={item.kind === 'event' ? '#FFFFFF' : palette.text}
-                          />
-                        </View>
-                        <View style={styles.itemContent}>
-                          <Text style={[styles.itemTitle, { color: palette.text }]} numberOfLines={1}>
-                            {item.title}
-                            {item.isActive && (
-                              <Text style={{ color: palette.tint }}> •</Text>
+                      <LuxCard
+                        style={styles.itemCard}
+                        accent={item.isActive ? palette.tint : palette.borderLight}
+                      >
+                        <View style={styles.itemCardHeader}>
+                          <View style={[styles.itemIcon, { backgroundColor: item.kind === 'event' ? palette.tint : palette.border }]}>
+                            <Ionicons
+                              name={item.kind === 'event' ? (item.isTask ? 'checkbox-outline' : 'calendar') : 'document-text'}
+                              size={14}
+                              color={item.kind === 'event' ? '#FFFFFF' : palette.text}
+                            />
+                          </View>
+                          <View style={styles.itemContent}>
+                            <Text style={[styles.itemTitle, { color: palette.text }]} numberOfLines={1}>
+                              {item.title}
+                              {item.isActive && (
+                                <Text style={{ color: palette.tint }}> •</Text>
+                              )}
+                            </Text>
+                            {item.category && (
+                              <Text style={[styles.itemCategory, { color: palette.textSecondary }]}>
+                                {item.category}
+                              </Text>
                             )}
-                          </Text>
-                          {item.category && (
-                            <Text style={[styles.itemCategory, { color: palette.textSecondary }]}>
-                              {item.category}
+                          </View>
+                          {item.kind === 'event' && item.endAt > item.at && (
+                            <Text style={[styles.itemDuration, { color: palette.textSecondary }]}>
+                              {formatDuration(item.at, item.endAt)}
                             </Text>
                           )}
                         </View>
-                        {item.kind === 'event' && item.endAt > item.at && (
-                          <Text style={[styles.itemDuration, { color: palette.textSecondary }]}>
-                            {formatDuration(item.at, item.endAt)}
-                          </Text>
-                        )}
-                      </View>
 
-                      {item.tags.length > 0 && (
-                        <View style={styles.itemTags}>
-                          {item.tags.slice(0, 3).map((tag) => (
-                            <View key={`${item.id}_${tag}`} style={[styles.tag, { backgroundColor: palette.border }]}>
-                              <Text style={[styles.tagText, { color: palette.text }]}>{tag}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      )}
+                        {item.tags.length > 0 && (
+                          <View style={styles.itemTags}>
+                            {item.tags.slice(0, 3).map((tag) => (
+                              <LuxPill key={`${item.id}_${tag}`} label={tag} variant="ghost" />
+                            ))}
+                          </View>
+                        )}
+                      </LuxCard>
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -281,144 +293,131 @@ export default function TimelineScreen() {
           })
         )}
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
-  backButton: { padding: 6 },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+  headerMain: {
+    flex: 1,
   },
+  backButton: { padding: 4 },
   statsRow: {
-    paddingHorizontal: 20,
-    marginBottom: 8,
+    paddingHorizontal: 14,
+    marginBottom: 6,
   },
   activeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    gap: 6,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    gap: 4,
+    borderRadius: 11,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   activeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: '#FFFFFF',
   },
   activeText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     color: '#FFFFFF',
   },
   filterRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 8,
-    marginBottom: 16,
-  },
-  filterTab: {
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  filterTabText: {
-    fontSize: 13,
-    fontWeight: '600',
+    paddingHorizontal: 14,
+    gap: 6,
+    marginBottom: 11,
   },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingHorizontal: 14,
+    paddingBottom: 28,
   },
   emptyCard: {
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 32,
+    padding: 22,
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 10,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 14,
   },
   daySection: {
-    marginBottom: 24,
+    marginBottom: 17,
   },
   dayHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 11,
   },
   dayMarker: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 25,
+    height: 25,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dayMarkerText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
   },
   dayTitleWrap: {
     flex: 1,
   },
   dayTitle: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '700',
   },
   daySubtitle: {
-    fontSize: 12,
+    fontSize: 8,
   },
   itemRow: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   timelineCol: {
-    width: 60,
+    width: 42,
     alignItems: 'center',
   },
   itemTime: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
   },
   timelineLine: {
     width: 2,
     flex: 1,
-    marginTop: 8,
+    marginTop: 6,
     borderRadius: 1,
   },
   itemCard: {
+    padding: 10,
+    marginLeft: 6,
+  },
+  itemCardWrap: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 12,
-    marginLeft: 8,
   },
   itemCardHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 7,
   },
   itemIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -426,29 +425,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemTitle: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
   },
   itemCategory: {
-    fontSize: 11,
+    fontSize: 8,
     marginTop: 2,
   },
   itemDuration: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '600',
   },
   itemTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 8,
-  },
-  tag: {
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  tagText: {
-    fontSize: 10,
+    gap: 4,
+    marginTop: 6,
   },
 });

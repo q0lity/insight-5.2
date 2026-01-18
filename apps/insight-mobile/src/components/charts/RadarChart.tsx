@@ -159,19 +159,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 16,
-    marginTop: 12,
+    gap: 11,
+    marginTop: 8,
   },
   valueItem: {
     alignItems: 'center',
   },
   valueLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '700',
     textTransform: 'uppercase',
   },
   valueNumber: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '800',
   },
 });

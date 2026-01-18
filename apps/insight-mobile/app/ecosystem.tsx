@@ -17,6 +17,8 @@ import { getSupabaseSessionUser } from '@/src/supabase/helpers';
 import { listGoals, type Goal } from '@/src/storage/goals';
 import { listProjects, type Project } from '@/src/storage/projects';
 import { listEvents, type MobileEvent } from '@/src/storage/events';
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
 import {
   loadMultipliers,
   getGoalMultiplierSync,
@@ -153,18 +155,18 @@ export default function EcosystemScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <InsightIcon name="chevronLeft" size={24} color={palette.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: palette.text }]}>Ecosystem</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 28 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Sync Status Section */}
-        <View style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <LuxCard style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>Sync Status</Text>
             <InsightIcon name="node" size={16} color={palette.tint} />
@@ -213,10 +215,10 @@ export default function EcosystemScreen() {
               </Text>
             </TouchableOpacity>
           )}
-        </View>
+        </LuxCard>
 
         {/* Goals Section */}
-        <View style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <LuxCard style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <InsightIcon name="target" size={18} color={palette.tint} />
@@ -263,10 +265,10 @@ export default function EcosystemScreen() {
             <InsightIcon name="plus" size={16} color={palette.tint} />
             <Text style={[styles.addButtonText, { color: palette.tint }]}>Add Goal</Text>
           </TouchableOpacity>
-        </View>
+        </LuxCard>
 
         {/* Projects Section */}
-        <View style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <LuxCard style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <InsightIcon name="briefcase" size={18} color={palette.tint} />
@@ -321,10 +323,10 @@ export default function EcosystemScreen() {
             <InsightIcon name="plus" size={16} color={palette.tint} />
             <Text style={[styles.addButtonText, { color: palette.tint }]}>Add Project</Text>
           </TouchableOpacity>
-        </View>
+        </LuxCard>
 
         {/* Entities Overview */}
-        <View style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <LuxCard style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <InsightIcon name="tag" size={18} color={palette.tint} />
@@ -365,10 +367,10 @@ export default function EcosystemScreen() {
               <Text style={[styles.entityLabel, { color: palette.textSecondary }]}>Skills</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </LuxCard>
 
         {/* Quick Links */}
-        <View style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <LuxCard style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <InsightIcon name="sparkle" size={18} color={palette.tint} />
@@ -397,10 +399,10 @@ export default function EcosystemScreen() {
             palette={palette}
             onPress={() => router.push('/rewards')}
           />
-        </View>
+        </LuxCard>
 
         {/* Data & Privacy Section */}
-        <View style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <LuxCard style={[styles.section, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>Data & Privacy</Text>
 
           <TouchableOpacity style={styles.actionRow}>
@@ -428,13 +430,13 @@ export default function EcosystemScreen() {
             </View>
             <InsightIcon name="dots" size={20} color="#EF4444" />
           </TouchableOpacity>
-        </View>
+        </LuxCard>
 
         <Text style={[styles.footer, { color: palette.textSecondary }]}>
           Your data is stored securely and never shared with third parties.
         </Text>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
@@ -473,28 +475,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -0.5,
   },
   backButton: {
-    padding: 8,
+    padding: 6,
   },
   scroll: {
-    padding: 16,
-    gap: 16,
-    paddingBottom: 60,
+    padding: 11,
+    gap: 11,
+    paddingBottom: 42,
   },
   section: {
-    padding: 20,
-    borderRadius: 24,
+    padding: 14,
+    borderRadius: 17,
     borderWidth: 1,
-    gap: 16,
+    gap: 11,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -504,21 +506,21 @@ const styles = StyleSheet.create({
   sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 7,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 12,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   sectionLabel: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   editLink: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '700',
   },
   syncStatusRow: {
@@ -533,59 +535,59 @@ const styles = StyleSheet.create({
   syncIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   statusText: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   syncEmail: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '500',
   },
   syncTime: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '500',
   },
   syncButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 8,
   },
   syncButtonText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '700',
   },
   loginPrompt: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    padding: 14,
-    borderRadius: 12,
+    gap: 7,
+    padding: 10,
+    borderRadius: 8,
   },
   loginPromptText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
     flex: 1,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 10,
     fontFamily: 'Figtree',
   },
   itemList: {
-    gap: 12,
+    gap: 8,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   itemInfo: {
     flex: 1,
@@ -593,31 +595,31 @@ const styles = StyleSheet.create({
   itemNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   itemName: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   itemMeta: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '500',
     fontFamily: 'Figtree',
     marginTop: 2,
   },
   statusBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     paddingVertical: 2,
     borderRadius: 6,
   },
   statusDotSmall: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   moreText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
     fontStyle: 'italic',
@@ -627,36 +629,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
     borderWidth: 1,
     borderStyle: 'dashed',
   },
   addButtonText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
   },
   entitiesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 7,
   },
   entityCard: {
     width: '47%',
-    padding: 16,
-    borderRadius: 16,
+    padding: 11,
+    borderRadius: 11,
     alignItems: 'center',
     gap: 4,
   },
   entityCount: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -1,
   },
   entityLabel: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
     textTransform: 'uppercase',
@@ -665,13 +667,13 @@ const styles = StyleSheet.create({
   quickLinkRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 8,
+    gap: 8,
+    paddingVertical: 6,
   },
   quickLinkIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 31,
+    height: 31,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -679,19 +681,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   quickLinkName: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   quickLinkDesc: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '500',
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.05)',
   },
@@ -699,19 +701,19 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   actionName: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   actionDesc: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '500',
   },
   footer: {
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '500',
-    lineHeight: 18,
-    paddingHorizontal: 20,
+    lineHeight: 13,
+    paddingHorizontal: 14,
   },
 });

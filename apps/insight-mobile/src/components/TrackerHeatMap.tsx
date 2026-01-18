@@ -1,5 +1,12 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { StyleSheet, Text, View, Pressable } from 'react-native';
+import Animated, {
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  withDelay
+} from 'react-native-reanimated';
 
 import { useTheme } from '@/src/state/theme';
 import type { TrackerLogEntry } from '@/src/storage/trackers';
@@ -13,11 +20,11 @@ const TRACKER_CATEGORIES: Record<string, string[]> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  mood: '#8B7EC8',     // Lavender
-  energy: '#7BAF7B',   // Sage
-  pain: '#C97B7B',     // Rose/Red
-  stress: '#D4A574',   // Caramel
-  other: '#6B8CAE',    // Steel
+  mood: '#A78BFA',     // Brighter Lavender/Purple
+  energy: '#4ADE80',   // Brighter Sage/Green
+  pain: '#F87171',     // Brighter Rose/Red
+  stress: '#FBBF24',   // Brighter Amber
+  other: '#60A5FA',    // Brighter Blue
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -122,10 +129,86 @@ export function TrackerHeatMap({ logs, days = 7 }: TrackerHeatMapProps) {
     return `rgba(${r},${g},${b},${opacity})`;
   };
 
+  // Animated cell component with touch feedback
+  const AnimatedCell = ({
+    index,
+    color,
+    value,
+    baseColor,
+    maxValue,
+    dateLabel
+  }: {
+    index: number;
+    color: string;
+    value: number;
+    baseColor: string;
+    maxValue: number;
+    dateLabel: string;
+  }) => {
+    const scale = useSharedValue(1);
+    const [showTooltip, setShowTooltip] = useState(false);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: scale.value }],
+    }));
+
+    const handlePressIn = () => {
+      scale.value = withTiming(1.1, { duration: 100 });
+      setShowTooltip(true);
+    };
+
+    const handlePressOut = () => {
+      scale.value = withTiming(1, { duration: 100 });
+      setShowTooltip(false);
+    };
+
+    const hasShadow = value > 0;
+
+    return (
+      <View style={styles.cellWrapper}>
+        <Animated.View
+          entering={FadeIn.delay(index * 50).duration(300)}
+          style={animatedStyle}
+        >
+          <Pressable
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+          >
+            <View
+              style={[
+                styles.cell,
+                { backgroundColor: color },
+                hasShadow && {
+                  shadowColor: baseColor,
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                  shadowOffset: { width: 0, height: 2 },
+                }
+              ]}
+            >
+              {value > 0 && (
+                <Text style={[styles.cellValue, { color: value > maxValue * 0.5 ? '#FFFFFF' : palette.textSecondary }]}>
+                  {Math.round(value)}
+                </Text>
+              )}
+            </View>
+          </Pressable>
+        </Animated.View>
+        {showTooltip && value > 0 && (
+          <View style={[styles.tooltip, { backgroundColor: palette.surface }]}>
+            <Text style={[styles.tooltipText, { color: palette.text }]}>
+              {dateLabel}: {Math.round(value)}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   if (activeCategories.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={[styles.emptyText, { color: palette.tabIconDefault }]}>
+        <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
           No tracker data to visualize. Try logging #mood(7) or #energy(5).
         </Text>
       </View>
@@ -139,7 +222,7 @@ export function TrackerHeatMap({ logs, days = 7 }: TrackerHeatMapProps) {
         <View style={styles.categoryLabelCol} />
         {daysArray.map((date, idx) => (
           <View key={idx} style={styles.dayLabelCell}>
-            <Text style={[styles.dayLabel, { color: palette.tabIconDefault }]}>
+            <Text style={[styles.dayLabel, { color: palette.textSecondary }]}>
               {date.toLocaleDateString([], { weekday: 'narrow' })}
             </Text>
           </View>
@@ -170,17 +253,19 @@ export function TrackerHeatMap({ logs, days = 7 }: TrackerHeatMapProps) {
               const data = dates[dateKey];
               const avg = data ? data.sum / data.count : 0;
               const color = getColorForValue(category, avg, maxValue);
+              const baseColor = CATEGORY_COLORS[category] ?? CATEGORY_COLORS.other;
+              const dateLabel = date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 
               return (
-                <View key={idx} style={styles.cellWrapper}>
-                  <View style={[styles.cell, { backgroundColor: color }]}>
-                    {avg > 0 && (
-                      <Text style={[styles.cellValue, { color: avg > maxValue * 0.5 ? '#FFFFFF' : palette.tabIconDefault }]}>
-                        {Math.round(avg)}
-                      </Text>
-                    )}
-                  </View>
-                </View>
+                <AnimatedCell
+                  key={idx}
+                  index={idx}
+                  color={color}
+                  value={avg}
+                  baseColor={baseColor}
+                  maxValue={maxValue}
+                  dateLabel={dateLabel}
+                />
               );
             })}
           </View>
@@ -192,7 +277,7 @@ export function TrackerHeatMap({ logs, days = 7 }: TrackerHeatMapProps) {
         {activeCategories.map((category) => (
           <View key={category} style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: CATEGORY_COLORS[category] }]} />
-            <Text style={[styles.legendText, { color: palette.tabIconDefault }]}>
+            <Text style={[styles.legendText, { color: palette.textSecondary }]}>
               {CATEGORY_LABELS[category]}
             </Text>
           </View>
@@ -204,14 +289,14 @@ export function TrackerHeatMap({ logs, days = 7 }: TrackerHeatMapProps) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 8,
+    gap: 6,
   },
   emptyContainer: {
-    padding: 16,
+    padding: 11,
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
     fontFamily: 'Figtree',
     textAlign: 'center',
@@ -221,17 +306,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   categoryLabelCol: {
-    width: 72,
+    width: 50,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   dayLabelCell: {
     flex: 1,
     alignItems: 'center',
   },
   dayLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
     textTransform: 'uppercase',
@@ -241,12 +326,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   categoryDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   categoryLabel: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
     flex: 1,
@@ -257,20 +342,20 @@ const styles = StyleSheet.create({
   },
   cell: {
     aspectRatio: 1,
-    borderRadius: 6,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cellValue: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   legendRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 8,
+    gap: 8,
+    marginTop: 6,
     justifyContent: 'center',
   },
   legendItem: {
@@ -279,12 +364,34 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   legendText: {
-    fontSize: 11,
+    fontSize: 8,
+    fontWeight: '600',
+    fontFamily: 'Figtree',
+  },
+  tooltip: {
+    position: 'absolute',
+    top: -28,
+    left: '50%',
+    transform: [{ translateX: -40 }],
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    zIndex: 10,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  tooltipText: {
+    fontSize: 10,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },

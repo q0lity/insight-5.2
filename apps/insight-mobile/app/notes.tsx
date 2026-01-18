@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/src/state/theme';
+import { Screen } from '@/components/Screen';
 import { listInboxCaptures, addInboxCapture } from '@/src/storage/inbox';
 import type { InboxCapture, InboxCaptureStatus } from '@/src/storage/inbox';
 import {
@@ -137,7 +138,7 @@ export default function NotesScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color={palette.text} />
@@ -337,142 +338,142 @@ export default function NotesScreen() {
           })
         )}
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backButton: { padding: 6 },
+  backButton: { padding: 4 },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
   },
   searchRow: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 14,
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
+    gap: 7,
+    marginBottom: 8,
   },
   searchInput: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 6,
   },
   searchText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 10,
   },
   sortButton: {
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   filterScroll: {
-    maxHeight: 40,
+    maxHeight: 28,
   },
   filterTabs: {
-    paddingHorizontal: 20,
-    gap: 8,
+    paddingHorizontal: 14,
+    gap: 6,
   },
   filterTab: {
     borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   filterTabText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
   },
   filterChipScroll: {
-    maxHeight: 36,
-    marginTop: 10,
+    maxHeight: 25,
+    marginTop: 7,
   },
   filterChips: {
-    paddingHorizontal: 20,
-    gap: 6,
+    paddingHorizontal: 14,
+    gap: 4,
   },
   filterChip: {
     borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 12,
+    borderRadius: 11,
+    paddingHorizontal: 8,
     paddingVertical: 4,
   },
   filterChipText: {
-    fontSize: 12,
+    fontSize: 8,
   },
   scroll: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 40,
-    gap: 12,
+    paddingHorizontal: 14,
+    paddingTop: 11,
+    paddingBottom: 28,
+    gap: 8,
   },
   emptyCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 32,
+    borderRadius: 13,
+    padding: 22,
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 10,
     textAlign: 'center',
   },
   emptyButton: {
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginTop: 8,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    marginTop: 6,
   },
   emptyButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 10,
   },
   card: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
-    gap: 8,
+    borderRadius: 11,
+    padding: 10,
+    gap: 6,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: 6,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '700',
     flex: 1,
   },
   cardDate: {
-    fontSize: 11,
+    fontSize: 8,
   },
   cardPreview: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 9,
+    lineHeight: 13,
   },
   cardMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
     flexWrap: 'wrap',
   },
   metaItem: {
@@ -481,29 +482,29 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   metaText: {
-    fontSize: 11,
+    fontSize: 8,
   },
   statusBadge: {
-    borderRadius: 8,
-    paddingHorizontal: 6,
+    borderRadius: 6,
+    paddingHorizontal: 4,
     paddingVertical: 2,
   },
   statusText: {
-    fontSize: 10,
+    fontSize: 8,
     color: '#FFFFFF',
     fontWeight: '600',
   },
   cardTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 4,
   },
   tag: {
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    borderRadius: 7,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
   },
   tagText: {
-    fontSize: 11,
+    fontSize: 8,
   },
 });

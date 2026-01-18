@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { G, Path } from 'react-native-svg';
+import { PieChart as GiftedPieChart } from 'react-native-gifted-charts/dist/PieChart';
 
 import { useTheme } from '@/src/state/theme';
 
@@ -25,6 +25,10 @@ export type PieChartProps = {
   colors?: string[];
   /** Label for empty state */
   emptyMessage?: string;
+  /** Show as donut chart */
+  donut?: boolean;
+  /** Center label for donut chart */
+  centerLabel?: string;
 };
 
 const DEFAULT_COLORS = [
@@ -36,38 +40,6 @@ const DEFAULT_COLORS = [
   '#94A3B8', // Slate
 ];
 
-function polarToCartesian(
-  centerX: number,
-  centerY: number,
-  radius: number,
-  angleInDegrees: number
-) {
-  const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
-  return {
-    x: centerX + radius * Math.cos(angleInRadians),
-    y: centerY + radius * Math.sin(angleInRadians),
-  };
-}
-
-function describeArc(
-  x: number,
-  y: number,
-  radius: number,
-  startAngle: number,
-  endAngle: number
-) {
-  const start = polarToCartesian(x, y, radius, endAngle);
-  const end = polarToCartesian(x, y, radius, startAngle);
-  const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
-
-  return [
-    'M', x, y,
-    'L', start.x, start.y,
-    'A', radius, radius, 0, largeArcFlag, 0, end.x, end.y,
-    'Z',
-  ].join(' ');
-}
-
 export function PieChart({
   data,
   size = 120,
@@ -76,46 +48,47 @@ export function PieChart({
   maxLegendItems = 4,
   colors = DEFAULT_COLORS,
   emptyMessage = 'No data',
+  donut = false,
+  centerLabel,
 }: PieChartProps) {
   const { palette, isDark } = useTheme();
 
-  const { slices, total } = useMemo(() => {
+  const { chartData, total, slicesForLegend } = useMemo(() => {
     const total = data.reduce((sum, d) => sum + d.value, 0);
 
     if (total === 0) {
-      return { slices: [], total: 0 };
+      return { chartData: [], total: 0, slicesForLegend: [] };
     }
 
-    let currentAngle = 0;
-    const slices = data
+    // Sort by value descending and filter out zero values
+    const sortedData = [...data]
       .filter((d) => d.value > 0)
-      .sort((a, b) => b.value - a.value)
-      .map((item, index) => {
-        const percentage = (item.value / total) * 100;
-        const sliceAngle = (percentage / 100) * 360;
-        const startAngle = currentAngle;
-        currentAngle += sliceAngle;
+      .sort((a, b) => b.value - a.value);
 
-        const color = item.color ?? colors[index % colors.length];
+    const chartData = sortedData.map((item, index) => {
+      const percentage = (item.value / total) * 100;
+      const sliceColor = item.color ?? colors[index % colors.length];
 
-        return {
-          ...item,
-          percentage,
-          startAngle,
-          endAngle: startAngle + sliceAngle,
-          color,
-          path: describeArc(
-            size / 2,
-            size / 2,
-            size / 2 - 4,
-            startAngle,
-            startAngle + Math.max(sliceAngle - 1, 0.5)
-          ),
-        };
-      });
+      return {
+        value: item.value,
+        color: sliceColor,
+        text: showPercentages ? `${Math.round(percentage)}%` : '',
+        // Store original data for legend
+        _label: item.label,
+        _percentage: percentage,
+      };
+    });
 
-    return { slices, total };
-  }, [data, size, colors]);
+    return {
+      chartData,
+      total,
+      slicesForLegend: chartData.map((d) => ({
+        label: d._label,
+        percentage: d._percentage,
+        color: d.color,
+      })),
+    };
+  }, [data, colors, showPercentages]);
 
   if (total === 0) {
     return (
@@ -138,28 +111,47 @@ export function PieChart({
     );
   }
 
+  const innerRadius = donut ? size * 0.35 : 0;
   const strokeColor = isDark ? '#1C1C1E' : '#FFFFFF';
 
   return (
     <View style={styles.container}>
       <View style={styles.chartRow}>
-        <Svg width={size} height={size}>
-          <G>
-            {slices.map((slice, idx) => (
-              <Path
-                key={idx}
-                d={slice.path}
-                fill={slice.color}
-                stroke={strokeColor}
-                strokeWidth={2}
-              />
-            ))}
-          </G>
-        </Svg>
+        <View style={styles.pieWrapper}>
+          <GiftedPieChart
+            data={chartData}
+            radius={size / 2 - 4}
+            innerRadius={innerRadius}
+            isAnimated
+            animationDuration={600}
+            showGradient={false}
+            sectionAutoFocus={false}
+            strokeColor={strokeColor}
+            strokeWidth={2}
+            innerCircleColor={donut ? palette.background : undefined}
+            centerLabelComponent={
+              donut && centerLabel
+                ? () => (
+                    <View style={styles.centerLabel}>
+                      <Text
+                        style={[
+                          styles.centerLabelText,
+                          { color: palette.text },
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {centerLabel}
+                      </Text>
+                    </View>
+                  )
+                : undefined
+            }
+          />
+        </View>
 
         {showLegend && (
           <View style={styles.legendContainer}>
-            {slices.slice(0, maxLegendItems).map((slice, idx) => (
+            {slicesForLegend.slice(0, maxLegendItems).map((slice, idx) => (
               <View key={idx} style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: slice.color }]} />
                 <View style={styles.legendTextCol}>
@@ -177,9 +169,9 @@ export function PieChart({
                 </View>
               </View>
             ))}
-            {slices.length > maxLegendItems && (
+            {slicesForLegend.length > maxLegendItems && (
               <Text style={[styles.moreText, { color: palette.textSecondary }]}>
-                +{slices.length - maxLegendItems} more
+                +{slicesForLegend.length - maxLegendItems} more
               </Text>
             )}
           </View>
@@ -191,12 +183,16 @@ export function PieChart({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
+    gap: 8,
   },
   chartRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 11,
+  },
+  pieWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyCircle: {
     borderWidth: 3,
@@ -206,23 +202,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
+  centerLabel: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  centerLabelText: {
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: 'Figtree',
+    textAlign: 'center',
+  },
   legendContainer: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   legendTextCol: {
     flex: 1,
@@ -231,19 +238,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   legendLabel: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '700',
     fontFamily: 'Figtree',
     flex: 1,
   },
   legendValue: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
-    marginLeft: 8,
+    marginLeft: 6,
   },
   moreText: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
     fontStyle: 'italic',

@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/state/theme';
 import { listEvents } from '@/src/storage/events';
 import type { CalendarEvent } from '@/src/storage/events';
+import { Screen } from '@/components/Screen';
 
 const HOUR_HEIGHT = 60;
 const START_HOUR = 0;
@@ -136,13 +137,13 @@ export default function TiimoDayScreen() {
   const gridWidth = screenWidth - 40 - timeColWidth;
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color={palette.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: palette.text }]}>Day View</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 28 }} />
       </View>
 
       <View style={styles.navRow}>
@@ -294,61 +295,61 @@ export default function TiimoDayScreen() {
           })}
         </View>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backButton: { padding: 6 },
+  backButton: { padding: 4 },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
   },
   navRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    marginBottom: 12,
+    gap: 8,
+    paddingHorizontal: 14,
+    marginBottom: 8,
   },
   navButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   todayButton: {
-    borderRadius: 20,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
   },
   todayText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
   },
   dateRow: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: 14,
+    marginBottom: 11,
     alignItems: 'center',
   },
   dateLabel: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '700',
   },
   eventCount: {
-    fontSize: 12,
+    fontSize: 8,
     marginTop: 2,
   },
   scrollView: {
@@ -356,16 +357,16 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
+    paddingHorizontal: 14,
   },
   timeCol: {
-    paddingRight: 8,
+    paddingRight: 6,
   },
   timeCell: {
     justifyContent: 'flex-start',
   },
   timeText: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '500',
   },
   gridCol: {
@@ -383,9 +384,9 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   nowDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     marginLeft: -4,
   },
   nowLine: {
@@ -395,31 +396,31 @@ const styles = StyleSheet.create({
   eventCard: {
     position: 'absolute',
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 6,
     flexDirection: 'row',
     overflow: 'hidden',
   },
   eventStripe: {
-    width: 4,
+    width: 12,
   },
   stripe: {
     flex: 1,
   },
   eventContent: {
     flex: 1,
-    padding: 6,
+    padding: 4,
     justifyContent: 'center',
   },
   eventTitle: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
   },
   eventTime: {
-    fontSize: 10,
+    fontSize: 8,
     marginTop: 2,
   },
   eventCategory: {
-    fontSize: 10,
+    fontSize: 8,
     marginTop: 2,
   },
   activeIndicator: {
@@ -428,8 +429,8 @@ const styles = StyleSheet.create({
     right: 6,
   },
   activePulse: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
 });

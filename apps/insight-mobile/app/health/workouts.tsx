@@ -9,6 +9,7 @@ import { useTheme } from '@/src/state/theme';
 import { listWorkouts } from '@/src/storage/workouts';
 import { formatDuration, resolveWorkoutMinutes } from '@/src/lib/health';
 import type { WorkoutEntry } from '@/src/lib/health';
+import { Screen } from '@/components/Screen';
 
 export default function WorkoutsScreen() {
   const router = useRouter();
@@ -35,13 +36,13 @@ export default function WorkoutsScreen() {
   const sorted = useMemo(() => [...workouts].sort((a, b) => b.startAt - a.startAt), [workouts]);
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color={palette.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: palette.text }]}>Workouts</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 28 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -89,43 +90,43 @@ export default function WorkoutsScreen() {
           ))
         )}
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backButton: { padding: 6 },
+  backButton: { padding: 4 },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
   },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    gap: 16,
+    paddingHorizontal: 14,
+    paddingBottom: 28,
+    gap: 11,
   },
   card: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
-    gap: 12,
+    borderRadius: 13,
+    padding: 11,
+    gap: 8,
   },
   emptyCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 24,
+    borderRadius: 13,
+    padding: 17,
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 9,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -133,11 +134,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   cardTitle: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '700',
   },
   cardMeta: {
-    fontSize: 12,
+    fontSize: 8,
   },
   cardRight: {
     alignItems: 'flex-end',
@@ -148,6 +149,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   exerciseCount: {
-    fontSize: 12,
+    fontSize: 8,
   },
 });

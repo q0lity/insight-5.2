@@ -4,6 +4,10 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/Themed';
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
+import { LuxHeader } from '@/components/LuxHeader';
+import { LuxPill } from '@/components/LuxPill';
 import { useTheme } from '@/src/state/theme';
 import { createTask, listTasks, updateTask, type Task, type TaskStatus } from '@/src/storage/tasks';
 import { computeXp, formatXp } from '@/src/utils/points';
@@ -33,26 +37,34 @@ const TaskCard = React.memo(function TaskCard({
     difficulty: task.difficulty ?? 5,
     durationMinutes: estimate,
   });
+  const accent =
+    task.status === 'done'
+      ? palette.success
+      : task.status === 'in_progress'
+        ? palette.tint
+        : palette.border;
   return (
-    <View style={[styles.taskCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+    <LuxCard style={styles.taskCard} accent={accent}>
       <View style={styles.taskHeader}>
-        <Text style={[styles.taskTitle, { color: palette.text }]}>{task.title}</Text>
+        <Text style={[styles.taskTitle, { color: palette.text }]} numberOfLines={2}>
+          {task.title}
+        </Text>
         <TouchableOpacity onPress={() => onToggleDone(task)}>
           <Text style={{ color: palette.tint }}>{task.status === 'done' ? 'Undo' : 'Done'}</Text>
         </TouchableOpacity>
       </View>
-      <Text style={{ color: palette.textSecondary }}>
-        {task.dueAt ? `Due ${formatShortDate(task.dueAt)}` : 'No due date'} · {estimate}m · +{formatXp(xp)} XP
-      </Text>
-      <View style={styles.taskMetaRow}>
-        <Text style={{ color: palette.textSecondary }}>
-          {(task.tags ?? [])
-            .slice(0, 3)
-            .map((t) => `#${t}`)
-            .join(' ')}
-        </Text>
-        <Text style={{ color: palette.textSecondary }}>{task.status.replace('_', ' ')}</Text>
+      <View style={styles.taskBadges}>
+        <LuxPill label={task.status.replace('_', ' ')} active />
+        {task.dueAt ? <LuxPill label={`Due ${formatShortDate(task.dueAt)}`} /> : null}
+        <LuxPill label={`+${formatXp(xp)} XP`} variant="accent" />
       </View>
+      {(task.tags ?? []).length > 0 ? (
+        <View style={styles.taskTags}>
+          {(task.tags ?? []).slice(0, 4).map((tag) => (
+            <LuxPill key={tag} label={`#${tag}`} variant="ghost" />
+          ))}
+        </View>
+      ) : null}
       <View style={styles.taskActions}>
         <TouchableOpacity
           style={[styles.taskAction, { borderColor: palette.border }]}
@@ -77,7 +89,7 @@ const TaskCard = React.memo(function TaskCard({
           </TouchableOpacity>
         ) : null}
       </View>
-    </View>
+    </LuxCard>
   );
 });
 
@@ -119,7 +131,7 @@ function parseQuickTaskInput(raw: string) {
 export default function TasksScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { palette } = useTheme();
+  const { palette, sizes } = useTheme();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<FilterKey>('inbox');
@@ -220,46 +232,46 @@ export default function TasksScreen() {
   ), [palette]);
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: palette.text }]}>Tasks</Text>
-        <TouchableOpacity onPress={() => router.push('/kanban')} style={styles.headerChip}>
-          <Text style={{ color: palette.tint }}>Kanban View</Text>
-        </TouchableOpacity>
-      </View>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+      <LuxHeader
+        overline="Tasks"
+        title="Today’s Work"
+        subtitle={`${counts.inbox} open · ${counts.today} due today`}
+        right={<LuxPill label="Kanban" variant="accent" onPress={() => router.push('/kanban')} />}
+        style={[styles.header, { paddingHorizontal: sizes.spacing * 2 }]}
+      />
 
-      <View style={styles.inputRow}>
-        <TextInput
-          value={draft}
-          onChangeText={setDraft}
-          placeholder="Quick add with #tags..."
-          placeholderTextColor={palette.textSecondary}
-          style={[styles.input, { backgroundColor: palette.surface, color: palette.text, borderColor: palette.border }]}
-          onSubmitEditing={createQuickTask}
-        />
-        <TouchableOpacity style={[styles.addButton, { backgroundColor: palette.tint }]} onPress={createQuickTask}>
-          <Text style={{ color: '#FFFFFF' }}>Add</Text>
-        </TouchableOpacity>
-      </View>
+      <LuxCard style={styles.inputCard}>
+        <View style={styles.inputRow}>
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            placeholder="Quick add with #tags..."
+            placeholderTextColor={palette.textSecondary}
+            style={[
+              styles.input,
+              { backgroundColor: palette.surface, color: palette.text, borderColor: palette.borderLight },
+            ]}
+            onSubmitEditing={createQuickTask}
+          />
+          <TouchableOpacity style={[styles.addButton, { backgroundColor: palette.tint }]} onPress={createQuickTask}>
+            <Text style={{ color: '#FFFFFF' }}>Add</Text>
+          </TouchableOpacity>
+        </View>
+      </LuxCard>
 
       <View style={styles.filtersRow}>
         {FILTERS.map((f) => (
-          <TouchableOpacity
+          <LuxPill
             key={f}
+            label={`${f} (${counts[f]})`}
+            active={filter === f}
             onPress={() => setFilter(f)}
-            style={[
-              styles.filterChip,
-              { backgroundColor: filter === f ? palette.tint : palette.surface, borderColor: palette.border },
-            ]}
-          >
-            <Text style={{ color: filter === f ? '#FFFFFF' : palette.text }}>
-              {f.toUpperCase()} ({counts[f]})
-            </Text>
-          </TouchableOpacity>
+          />
         ))}
       </View>
 
-      <View style={styles.searchRow}>
+      <LuxCard style={styles.searchRow}>
         <TextInput
           value={q}
           onChangeText={setQ}
@@ -267,10 +279,10 @@ export default function TasksScreen() {
           placeholderTextColor={palette.textSecondary}
           style={[
             styles.searchInput,
-            { backgroundColor: palette.surface, color: palette.text, borderColor: palette.border },
+            { backgroundColor: palette.surface, color: palette.text, borderColor: palette.borderLight },
           ]}
         />
-      </View>
+      </LuxCard>
 
       <FlatList
         data={filtered}
@@ -283,28 +295,27 @@ export default function TasksScreen() {
         windowSize={5}
         removeClippedSubviews={true}
       />
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
-  headerTitle: { fontSize: 22, fontWeight: '900' },
-  headerChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14 },
-  inputRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingBottom: 8 },
-  input: { flex: 1, height: 44, borderRadius: 14, borderWidth: 1, paddingHorizontal: 12 },
-  addButton: { width: 64, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
-  filtersRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
-  filterChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, borderWidth: 1 },
-  searchRow: { paddingHorizontal: 16, paddingBottom: 8 },
-  searchInput: { height: 40, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12 },
-  listContent: { padding: 16, gap: 12 },
-  taskCard: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 8 },
-  taskHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  header: { paddingBottom: 8 },
+  inputCard: { marginHorizontal: 11, marginBottom: 8 },
+  inputRow: { flexDirection: 'row', gap: 7 },
+  input: { flex: 1, height: 31, borderRadius: 10, borderWidth: 1, paddingHorizontal: 8 },
+  addButton: { width: 45, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
+  filtersRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 11, paddingBottom: 8 },
+  searchRow: { marginHorizontal: 11, marginBottom: 8 },
+  searchInput: { height: 28, borderRadius: 8, borderWidth: 1, paddingHorizontal: 8 },
+  listContent: { padding: 11, gap: 10 },
+  taskCard: { borderRadius: 14, padding: 11, gap: 8 },
+  taskHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 6 },
   taskTitle: { fontWeight: '700', flex: 1 },
-  taskMetaRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  taskActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  taskAction: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 },
-  emptyState: { alignItems: 'center', paddingVertical: 40 },
+  taskBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  taskTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  taskActions: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  taskAction: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 5 },
+  emptyState: { alignItems: 'center', paddingVertical: 28 },
 });

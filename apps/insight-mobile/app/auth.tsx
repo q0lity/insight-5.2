@@ -10,6 +10,7 @@ import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { useTheme } from '@/src/state/theme';
 import { getSupabaseClient } from '@/src/supabase/client';
+import { LuxCard } from '@/components/LuxCard';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -134,7 +135,7 @@ export default function AuthScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.container, { backgroundColor: palette.background }]}
     >
-      <View style={[styles.card, { backgroundColor: palette.surface }]}>
+      <LuxCard style={[styles.card, { backgroundColor: palette.surface }]}>
         <View style={styles.logoRow}>
           <View style={[styles.logoBadge, { backgroundColor: palette.tint }]}>
             <Text style={styles.logoText}>i</Text>
@@ -217,7 +218,7 @@ export default function AuthScreen() {
           <FontAwesome name="apple" size={18} color={palette.text} />
           <Text style={[styles.oauthText, { color: palette.text }]}>Continue with Apple</Text>
         </TouchableOpacity>
-      </View>
+      </LuxCard>
     </KeyboardAvoidingView>
   );
 }
@@ -226,40 +227,40 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    padding: 24,
+    padding: 17,
   },
   card: {
-    borderRadius: 28,
-    padding: 24,
+    borderRadius: 20,
+    padding: 17,
     borderWidth: 1,
     borderColor: 'rgba(148,163,184,0.18)',
-    gap: 16,
+    gap: 11,
   },
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   logoBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
+    width: 31,
+    height: 31,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoText: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   title: {
-    fontSize: 26,
+    fontSize: 18,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '500',
     fontFamily: 'Figtree',
   },
@@ -267,47 +268,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
   },
   toggleButton: {
     paddingVertical: 4,
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
   },
   toggleText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   toggleCta: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   divider: {
     flex: 1,
     height: 1,
   },
   dividerText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   oauthButton: {
-    height: 50,
-    borderRadius: 16,
+    height: 35,
+    borderRadius: 11,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 10,
+    gap: 7,
   },
   oauthText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },

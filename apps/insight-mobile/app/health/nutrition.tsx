@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/state/theme';
 import { listMeals } from '@/src/storage/nutrition';
 import type { MealEntry } from '@/src/lib/health';
+import { Screen } from '@/components/Screen';
 
 export default function NutritionScreen() {
   const router = useRouter();
@@ -34,13 +35,13 @@ export default function NutritionScreen() {
   const sorted = useMemo(() => [...meals].sort((a, b) => b.eatenAt - a.eatenAt), [meals]);
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color={palette.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: palette.text }]}>Nutrition</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 28 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -81,43 +82,43 @@ export default function NutritionScreen() {
           ))
         )}
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backButton: { padding: 6 },
+  backButton: { padding: 4 },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
   },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    gap: 16,
+    paddingHorizontal: 14,
+    paddingBottom: 28,
+    gap: 11,
   },
   card: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
-    gap: 12,
+    borderRadius: 13,
+    padding: 11,
+    gap: 8,
   },
   emptyCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 24,
+    borderRadius: 13,
+    padding: 17,
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 9,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -125,14 +126,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '700',
   },
   cardMeta: {
-    fontSize: 12,
+    fontSize: 8,
   },
   cardCalories: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
   },
   cardRight: {
@@ -142,6 +143,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   itemsCount: {
-    fontSize: 12,
+    fontSize: 8,
   },
 });

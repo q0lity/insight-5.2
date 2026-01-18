@@ -163,7 +163,7 @@ function InlineText({ content, style, baseSize }: { content: string; style?: any
               fontFamily: 'SpaceMono',
               backgroundColor: isDark ? 'rgba(148,163,184,0.15)' : 'rgba(0,0,0,0.06)',
               paddingHorizontal: 4,
-              borderRadius: 4,
+              borderRadius: 6,
             },
           ]}
         >
@@ -263,40 +263,40 @@ export function SimpleMarkdown({ children, baseSize = 15 }: MarkdownProps) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 10,
+    gap: 7,
   },
   heading: {
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   paragraph: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 10,
+    lineHeight: 15,
     fontFamily: 'Figtree',
   },
   codeBlock: {
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: 7,
+    padding: 8,
   },
   codeText: {
     fontFamily: 'SpaceMono',
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 9,
+    lineHeight: 14,
   },
   blockquote: {
     borderLeftWidth: 3,
-    paddingLeft: 12,
+    paddingLeft: 8,
     paddingVertical: 4,
   },
   list: {
-    gap: 6,
+    gap: 4,
   },
   listItem: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   bullet: {
     fontWeight: '700',
-    width: 16,
+    width: 12,
   },
 });

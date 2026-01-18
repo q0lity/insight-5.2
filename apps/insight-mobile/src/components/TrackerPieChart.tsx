@@ -165,49 +165,49 @@ export function TrackerPieChart({ logs, size = 120 }: TrackerPieChartProps) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
+    gap: 8,
   },
   chartRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 11,
   },
   emptyCircle: {
     borderWidth: 3,
-    borderRadius: 999,
+    borderRadius: 699,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   legendContainer: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   legendTextCol: {
     flex: 1,
   },
   legendLabel: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   legendValue: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
@@ -215,19 +215,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 8,
+    paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: 'rgba(148, 163, 184, 0.12)',
   },
   totalLabel: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   totalValue: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },

@@ -15,6 +15,8 @@ import { InsightIcon } from '@/src/components/InsightIcon';
 import { ProgressRing, LineChart, type DataPoint } from '@/src/components/charts';
 import { listProjects, type Project } from '@/src/storage/projects';
 import { listEvents, type MobileEvent } from '@/src/storage/events';
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
 import {
   loadMultipliers,
   upsertProjectMultiplier,
@@ -171,18 +173,18 @@ export default function ProjectDetailScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+      <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <InsightIcon name="chevronLeft" size={24} color={palette.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: palette.text }]}>Project</Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 28 }} />
         </View>
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, { color: palette.textSecondary }]}>Loading...</Text>
         </View>
-      </View>
+      </Screen>
     );
   }
 
@@ -194,7 +196,7 @@ export default function ProjectDetailScreen() {
             <InsightIcon name="chevronLeft" size={24} color={palette.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: palette.text }]}>Project</Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 28 }} />
         </View>
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, { color: palette.textSecondary }]}>Project not found</Text>
@@ -215,12 +217,12 @@ export default function ProjectDetailScreen() {
         <Text style={[styles.headerTitle, { color: palette.text }]} numberOfLines={1}>
           {project.name}
         </Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 28 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         {/* Project Info Card */}
-        <View style={[styles.card, { backgroundColor: palette.surface }]}>
+        <LuxCard style={[styles.card, { backgroundColor: palette.surface }]}>
           <View style={styles.projectHeader}>
             <Text style={[styles.projectName, { color: palette.text }]}>{project.name}</Text>
             <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
@@ -250,7 +252,7 @@ export default function ProjectDetailScreen() {
               thumbTintColor={palette.tint}
             />
           </View>
-        </View>
+        </LuxCard>
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
@@ -284,7 +286,7 @@ export default function ProjectDetailScreen() {
         </View>
 
         {/* Timeline Chart */}
-        <View style={[styles.card, { backgroundColor: palette.surface }]}>
+        <LuxCard style={[styles.card, { backgroundColor: palette.surface }]}>
           <Text style={[styles.sectionTitle, { color: palette.text }]}>Activity Timeline</Text>
           <Text style={[styles.sectionSubtitle, { color: palette.textSecondary }]}>
             Minutes per day (last 14 days)
@@ -298,10 +300,10 @@ export default function ProjectDetailScreen() {
               showLabels={false}
             />
           </View>
-        </View>
+        </LuxCard>
 
         {/* Recent Activity */}
-        <View style={[styles.card, { backgroundColor: palette.surface }]}>
+        <LuxCard style={[styles.card, { backgroundColor: palette.surface }]}>
           <Text style={[styles.sectionTitle, { color: palette.text }]}>Recent Sessions</Text>
           {events.length === 0 ? (
             <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
@@ -346,7 +348,7 @@ export default function ProjectDetailScreen() {
               )}
             </View>
           )}
-        </View>
+        </LuxCard>
       </ScrollView>
     </View>
   );
@@ -360,11 +362,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -0.5,
@@ -372,7 +374,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   backButton: {
-    padding: 8,
+    padding: 6,
   },
   loadingContainer: {
     flex: 1,
@@ -380,17 +382,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    fontSize: 15,
+    fontSize: 10,
     fontFamily: 'Figtree',
   },
   content: {
-    padding: 16,
-    gap: 16,
-    paddingBottom: 40,
+    padding: 11,
+    gap: 11,
+    paddingBottom: 28,
   },
   card: {
-    padding: 20,
-    borderRadius: 24,
+    padding: 14,
+    borderRadius: 17,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.16)',
   },
@@ -401,7 +403,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   projectName: {
-    fontSize: 24,
+    fontSize: 17,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -0.5,
@@ -410,119 +412,119 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
+    gap: 4,
+    paddingHorizontal: 7,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 8,
   },
   statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   projectDate: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '500',
     fontFamily: 'Figtree',
   },
   multiplierSection: {
-    marginTop: 16,
-    paddingTop: 16,
+    marginTop: 11,
+    paddingTop: 11,
     borderTopWidth: 1,
     borderTopColor: 'rgba(148, 163, 184, 0.16)',
   },
   multiplierRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   multiplierLabel: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   multiplierValue: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
   },
   statCard: {
     width: '47%',
-    padding: 16,
-    borderRadius: 20,
+    padding: 11,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.16)',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   statValue: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '800',
     fontFamily: 'Figtree',
     position: 'absolute',
     top: 37,
   },
   statBigValue: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -1,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 12,
     fontWeight: '800',
     fontFamily: 'Figtree',
     marginBottom: 4,
   },
   sectionSubtitle: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '500',
     fontFamily: 'Figtree',
-    marginBottom: 16,
+    marginBottom: 11,
   },
   chartContainer: {
     marginHorizontal: -8,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 10,
     fontFamily: 'Figtree',
     textAlign: 'center',
-    paddingVertical: 20,
+    paddingVertical: 14,
   },
   eventsList: {
     gap: 0,
   },
   timelineItem: {
     flexDirection: 'row',
-    minHeight: 60,
+    minHeight: 42,
   },
   timelineLine: {
-    width: 24,
+    width: 17,
     alignItems: 'center',
   },
   timelineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     marginTop: 4,
   },
   timelineConnector: {
@@ -532,41 +534,41 @@ const styles = StyleSheet.create({
   },
   eventContent: {
     flex: 1,
-    paddingLeft: 8,
-    paddingBottom: 16,
+    paddingLeft: 6,
+    paddingBottom: 11,
   },
   eventTitle: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
     marginBottom: 4,
   },
   eventMeta: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   eventTime: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '500',
     fontFamily: 'Figtree',
   },
   eventDuration: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   eventPoints: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   moreText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
     fontStyle: 'italic',
     textAlign: 'center',
-    marginTop: 8,
-    marginLeft: 32,
+    marginTop: 6,
+    marginLeft: 22,
   },
 });

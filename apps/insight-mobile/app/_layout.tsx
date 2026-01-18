@@ -104,7 +104,7 @@ function RootLayoutNav() {
   return (
     <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       <SessionProvider>
-        <Stack screenOptions={{ headerShown: false }}>{screens}</Stack>
+        <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>{screens}</Stack>
       </SessionProvider>
     </NavigationThemeProvider>
   );

@@ -2,96 +2,181 @@ import React, { createContext, useContext, useState, useEffect, useMemo, ReactNo
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme as useSystemColorScheme } from 'react-native';
 
-export type ThemeMode = 'dark' | 'light' | 'warm' | 'olive' | 'oliveOrange' | 'roseGold' | 'system';
+export type ThemeMode =
+  | 'dark'
+  | 'light'
+  | 'warm'
+  | 'olive'
+  | 'oliveOrange'
+  | 'roseGold'
+  | 'midnight'
+  | 'midnightNeon'
+  | 'system';
 export type DisplayMode = 'big' | 'compact';
-export type ResolvedTheme = 'dark' | 'light' | 'warm' | 'olive' | 'oliveOrange' | 'roseGold';
+export type ResolvedTheme =
+  | 'dark'
+  | 'light'
+  | 'warm'
+  | 'olive'
+  | 'oliveOrange'
+  | 'roseGold'
+  | 'midnight'
+  | 'midnightNeon';
 export type ThemePalette = typeof ThemePalettes.dark;
 
-// Theme palettes - 4 color schemes
+// Theme palettes
 export const ThemePalettes = {
   dark: {
-    background: '#0B1020',
-    surface: '#141a2a',
-    surfaceAlt: 'rgba(20,26,42,0.95)',
-    text: '#E5E7EB',
-    textSecondary: 'rgba(148,163,184,0.6)',
-    tint: '#D95D39',
-    tintLight: 'rgba(217,93,57,0.15)',
-    border: 'rgba(148, 163, 184, 0.16)',
-    borderLight: 'rgba(148,163,184,0.08)',
-    success: '#22C55E',
-    error: '#EF4444',
-    warning: '#F97316',
+    background: '#0E1B2E',
+    surface: '#1B2A42',
+    surfaceAlt: '#16243A',
+    panelAlpha: '#1B2A42',
+    glass: '#1B2A42',
+    overlay: 'rgba(0,0,0,0.35)',
+    text: '#E8ECF2',
+    textSecondary: '#A3AEC2',
+    tint: '#E26B3A',
+    tintLight: '#F4B59A',
+    tintMid: '#F0A582',
+    tintBorder: '#E7A382',
+    border: '#2B3A55',
+    borderLight: '#3A4A66',
+    success: '#34D399',
+    error: '#FB7185',
+    warning: '#FBBF24',
   },
   light: {
     background: '#FFFFFF',
-    surface: '#F8F9FA',
+    surface: '#F7F6F2',
     surfaceAlt: '#FFFFFF',
-    text: '#1C1C1E',
-    textSecondary: 'rgba(28,28,30,0.5)',
-    tint: '#D95D39',
-    tintLight: 'rgba(217,93,57,0.1)',
-    border: 'rgba(28, 28, 30, 0.1)',
-    borderLight: 'rgba(28,28,30,0.05)',
-    success: '#22C55E',
-    error: '#EF4444',
-    warning: '#F97316',
+    panelAlpha: '#F7F6F2',
+    glass: '#FFFFFF',
+    overlay: 'rgba(0,0,0,0.2)',
+    text: '#0C0C0C',
+    textSecondary: '#5C667A',
+    tint: '#E26B3A',
+    tintLight: '#FCECE8',
+    tintMid: '#F4B59A',
+    tintBorder: '#E7A382',
+    border: '#E7E2DA',
+    borderLight: '#EFEAE3',
+    success: '#2F8A5A',
+    error: '#C94B42',
+    warning: '#F59E0B',
   },
   warm: {
-    background: '#F2F0ED',
-    surface: '#FFFFFF',
+    background: '#FFFFFF',
+    surface: '#F7F6F2',
     surfaceAlt: '#FFFFFF',
-    text: '#1C1C1E',
-    textSecondary: 'rgba(28,28,30,0.35)',
-    tint: '#D95D39',
-    tintLight: 'rgba(217,93,57,0.1)',
-    border: 'rgba(28, 28, 30, 0.08)',
-    borderLight: 'rgba(28,28,30,0.04)',
-    success: '#22C55E',
-    error: '#EF4444',
-    warning: '#F97316',
+    panelAlpha: '#F7F6F2',
+    glass: '#FFFFFF',
+    overlay: 'rgba(0,0,0,0.2)',
+    text: '#0C0C0C',
+    textSecondary: '#5C667A',
+    tint: '#E26B3A',
+    tintLight: '#FCECE8',
+    tintMid: '#F4B59A',
+    tintBorder: '#E7A382',
+    border: '#E7E2DA',
+    borderLight: '#EFEAE3',
+    success: '#2F8A5A',
+    error: '#C94B42',
+    warning: '#F59E0B',
   },
   olive: {
-    background: '#1A1F16',
-    surface: '#252B20',
-    surfaceAlt: 'rgba(37,43,32,0.95)',
-    text: '#E5E8E0',
-    textSecondary: 'rgba(180,190,160,0.6)',
-    tint: '#8B9A6D',
-    tintLight: 'rgba(139,154,109,0.15)',
-    border: 'rgba(140, 160, 120, 0.16)',
-    borderLight: 'rgba(140,160,120,0.08)',
-    success: '#7BAF7B',
-    error: '#C97B7B',
-    warning: '#D4A574',
+    background: '#2E3127',
+    surface: '#3A3F31',
+    surfaceAlt: '#333828',
+    panelAlpha: '#3A3F31',
+    glass: '#3A3F31',
+    overlay: 'rgba(0,0,0,0.45)',
+    text: '#F2EFEA',
+    textSecondary: '#B8B1A5',
+    tint: '#E26B3A',
+    tintLight: '#5B3A2D',
+    tintMid: '#6D4331',
+    tintBorder: '#7B4B33',
+    border: '#4A4F3E',
+    borderLight: '#5C6150',
+    success: '#2F8A5A',
+    error: '#C94B42',
+    warning: '#F59E0B',
   },
   oliveOrange: {
-    background: '#2B2A24',
-    surface: '#383630',
-    surfaceAlt: 'rgba(56,54,48,0.95)',
-    text: '#EDE9E0',
-    textSecondary: 'rgba(200,190,170,0.6)',
-    tint: '#D95D39',
-    tintLight: 'rgba(217,93,57,0.18)',
-    border: 'rgba(180, 170, 150, 0.18)',
-    borderLight: 'rgba(180,170,150,0.08)',
-    success: '#9CA77A',
-    error: '#C97B7B',
-    warning: '#D4A574',
+    background: '#2E3127',
+    surface: '#3A3F31',
+    surfaceAlt: '#333828',
+    panelAlpha: '#3A3F31',
+    glass: '#3A3F31',
+    overlay: 'rgba(0,0,0,0.45)',
+    text: '#F2EFEA',
+    textSecondary: '#B8B1A5',
+    tint: '#E26B3A',
+    tintLight: '#5B3A2D',
+    tintMid: '#6D4331',
+    tintBorder: '#7B4B33',
+    border: '#4A4F3E',
+    borderLight: '#5C6150',
+    success: '#2F8A5A',
+    error: '#C94B42',
+    warning: '#F59E0B',
   },
   roseGold: {
-    background: '#2D2226',
-    surface: '#3A2D32',
-    surfaceAlt: 'rgba(58,45,50,0.95)',
-    text: '#F2E4E0',
-    textSecondary: 'rgba(220,200,195,0.6)',
-    tint: '#E8AB96',
-    tintLight: 'rgba(232,171,150,0.18)',
-    border: 'rgba(232, 171, 150, 0.18)',
-    borderLight: 'rgba(232,171,150,0.08)',
-    success: '#B8D4A0',
-    error: '#D98B8B',
-    warning: '#E8C49A',
+    background: '#FFFFFF',
+    surface: '#F7F6F2',
+    surfaceAlt: '#FFFFFF',
+    panelAlpha: '#F7F6F2',
+    glass: '#FFFFFF',
+    overlay: 'rgba(0,0,0,0.2)',
+    text: '#0C0C0C',
+    textSecondary: '#5C667A',
+    tint: '#E26B3A',
+    tintLight: '#FCECE8',
+    tintMid: '#F4B59A',
+    tintBorder: '#E7A382',
+    border: '#E7E2DA',
+    borderLight: '#EFEAE3',
+    success: '#2F8A5A',
+    error: '#C94B42',
+    warning: '#F59E0B',
+  },
+  midnight: {
+    background: '#0E1B2E',
+    surface: '#1B2A42',
+    surfaceAlt: '#16243A',
+    panelAlpha: '#1B2A42',
+    glass: '#1B2A42',
+    overlay: 'rgba(0,0,0,0.35)',
+    text: '#E8ECF2',
+    textSecondary: '#A3AEC2',
+    tint: '#E26B3A',
+    tintLight: '#F4B59A',
+    tintMid: '#F0A582',
+    tintBorder: '#E7A382',
+    border: '#2B3A55',
+    borderLight: '#3A4A66',
+    success: '#34D399',
+    error: '#FB7185',
+    warning: '#FBBF24',
+  },
+  midnightNeon: {
+    background: '#0a0a0f',
+    surface: '#14141a',
+    surfaceAlt: '#0e0e14',
+    panelAlpha: '#14141a',
+    glass: '#14141a',
+    overlay: 'rgba(0,0,0,0.6)',
+    text: '#E9E9E9',
+    textSecondary: '#9AA3B2',
+    tint: '#00E5FF',
+    tintLight: '#0C2A33',
+    tintMid: '#0F3A45',
+    tintBorder: '#1A5661',
+    border: '#1e2128',
+    borderLight: '#2a2e38',
+    success: '#A7FF4A',
+    error: '#FF5C5C',
+    warning: '#FFC857',
   },
 };
 
@@ -183,8 +268,8 @@ type ThemeProviderProps = {
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const systemScheme = useSystemColorScheme();
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
-  const [displayMode, setDisplayModeState] = useState<DisplayMode>('big');
+  const [themeMode, setThemeModeState] = useState<ThemeMode>('warm');
+  const [displayMode, setDisplayModeState] = useState<DisplayMode>('compact');
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load persisted preferences on mount
@@ -233,7 +318,13 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   // Get current palette and sizes
   const palette = ThemePalettes[resolvedTheme];
   const sizes = DisplaySizes[displayMode];
-  const isDark = resolvedTheme === 'dark' || resolvedTheme === 'olive' || resolvedTheme === 'oliveOrange' || resolvedTheme === 'roseGold';
+  const isDark =
+    resolvedTheme === 'dark' ||
+    resolvedTheme === 'olive' ||
+    resolvedTheme === 'oliveOrange' ||
+    resolvedTheme === 'roseGold' ||
+    resolvedTheme === 'midnight' ||
+    resolvedTheme === 'midnightNeon';
 
   const value = useMemo<ThemeContextValue>(
     () => ({

@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/src/state/theme';
+import { Screen } from '@/components/Screen';
 import {
   getInboxCapture,
   updateCaptureText,
@@ -100,18 +101,18 @@ export default function NoteDetailScreen() {
 
   if (!capture) {
     return (
-      <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+      <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="chevron-back" size={24} color={palette.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: palette.text }]}>Note</Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 28 }} />
         </View>
         <View style={styles.loadingWrap}>
           <Text style={[styles.loadingText, { color: palette.textSecondary }]}>Loading...</Text>
         </View>
-      </View>
+      </Screen>
     );
   }
 
@@ -256,15 +257,15 @@ export default function NoteDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backButton: { padding: 6 },
+  backButton: { padding: 4 },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '700',
     flex: 1,
     textAlign: 'center',
@@ -275,18 +276,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: 10,
   },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    gap: 16,
+    paddingHorizontal: 14,
+    paddingBottom: 28,
+    gap: 11,
   },
   metaCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
-    gap: 12,
+    borderRadius: 13,
+    padding: 11,
+    gap: 8,
   },
   metaRow: {
     flexDirection: 'row',
@@ -294,72 +295,72 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   metaLabel: {
-    fontSize: 13,
+    fontSize: 9,
   },
   metaValue: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
   },
   statusButtons: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 4,
   },
   statusButton: {
-    borderRadius: 10,
-    paddingHorizontal: 10,
+    borderRadius: 7,
+    paddingHorizontal: 7,
     paddingVertical: 4,
   },
   statusButtonText: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '600',
   },
   entitiesCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
-    gap: 12,
+    borderRadius: 13,
+    padding: 11,
+    gap: 8,
   },
   entitySection: {
-    gap: 6,
+    gap: 4,
   },
   entityLabel: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
   },
   entityChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 4,
   },
   entityChip: {
-    borderRadius: 10,
-    paddingHorizontal: 10,
+    borderRadius: 7,
+    paddingHorizontal: 7,
     paddingVertical: 4,
   },
   entityChipText: {
-    fontSize: 12,
+    fontSize: 8,
   },
   editorCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
-    minHeight: 200,
+    borderRadius: 13,
+    padding: 11,
+    minHeight: 140,
   },
   editor: {
-    fontSize: 14,
-    lineHeight: 22,
-    minHeight: 180,
+    fontSize: 10,
+    lineHeight: 15,
+    minHeight: 126,
   },
   editorActions: {
     alignItems: 'center',
   },
   saveButton: {
-    borderRadius: 14,
-    paddingHorizontal: 32,
-    paddingVertical: 12,
+    borderRadius: 10,
+    paddingHorizontal: 22,
+    paddingVertical: 8,
   },
   saveButtonText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
   },
 });

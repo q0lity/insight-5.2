@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Text } from '@/components/Themed'
+import { Screen } from '@/components/Screen';
 import { useTheme } from '@/src/state/theme'
 import { SimpleMarkdown } from '@/src/components/SimpleMarkdown'
 import { listInboxCaptures, type InboxCapture } from '@/src/storage/inbox'
@@ -180,7 +181,7 @@ export default function AssistantScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top + sizes.spacing }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top + sizes.spacing }]}>
       <View style={styles.header}>
         <View>
           <Text style={[styles.title, { color: palette.text }]}>Assistant</Text>
@@ -209,7 +210,7 @@ export default function AssistantScreen() {
         })}
       </View>
 
-      <ScrollView style={styles.chat} contentContainerStyle={{ paddingBottom: 24 }}>
+      <ScrollView style={styles.chat} contentContainerStyle={{ paddingBottom: 17 }}>
         {chat.length === 0 ? (
           <View style={styles.empty}>
             <Text style={[styles.emptyTitle, { color: palette.text }]}>How can I help you today?</Text>
@@ -263,7 +264,7 @@ export default function AssistantScreen() {
                       >
                         <View style={{ flex: 1 }}>
                           <Text style={{ color: palette.text }}>{hit.label}</Text>
-                          <Text style={{ color: palette.textSecondary, fontSize: 12 }}>{hit.meta}</Text>
+                          <Text style={{ color: palette.textSecondary, fontSize: 8 }}>{hit.meta}</Text>
                         </View>
                         <Text style={{ color: palette.tint }}>Open</Text>
                       </TouchableOpacity>
@@ -289,60 +290,60 @@ export default function AssistantScreen() {
           <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{sending ? '...' : 'Send'}</Text>
         </Pressable>
       </View>
-    </View>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingBottom: 8 },
-  title: { fontSize: 28, fontWeight: '800', fontFamily: 'Figtree' },
-  subtitle: { fontSize: 14, fontWeight: '600' },
-  modeRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginBottom: 10 },
+  header: { paddingHorizontal: 14, paddingBottom: 6 },
+  title: { fontSize: 20, fontWeight: '800', fontFamily: 'Figtree' },
+  subtitle: { fontSize: 10, fontWeight: '600' },
+  modeRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 14, marginBottom: 7 },
   modeChip: {
     borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderRadius: 11,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  chat: { flex: 1, paddingHorizontal: 20 },
-  empty: { marginTop: 24, gap: 12 },
-  emptyTitle: { fontSize: 18, fontWeight: '700' },
-  suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chat: { flex: 1, paddingHorizontal: 14 },
+  empty: { marginTop: 17, gap: 8 },
+  emptyTitle: { fontSize: 13, fontWeight: '700' },
+  suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   suggestionChip: {
     borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderRadius: 11,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   bubble: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
+    borderRadius: 11,
+    padding: 8,
+    marginBottom: 8,
   },
   userBubble: { alignSelf: 'flex-end' },
   assistantBubble: { alignSelf: 'flex-start' },
-  bubbleRole: { fontSize: 12, fontWeight: '700', marginBottom: 4 },
-  hitsPanel: { borderWidth: 1, borderRadius: 16, padding: 12, marginTop: 12, gap: 10 },
-  hitsTitle: { fontSize: 16, fontWeight: '700' },
-  hitGroup: { gap: 6 },
-  hitGroupLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
+  bubbleRole: { fontSize: 8, fontWeight: '700', marginBottom: 4 },
+  hitsPanel: { borderWidth: 1, borderRadius: 11, padding: 8, marginTop: 8, gap: 7 },
+  hitsTitle: { fontSize: 11, fontWeight: '700' },
+  hitGroup: { gap: 4 },
+  hitGroupLabel: { fontSize: 8, fontWeight: '700', textTransform: 'uppercase' },
   hitRow: {
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 10,
+    borderRadius: 8,
+    padding: 7,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   composer: {
     borderTopWidth: 1,
-    padding: 12,
+    padding: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 7,
   },
-  input: { flex: 1, height: 44 },
-  send: { height: 44, borderRadius: 12, paddingHorizontal: 16, justifyContent: 'center' },
+  input: { flex: 1, height: 31 },
+  send: { height: 31, borderRadius: 8, paddingHorizontal: 11, justifyContent: 'center' },
 })

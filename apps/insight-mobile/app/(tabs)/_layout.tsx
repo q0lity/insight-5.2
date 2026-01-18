@@ -33,8 +33,8 @@ function InsightTabBar({ state, navigation }: BottomTabBarProps) {
     () => [TAB_ITEMS.slice(0, 2), TAB_ITEMS.slice(2)],
     []
   );
-  const barBackground = isDark ? 'rgba(15,19,32,0.95)' : 'rgba(255,255,255,0.94)';
-  const barBorder = palette.border;
+  const barBackground = palette.glass;
+  const barBorder = palette.borderLight;
   const rotation = rotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '90deg'],
@@ -87,10 +87,14 @@ function InsightTabBar({ state, navigation }: BottomTabBarProps) {
           bottom: insets.bottom + 8,
         },
       ]}>
+      <View
+        pointerEvents="none"
+        style={[styles.tabBarSheen, { backgroundColor: palette.tintLight }]}
+      />
       <View style={styles.tabRow}>
         <View style={styles.tabGroup}>{leftTabs.map(renderTab)}</View>
         <Pressable
-          onPress={() => router.push('/voice')}
+          onPress={() => router.push('/capture')}
           onPressIn={() =>
             Animated.timing(rotateAnim, {
               toValue: 1,
@@ -148,19 +152,28 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     borderTopWidth: 1,
-    paddingHorizontal: 8,
-    height: 44,
-    borderRadius: 16,
+    paddingHorizontal: 6,
+    height: 31,
+    borderRadius: 11,
     position: 'absolute',
     left: 16,
     right: 16,
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 12 },
     shadowRadius: 16,
     elevation: 8,
     overflow: 'visible',
     justifyContent: 'center',
+  },
+  tabBarSheen: {
+    position: 'absolute',
+    top: 0,
+    left: 8,
+    right: 8,
+    height: 2,
+    borderRadius: 2,
+    opacity: 0.6,
   },
   tabRow: {
     flexDirection: 'row',
@@ -177,38 +190,38 @@ const styles = StyleSheet.create({
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 34,
-    height: 32,
+    minWidth: 24,
+    height: 22,
   },
   nodeBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
   nodeBadgeText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '800',
   },
   captureButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
+    width: 35,
+    height: 35,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 4,
     shadowColor: '#000',
     shadowOpacity: 0.18,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 12 },
     shadowRadius: 14,
     elevation: 7,
   },
   captureButtonInner: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
+    width: 35,
+    height: 35,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { G, Line, Rect } from 'react-native-svg';
+import { BarChart as GiftedBarChart } from 'react-native-gifted-charts/dist/BarChart';
 
 import { useTheme } from '@/src/state/theme';
 
@@ -39,28 +39,37 @@ export function BarChart({
   const { palette, isDark } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
 
-  const width = screenWidth - 32;
-  const padding = 24;
-  const labelHeight = showLabels ? 20 : 0;
-  const chartHeight = height - labelHeight;
+  const chartWidth = screenWidth - 64;
   const defaultColor = color ?? palette.tint;
-
-  const normalizedData = useMemo(() => {
-    return data.map((item) => {
-      if (typeof item === 'number') {
-        return { value: item, label: undefined, color: defaultColor };
-      }
-      return { ...item, color: item.color ?? defaultColor };
-    });
-  }, [data, defaultColor]);
-
-  const maxValue = useMemo(() => {
-    return Math.max(1, ...normalizedData.map((d) => d.value));
-  }, [normalizedData]);
 
   const gridColor = isDark ? 'rgba(148,163,184,0.15)' : 'rgba(0,0,0,0.08)';
 
-  if (normalizedData.length === 0) {
+  const chartData = useMemo(() => {
+    return data.map((item, index) => {
+      const value = typeof item === 'number' ? item : item.value;
+      const label = typeof item === 'number' ? undefined : item.label;
+      const barColor = typeof item === 'number' ? defaultColor : (item.color ?? defaultColor);
+
+      return {
+        value,
+        label: showLabels ? (label ?? (index + 1).toString()) : undefined,
+        frontColor: barColor,
+        topLabelComponent: showValues && value > 0
+          ? () => (
+              <Text style={[styles.valueLabel, { color: palette.textSecondary }]}>
+                {value}
+              </Text>
+            )
+          : undefined,
+      };
+    });
+  }, [data, defaultColor, showLabels, showValues, palette.textSecondary]);
+
+  const maxValue = useMemo(() => {
+    return Math.max(1, ...chartData.map((d) => d.value));
+  }, [chartData]);
+
+  if (chartData.length === 0) {
     return (
       <View style={[styles.emptyContainer, { height }]}>
         <View style={[styles.emptyCircle, { borderColor: gridColor }]}>
@@ -73,122 +82,82 @@ export function BarChart({
     );
   }
 
-  const barWidth = (width - padding * 2) / normalizedData.length;
-  const barPadding = barWidth * 0.2;
-  const actualBarWidth = barWidth * 0.6;
+  // Calculate bar width based on data count
+  const barCount = chartData.length;
+  const barWidth = Math.max(12, Math.min(40, (chartWidth - 40) / barCount - 8));
+  const spacing = Math.max(4, (chartWidth - barWidth * barCount) / (barCount + 1));
 
   return (
-    <View>
-      <Svg width={width} height={chartHeight}>
-        {/* Grid lines */}
-        {showGrid && (
-          <G>
-            {[0, 0.5, 1].map((t, i) => {
-              const y = padding + t * (chartHeight - padding * 2);
-              return (
-                <Line
-                  key={i}
-                  x1={padding}
-                  y1={y}
-                  x2={width - padding}
-                  y2={y}
-                  stroke={gridColor}
-                  strokeWidth={1}
-                />
-              );
-            })}
-          </G>
-        )}
-
-        {/* Bars */}
-        {normalizedData.map((bar, i) => {
-          const barHeight = ((chartHeight - padding * 2) * bar.value) / maxValue;
-          const x = padding + i * barWidth + barPadding;
-          const y = chartHeight - padding - barHeight;
-          const isMax = bar.value === maxValue;
-
-          return (
-            <G key={i}>
-              <Rect
-                x={x}
-                y={y}
-                width={actualBarWidth}
-                height={barHeight}
-                rx={6}
-                fill={bar.color}
-                opacity={isMax ? 1 : 0.8}
-              />
-              {showValues && bar.value > 0 && (
-                <Text
-                  x={x + actualBarWidth / 2}
-                  y={y - 6}
-                  fontSize={10}
-                  fontWeight="700"
-                  fill={palette.textSecondary}
-                  textAnchor="middle"
-                >
-                  {bar.value}
-                </Text>
-              )}
-            </G>
-          );
-        })}
-      </Svg>
-
-      {/* Labels */}
-      {showLabels && (
-        <View style={[styles.labelsRow, { paddingHorizontal: padding }]}>
-          {normalizedData.map((bar, i) => (
-            <View key={i} style={[styles.labelCell, { width: barWidth }]}>
-              <Text
-                style={[styles.label, { color: palette.textSecondary }]}
-                numberOfLines={1}
-              >
-                {bar.label ?? (i + 1).toString()}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
+    <View style={styles.container}>
+      <GiftedBarChart
+        data={chartData}
+        width={chartWidth}
+        height={height - 40}
+        barWidth={barWidth}
+        spacing={spacing}
+        barBorderRadius={6}
+        showGradient={false}
+        isAnimated
+        animationDuration={600}
+        maxValue={maxValue * 1.1}
+        noOfSections={showGrid ? 3 : 0}
+        rulesColor={gridColor}
+        rulesType="solid"
+        rulesThickness={1}
+        hideRules={!showGrid}
+        xAxisColor="transparent"
+        yAxisColor="transparent"
+        yAxisTextStyle={{ color: 'transparent', fontSize: 0 }}
+        xAxisLabelTextStyle={[
+          styles.label,
+          { color: palette.textSecondary },
+        ]}
+        hideYAxisText
+        disablePress
+        disableScroll
+        initialSpacing={spacing}
+        endSpacing={spacing}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 8,
   },
   emptyCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     borderWidth: 2,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyIcon: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '600',
   },
   emptyText: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  labelsRow: {
-    flexDirection: 'row',
-    marginTop: 4,
-  },
-  labelCell: {
-    alignItems: 'center',
-  },
   label: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '600',
     textTransform: 'uppercase',
+  },
+  valueLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginBottom: 4,
   },
 });

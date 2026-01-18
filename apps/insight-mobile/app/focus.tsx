@@ -4,6 +4,8 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router } from 'expo-router';
 
 import { Text, View } from '@/components/Themed';
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
 import { useTheme } from '@/src/state/theme';
 import { updateLiveActivity } from '@/src/native/liveActivity';
 import { getEvent, updateEvent, listEvents, type MobileEvent } from '@/src/storage/events';
@@ -423,7 +425,7 @@ export default function FocusScreen() {
   }, [active?.id, remainingBucket, remainingSeconds, active?.title, active?.trackerKey]);
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background }]}>
       <View style={[styles.header, { backgroundColor: 'transparent' }]}>
         <Pressable onPress={() => router.back()} style={styles.iconButton}>
           <FontAwesome name="chevron-left" size={18} color={palette.text} />
@@ -435,44 +437,50 @@ export default function FocusScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: isDark ? 'rgba(15,19,32,0.92)' : 'rgba(255,255,255,0.85)',
-              borderColor: isDark ? 'rgba(148,163,184,0.16)' : 'rgba(28,28,30,0.06)',
-            },
-          ]}>
+        <LuxCard style={styles.card} accent={palette.tint}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.meta}>
             {formatClock(elapsedMs)}
             {remainingMs != null ? ` elapsed - ${formatClock(remainingMs)} left` : ' elapsed'}
           </Text>
 
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
+          <View style={[styles.progressTrack, { backgroundColor: palette.tintLight }]}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${Math.round(progress * 100)}%`, backgroundColor: palette.tint },
+              ]}
+            />
           </View>
-          <RollingNumber value={formatXp(pointsRaw)} prefix="+" suffix=" XP" textStyle={styles.points} />
+          <RollingNumber
+            value={formatXp(pointsRaw)}
+            prefix="+"
+            suffix=" XP"
+            textStyle={[styles.points, { color: palette.tint }]}
+          />
 
           <View style={styles.actions}>
-            <Pressable style={[styles.actionButton, styles.secondaryButton]}>
+            <Pressable style={[styles.actionButton, styles.secondaryButton, { borderColor: palette.borderLight }]}>
               <Text style={styles.actionText}>Pause</Text>
             </Pressable>
-            <Pressable style={[styles.actionButton, styles.primaryButton]} onPress={() => void stopSession()}>
+            <Pressable
+              style={[styles.actionButton, styles.primaryButton, { backgroundColor: palette.tint }]}
+              onPress={() => void stopSession()}
+            >
               <Text style={[styles.actionText, styles.actionTextLight]}>End</Text>
             </Pressable>
           </View>
-        </View>
+        </LuxCard>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionLabel}>Notes</Text>
             <View style={styles.noteHeaderActions}>
-              <Pressable style={styles.timestampButton} onPress={addTimestampLine}>
-                <Text style={styles.timestampText}>Add timestamp</Text>
+              <Pressable style={[styles.timestampButton, { backgroundColor: palette.tintLight }]} onPress={addTimestampLine}>
+                <Text style={[styles.timestampText, { color: palette.tint }]}>Add timestamp</Text>
               </Pressable>
-              <Pressable style={styles.timestampButton} onPress={addSegmentDivider}>
-                <Text style={styles.timestampText}>Add segment</Text>
+              <Pressable style={[styles.timestampButton, { backgroundColor: palette.tintLight }]} onPress={addSegmentDivider}>
+                <Text style={[styles.timestampText, { color: palette.tint }]}>Add segment</Text>
               </Pressable>
             </View>
           </View>
@@ -488,8 +496,19 @@ export default function FocusScreen() {
                   <Pressable
                     key={option.key}
                     onPress={() => setNoteMode(option.key as 'raw' | 'transcript' | 'outline')}
-                    style={[styles.modePill, activeOption && styles.modePillActive]}>
-                    <Text style={[styles.modeText, activeOption && styles.modeTextActive]}>{option.label}</Text>
+                    style={[
+                      styles.modePill,
+                      { borderColor: palette.borderLight, backgroundColor: palette.panelAlpha },
+                      activeOption && { backgroundColor: palette.tintLight, borderColor: palette.tintBorder },
+                    ]}>
+                    <Text
+                      style={[
+                        styles.modeText,
+                        { color: palette.textSecondary },
+                        activeOption && { color: palette.tint, opacity: 1 },
+                      ]}>
+                      {option.label}
+                    </Text>
                   </Pressable>
                 );
               })}
@@ -1035,7 +1054,7 @@ export default function FocusScreen() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
@@ -1070,12 +1089,12 @@ function formatTrackerValue(log: TrackerLogEntry) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    gap: 18,
+    padding: 14,
+    gap: 13,
   },
   scroll: {
-    gap: 16,
-    paddingBottom: 24,
+    gap: 11,
+    paddingBottom: 17,
   },
   header: {
     flexDirection: 'row',
@@ -1083,61 +1102,55 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 25,
+    height: 25,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '700',
   },
   card: {
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    gap: 10,
+    padding: 11,
+    gap: 7,
   },
   title: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '800',
   },
   meta: {
     opacity: 0.7,
   },
   progressTrack: {
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: 'rgba(217,93,57,0.15)',
+    height: 12,
+    borderRadius: 699,
     overflow: 'hidden',
   },
   progressFill: {
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: '#D95D39',
+    height: 12,
+    borderRadius: 699,
   },
   points: {
     fontWeight: '700',
-    color: '#D95D39',
   },
   actions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 7,
   },
   actionButton: {
     flex: 1,
-    height: 44,
-    borderRadius: 12,
+    height: 31,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryButton: {
-    backgroundColor: '#D95D39',
+    backgroundColor: 'transparent',
   },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: 'rgba(28,28,30,0.12)',
   },
   actionText: {
     fontWeight: '700',
@@ -1146,7 +1159,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   section: {
-    gap: 8,
+    gap: 6,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1154,13 +1167,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sectionAction: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
   },
   noteHeaderActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   noteModeRow: {
     flexDirection: 'row',
@@ -1169,70 +1182,64 @@ const styles = StyleSheet.create({
   },
   modeRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   modePill: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 699,
     borderWidth: 1,
-    backgroundColor: 'rgba(255,255,255,0.04)',
   },
   modePillActive: {
-    backgroundColor: 'rgba(217,93,57,0.16)',
-    borderColor: 'rgba(217,93,57,0.35)',
   },
   modeText: {
     fontWeight: '700',
     opacity: 0.7,
   },
   modeTextActive: {
-    color: '#D95D39',
     opacity: 1,
   },
   timestampButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: 'rgba(217,93,57,0.12)',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 699,
   },
   timestampText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
-    color: '#D95D39',
   },
   sectionLabel: {
-    fontSize: 12,
+    fontSize: 8,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     opacity: 0.7,
     fontWeight: '700',
   },
   frontmatter: {
-    gap: 14,
+    gap: 10,
   },
   fieldRow: {
-    gap: 8,
+    gap: 6,
   },
   fieldLabel: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     opacity: 0.7,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
     alignItems: 'center',
   },
   chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 699,
     backgroundColor: 'rgba(217,93,57,0.12)',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   chipActive: {
     backgroundColor: 'rgba(217,93,57,0.2)',
@@ -1248,62 +1255,62 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   chipRemove: {
-    fontSize: 12,
+    fontSize: 8,
     opacity: 0.7,
   },
   chipHint: {
     opacity: 0.6,
   },
   chipInput: {
-    minWidth: 120,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    minWidth: 84,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     alignItems: 'flex-start',
   },
   gridItem: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
   smallInput: {
-    minHeight: 40,
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    minHeight: 28,
+    borderRadius: 8,
+    paddingHorizontal: 8,
     borderWidth: 1,
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
   pointsCard: {
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    borderRadius: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 8,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
     borderColor: 'rgba(28,28,30,0.08)',
     gap: 4,
   },
   pointsValue: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '700',
   },
   pointsMeta: {
-    fontSize: 12,
+    fontSize: 8,
     opacity: 0.6,
   },
   scaleGroup: {
-    gap: 8,
+    gap: 6,
   },
   scaleRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     flexWrap: 'wrap',
   },
   scalePill: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -1323,72 +1330,72 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
   notesInput: {
-    minHeight: 140,
-    borderRadius: 14,
+    minHeight: 98,
+    borderRadius: 10,
     borderWidth: 1,
-    padding: 12,
+    padding: 8,
     textAlignVertical: 'top',
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
   notesPreviewCard: {
-    minHeight: 140,
-    borderRadius: 14,
+    minHeight: 98,
+    borderRadius: 10,
     borderWidth: 1,
-    padding: 12,
+    padding: 8,
   },
   notesPreviewText: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 9,
+    lineHeight: 13,
   },
   trackerCard: {
-    borderRadius: 20,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: 16,
-    gap: 12,
+    padding: 11,
+    gap: 8,
   },
   trackerHint: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
   },
   trackerChipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   trackerChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
   },
   trackerChipText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   trackerCustomRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     alignItems: 'center',
   },
   trackerCustomInput: {
     flex: 1,
-    height: 40,
-    borderRadius: 12,
+    height: 28,
+    borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    fontSize: 13,
+    paddingHorizontal: 7,
+    fontSize: 9,
     fontFamily: 'Figtree',
   },
   trackerCustomButton: {
-    paddingHorizontal: 12,
-    height: 40,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   trackerCustomButtonText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     fontFamily: 'Figtree',
     color: '#FFFFFF',
@@ -1396,25 +1403,25 @@ const styles = StyleSheet.create({
   trackerValueRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   trackerValuePill: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 21,
+    height: 21,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   trackerValueText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     color: '#FFFFFF',
   },
   trackerLogList: {
-    gap: 10,
+    gap: 7,
   },
   trackerLogItem: {
-    gap: 8,
+    gap: 6,
   },
   trackerLogRow: {
     flexDirection: 'row',
@@ -1424,21 +1431,21 @@ const styles = StyleSheet.create({
   trackerEditRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   trackerEditInput: {
     flex: 1,
-    height: 40,
-    borderRadius: 12,
+    height: 28,
+    borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    fontSize: 13,
+    paddingHorizontal: 7,
+    fontSize: 9,
     fontFamily: 'Figtree',
   },
   trackerEditButton: {
-    height: 40,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    height: 28,
+    paddingHorizontal: 8,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1448,65 +1455,65 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(148, 163, 184, 0.2)',
   },
   trackerEditButtonText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     fontFamily: 'Figtree',
     color: '#FFFFFF',
   },
   trackerLogLabel: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   trackerLogMeta: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   trackerLogValuePill: {
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
   },
   trackerLogValue: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   trackerEmpty: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   subEventsList: {
-    gap: 8,
+    gap: 6,
   },
   subEventCard: {
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 8,
+    padding: 8,
     borderWidth: 1,
-    gap: 6,
+    gap: 4,
   },
   subEventHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 6,
   },
   subEventTitle: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
     flex: 1,
   },
   activeBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 6,
     backgroundColor: 'rgba(52,211,153,0.2)',
   },
   activeBadgeText: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '800',
     color: '#34D399',
     letterSpacing: 0.5,
@@ -1514,14 +1521,14 @@ const styles = StyleSheet.create({
   subEventMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   subEventMetaText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
   },
   subEventPoints: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     color: '#D95D39',
   },

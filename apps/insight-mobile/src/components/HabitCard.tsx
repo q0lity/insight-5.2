@@ -1,14 +1,25 @@
 import React, { useState, useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View, LayoutAnimation, Platform, UIManager, Vibration } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSequence,
+  withSpring,
+  interpolateColor,
+} from 'react-native-reanimated';
 
 import { useTheme } from '@/src/state/theme';
 import { InsightIcon } from './InsightIcon';
+import { ANIMATION } from '@/src/constants/design-tokens';
 import type { HabitDef } from '../storage/habits';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
+
+type HabitCardVariant = 'full' | 'simple';
 
 type HabitCardProps = {
   habit: HabitDef;
@@ -20,7 +31,183 @@ type HabitCardProps = {
   onStartTimed?: () => void;
   onStopTimed?: () => void;
   onPress: () => void;
+  variant?: HabitCardVariant;
 };
+
+// Simple variant component - RoutineItem-style row
+function HabitCardSimple({
+  habit,
+  streak,
+  todayLogs,
+  onPlus,
+  onPress,
+}: {
+  habit: HabitDef;
+  streak: number;
+  todayLogs: number;
+  onPlus: () => void;
+  onPress: () => void;
+}) {
+  const { palette, sizes, isDark } = useTheme();
+
+  const accentColor = habit.color || '#22C55E';
+  const isCompleted = todayLogs > 0;
+
+  // Animation values
+  const checkScale = useSharedValue(1);
+  const checkProgress = useSharedValue(isCompleted ? 1 : 0);
+
+  // Simple haptic feedback using Vibration API
+  const triggerHaptic = useCallback(() => {
+    if (Platform.OS !== 'web') {
+      Vibration.vibrate(10);
+    }
+  }, []);
+
+  const handleCheckPress = useCallback(() => {
+    triggerHaptic();
+
+    // Animate checkmark scale: 1 -> 1.2 -> 1
+    checkScale.value = withSequence(
+      withSpring(1.2, { damping: ANIMATION.spring.damping, stiffness: ANIMATION.spring.stiffness }),
+      withSpring(1, { damping: ANIMATION.spring.damping, stiffness: ANIMATION.spring.stiffness })
+    );
+
+    // Animate check progress for color transition
+    checkProgress.value = withTiming(isCompleted ? 0 : 1, { duration: ANIMATION.normal });
+
+    onPlus();
+  }, [isCompleted, checkScale, checkProgress, onPlus, triggerHaptic]);
+
+  // Animated styles
+  const checkAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: checkScale.value }],
+    backgroundColor: interpolateColor(
+      checkProgress.value,
+      [0, 1],
+      ['transparent', accentColor]
+    ),
+    borderColor: interpolateColor(
+      checkProgress.value,
+      [0, 1],
+      [palette.border, accentColor]
+    ),
+  }));
+
+  const checkmarkAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: checkProgress.value,
+    transform: [{ scale: checkProgress.value }],
+  }));
+
+  // Check if icon is emoji
+  const isEmoji = habit.icon
+    ? /^[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(habit.icon)
+    : false;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.simpleContainer,
+        {
+          backgroundColor: palette.surface,
+          borderColor: palette.border,
+          borderRadius: sizes.borderRadius,
+          padding: sizes.cardPadding,
+        },
+      ]}
+    >
+      {/* Icon Circle */}
+      <View
+        style={[
+          styles.simpleIconCircle,
+          {
+            backgroundColor: `${accentColor}20`,
+            width: sizes.buttonHeight,
+            height: sizes.buttonHeight,
+            borderRadius: sizes.buttonHeight / 2,
+          },
+        ]}
+      >
+        {habit.icon ? (
+          isEmoji ? (
+            <Text style={[styles.simpleIconEmoji, { fontSize: sizes.iconSize }]}>{habit.icon}</Text>
+          ) : (
+            <Text style={[styles.simpleIconText, { color: accentColor, fontSize: sizes.iconSizeSmall }]}>
+              {habit.icon}
+            </Text>
+          )
+        ) : (
+          <InsightIcon name="target" size={sizes.iconSizeSmall} color={accentColor} />
+        )}
+      </View>
+
+      {/* Content */}
+      <View style={styles.simpleContent}>
+        <Text
+          style={[
+            styles.simpleName,
+            {
+              color: palette.text,
+              fontSize: sizes.bodyText,
+              textDecorationLine: isCompleted ? 'line-through' : 'none',
+              opacity: isCompleted ? 0.6 : 1,
+            },
+          ]}
+          numberOfLines={1}
+        >
+          {habit.name}
+        </Text>
+      </View>
+
+      {/* Streak Badge */}
+      {streak > 0 && (
+        <View
+          style={[
+            styles.simpleStreakBadge,
+            {
+              backgroundColor: `${palette.warning}15`,
+              paddingHorizontal: sizes.chipPadding,
+              paddingVertical: sizes.spacingSmall / 2,
+              borderRadius: sizes.borderRadiusSmall,
+            },
+          ]}
+        >
+          <Text style={[styles.simpleStreakIcon, { fontSize: sizes.smallText }]}>{'\uD83D\uDD25'}</Text>
+          <Text style={[styles.simpleStreakText, { color: palette.warning, fontSize: sizes.smallText }]}>
+            {streak}
+          </Text>
+        </View>
+      )}
+
+      {/* Checkmark Circle */}
+      <Pressable
+        onPress={(e) => {
+          e.stopPropagation();
+          handleCheckPress();
+        }}
+        hitSlop={8}
+      >
+        <Animated.View
+          style={[
+            styles.simpleCheckCircle,
+            {
+              width: sizes.iconSize + 8,
+              height: sizes.iconSize + 8,
+              borderRadius: (sizes.iconSize + 8) / 2,
+              borderWidth: 2,
+            },
+            checkAnimatedStyle,
+          ]}
+        >
+          <Animated.View style={checkmarkAnimatedStyle}>
+            <Text style={[styles.simpleCheckmark, { fontSize: sizes.iconSizeSmall }]}>{'\u2713'}</Text>
+          </Animated.View>
+        </Animated.View>
+      </Pressable>
+    </Pressable>
+  );
+}
 
 export function HabitCard({
   habit,
@@ -32,7 +219,20 @@ export function HabitCard({
   onStartTimed,
   onStopTimed,
   onPress,
+  variant = 'full',
 }: HabitCardProps) {
+  // Render simple variant if requested
+  if (variant === 'simple') {
+    return (
+      <HabitCardSimple
+        habit={habit}
+        streak={streak}
+        todayLogs={todayLogs}
+        onPlus={onPlus}
+        onPress={onPress}
+      />
+    );
+  }
   const { palette, sizes, isDark } = useTheme();
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -243,10 +443,10 @@ export function HabitCard({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 14,
+    padding: 11,
     borderWidth: 1,
-    gap: 14,
+    gap: 10,
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowOffset: { width: 0, height: 2 },
@@ -259,7 +459,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   name: {
-    fontSize: 17,
+    fontSize: 12,
     fontWeight: '800',
     fontFamily: 'Figtree',
     letterSpacing: -0.3,
@@ -268,13 +468,13 @@ const styles = StyleSheet.create({
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   streakIcon: {
-    fontSize: 14,
+    fontSize: 10,
   },
   streakText: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
@@ -282,53 +482,53 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: 8,
   },
   leftColumn: {
     flex: 1,
-    gap: 10,
+    gap: 7,
   },
   buttonsColumn: {
     alignItems: 'flex-end',
-    gap: 8,
+    gap: 6,
   },
   mainButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
+    width: 42,
+    height: 42,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 2,
   },
   logCount: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '800',
     fontFamily: 'Figtree',
     color: '#FFFFFF',
     marginLeft: 2,
   },
   expandedButtons: {
-    gap: 8,
+    gap: 6,
     alignItems: 'flex-end',
   },
   timedButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    minWidth: 90,
+    gap: 4,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 63,
   },
   timedButtonText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   timedButtonTextWhite: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
     color: '#FFFFFF',
@@ -343,34 +543,87 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 7,
     alignSelf: 'flex-start',
   },
   minusText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '700',
     fontFamily: 'Figtree',
     color: '#EF4444',
   },
   heatmapContainer: {
-    gap: 6,
+    gap: 4,
   },
   heatmapGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 3,
-    maxWidth: 180,
+    gap: 4,
+    maxWidth: 126,
   },
   heatmapCell: {
-    width: 9,
-    height: 9,
+    width: 12,
+    height: 12,
     borderRadius: 2,
   },
   heatmapLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
+  },
+  // Simple variant styles
+  simpleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  simpleIconCircle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  simpleIconEmoji: {
+    textAlign: 'center',
+  },
+  simpleIconText: {
+    fontWeight: '700',
+    fontFamily: 'Figtree',
+    textAlign: 'center',
+  },
+  simpleContent: {
+    flex: 1,
+    gap: 2,
+  },
+  simpleName: {
+    fontWeight: '700',
+    fontFamily: 'Figtree',
+    letterSpacing: -0.3,
+  },
+  simpleStreakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  simpleStreakIcon: {
+    textAlign: 'center',
+  },
+  simpleStreakText: {
+    fontWeight: '800',
+    fontFamily: 'Figtree',
+  },
+  simpleCheckCircle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  simpleCheckmark: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
 });

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/Themed';
+import { Screen } from '@/components/Screen';
 import { useTheme, ThemePalettes, type ThemeMode } from '@/src/state/theme';
 import {
   loadPreferences,
@@ -16,9 +17,10 @@ import {
 import { getSupabaseClient } from '@/src/supabase/client';
 
 const THEME_OPTIONS: { key: ThemeMode; label: string }[] = [
-  { key: 'dark', label: 'Dark' },
-  { key: 'light', label: 'Light' },
-  { key: 'system', label: 'Auto' },
+  { key: 'warm', label: 'White / Orange' },
+  { key: 'oliveOrange', label: 'Olive / Orange' },
+  { key: 'midnight', label: 'Navy / Orange' },
+  { key: 'midnightNeon', label: 'Black / Neon' },
 ];
 
 const DISPLAY_OPTIONS: { key: DisplayMode; label: string; description: string }[] = [
@@ -108,13 +110,13 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={{ color: palette.tint, fontSize: 16 }}>← Back</Text>
+          <Text style={{ color: palette.tint, fontSize: 11 }}>← Back</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: palette.text }]}>Settings</Text>
-        <View style={{ width: 60 }} />
+        <View style={{ width: 42 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -214,7 +216,7 @@ export default function SettingsScreen() {
             </Text>
           </View>
 
-          <View style={[styles.settingRow, { marginTop: 16 }]}>
+          <View style={[styles.settingRow, { marginTop: 11 }]}>
             <Text style={[styles.settingName, { color: palette.text }]}>AI Model</Text>
           </View>
           <View style={styles.modelGrid}>
@@ -393,7 +395,7 @@ export default function SettingsScreen() {
 
         <Text style={[styles.version, { color: palette.textSecondary }]}>Insight Mobile · v1.0.0</Text>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
@@ -403,39 +405,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
   },
-  headerTitle: { fontSize: 20, fontWeight: '800' },
-  backButton: { padding: 8 },
-  scroll: { padding: 16, gap: 16, paddingBottom: 60 },
+  headerTitle: { fontSize: 14, fontWeight: '800' },
+  backButton: { padding: 6 },
+  scroll: { padding: 11, gap: 11, paddingBottom: 42 },
   section: {
-    padding: 16,
-    borderRadius: 20,
+    padding: 11,
+    borderRadius: 14,
     borderWidth: 1,
-    gap: 14,
+    gap: 10,
   },
   sectionLabel: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 1,
   },
-  themeGrid: { flexDirection: 'row', gap: 12 },
+  themeGrid: { flexDirection: 'row', gap: 8 },
   themeSwatch: {
     flex: 1,
-    padding: 10,
-    borderRadius: 14,
+    padding: 7,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: 'transparent',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   themeSwatchActive: { borderWidth: 2 },
   swatchPreview: {
     width: '100%',
-    height: 44,
-    borderRadius: 8,
-    padding: 6,
+    height: 31,
+    borderRadius: 6,
+    padding: 4,
     justifyContent: 'flex-end',
     alignItems: 'flex-start',
     overflow: 'hidden',
@@ -444,31 +446,31 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 6,
     right: 6,
-    width: 24,
-    height: 18,
-    borderRadius: 4,
+    width: 17,
+    height: 13,
+    borderRadius: 6,
   },
-  swatchAccent: { width: 36, height: 8, borderRadius: 4 },
-  swatchLabel: { fontSize: 12, fontWeight: '700' },
-  displayModeContainer: { flexDirection: 'row', gap: 12 },
+  swatchAccent: { width: 25, height: 12, borderRadius: 6 },
+  swatchLabel: { fontSize: 8, fontWeight: '700' },
+  displayModeContainer: { flexDirection: 'row', gap: 8 },
   displayModeBtn: {
     flex: 1,
-    padding: 14,
-    borderRadius: 14,
+    padding: 10,
+    borderRadius: 10,
     borderWidth: 2,
     alignItems: 'center',
     gap: 4,
   },
-  displayModeBtnLabel: { fontSize: 15, fontWeight: '800' },
-  displayModeBtnDesc: { fontSize: 11, fontWeight: '600' },
-  inputField: { gap: 8 },
-  fieldLabel: { fontSize: 14, fontWeight: '700' },
-  fieldHint: { fontSize: 11, marginTop: 4 },
+  displayModeBtnLabel: { fontSize: 10, fontWeight: '800' },
+  displayModeBtnDesc: { fontSize: 8, fontWeight: '600' },
+  inputField: { gap: 6 },
+  fieldLabel: { fontSize: 10, fontWeight: '700' },
+  fieldHint: { fontSize: 8, marginTop: 4 },
   input: {
-    height: 44,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    fontSize: 14,
+    height: 31,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    fontSize: 10,
     borderWidth: 1,
   },
   settingRow: {
@@ -476,36 +478,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  settingInfo: { flex: 1, marginRight: 16 },
-  settingName: { fontSize: 15, fontWeight: '700' },
-  settingDesc: { fontSize: 12, marginTop: 2 },
-  modelGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  settingInfo: { flex: 1, marginRight: 11 },
+  settingName: { fontSize: 10, fontWeight: '700' },
+  settingDesc: { fontSize: 8, marginTop: 2 },
+  modelGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   modelBtn: {
     width: '47%',
-    padding: 12,
-    borderRadius: 12,
+    padding: 8,
+    borderRadius: 8,
     borderWidth: 2,
     alignItems: 'center',
     gap: 2,
   },
-  modelBtnLabel: { fontSize: 13, fontWeight: '800' },
-  modelBtnDesc: { fontSize: 10, fontWeight: '600', textAlign: 'center' },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
-  statusText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
+  modelBtnLabel: { fontSize: 9, fontWeight: '800' },
+  modelBtnDesc: { fontSize: 8, fontWeight: '600', textAlign: 'center' },
+  statusBadge: { paddingHorizontal: 7, paddingVertical: 4, borderRadius: 699 },
+  statusText: { fontSize: 8, fontWeight: '700', textTransform: 'uppercase' },
   primaryButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
   },
-  actionName: { fontSize: 15, fontWeight: '600' },
-  version: { textAlign: 'center', fontSize: 12, fontWeight: '600', marginTop: 10 },
+  actionName: { fontSize: 10, fontWeight: '600' },
+  version: { textAlign: 'center', fontSize: 8, fontWeight: '600', marginTop: 7 },
 });

@@ -10,6 +10,8 @@ import { listWorkouts } from '@/src/storage/workouts';
 import { listMeals } from '@/src/storage/nutrition';
 import { formatDuration, resolveWorkoutMinutes } from '@/src/lib/health';
 import type { MealEntry, WorkoutEntry } from '@/src/lib/health';
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
 
 export default function HealthDashboardScreen() {
   const router = useRouter();
@@ -55,13 +57,13 @@ export default function HealthDashboardScreen() {
   }, [meals]);
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color={palette.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: palette.text }]}>Health & Fitness</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 28 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -89,7 +91,7 @@ export default function HealthDashboardScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.sectionCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <LuxCard style={[styles.sectionCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: palette.text }]}>Latest Workouts</Text>
             <TouchableOpacity onPress={() => router.push('/health/workouts')}>
@@ -116,9 +118,9 @@ export default function HealthDashboardScreen() {
           {workouts.length === 0 && (
             <Text style={[styles.emptyText, { color: palette.textSecondary }]}>No workouts logged yet.</Text>
           )}
-        </View>
+        </LuxCard>
 
-        <View style={[styles.sectionCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <LuxCard style={[styles.sectionCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: palette.text }]}>Latest Meals</Text>
             <TouchableOpacity onPress={() => router.push('/health/nutrition')}>
@@ -143,9 +145,9 @@ export default function HealthDashboardScreen() {
           {meals.length === 0 && (
             <Text style={[styles.emptyText, { color: palette.textSecondary }]}>No meals logged yet.</Text>
           )}
-        </View>
+        </LuxCard>
 
-        <View style={[styles.sectionCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <LuxCard style={[styles.sectionCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <Text style={[styles.sectionTitle, { color: palette.text }]}>Apple Health Import</Text>
           <Text style={[styles.sectionBody, { color: palette.textSecondary }]}>
             Connect Apple Health to pull workouts, steps, and recovery metrics.
@@ -156,60 +158,60 @@ export default function HealthDashboardScreen() {
           >
             <Text style={styles.primaryButtonText}>Connect Apple Health</Text>
           </TouchableOpacity>
-        </View>
+        </LuxCard>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backButton: { padding: 6 },
+  backButton: { padding: 4 },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
   },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    gap: 16,
+    paddingHorizontal: 14,
+    paddingBottom: 28,
+    gap: 11,
   },
   cardRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   summaryCard: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
+    borderRadius: 13,
+    padding: 11,
   },
   cardLabel: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '700',
     letterSpacing: 1,
   },
   cardValue: {
-    fontSize: 26,
+    fontSize: 18,
     fontWeight: '800',
-    marginTop: 6,
+    marginTop: 4,
   },
   cardMeta: {
-    fontSize: 12,
+    fontSize: 8,
     marginTop: 4,
   },
   sectionCard: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
-    gap: 12,
+    borderRadius: 13,
+    padding: 11,
+    gap: 8,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -217,16 +219,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '700',
   },
   sectionLink: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
   },
   sectionBody: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 9,
+    lineHeight: 13,
   },
   rowItem: {
     flexDirection: 'row',
@@ -234,18 +236,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rowTitle: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
   },
   rowMeta: {
-    fontSize: 12,
+    fontSize: 8,
   },
   emptyText: {
-    fontSize: 12,
+    fontSize: 8,
   },
   primaryButton: {
-    borderRadius: 14,
-    paddingVertical: 10,
+    borderRadius: 10,
+    paddingVertical: 7,
     alignItems: 'center',
   },
   primaryButtonText: {

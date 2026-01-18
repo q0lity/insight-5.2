@@ -18,6 +18,7 @@ import { listWorkouts } from '@/src/storage/workouts';
 import type { Workout } from '@/src/storage/workouts';
 import { listMeals } from '@/src/storage/nutrition';
 import type { Meal } from '@/src/storage/nutrition';
+import { Screen } from '@/components/Screen';
 
 type TrackerType = 'mood' | 'energy' | 'water' | 'stress' | 'sleep';
 
@@ -169,7 +170,7 @@ export default function LifeTrackerScreen() {
   const tileWidth = (screenWidth - 60) / 2;
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color={palette.text} />
@@ -320,70 +321,70 @@ export default function LifeTrackerScreen() {
           <Ionicons name="arrow-forward" size={16} color={palette.tint} />
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backButton: { padding: 6 },
+  backButton: { padding: 4 },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
   },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingHorizontal: 14,
+    paddingBottom: 28,
   },
   greetingSection: {
-    marginBottom: 20,
+    marginBottom: 14,
   },
   greeting: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '800',
   },
   greetingSub: {
-    fontSize: 14,
+    fontSize: 10,
     marginTop: 4,
   },
   trackersGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 24,
+    gap: 8,
+    marginBottom: 17,
   },
   trackerTile: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
-    gap: 8,
+    borderRadius: 11,
+    padding: 10,
+    gap: 6,
   },
   trackerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   trackerLabel: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
   },
   trackerValue: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '800',
   },
   trackerUnit: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
   },
   trackerBar: {
-    height: 4,
+    height: 12,
     borderRadius: 2,
     overflow: 'hidden',
   },
@@ -392,83 +393,83 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 12,
     fontWeight: '700',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 24,
+    gap: 7,
+    marginBottom: 17,
   },
   statCard: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 10,
+    padding: 8,
     alignItems: 'center',
     gap: 4,
   },
   statValue: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '800',
     marginTop: 4,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 8,
   },
   statSub: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '600',
   },
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 24,
+    gap: 8,
+    marginBottom: 17,
   },
   actionTile: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 11,
+    padding: 11,
     alignItems: 'center',
-    gap: 10,
+    gap: 7,
   },
   actionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionLabel: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
   },
   emptyCard: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 11,
+    padding: 14,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 11,
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 9,
     textAlign: 'center',
   },
   workoutCard: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 14,
-    padding: 12,
-    gap: 12,
-    marginBottom: 8,
+    borderRadius: 10,
+    padding: 8,
+    gap: 8,
+    marginBottom: 6,
   },
   workoutIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -476,25 +477,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   workoutTitle: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
   },
   workoutMeta: {
-    fontSize: 12,
+    fontSize: 8,
     marginTop: 2,
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
     borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
-    marginTop: 8,
+    borderRadius: 8,
+    paddingVertical: 8,
+    marginTop: 6,
   },
   viewAllText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
   },
 });

@@ -5,6 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { Text, View } from '@/components/Themed';
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
 import { useTheme } from '@/src/state/theme';
 import { getEvent, updateEvent, type MobileEvent } from '@/src/storage/events';
 import { createTask, listTasks, completeTask, type MobileTask } from '@/src/storage/tasks';
@@ -560,18 +562,18 @@ export default function EventDetailScreen() {
 
   if (!event) {
     return (
-      <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+      <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <InsightIcon name="chevronLeft" size={24} color={palette.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: palette.text }]}>Event</Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 28 }} />
         </View>
         <View style={styles.emptyContent}>
           <Text style={[styles.emptyText, { color: palette.textSecondary }]}>Event not found.</Text>
         </View>
-      </View>
+      </Screen>
     );
   }
 
@@ -586,14 +588,14 @@ export default function EventDetailScreen() {
           style={[styles.appendButton, { backgroundColor: palette.tint }]}
           onPress={() => {
             if (!eventId) return;
-            router.push(`/voice?eventId=${encodeURIComponent(eventId)}`);
+            router.push(`/capture?eventId=${encodeURIComponent(eventId)}`);
           }}>
           <InsightIcon name="plus" size={18} color="#FFFFFF" />
         </Pressable>
       </View>
 
       <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View
+        <LuxCard
           style={[
             styles.card,
             {
@@ -628,7 +630,7 @@ export default function EventDetailScreen() {
               <Text style={[styles.actionText, { color: palette.text }]}>Add Log</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </LuxCard>
 
         {conflict ? (
           <View
@@ -666,7 +668,7 @@ export default function EventDetailScreen() {
                 style={styles.sendButton}
                 onPress={() => {
                   if (!eventId) return;
-                  router.push(`/voice?eventId=${eventId}`);
+                  router.push(`/capture?eventId=${eventId}`);
                 }}>
                 <InsightIcon name="plus" size={16} color={palette.tint} />
               </Pressable>
@@ -995,7 +997,7 @@ export default function EventDetailScreen() {
               ))}
             </View>
 
-            <Text style={[styles.sectionLabel, { color: palette.textSecondary, marginTop: 12 }]}>Difficulty</Text>
+            <Text style={[styles.sectionLabel, { color: palette.textSecondary, marginTop: 8 }]}>Difficulty</Text>
             <View style={styles.scaleRow}>
               {Array.from({ length: 10 }, (_, idx) => idx + 1).map((level) => (
                 <TouchableOpacity
@@ -1349,22 +1351,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -0.5,
   },
   backButton: {
-    padding: 8,
+    padding: 6,
   },
   appendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 25,
+    height: 25,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1374,131 +1376,131 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 11,
     fontFamily: 'Figtree',
   },
   scroll: {
-    padding: 20,
-    gap: 24,
-    paddingBottom: 120,
+    padding: 14,
+    gap: 17,
+    paddingBottom: 84,
   },
   card: {
-    borderRadius: 28,
-    padding: 24,
+    borderRadius: 20,
+    padding: 17,
     borderWidth: 1,
-    gap: 12,
+    gap: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.05,
     shadowRadius: 12,
     elevation: 2,
   },
   title: {
-    fontSize: 24,
+    fontSize: 17,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -0.5,
   },
   activityTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '900',
     fontFamily: 'Figtree',
     letterSpacing: -0.4,
   },
   meta: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   progressTrack: {
-    height: 10,
-    borderRadius: 5,
+    height: 12,
+    borderRadius: 6,
     overflow: 'hidden',
     marginTop: 4,
   },
   progressFill: {
     height: '100%',
-    borderRadius: 5,
+    borderRadius: 6,
   },
   points: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '800',
     fontFamily: 'Figtree',
     marginTop: 4,
   },
   actions: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
+    gap: 8,
+    marginTop: 6,
   },
   actionButton: {
     flex: 1,
-    height: 52,
-    borderRadius: 16,
+    height: 36,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryActionButton: {
     flex: 1,
-    height: 52,
-    borderRadius: 16,
+    height: 36,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
   actionText: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   actionTextLight: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '800',
     fontFamily: 'Figtree',
     color: '#FFFFFF',
   },
   conflictCard: {
-    borderRadius: 22,
+    borderRadius: 15,
     borderWidth: 1,
-    padding: 16,
-    gap: 10,
+    padding: 11,
+    gap: 7,
   },
   conflictLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
   conflictTitle: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   conflictActions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 7,
   },
   conflictButton: {
     flex: 1,
-    height: 40,
-    borderRadius: 12,
+    height: 28,
+    borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   conflictButtonText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   conflictButtonTextLight: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
     color: '#FFFFFF',
   },
   section: {
-    gap: 12,
+    gap: 8,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1507,7 +1509,7 @@ const styles = StyleSheet.create({
   },
   noteActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     alignItems: 'center',
   },
   noteModeRow: {
@@ -1517,12 +1519,12 @@ const styles = StyleSheet.create({
   },
   modeRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   modePill: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 699,
     borderWidth: 1,
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
@@ -1539,9 +1541,9 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
   sendButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(217,93,57,0.12)',
@@ -1549,89 +1551,89 @@ const styles = StyleSheet.create({
   noteHeaderActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   sectionLabel: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   sectionAction: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
   },
   timestampButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 7,
   },
   timestampText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   notesInput: {
-    minHeight: 240,
-    borderRadius: 20,
+    minHeight: 168,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: 16,
-    fontSize: 15,
+    padding: 11,
+    fontSize: 10,
     fontFamily: 'Figtree',
     textAlignVertical: 'top',
   },
   notesPreviewCard: {
-    minHeight: 240,
-    borderRadius: 20,
+    minHeight: 168,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: 16,
+    padding: 11,
   },
   notesPreviewText: {
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 10,
+    lineHeight: 14,
   },
   fieldRow: {
-    gap: 8,
+    gap: 6,
   },
   subtaskRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     alignItems: 'center',
   },
   subtaskInput: {
     flex: 1,
-    minHeight: 48,
-    borderRadius: 14,
+    minHeight: 34,
+    borderRadius: 10,
     borderWidth: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
   },
   subtaskButton: {
-    paddingHorizontal: 16,
-    height: 48,
-    borderRadius: 14,
+    paddingHorizontal: 11,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   subtaskButtonText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '800',
     fontFamily: 'Figtree',
     color: '#FFFFFF',
   },
   subtaskCard: {
-    borderRadius: 18,
+    borderRadius: 13,
     borderWidth: 1,
-    padding: 16,
-    gap: 12,
+    padding: 11,
+    gap: 8,
   },
   subtaskHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   subtaskCheckbox: {
-    width: 20,
-    height: 20,
+    width: 14,
+    height: 14,
     borderRadius: 6,
     borderWidth: 2,
     borderColor: '#D95D39',
@@ -1643,83 +1645,83 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   subtaskTitle: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   subtaskEstimate: {
     marginTop: 4,
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   fieldLabel: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
     alignItems: 'center',
   },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   chipText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   chipRemove: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '400',
     marginLeft: 2,
   },
   chipInput: {
-    minWidth: 100,
-    fontSize: 14,
+    minWidth: 70,
+    fontSize: 10,
     fontFamily: 'Figtree',
     paddingVertical: 4,
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 11,
     alignItems: 'flex-start',
   },
   gridItem: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
   smallInput: {
-    height: 48,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    fontSize: 14,
+    height: 34,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    fontSize: 10,
     fontFamily: 'Figtree',
     borderWidth: 1,
   },
   pillInput: {
-    minHeight: 44,
-    borderRadius: 999,
+    minHeight: 31,
+    borderRadius: 699,
     borderWidth: 1,
-    paddingHorizontal: 16,
-    fontSize: 14,
+    paddingHorizontal: 11,
+    fontSize: 10,
     fontFamily: 'Figtree',
   },
   scaleGroup: {
-    gap: 10,
+    gap: 7,
   },
   scaleRow: {
     flexDirection: 'row',
@@ -1727,67 +1729,67 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   scalePill: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 21,
+    height: 21,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
   scaleText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   trackerCard: {
-    borderRadius: 22,
+    borderRadius: 15,
     borderWidth: 1,
-    padding: 16,
-    gap: 12,
+    padding: 11,
+    gap: 8,
   },
   trackerHint: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
   },
   trackerChipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   trackerChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
   },
   trackerChipText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   trackerCustomRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     alignItems: 'center',
   },
   trackerCustomInput: {
     flex: 1,
-    height: 40,
-    borderRadius: 12,
+    height: 28,
+    borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    fontSize: 13,
+    paddingHorizontal: 7,
+    fontSize: 9,
     fontFamily: 'Figtree',
   },
   trackerCustomButton: {
-    paddingHorizontal: 12,
-    height: 40,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   trackerCustomButtonText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     fontFamily: 'Figtree',
     color: '#FFFFFF',
@@ -1795,25 +1797,25 @@ const styles = StyleSheet.create({
   trackerValueRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   trackerValuePill: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 21,
+    height: 21,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   trackerValueText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     color: '#FFFFFF',
   },
   trackerLogList: {
-    gap: 10,
+    gap: 7,
   },
   trackerLogItem: {
-    gap: 8,
+    gap: 6,
   },
   trackerLogRow: {
     flexDirection: 'row',
@@ -1823,21 +1825,21 @@ const styles = StyleSheet.create({
   trackerEditRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   trackerEditInput: {
     flex: 1,
-    height: 40,
-    borderRadius: 12,
+    height: 28,
+    borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    fontSize: 13,
+    paddingHorizontal: 7,
+    fontSize: 9,
     fontFamily: 'Figtree',
   },
   trackerEditButton: {
-    height: 40,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    height: 28,
+    paddingHorizontal: 8,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1847,34 +1849,34 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(148, 163, 184, 0.2)',
   },
   trackerEditButtonText: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     fontFamily: 'Figtree',
     color: '#FFFFFF',
   },
   trackerLogLabel: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   trackerLogMeta: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },
   trackerLogValuePill: {
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
   },
   trackerLogValue: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '800',
     fontFamily: 'Figtree',
   },
   trackerEmpty: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     fontFamily: 'Figtree',
   },

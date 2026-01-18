@@ -4,6 +4,10 @@ import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Text } from '@/components/Themed'
+import { Screen } from '@/components/Screen';
+import { LuxCard } from '@/components/LuxCard';
+import { LuxHeader } from '@/components/LuxHeader';
+import { LuxPill } from '@/components/LuxPill';
 import { useTheme } from '@/src/state/theme'
 import { listEvents, type MobileEvent } from '@/src/storage/events'
 import { listTasks, type MobileTask } from '@/src/storage/tasks'
@@ -117,27 +121,20 @@ export default function PlannerScreen() {
   }, [events, tasks])
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+      <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <InsightIcon name="chevronLeft" size={20} color={palette.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: palette.text }]}>Planner</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerMain}>
+          <LuxHeader overline="Planner" title="Schedule Studio" subtitle="Blocks, tasks, and timelines" />
+        </View>
+        <View style={{ width: 28 }} />
       </View>
 
       <View style={styles.segmentRow}>
         {SEGMENTS.map((item) => (
-          <TouchableOpacity
-            key={item}
-            onPress={() => setSegment(item)}
-            style={[
-              styles.segmentChip,
-              { backgroundColor: segment === item ? palette.tint : palette.surface, borderColor: palette.border },
-            ]}
-          >
-            <Text style={{ color: segment === item ? '#FFFFFF' : palette.text }}>{item}</Text>
-          </TouchableOpacity>
+          <LuxPill key={item} label={item} active={segment === item} onPress={() => setSegment(item)} />
         ))}
       </View>
 
@@ -147,11 +144,12 @@ export default function PlannerScreen() {
             {todayEvents.map((event) => (
               <TouchableOpacity
                 key={event.id}
-                style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}
                 onPress={() => router.push(`/event/${event.id}`)}
               >
-                <Text style={{ color: palette.text }}>{event.title}</Text>
-                <Text style={{ color: palette.textSecondary }}>{formatTime(event.startAt)}</Text>
+                <LuxCard style={styles.card}>
+                  <Text style={{ color: palette.text }}>{event.title}</Text>
+                  <Text style={{ color: palette.textSecondary }}>{formatTime(event.startAt)}</Text>
+                </LuxCard>
               </TouchableOpacity>
             ))}
             {!todayEvents.length ? <Text style={{ color: palette.textSecondary }}>No events today.</Text> : null}
@@ -171,11 +169,12 @@ export default function PlannerScreen() {
                   {items.map((event) => (
                     <TouchableOpacity
                       key={event.id}
-                      style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}
                       onPress={() => router.push(`/event/${event.id}`)}
                     >
-                      <Text style={{ color: palette.text }}>{event.title}</Text>
-                      <Text style={{ color: palette.textSecondary }}>{formatTime(event.startAt)}</Text>
+                      <LuxCard style={styles.card}>
+                        <Text style={{ color: palette.text }}>{event.title}</Text>
+                        <Text style={{ color: palette.textSecondary }}>{formatTime(event.startAt)}</Text>
+                      </LuxCard>
                     </TouchableOpacity>
                   ))}
                   {!items.length ? <Text style={{ color: palette.textSecondary }}>No events.</Text> : null}
@@ -204,7 +203,7 @@ export default function PlannerScreen() {
                     <Text style={{ color: isCurrentMonth ? palette.text : palette.textSecondary }}>
                       {day.getDate()}
                     </Text>
-                    {count ? <Text style={{ color: palette.tint, fontSize: 11 }}>{count}</Text> : null}
+                    {count ? <Text style={{ color: palette.tint, fontSize: 8 }}>{count}</Text> : null}
                   </View>
                 )
               })}
@@ -259,27 +258,26 @@ export default function PlannerScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
-  headerTitle: { fontSize: 22, fontWeight: '900', fontFamily: 'Figtree' },
-  backButton: { padding: 8 },
-  segmentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
-  segmentChip: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6 },
-  body: { padding: 16, gap: 12 },
-  section: { gap: 8 },
-  sectionTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-  card: { borderWidth: 1, borderRadius: 14, padding: 10, gap: 4 },
-  monthGrid: { gap: 6 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingBottom: 6 },
+  headerMain: { flex: 1 },
+  backButton: { padding: 6 },
+  segmentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 11, paddingBottom: 6 },
+  body: { padding: 11, gap: 8 },
+  section: { gap: 6 },
+  sectionTitle: { fontSize: 8, fontWeight: '700', textTransform: 'uppercase' },
+  card: { borderRadius: 10, padding: 7, gap: 4 },
+  monthGrid: { gap: 4 },
   monthHeaderRow: { flexDirection: 'row' },
-  monthHeaderCell: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700' },
+  monthHeaderCell: { flex: 1, textAlign: 'center', fontSize: 8, fontWeight: '700' },
   monthGridBody: { flexDirection: 'row', flexWrap: 'wrap' },
-  monthCell: { width: '14.28%', alignItems: 'center', paddingVertical: 6, gap: 2 },
-  ganttRow: { borderWidth: 1, borderRadius: 12, padding: 10, gap: 6 },
-  ganttTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
-  ganttBar: { position: 'absolute', top: 0, bottom: 0, borderRadius: 4 },
+  monthCell: { width: '14.28%', alignItems: 'center', paddingVertical: 4, gap: 2 },
+  ganttRow: { borderWidth: 1, borderRadius: 8, padding: 7, gap: 4 },
+  ganttTrack: { height: 12, borderRadius: 6, overflow: 'hidden' },
+  ganttBar: { position: 'absolute', top: 0, bottom: 0, borderRadius: 6 },
 })

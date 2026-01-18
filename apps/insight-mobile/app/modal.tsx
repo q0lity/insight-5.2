@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { Text, View } from '@/components/Themed';
+import { Screen } from '@/components/Screen';
 import { useTheme } from '@/src/state/theme';
 
 export default function ModalScreen() {
@@ -12,7 +13,7 @@ export default function ModalScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+    <Screen style={[styles.container, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <View style={[styles.header, { borderBottomColor: palette.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
           <FontAwesome name="close" size={20} color={palette.text} />
@@ -26,7 +27,7 @@ export default function ModalScreen() {
           This is a modal screen. Use it for forms, details, or other overlaid content.
         </Text>
       </View>
-    </View>
+    </Screen>
   );
 }
 
@@ -38,32 +39,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
     borderBottomWidth: 1,
   },
   closeButton: {
-    width: 40,
-    height: 40,
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
-    fontSize: 17,
+    fontSize: 12,
     fontWeight: '700',
     fontFamily: 'Figtree',
   },
   placeholder: {
-    width: 40,
+    width: 28,
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   message: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '500',
     fontFamily: 'Figtree',
     textAlign: 'center',
