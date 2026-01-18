@@ -177,6 +177,30 @@ export async function listTasks() {
   return data.map(entryToMobileTask);
 }
 
+export async function getTask(id: string): Promise<MobileTask | null> {
+  const session = await getSupabaseSessionUser();
+  if (!session) {
+    const tasks = await loadTasksLocal();
+    return tasks.find((t) => t.id === id) ?? null;
+  }
+  const { supabase, user } = session;
+  const { data, error } = await supabase
+    .from('entries')
+    .select(
+      'id, title, created_at, updated_at, status, scheduled_at, due_at, completed_at, body_markdown, tags, people, contexts, importance, difficulty, duration_minutes, frontmatter'
+    )
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .is('deleted_at', null)
+    .single();
+
+  if (error || !data) {
+    const tasks = await loadTasksLocal();
+    return tasks.find((t) => t.id === id) ?? null;
+  }
+  return entryToMobileTask(data);
+}
+
 export async function createTask(input: {
   id?: string;
   title: string;
@@ -299,3 +323,7 @@ export async function syncLocalTasksToSupabase() {
 
   await AsyncStorage.removeItem(STORAGE_KEY);
 }
+
+// Re-export with shorter names for convenience
+export type Task = MobileTask;
+export type TaskStatus = MobileTaskStatus;

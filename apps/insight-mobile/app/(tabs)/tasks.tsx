@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -22,6 +22,7 @@ type TaskCardProps = {
   onToggleDone: (task: Task) => void;
   onMoveTask: (task: Task, status: TaskStatus) => void;
   onNavigateKanban: () => void;
+  onNavigateDetail: (taskId: string) => void;
 };
 
 const TaskCard = React.memo(function TaskCard({
@@ -30,6 +31,7 @@ const TaskCard = React.memo(function TaskCard({
   onToggleDone,
   onMoveTask,
   onNavigateKanban,
+  onNavigateDetail,
 }: TaskCardProps) {
   const estimate = task.estimateMinutes ?? 30;
   const xp = computeXp({
@@ -44,52 +46,54 @@ const TaskCard = React.memo(function TaskCard({
         ? palette.tint
         : palette.border;
   return (
-    <LuxCard style={styles.taskCard} accent={accent}>
-      <View style={styles.taskHeader}>
-        <Text style={[styles.taskTitle, { color: palette.text }]} numberOfLines={2}>
-          {task.title}
-        </Text>
-        <TouchableOpacity onPress={() => onToggleDone(task)}>
-          <Text style={{ color: palette.tint }}>{task.status === 'done' ? 'Undo' : 'Done'}</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.taskBadges}>
-        <LuxPill label={task.status.replace('_', ' ')} active />
-        {task.dueAt ? <LuxPill label={`Due ${formatShortDate(task.dueAt)}`} /> : null}
-        <LuxPill label={`+${formatXp(xp)} XP`} variant="accent" />
-      </View>
-      {(task.tags ?? []).length > 0 ? (
-        <View style={styles.taskTags}>
-          {(task.tags ?? []).slice(0, 4).map((tag) => (
-            <LuxPill key={tag} label={`#${tag}`} variant="ghost" />
-          ))}
+    <Pressable onPress={() => onNavigateDetail(task.id)}>
+      <LuxCard style={styles.taskCard} accent={accent}>
+        <View style={styles.taskHeader}>
+          <Text style={[styles.taskTitle, { color: palette.text }]} numberOfLines={2}>
+            {task.title}
+          </Text>
+          <TouchableOpacity onPress={() => onToggleDone(task)}>
+            <Text style={{ color: palette.tint }}>{task.status === 'done' ? 'Undo' : 'Done'}</Text>
+          </TouchableOpacity>
         </View>
-      ) : null}
-      <View style={styles.taskActions}>
-        <TouchableOpacity
-          style={[styles.taskAction, { borderColor: palette.border }]}
-          onPress={onNavigateKanban}
-        >
-          <Text style={{ color: palette.text }}>Kanban</Text>
-        </TouchableOpacity>
-        {task.status !== 'in_progress' ? (
+        <View style={styles.taskBadges}>
+          <LuxPill label={task.status.replace('_', ' ')} active />
+          {task.dueAt ? <LuxPill label={`Due ${formatShortDate(task.dueAt)}`} /> : null}
+          <LuxPill label={`+${formatXp(xp)} XP`} variant="accent" />
+        </View>
+        {(task.tags ?? []).length > 0 ? (
+          <View style={styles.taskTags}>
+            {(task.tags ?? []).slice(0, 4).map((tag) => (
+              <LuxPill key={tag} label={`#${tag}`} variant="ghost" />
+            ))}
+          </View>
+        ) : null}
+        <View style={styles.taskActions}>
           <TouchableOpacity
             style={[styles.taskAction, { borderColor: palette.border }]}
-            onPress={() => onMoveTask(task, 'in_progress')}
+            onPress={onNavigateKanban}
           >
-            <Text style={{ color: palette.text }}>Start</Text>
+            <Text style={{ color: palette.text }}>Kanban</Text>
           </TouchableOpacity>
-        ) : null}
-        {task.status !== 'canceled' ? (
-          <TouchableOpacity
-            style={[styles.taskAction, { borderColor: palette.border }]}
-            onPress={() => onMoveTask(task, 'canceled')}
-          >
-            <Text style={{ color: palette.textSecondary }}>Cancel</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
-    </LuxCard>
+          {task.status !== 'in_progress' ? (
+            <TouchableOpacity
+              style={[styles.taskAction, { borderColor: palette.border }]}
+              onPress={() => onMoveTask(task, 'in_progress')}
+            >
+              <Text style={{ color: palette.text }}>Start</Text>
+            </TouchableOpacity>
+          ) : null}
+          {task.status !== 'canceled' ? (
+            <TouchableOpacity
+              style={[styles.taskAction, { borderColor: palette.border }]}
+              onPress={() => onMoveTask(task, 'canceled')}
+            >
+              <Text style={{ color: palette.textSecondary }}>Cancel</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </LuxCard>
+    </Pressable>
   );
 });
 
@@ -215,6 +219,10 @@ export default function TasksScreen() {
     router.push('/kanban');
   }, [router]);
 
+  const navigateDetail = useCallback((taskId: string) => {
+    router.push(`/task/${taskId}`);
+  }, [router]);
+
   const keyExtractor = useCallback((item: Task) => item.id, []);
 
   const renderItem = useCallback(({ item }: { item: Task }) => (
@@ -224,8 +232,9 @@ export default function TasksScreen() {
       onToggleDone={toggleDone}
       onMoveTask={moveTask}
       onNavigateKanban={navigateKanban}
+      onNavigateDetail={navigateDetail}
     />
-  ), [palette, toggleDone, moveTask, navigateKanban]);
+  ), [palette, toggleDone, moveTask, navigateKanban, navigateDetail]);
 
   const ListEmptyComponent = useCallback(() => (
     <EmptyTasksState palette={palette} />
