@@ -33,6 +33,9 @@ export type MobileEvent = {
   parentEventId?: string | null;
 };
 
+// Alias for calendar components
+export type CalendarEvent = MobileEvent;
+
 const STORAGE_KEY = 'insight5.mobile.events.v1';
 
 function makeEventId() {

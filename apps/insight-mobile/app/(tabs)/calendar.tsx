@@ -10,11 +10,12 @@ import { LuxPill } from '@/components/LuxPill';
 import { useTheme } from '@/src/state/theme';
 import { listEvents, type CalendarEvent } from '@/src/storage/events';
 import { DayView } from '@/src/components/calendar/DayView';
+import { ThreeDayView } from '@/src/components/calendar/ThreeDayView';
 import { WeekView } from '@/src/components/calendar/WeekView';
 import { MonthView } from '@/src/components/calendar/MonthView';
 import { CalendarStrip } from '@/src/components/CalendarStrip';
 
-type ViewMode = 'Day' | 'Week' | 'Month';
+type ViewMode = 'Day' | '3-Day' | 'Week' | 'Month';
 
 function formatDateKey(date: Date): string {
   return date.toISOString().split('T')[0];
@@ -30,7 +31,7 @@ function getCategoryColor(category: string | null | undefined): string {
   return '#A3B87C';
 }
 
-const VIEW_MODES: ViewMode[] = ['Day', 'Week', 'Month'];
+const VIEW_MODES: ViewMode[] = ['Day', '3-Day', 'Week', 'Month'];
 
 function addDays(d: Date, n: number) {
   const x = new Date(d);
@@ -47,6 +48,15 @@ function addMonths(d: Date, n: number) {
 function formatDateLabel(date: Date, mode: ViewMode) {
   if (mode === 'Day') {
     return date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+  if (mode === '3-Day') {
+    const prevDay = addDays(date, -1);
+    const nextDay = addDays(date, 1);
+    const sameMonth = prevDay.getMonth() === nextDay.getMonth();
+    if (sameMonth) {
+      return `${prevDay.toLocaleDateString(undefined, { month: 'short' })} ${prevDay.getDate()}-${nextDay.getDate()}`;
+    }
+    return `${prevDay.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${nextDay.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
   }
   if (mode === 'Week') {
     const weekStart = new Date(date);
@@ -103,6 +113,8 @@ export default function CalendarScreen() {
   const navigatePrev = () => {
     if (viewMode === 'Day') {
       setCurrentDate(addDays(currentDate, -1));
+    } else if (viewMode === '3-Day') {
+      setCurrentDate(addDays(currentDate, -3));
     } else if (viewMode === 'Week') {
       setCurrentDate(addDays(currentDate, -7));
     } else {
@@ -113,6 +125,8 @@ export default function CalendarScreen() {
   const navigateNext = () => {
     if (viewMode === 'Day') {
       setCurrentDate(addDays(currentDate, 1));
+    } else if (viewMode === '3-Day') {
+      setCurrentDate(addDays(currentDate, 3));
     } else if (viewMode === 'Week') {
       setCurrentDate(addDays(currentDate, 7));
     } else {
@@ -138,7 +152,7 @@ export default function CalendarScreen() {
       <LuxHeader
         overline="Calendar"
         title={formatDateLabel(currentDate, viewMode)}
-        subtitle={viewMode === 'Day' ? 'Daily plan' : viewMode === 'Week' ? 'Weekly blocks' : 'Monthly view'}
+        subtitle={viewMode === 'Day' ? 'Daily plan' : viewMode === '3-Day' ? '3-day overview' : viewMode === 'Week' ? 'Weekly blocks' : 'Monthly view'}
         right={
           <LuxPill
             label="Agenda"
@@ -192,6 +206,14 @@ export default function CalendarScreen() {
       <View style={styles.viewContainer}>
         {viewMode === 'Day' && (
           <DayView date={currentDate} events={events} onEventPress={handleEventPress} />
+        )}
+        {viewMode === '3-Day' && (
+          <ThreeDayView
+            date={currentDate}
+            events={events}
+            onEventPress={handleEventPress}
+            onDayPress={handleDayPress}
+          />
         )}
         {viewMode === 'Week' && (
           <WeekView
