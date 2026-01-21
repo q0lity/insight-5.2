@@ -26,6 +26,7 @@ import { applyTheme, loadThemePreference, resolveTheme, saveThemePreference, THE
 import { parseChecklistMarkdown, toggleChecklistLine } from './ui/checklist'
 import { MarkdownEditor } from './ui/markdown-editor'
 import { CaptureModal } from './ui/CaptureModal'
+import { CommandPalette } from './ui/CommandPalette'
 import { ActiveSessionBanner } from './ui/ActiveSessionBanner'
 import { Pane, type WorkspaceTab, type WorkspaceViewKey } from './workspace/pane'
 import { TickTickTasksView } from './workspace/views/ticktick-tasks'
@@ -1195,6 +1196,7 @@ function App() {
   }
 
   const [captureOpen, setCaptureOpen] = useState(false)
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [captureDraft, setCaptureDraft] = useState('')
   const [captureInterim, setCaptureInterim] = useState('')
   const [captureAttachEventId, setCaptureAttachEventId] = useState<string | null>(null)
@@ -1399,14 +1401,13 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd/Ctrl + K: Open capture modal
+      // Cmd/Ctrl + K: Open command palette
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
-        setCaptureOpen(true)
-        toast.info('Quick capture opened', { duration: 1500 })
+        setCommandPaletteOpen(true)
       }
 
-      // Escape: Close modals
+      // Escape: Close modals (command palette handles its own escape)
       if (e.key === 'Escape') {
         if (captureOpen) {
           setCaptureOpen(false)
@@ -8046,6 +8047,14 @@ const [timelineTagFilters, setTimelineTagFilters] = useState<string[]>([])
         extendedMode={captureExtendedMode}
         onToggleExtendedMode={() => setCaptureExtendedMode(!captureExtendedMode)}
         anchorMs={captureAnchorMs}
+      />
+
+      <CommandPalette
+        open={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onNavigate={(view) => openView(view as WorkspaceViewKey)}
+        onCapture={() => openCapture()}
+        recentItems={tasks.slice(0, 5).map((t) => ({ id: t.id, title: t.title, type: 'task' as const }))}
       />
         
               <AnimatePresence>

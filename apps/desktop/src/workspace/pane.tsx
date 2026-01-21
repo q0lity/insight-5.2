@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { type ReactNode, useRef, useLayoutEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 
 export type WorkspaceViewKey =
   | 'dashboard'
@@ -28,6 +29,13 @@ export type WorkspaceTab = {
   view: WorkspaceViewKey
 }
 
+const pageTransition = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 },
+  transition: { duration: 0.15, ease: [0.4, 0, 0.2, 1] },
+}
+
 export function Pane(props: {
   title?: string
   tabs: WorkspaceTab[]
@@ -37,10 +45,24 @@ export function Pane(props: {
   onFocus?: () => void
   children: ReactNode
 }) {
+  const tabsRef = useRef<HTMLDivElement>(null)
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 })
+
+  useLayoutEffect(() => {
+    if (!tabsRef.current) return
+    const activeButton = tabsRef.current.querySelector('.wsTab.active') as HTMLElement | null
+    if (activeButton) {
+      setIndicatorStyle({
+        left: activeButton.offsetLeft,
+        width: activeButton.offsetWidth,
+      })
+    }
+  }, [props.activeTabId, props.tabs])
+
   return (
     <div className="wsPaneRoot" onMouseDown={props.onFocus}>
       <div className="wsTabbar">
-        <div className="wsTabs">
+        <div className="wsTabs" ref={tabsRef}>
           {props.tabs.map((t) => (
             <button
               key={t.id}
@@ -62,9 +84,29 @@ export function Pane(props: {
               ) : null}
             </button>
           ))}
+          <motion.div
+            className="wsTabIndicator"
+            layoutId="tab-indicator"
+            initial={false}
+            animate={{ left: indicatorStyle.left, width: indicatorStyle.width }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          />
         </div>
       </div>
-      <div className="wsPaneBody">{props.children}</div>
+      <div className="wsPaneBody">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={props.activeTabId}
+            className="wsPaneContent"
+            initial={pageTransition.initial}
+            animate={pageTransition.animate}
+            exit={pageTransition.exit}
+            transition={pageTransition.transition}
+          >
+            {props.children}
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   )
 }

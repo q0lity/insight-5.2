@@ -1310,6 +1310,33 @@ select:focus-visible {
   min-height: 0;
 }
 
+.wsPaneContent {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wsPaneContent > * {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Tab indicator */
+.wsTabs {
+  position: relative;
+}
+
+.wsTabIndicator {
+  position: absolute;
+  bottom: -2px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+  box-shadow: 0 0 8px var(--accentSoft);
+}
+
 /* Details */
 .details {
   border-radius: 10px;
@@ -2771,6 +2798,158 @@ select:focus-visible {
   flex-direction: column;
 }
 
+/* Command Palette */
+.cmdPaletteOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  padding-top: 15vh;
+  z-index: 100;
+}
+
+.cmdPalette {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(420px, 60vh);
+  background: var(--glass, var(--panel));
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cmdPaletteInput {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cmdPaletteInput .cmdPaletteIcon {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.cmdPaletteInput input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  outline: none;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+}
+
+.cmdPaletteInput input::placeholder {
+  color: var(--muted);
+}
+
+.cmdPaletteKbd {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.cmdPaletteList {
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+}
+
+.cmdPaletteGroup {
+  margin-bottom: 8px;
+}
+
+.cmdPaletteGroup:last-child {
+  margin-bottom: 0;
+}
+
+.cmdPaletteGroupLabel {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  padding: 8px 8px 6px;
+}
+
+.cmdPaletteItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 80ms ease;
+  height: auto;
+  box-shadow: none;
+}
+
+.cmdPaletteItem svg {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.cmdPaletteItem:hover,
+.cmdPaletteItem.selected {
+  background: var(--panel2);
+}
+
+.cmdPaletteItem.selected svg {
+  color: var(--accent);
+}
+
+.cmdPaletteLabel {
+  flex: 1;
+}
+
+.cmdPaletteShortcut {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.cmdPaletteEmpty {
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+:root[data-theme='dark'] .cmdPalette {
+  background: rgba(17, 23, 35, 0.95);
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+}
+
 /* Capture Modal Polish - Glassmorphism */
 .captureModalCard {
   background: var(--glass, linear-gradient(165deg, var(--panel) 0%, var(--panel2) 100%));
@@ -3987,9 +4166,84 @@ select:focus-visible {
 
 .glassCard {
   border: 1px solid var(--border);
-  background: var(--panel);
+  background: var(--panelAlpha);
+  backdrop-filter: blur(12px);
   border-radius: 12px;
   padding: 12px;
+}
+
+/* Glassmorphism view header */
+.viewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--panelAlpha);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.viewHeader .viewTitle {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.viewHeader .viewTitle svg {
+  color: var(--accent);
+}
+
+.viewHeader .viewActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.viewHeader .viewBreadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.viewHeader .viewBreadcrumb .breadcrumbSep {
+  color: var(--border2);
+}
+
+.viewHeader .viewBreadcrumb a,
+.viewHeader .viewBreadcrumb button {
+  color: var(--muted);
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  height: auto;
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: none;
+  transition: color 150ms ease;
+}
+
+.viewHeader .viewBreadcrumb a:hover,
+.viewHeader .viewBreadcrumb button:hover {
+  color: var(--accent);
+}
+
+:root[data-density='compact'] .viewHeader {
+  padding: 12px 16px;
+}
+
+:root[data-density='compact'] .viewHeader .viewTitle {
+  font-size: 16px;
 }
 
 /* Ecosystem layout */
