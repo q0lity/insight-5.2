@@ -339,9 +339,16 @@ export function TickTickTasksView(props: {
 
   function priorityLabel(task: Task) {
     const score = task.urgency ?? task.importance ?? 5
-    if (score >= 8) return { label: 'High', score }
-    if (score >= 5) return { label: 'Medium', score }
-    return { label: 'Low', score }
+    if (score >= 8) return { label: 'High', score, dotClass: 'high' }
+    if (score >= 5) return { label: 'Medium', score, dotClass: 'medium' }
+    return { label: 'Low', score, dotClass: 'low' }
+  }
+
+  function getDateClass(dueAt: number | null | undefined) {
+    if (!dueAt) return ''
+    if (dueAt < todayStart) return 'overdue'
+    if (dueAt >= todayStart && dueAt < tomorrowStart) return 'today'
+    return ''
   }
 
   function isColumnVisible(key: TaskColumnKey) {
@@ -457,20 +464,51 @@ export function TickTickTasksView(props: {
               ) : null}
             </div>
 
-            <div className="taskQuickAdd">
-              <Icon name="plus" size={16} />
-              <input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Quick add with #tags..."
-                onKeyDown={(e) => {
-                  if (e.key !== 'Enter') return
-                  const parsed = parseQuickTaskInput(draft)
-                  if (!parsed.title) return
-                  props.onCreateTask({ title: parsed.title, tags: parsed.tags })
-                  setDraft('')
-                }}
-              />
+            <div className="taskQuickAddWrapper">
+              <div className="taskQuickAdd">
+                <Icon name="plus" size={16} />
+                <input
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder="Quick add with #tags..."
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return
+                    const parsed = parseQuickTaskInput(draft)
+                    if (!parsed.title) return
+                    props.onCreateTask({ title: parsed.title, tags: parsed.tags })
+                    setDraft('')
+                  }}
+                />
+              </div>
+              {draft.trim() && (() => {
+                const parsed = parseQuickTaskInput(draft)
+                return (
+                  <div className="taskQuickAddPreview">
+                    <div className="taskQuickAddPreviewTitle">Preview</div>
+                    <div className="taskQuickAddPreviewContent">
+                      {parsed.title && (
+                        <div className="taskQuickAddPreviewRow">
+                          <span className="taskQuickAddPreviewLabel">Title</span>
+                          <span>{parsed.title}</span>
+                        </div>
+                      )}
+                      {parsed.tags.length > 0 && (
+                        <div className="taskQuickAddPreviewRow">
+                          <span className="taskQuickAddPreviewLabel">Tags</span>
+                          <div className="taskQuickAddPreviewTags">
+                            {parsed.tags.map((tag) => (
+                              <span key={tag} className="taskQuickAddPreviewTag">{tag}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="taskQuickAddHint">
+                      Press <kbd>Enter</kbd> to create task
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             <button
@@ -650,16 +688,19 @@ export function TickTickTasksView(props: {
                       {isColumnVisible('title') ? (
                         <div className="taskCol title">
                           <div className="taskTitleRow">
-                            {isEditing ? (
-                              <input
-                                className="taskInput"
-                                value={t.title}
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={(e) => props.onUpdateTask({ ...t, title: e.target.value })}
-                              />
-                            ) : (
-                              <span className={t.status === 'done' ? 'taskTitle done' : 'taskTitle'}>{t.title}</span>
-                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <span className={`taskPriorityDot ${priority.dotClass}`} />
+                              {isEditing ? (
+                                <input
+                                  className="taskInput"
+                                  value={t.title}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => props.onUpdateTask({ ...t, title: e.target.value })}
+                                />
+                              ) : (
+                                <span className={t.status === 'done' ? 'taskTitle done' : 'taskTitle'}>{t.title}</span>
+                              )}
+                            </div>
                             {t.notes ? <span className="taskSnippet">{t.notes.split(/\r?\n/)[0]}</span> : null}
                           </div>
                         </div>
@@ -738,7 +779,7 @@ export function TickTickTasksView(props: {
                               onChange={(e) => props.onUpdateTask({ ...t, dueAt: fromDateInputValue(e.target.value) })}
                             />
                           ) : (
-                            <span className={t.dueAt ? 'taskDate' : 'taskMuted'}>
+                            <span className={t.dueAt ? `taskDate ${getDateClass(t.dueAt)}` : 'taskMuted'}>
                               {t.dueAt ? formatShortDate(t.dueAt) : '—'}
                             </span>
                           )}
@@ -808,7 +849,10 @@ export function TickTickTasksView(props: {
                       ) : null}
                       {isColumnVisible('points') ? (
                         <div className="taskCol points">
-                          <span>{points ? points.toFixed(1) : '0.0'}</span>
+                          <span className="taskPointsBadge">
+                            <span className="xp-icon">⚡</span>
+                            {points ? points.toFixed(1) : '0.0'}
+                          </span>
                         </div>
                       ) : null}
                       {isColumnVisible('importance') ? (

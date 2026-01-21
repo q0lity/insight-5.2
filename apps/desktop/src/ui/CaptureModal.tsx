@@ -200,7 +200,7 @@ export function CaptureModal({
 
             {/* Footer Actions */}
             <div className="captureFooter">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                  <button
                     onClick={onToggleListening}
                     className={`captureVoiceBtn flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all ${
@@ -212,6 +212,13 @@ export function CaptureModal({
                     <Icon name="mic" className={isListening ? 'animate-pulse' : ''} />
                     {isListening ? 'Listening...' : 'Voice'}
                  </button>
+                 {isListening && (
+                    <div className="waveform-container">
+                      {Array.from({ length: 9 }).map((_, i) => (
+                        <div key={i} className="waveform-bar" style={{ height: `${12 + Math.random() * 20}px` }} />
+                      ))}
+                    </div>
+                 )}
               </div>
 
               <div className="flex items-center gap-3">
