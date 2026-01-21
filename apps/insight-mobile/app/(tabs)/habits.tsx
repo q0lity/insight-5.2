@@ -1,5 +1,7 @@
-import { useState, useCallback, useMemo } from 'react';
-import { StyleSheet, ScrollView, View, Pressable } from 'react-native';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { StyleSheet, ScrollView, View, Modal, TextInput, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { Text } from '@/components/Themed';
 import { Screen } from '@/components/Screen';
 import { LuxCard } from '@/components/LuxCard';
@@ -10,71 +12,151 @@ import { ProgressRingLarge } from '@/src/components/ProgressRingLarge';
 import { RoutineItem } from '@/src/components/RoutineItem';
 import { RollingNumber } from '@/src/components/RollingNumber';
 import { SPACING } from '@/src/constants/design-tokens';
+import {
+  listHabitsWithStats,
+  createHabit,
+  type HabitWithStats,
+} from '@/src/storage/habits';
+import { startEvent, stopEvent } from '@/src/storage/events';
 
 type TimeOfDay = 'Morning' | 'Afternoon' | 'Evening' | 'Anytime';
 
-type MockHabit = {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  timeOfDay: TimeOfDay;
-  duration?: string;
-  frequency?: string;
-  completed: boolean;
-};
+function categorizeByTimeOfDay(habit: HabitWithStats): TimeOfDay {
+  const cat = (habit.category ?? '').toLowerCase();
+  if (cat.includes('morning') || cat.includes('wake')) return 'Morning';
+  if (cat.includes('afternoon') || cat.includes('lunch')) return 'Afternoon';
+  if (cat.includes('evening') || cat.includes('night') || cat.includes('sleep')) return 'Evening';
+  return 'Anytime';
+}
 
-// Mock data for demonstration
-const initialMockHabits: MockHabit[] = [
-  { id: '1', name: 'Drink water', icon: '💧', color: '#3B82F6', timeOfDay: 'Morning', frequency: 'x3', completed: true },
-  { id: '2', name: 'Meditate', icon: '🧘', color: '#8B5CF6', timeOfDay: 'Morning', duration: '10m', completed: true },
-  { id: '3', name: 'Read', icon: '📖', color: '#E26B3A', timeOfDay: 'Morning', duration: '20m', completed: false },
-  { id: '4', name: 'Walk', icon: '🚶', color: '#22C55E', timeOfDay: 'Anytime', duration: '10m', completed: false },
-  { id: '5', name: 'Exercise', icon: '💪', color: '#EC4899', timeOfDay: 'Anytime', duration: '30m', completed: false },
-  { id: '6', name: 'Journal', icon: '📝', color: '#F59E0B', timeOfDay: 'Evening', duration: '15m', completed: true },
-  { id: '7', name: 'Review day', icon: '🌙', color: '#6366F1', timeOfDay: 'Evening', duration: '5m', completed: false },
-  { id: '8', name: 'Stretch', icon: '🤸', color: '#14B8A6', timeOfDay: 'Afternoon', duration: '10m', completed: false },
-];
+function formatDuration(minutes: number | null): string | undefined {
+  if (!minutes) return undefined;
+  if (minutes < 60) return `${minutes}m`;
+  const hrs = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+}
 
 const TIME_OF_DAY_ORDER: TimeOfDay[] = ['Morning', 'Afternoon', 'Evening', 'Anytime'];
 
+const DEFAULT_COLORS = ['#3B82F6', '#8B5CF6', '#E26B3A', '#22C55E', '#EC4899', '#F59E0B', '#6366F1', '#14B8A6'];
+const DEFAULT_ICONS = ['✓', '💧', '🧘', '📖', '🚶', '💪', '📝', '🌙', '🤸', '🎯'];
+
 export default function HabitsScreen() {
+  const router = useRouter();
+  const isFocused = useIsFocused();
   const { palette, sizes } = useTheme();
-  const [habits, setHabits] = useState<MockHabit[]>(initialMockHabits);
+  const [habits, setHabits] = useState<HabitWithStats[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newHabitName, setNewHabitName] = useState('');
+  const [newHabitIcon, setNewHabitIcon] = useState('✓');
+  const [newHabitColor, setNewHabitColor] = useState('#3B82F6');
+  const [newHabitDuration, setNewHabitDuration] = useState('');
+
+  const loadHabits = useCallback(async () => {
+    try {
+      const data = await listHabitsWithStats();
+      setHabits(data);
+    } catch (err) {
+      console.error('Failed to load habits:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isFocused) {
+      loadHabits();
+    }
+  }, [isFocused, loadHabits]);
 
   // Calculate stats
-  const completedCount = useMemo(() => habits.filter((h) => h.completed).length, [habits]);
+  const completedCount = useMemo(() => habits.filter((h) => h.todayLogs > 0).length, [habits]);
   const totalCount = habits.length;
   const completionPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const progress = totalCount > 0 ? completedCount / totalCount : 0;
-  const streak = 12; // Mock streak value
+  const maxStreak = useMemo(() => Math.max(0, ...habits.map((h) => h.streak)), [habits]);
 
   // Group habits by time of day
   const groupedHabits = useMemo(() => {
-    const groups: Record<TimeOfDay, MockHabit[]> = {
+    const groups: Record<TimeOfDay, HabitWithStats[]> = {
       Morning: [],
       Afternoon: [],
       Evening: [],
       Anytime: [],
     };
     habits.forEach((habit) => {
-      groups[habit.timeOfDay].push(habit);
+      const timeOfDay = categorizeByTimeOfDay(habit);
+      groups[timeOfDay].push(habit);
     });
     return groups;
   }, [habits]);
 
-  // Toggle habit completion
-  const handleToggle = useCallback((habitId: string) => {
-    setHabits((prev) =>
-      prev.map((h) => (h.id === habitId ? { ...h, completed: !h.completed } : h))
-    );
-  }, []);
+  // Toggle habit completion (log an event)
+  const handleToggle = useCallback(async (habit: HabitWithStats) => {
+    try {
+      if (habit.todayLogs > 0) {
+        // Already completed today - could implement undo here
+        return;
+      }
+      // Start and immediately stop an event as a quick log
+      const event = await startEvent({
+        title: habit.name,
+        category: habit.category ?? 'Habit',
+        subcategory: habit.subcategory ?? undefined,
+        tags: habit.tags,
+        trackerKey: `habit:${habit.id}`,
+      });
+      if (event && habit.isTimed && habit.estimateMinutes) {
+        // For timed habits, just mark complete immediately
+        await stopEvent(event.id);
+      } else if (event) {
+        await stopEvent(event.id);
+      }
+      await loadHabits();
+    } catch (err) {
+      console.error('Failed to toggle habit:', err);
+    }
+  }, [loadHabits]);
 
   // Handle habit press (navigate to detail)
   const handleHabitPress = useCallback((habitId: string) => {
-    // TODO: Navigate to habit detail screen
-    console.log('Navigate to habit:', habitId);
-  }, []);
+    router.push(`/habit/${habitId}`);
+  }, [router]);
+
+  // Create new habit
+  const handleCreateHabit = useCallback(async () => {
+    if (!newHabitName.trim()) return;
+    try {
+      await createHabit({
+        name: newHabitName.trim(),
+        icon: newHabitIcon,
+        color: newHabitColor,
+        estimateMinutes: newHabitDuration ? parseInt(newHabitDuration, 10) : null,
+        isTimed: !!newHabitDuration,
+        category: null,
+        subcategory: null,
+        difficulty: 5,
+        importance: 5,
+        polarity: 'positive',
+        targetPerWeek: 7,
+        tags: [],
+        people: [],
+        location: null,
+        skills: [],
+        character: [],
+        goal: null,
+        project: null,
+      });
+      setShowCreateModal(false);
+      setNewHabitName('');
+      setNewHabitDuration('');
+      await loadHabits();
+    } catch (err) {
+      console.error('Failed to create habit:', err);
+    }
+  }, [newHabitName, newHabitIcon, newHabitColor, newHabitDuration, loadHabits]);
 
   const hasHabits = habits.length > 0;
 
@@ -85,10 +167,14 @@ export default function HabitsScreen() {
           overline="Habits"
           title="Daily Streaks"
           subtitle="Build consistency with trackable habits"
-          right={<LuxPill label="+ Add" variant="accent" />}
+          right={<LuxPill label="+ Add" variant="accent" onPress={() => setShowCreateModal(true)} />}
         />
 
-        {hasHabits ? (
+        {loading ? (
+          <LuxCard style={styles.loadingCard}>
+            <Text style={{ color: palette.textSecondary }}>Loading habits...</Text>
+          </LuxCard>
+        ) : hasHabits ? (
           <>
             {/* Hero Stats Section */}
             <View style={styles.heroSection}>
@@ -131,7 +217,7 @@ export default function HabitsScreen() {
                 <View style={styles.streakRow}>
                   <Text style={styles.fireEmoji}>🔥</Text>
                   <RollingNumber
-                    value={streak}
+                    value={maxStreak}
                     textStyle={[styles.streakValue, { color: palette.text }]}
                   />
                   <Text style={[styles.streakLabel, { color: palette.textSecondary }]}>
@@ -156,12 +242,12 @@ export default function HabitsScreen() {
                     {groupHabits.map((habit) => (
                       <RoutineItem
                         key={habit.id}
-                        icon={habit.icon}
+                        icon={habit.icon ?? '✓'}
                         iconColor={habit.color}
                         title={habit.name}
-                        duration={habit.duration || habit.frequency}
-                        completed={habit.completed}
-                        onToggle={() => handleToggle(habit.id)}
+                        duration={formatDuration(habit.estimateMinutes)}
+                        completed={habit.todayLogs > 0}
+                        onToggle={() => handleToggle(habit)}
                         onPress={() => handleHabitPress(habit.id)}
                       />
                     ))}
@@ -177,10 +263,82 @@ export default function HabitsScreen() {
             <Text style={[styles.emptyText, { color: palette.textSecondary }]}>
               Create habits to build consistency, show streaks, and sync to your calendar.
             </Text>
-            <LuxPill label="Create your first habit" variant="accent" />
+            <LuxPill label="Create your first habit" variant="accent" onPress={() => setShowCreateModal(true)} />
           </LuxCard>
         )}
       </ScrollView>
+
+      {/* Create Habit Modal */}
+      <Modal visible={showCreateModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: palette.surface }]}>
+            <Text style={[styles.modalTitle, { color: palette.text }]}>New Habit</Text>
+
+            <TextInput
+              style={[styles.modalInput, { color: palette.text, borderColor: palette.border, backgroundColor: palette.background }]}
+              placeholder="Habit name"
+              placeholderTextColor={palette.textSecondary}
+              value={newHabitName}
+              onChangeText={setNewHabitName}
+            />
+
+            <Text style={[styles.modalLabel, { color: palette.textSecondary }]}>Icon</Text>
+            <View style={styles.iconRow}>
+              {DEFAULT_ICONS.map((icon) => (
+                <TouchableOpacity
+                  key={icon}
+                  style={[
+                    styles.iconOption,
+                    newHabitIcon === icon && { backgroundColor: palette.tintLight, borderColor: palette.tint },
+                  ]}
+                  onPress={() => setNewHabitIcon(icon)}
+                >
+                  <Text style={styles.iconText}>{icon}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.modalLabel, { color: palette.textSecondary }]}>Color</Text>
+            <View style={styles.colorRow}>
+              {DEFAULT_COLORS.map((color) => (
+                <TouchableOpacity
+                  key={color}
+                  style={[
+                    styles.colorOption,
+                    { backgroundColor: color },
+                    newHabitColor === color && styles.colorOptionSelected,
+                  ]}
+                  onPress={() => setNewHabitColor(color)}
+                />
+              ))}
+            </View>
+
+            <TextInput
+              style={[styles.modalInput, { color: palette.text, borderColor: palette.border, backgroundColor: palette.background }]}
+              placeholder="Duration (minutes, optional)"
+              placeholderTextColor={palette.textSecondary}
+              value={newHabitDuration}
+              onChangeText={setNewHabitDuration}
+              keyboardType="numeric"
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: palette.border }]}
+                onPress={() => setShowCreateModal(false)}
+              >
+                <Text style={{ color: palette.text }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: palette.tint }]}
+                onPress={handleCreateHabit}
+              >
+                <Text style={{ color: '#fff' }}>Create</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -191,6 +349,10 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: SPACING.md,
+  },
+  loadingCard: {
+    padding: 28,
+    alignItems: 'center',
   },
   heroSection: {
     flexDirection: 'row',
@@ -271,5 +433,76 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     fontFamily: 'Figtree',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    borderRadius: 16,
+    padding: 20,
+    gap: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: 'Figtree',
+    textAlign: 'center',
+  },
+  modalLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Figtree',
+  },
+  modalInput: {
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 16,
+  },
+  iconRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  iconOption: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconText: {
+    fontSize: 20,
+  },
+  colorRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  colorOption: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  colorOptionSelected: {
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  modalButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
