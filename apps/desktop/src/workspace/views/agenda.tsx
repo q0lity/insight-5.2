@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { CalendarEvent } from '../../storage/calendar'
 import { Icon } from '../../ui/icons'
 import { eventAccent, formatEventTitle, hexToRgba, type EventTitleMode } from '../../ui/event-visual'
+
+// Create gradient background from event color
+function eventGradient(color: string, alpha = 0.4): string {
+  const startAlpha = alpha
+  const endAlpha = Math.min(alpha + 0.15, 0.55)
+  return `linear-gradient(135deg, ${hexToRgba(color, startAlpha)} 0%, ${hexToRgba(color, endAlpha)} 100%)`
+}
 
 export type AgendaMode = 'day' | '3day' | 'week' | 'month'
 
@@ -283,15 +290,32 @@ function AgendaMonthView(props: {
       {props.hideHeader ? null : (
         <div className="agHeader">
           <div className="agLeft">
-            <button className="agNavBtn" onClick={() => props.onDateChange(addDays(props.date, -30))} aria-label="Previous month">
+            <motion.button
+              className="agNavBtn"
+              onClick={() => props.onDateChange(addDays(props.date, -30))}
+              aria-label="Previous month"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95, x: -2 }}
+            >
               ‹
-            </button>
-            <button className="agNavBtn" onClick={() => props.onDateChange(new Date())}>
+            </motion.button>
+            <motion.button
+              className="agNavBtn agNavBtnToday"
+              onClick={() => props.onDateChange(new Date())}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
               today
-            </button>
-            <button className="agNavBtn" onClick={() => props.onDateChange(addDays(props.date, 30))} aria-label="Next month">
+            </motion.button>
+            <motion.button
+              className="agNavBtn"
+              onClick={() => props.onDateChange(addDays(props.date, 30))}
+              aria-label="Next month"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95, x: 2 }}
+            >
               ›
-            </button>
+            </motion.button>
             <div className="agTitleRow">
               <div className="agTitle">Month</div>
               <div className="agSubtitle">{monthLabel}</div>
@@ -550,6 +574,30 @@ function AgendaTimelineView(props: {
 
   const allTags = useMemo(() => Array.from(new Set(props.events.flatMap((e) => e.tags ?? []))).slice(0, 12), [props.events])
   const rangeLabel = formatRangeLabel(days[0]!, days[days.length - 1]!)
+  const [showMonthPicker, setShowMonthPicker] = useState(false)
+  const monthPickerRef = useRef<HTMLDivElement>(null)
+
+  // Close month picker on outside click
+  useEffect(() => {
+    if (!showMonthPicker) return
+    function handleClick(e: MouseEvent) {
+      if (monthPickerRef.current && !monthPickerRef.current.contains(e.target as Node)) {
+        setShowMonthPicker(false)
+      }
+    }
+    window.addEventListener('click', handleClick)
+    return () => window.removeEventListener('click', handleClick)
+  }, [showMonthPicker])
+
+  const monthOptions = useMemo(() => {
+    const now = new Date()
+    const months: Date[] = []
+    for (let i = -6; i <= 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
+      months.push(d)
+    }
+    return months
+  }, [])
   const allDayByDay = useMemo(() => {
     const byDay = new Map<string, CalendarEvent[]>()
     for (const ev of filtered) {
@@ -577,6 +625,7 @@ function AgendaTimelineView(props: {
 
   const [draft, setDraft] = useState<null | { dayStart: number; startMin: number; endMin: number }>(null)
   const [drag, setDrag] = useState<null | { id: string; dayStart: number; offsetMin: number; durationMin: number }>(null)
+  const [dragOverDay, setDragOverDay] = useState<number | null>(null)
 
   // Current time indicator - updates every minute
   const [nowMinute, setNowMinute] = useState(() => minuteOfDay(Date.now()))
@@ -661,27 +710,80 @@ function AgendaTimelineView(props: {
       {props.hideHeader ? null : (
         <div className="agHeader">
           <div className="agLeft">
-            <button className="agNavBtn" onClick={() => props.onDateChange(addDays(props.date, -1))} aria-label="Previous">
+            <motion.button
+              className="agNavBtn"
+              onClick={() => props.onDateChange(addDays(props.date, props.mode === 'week' ? -7 : props.mode === '3day' ? -3 : -1))}
+              aria-label="Previous"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95, x: -2 }}
+            >
               ‹
-            </button>
-            <button className="agNavBtn" onClick={() => props.onDateChange(new Date())}>
+            </motion.button>
+            <motion.button
+              className="agNavBtn agNavBtnToday"
+              onClick={() => props.onDateChange(new Date())}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
               today
-            </button>
-            <button className="agNavBtn" onClick={() => props.onDateChange(addDays(props.date, 1))} aria-label="Next">
+            </motion.button>
+            <motion.button
+              className="agNavBtn"
+              onClick={() => props.onDateChange(addDays(props.date, props.mode === 'week' ? 7 : props.mode === '3day' ? 3 : 1))}
+              aria-label="Next"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95, x: 2 }}
+            >
               ›
-            </button>
-            <button className="agNavBtn" onClick={props.onRefresh}>
-              refresh
-            </button>
-            <div className="agTitleRow">
+            </motion.button>
+            <div className="agTitleRow" style={{ position: 'relative' }} ref={monthPickerRef}>
               <div className="agTitle">{props.mode === 'week' ? 'Week' : props.mode === '3day' ? '3-Day' : 'Day'}</div>
-              <div className="agSubtitle">{rangeLabel}</div>
+              <motion.button
+                className="agSubtitle agSubtitleBtn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowMonthPicker(!showMonthPicker)
+                }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {rangeLabel}
+                <span className="agSubtitleChevron">{showMonthPicker ? '▲' : '▼'}</span>
+              </motion.button>
+              <AnimatePresence>
+                {showMonthPicker && (
+                  <motion.div
+                    className="agMonthPickerDropdown"
+                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    {monthOptions.map((m) => {
+                      const isCurrentMonth = m.getMonth() === new Date().getMonth() && m.getFullYear() === new Date().getFullYear()
+                      const isSelected = m.getMonth() === props.date.getMonth() && m.getFullYear() === props.date.getFullYear()
+                      return (
+                        <button
+                          key={m.toISOString()}
+                          className={`agMonthPickerItem${isSelected ? ' selected' : ''}${isCurrentMonth ? ' current' : ''}`}
+                          onClick={() => {
+                            props.onDateChange(m)
+                            setShowMonthPicker(false)
+                          }}
+                        >
+                          {m.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                        </button>
+                      )
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
           <div className="agRight">
             <div className="agMode" role="tablist" aria-label="Calendar mode">
               {(['day', '3day', 'week', 'month'] as const).map((m) => (
-                <button
+                <motion.button
                   key={m}
                   className={props.mode === m ? 'agModeBtn active' : 'agModeBtn'}
                   onClick={() => {
@@ -691,9 +793,21 @@ function AgendaTimelineView(props: {
                     }
                     props.onModeChange(m as Exclude<AgendaMode, 'month'>)
                   }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
                 >
-                  {m === '3day' ? '3 Day' : m.charAt(0).toUpperCase() + m.slice(1)}
-                </button>
+                  {props.mode === m && (
+                    <motion.span
+                      layoutId="agModePill"
+                      className="agModePillBg"
+                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                  <span style={{ position: 'relative', zIndex: 1 }}>
+                    {m === '3day' ? '3 Day' : m.charAt(0).toUpperCase() + m.slice(1)}
+                  </span>
+                </motion.button>
               ))}
             </div>
             <div className="agZoom" role="group" aria-label="Time scale">
@@ -803,10 +917,20 @@ function AgendaTimelineView(props: {
             return (
               <div
                 key={d.toISOString()}
-                className={isToday ? 'agDayCol today' : 'agDayCol'}
+                className={`agDayCol${isToday ? ' today' : ''}${dragOverDay === dayStart ? ' dragover' : ''}`}
                 data-daystart={dayStart}
+                onDragEnter={() => setDragOverDay(dayStart)}
+                onDragLeave={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  const x = e.clientX
+                  const y = e.clientY
+                  if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                    setDragOverDay(null)
+                  }
+                }}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
+                  setDragOverDay(null)
                   e.preventDefault()
                   const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
                   const y = Math.max(0, Math.min(rect.height, e.clientY - rect.top))
@@ -897,7 +1021,8 @@ function AgendaTimelineView(props: {
                         left: `calc(${leftPct}% + 4px)`,
                         width: `calc(${widthPct}% - 8px)`,
                         borderColor: hexToRgba(accent.color, 0.55),
-                        background: hexToRgba(accent.color, 0.40),
+                        background: eventGradient(accent.color, 0.35),
+                        ['--accentMid' as any]: hexToRgba(accent.color, 0.5),
                         cursor: isDragging ? 'grabbing' : 'grab',
                       }}
                       onMouseDown={(e) => {
