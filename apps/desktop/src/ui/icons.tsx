@@ -7,6 +7,7 @@ export type IconName =
   | 'home'
   | 'calendar'
   | 'mic'
+  | 'mic-off'
   | 'check'
   | 'dots'
   | 'bolt'
@@ -55,6 +56,9 @@ export type IconName =
   | 'search'
   | 'grid'
   | 'list'
+  | 'square'
+  | 'alert-circle'
+  | 'wifi-off'
 
 export function Icon(
   props: Props & {
@@ -627,6 +631,42 @@ export function Icon(
         <svg {...common} className={props.className}>
           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none" />
           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="1.6" fill="none" />
+        </svg>
+      )
+    case 'square':
+      return (
+        <svg {...common} className={props.className}>
+          <rect x="4" y="4" width="16" height="16" rx="2" fill="currentColor" />
+        </svg>
+      )
+    case 'mic-off':
+      return (
+        <svg {...common} className={props.className}>
+          <path d="M15 9.34V7a3 3 0 0 0-5.94-.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M9 9v2.34a3 3 0 0 0 5 2.23" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M17.4 11.3a5.4 5.4 0 0 1-1.1 3.27M6.6 11.3a5.4 5.4 0 0 0 8.74 3.75" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M12 16.7V21M9.2 21h5.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      )
+    case 'alert-circle':
+      return (
+        <svg {...common} className={props.className}>
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" fill="none" />
+          <path d="M12 8v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          <circle cx="12" cy="16" r="1" fill="currentColor" />
+        </svg>
+      )
+    case 'wifi-off':
+      return (
+        <svg {...common} className={props.className}>
+          <path d="M1 1l22 22" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M10.71 5.05A16 16 0 0 1 22.58 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <circle cx="12" cy="20" r="1" fill="currentColor" />
         </svg>
       )
   }

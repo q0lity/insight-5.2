@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Icon } from './icons'
 import { CapturePreview } from './CapturePreview'
+import { AudioWaveform } from './AudioWaveform'
 
 interface CaptureModalProps {
   isOpen: boolean
@@ -23,6 +24,7 @@ interface CaptureModalProps {
   extendedMode?: boolean
   onToggleExtendedMode?: () => void
   anchorMs?: number
+  onSuccess?: () => void
 }
 
 const LOADING_PHRASES = [
@@ -32,6 +34,36 @@ const LOADING_PHRASES = [
   "Restoring context...",
   "Almost there..."
 ]
+
+// Error messages with helpful context
+const ERROR_MESSAGES: Record<string, { title: string; description: string; icon: string }> = {
+  'permission': {
+    title: 'Microphone Access Required',
+    description: 'Please allow microphone access in your browser settings to use voice capture.',
+    icon: 'mic-off'
+  },
+  'network': {
+    title: 'Connection Issue',
+    description: 'Unable to reach the server. Check your internet connection and try again.',
+    icon: 'wifi-off'
+  },
+  'default': {
+    title: 'Something went wrong',
+    description: 'An unexpected error occurred. Please try again.',
+    icon: 'alert-circle'
+  }
+}
+
+function getErrorInfo(error: string): { title: string; description: string; icon: string } {
+  const lowerError = error.toLowerCase()
+  if (lowerError.includes('permission') || lowerError.includes('microphone') || lowerError.includes('denied')) {
+    return ERROR_MESSAGES.permission
+  }
+  if (lowerError.includes('network') || lowerError.includes('fetch') || lowerError.includes('connection')) {
+    return ERROR_MESSAGES.network
+  }
+  return { ...ERROR_MESSAGES.default, description: error }
+}
 
 export function CaptureModal({
   isOpen,
@@ -53,9 +85,22 @@ export function CaptureModal({
   extendedMode = false,
   onToggleExtendedMode,
   anchorMs,
+  onSuccess,
 }: CaptureModalProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [loadingPhraseIndex, setLoadingPhraseIndex] = useState(0)
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+
+  // Track recording start time
+  useEffect(() => {
+    if (isListening && !recordingStartTime) {
+      setRecordingStartTime(Date.now())
+    } else if (!isListening && recordingStartTime) {
+      setRecordingStartTime(null)
+    }
+  }, [isListening, recordingStartTime])
 
   // Combine draft + interim for live preview
   const previewText = useMemo(() => {
@@ -67,7 +112,6 @@ export function CaptureModal({
   useEffect(() => {
     if (isOpen && textareaRef.current) {
       textareaRef.current.focus()
-      // Reset height
       textareaRef.current.style.height = 'auto'
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'
     }
@@ -85,6 +129,51 @@ export function CaptureModal({
     return () => clearInterval(interval)
   }, [isSaving])
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!isOpen) return
+
+    function handleKeyDown(e: KeyboardEvent) {
+      // Escape to close (only if not saving)
+      if (e.key === 'Escape' && !isSaving) {
+        e.preventDefault()
+        onClose()
+      }
+      // Cmd/Ctrl + Enter to save
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && draft.trim() && !isSaving) {
+        e.preventDefault()
+        onSave()
+      }
+      // Space to toggle listening (only when textarea not focused)
+      if (e.key === ' ' && document.activeElement !== textareaRef.current && !isSaving) {
+        e.preventDefault()
+        onToggleListening()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, isSaving, draft, onClose, onSave, onToggleListening])
+
+  // Handle successful save
+  const handleSave = useCallback(() => {
+    onSave()
+  }, [onSave])
+
+  // Show success state when save completes
+  useEffect(() => {
+    // Detect when saving transitions from true to false without error
+    if (!isSaving && !error && draft.trim() === '' && progress.length > 0) {
+      setShowSuccess(true)
+      setSuccessMessage('Capture saved successfully!')
+      const timer = setTimeout(() => {
+        setShowSuccess(false)
+        onSuccess?.()
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [isSaving, error, draft, progress.length, onSuccess])
+
   // Dynamic text sizing based on length
   const getTextSizeClass = (length: number) => {
     if (length < 120) return 'text-xl'
@@ -92,13 +181,15 @@ export function CaptureModal({
     return 'text-base'
   }
 
+  const errorInfo = error ? getErrorInfo(error) : null
+
   return (
     <AnimatePresence>
       {isOpen && (
         <div
           className="modalOverlay fixed inset-0 z-50 grid place-items-center bg-[rgba(15,23,42,0.32)] backdrop-blur-sm"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) onClose()
+            if (e.target === e.currentTarget && !isSaving) onClose()
           }}
         >
           <motion.div
@@ -108,6 +199,37 @@ export function CaptureModal({
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className={`captureModalCard w-[min(92vw,880px)] bg-[var(--panel)] shadow-2xl overflow-hidden relative flex flex-col max-h-[85vh] ${isListening ? 'recording' : ''}`}
           >
+            {/* Success Overlay */}
+            <AnimatePresence>
+              {showSuccess && (
+                <motion.div
+                  className="captureSuccessOverlay"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <motion.div
+                    className="captureSuccessContent"
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.5, opacity: 0 }}
+                    transition={{ type: 'spring', damping: 15, stiffness: 300 }}
+                  >
+                    <div className="captureSuccessIcon">
+                      <motion.div
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 0.5, delay: 0.2 }}
+                      >
+                        <Icon name="check" className="w-12 h-12" />
+                      </motion.div>
+                    </div>
+                    <div className="captureSuccessMessage">{successMessage}</div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Header */}
             <div className="captureModalHeader">
               <div className="captureModalHeaderLeft">
@@ -124,12 +246,14 @@ export function CaptureModal({
                 )}
                 <div className={`captureLivePill ${isListening ? 'active' : ''}`}>
                   <span className="captureLiveDot" />
-                  {isListening ? 'Listening' : 'Ready'}
+                  {isListening ? 'Recording' : 'Ready'}
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="w-8 h-8 grid place-items-center rounded-lg hover:bg-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+                disabled={isSaving}
+                className="w-8 h-8 grid place-items-center rounded-lg hover:bg-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] transition-colors disabled:opacity-50"
+                title="Close (Esc)"
               >
                 <Icon name="x" className="w-5 h-5" />
               </button>
@@ -144,6 +268,14 @@ export function CaptureModal({
                 </button>
               </div>
             )}
+
+            {/* Waveform Visualization */}
+            <AudioWaveform
+              isActive={isListening}
+              startTime={recordingStartTime ?? undefined}
+              barCount={32}
+              showTimer={true}
+            />
 
             {/* Main Input + Preview */}
             <div className="captureModalBody">
@@ -166,7 +298,12 @@ export function CaptureModal({
                 />
                 {isListening && interimTranscript && (
                   <div className="captureInterim">
-                    <span className="captureInterimLead">...</span> {interimTranscript}
+                    <span className="captureInterimDots">
+                      <span className="captureInterimDot" />
+                      <span className="captureInterimDot" />
+                      <span className="captureInterimDot" />
+                    </span>
+                    <span className="captureInterimText">{interimTranscript}</span>
                   </div>
                 )}
               </div>
@@ -178,63 +315,85 @@ export function CaptureModal({
               )}
             </div>
 
-            {/* Status / Progress */}
-            {(isSaving || aiStatus || error || progress.length > 0) && (
-              <div className="captureStatusBar">
-                 {error ? (
-                    <div className="text-red-500">{error}</div>
-                 ) : isSaving ? (
-                    <div className="flex items-center gap-2 text-[var(--accent)]">
-                        <span className="animate-pulse">✨ {LOADING_PHRASES[loadingPhraseIndex]}</span>
+            {/* Status / Progress / Error */}
+            <AnimatePresence mode="wait">
+              {errorInfo && (
+                <motion.div
+                  className="captureErrorBar"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <div className="captureErrorIcon">
+                    <Icon name={errorInfo.icon as any} className="w-5 h-5" />
+                  </div>
+                  <div className="captureErrorContent">
+                    <div className="captureErrorTitle">{errorInfo.title}</div>
+                    <div className="captureErrorDescription">{errorInfo.description}</div>
+                  </div>
+                </motion.div>
+              )}
+              {!errorInfo && (isSaving || aiStatus || progress.length > 0) && (
+                <motion.div
+                  className="captureStatusBar"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  {isSaving ? (
+                    <div className="captureLoadingState">
+                      <div className="captureLoadingShimmer" />
+                      <span className="captureLoadingText">
+                        {LOADING_PHRASES[loadingPhraseIndex]}
+                      </span>
                     </div>
-                 ) : (
+                  ) : (
                     aiStatus && <div className="text-[var(--muted)]">{aiStatus}</div>
-                 )}
-                 {progress.length > 0 && !isSaving && (
+                  )}
+                  {progress.length > 0 && !isSaving && (
                     <div className="text-[var(--muted)] opacity-70">
-                        {progress[progress.length - 1]}
+                      {progress[progress.length - 1]}
                     </div>
-                 )}
-              </div>
-            )}
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Footer Actions */}
             <div className="captureFooter">
-              <div className="flex items-center gap-3">
-                 <button
-                    onClick={onToggleListening}
-                    className={`captureVoiceBtn flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all ${
-                        isListening
-                        ? 'captureVoiceBtnActive bg-[var(--accent)] text-white shadow-lg'
-                        : 'bg-[var(--panel2)] text-[var(--text)] border border-[var(--border)] hover:bg-[var(--border)] hover:border-[var(--accent)]/30'
-                    }`}
-                 >
-                    <Icon name="mic" className={isListening ? 'animate-pulse' : ''} />
-                    {isListening ? 'Listening...' : 'Voice'}
-                 </button>
-                 {isListening && (
-                    <div className="waveform-container">
-                      {Array.from({ length: 9 }).map((_, i) => (
-                        <div key={i} className="waveform-bar" style={{ height: `${12 + Math.random() * 20}px` }} />
-                      ))}
-                    </div>
-                 )}
+              <div className="captureFooterLeft">
+                <button
+                  onClick={onToggleListening}
+                  disabled={isSaving}
+                  className={`captureControlBtn ${isListening ? 'captureControlBtnStop' : 'captureControlBtnStart'}`}
+                >
+                  <Icon name={isListening ? 'square' : 'mic'} className="captureControlIcon" />
+                  <span className="captureControlLabel">{isListening ? 'Stop' : 'Record'}</span>
+                  <span className="captureControlHint">{isListening ? 'Space' : 'Space'}</span>
+                </button>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="captureFooterRight">
                 <button
-                    onClick={() => setDraft('')}
-                    disabled={isSaving || !draft}
-                    className="px-4 py-2 rounded-xl text-[var(--muted)] font-bold hover:text-[var(--text)] hover:bg-[var(--panel2)] transition-colors disabled:opacity-50"
+                  onClick={() => {
+                    if (isListening) onToggleListening()
+                    setDraft('')
+                  }}
+                  disabled={isSaving || (!draft && !isListening)}
+                  className="captureControlBtn captureControlBtnSecondary"
                 >
-                    Clear
+                  <Icon name="x" className="captureControlIcon" />
+                  <span className="captureControlLabel">Cancel</span>
+                  <span className="captureControlHint">Esc</span>
                 </button>
                 <button
-                    onClick={onSave}
-                    disabled={isSaving || !draft.trim()}
-                    className="px-6 py-2 rounded-xl bg-[var(--accent)] text-white font-bold shadow-lg shadow-[var(--accentSoft)] hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none"
+                  onClick={handleSave}
+                  disabled={isSaving || !draft.trim()}
+                  className="captureControlBtn captureControlBtnPrimary"
                 >
-                    {isSaving ? 'Saving...' : 'Save Note'}
+                  <Icon name="check" className="captureControlIcon" />
+                  <span className="captureControlLabel">{isSaving ? 'Saving...' : 'Save'}</span>
+                  <span className="captureControlHint">⌘↵</span>
                 </button>
               </div>
             </div>

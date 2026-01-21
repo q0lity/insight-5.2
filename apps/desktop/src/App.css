@@ -3529,6 +3529,373 @@ select:focus-visible {
   }
 }
 
+/* ============================================
+   Voice Capture Redesign - Enhanced Components
+   ============================================ */
+
+/* Waveform Container */
+.captureWaveformContainer {
+  padding: 0;
+  overflow: hidden;
+}
+
+.captureWaveformInner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 24px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accentSoft) 30%, transparent) 0%,
+    color-mix(in srgb, var(--panel2) 80%, transparent) 100%
+  );
+  border-bottom: 1px solid var(--border);
+}
+
+/* Pulsing Record Indicator */
+.captureRecordIndicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 20px;
+}
+
+.captureRecordDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: recordPulse 1.5s ease-in-out infinite;
+}
+
+.captureRecordLabel {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: #ef4444;
+  text-transform: uppercase;
+}
+
+@keyframes recordPulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+}
+
+/* Waveform Bars */
+.captureWaveformBars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 44px;
+  padding: 0 8px;
+}
+
+.captureWaveformBar {
+  width: 4px;
+  min-height: 4px;
+  background: linear-gradient(to top, var(--accent), color-mix(in srgb, var(--accent) 60%, white));
+  border-radius: 2px;
+  transition: height 0.05s linear;
+}
+
+/* Waveform Timer */
+.captureWaveformTimer {
+  font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 60px;
+  text-align: center;
+  padding: 6px 12px;
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+/* Enhanced Footer Layout */
+.captureFooterLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.captureFooterRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Control Buttons with Hints */
+.captureControlBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.captureControlBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.captureControlIcon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.captureControlLabel {
+  font-size: 14px;
+}
+
+.captureControlHint {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--muted);
+  font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+  margin-left: 4px;
+}
+
+/* Start/Record Button */
+.captureControlBtnStart {
+  background: var(--panel2);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.captureControlBtnStart:hover:not(:disabled) {
+  background: var(--border);
+  border-color: var(--accent);
+}
+
+/* Stop Button - Prominent Red */
+.captureControlBtnStop {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.captureControlBtnStop:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+.captureControlBtnStop .captureControlHint {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Secondary Button (Cancel) */
+.captureControlBtnSecondary {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.captureControlBtnSecondary:hover:not(:disabled) {
+  background: var(--panel2);
+  color: var(--text);
+}
+
+/* Primary Button (Save) */
+.captureControlBtnPrimary {
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 80%, #000) 100%);
+  color: white;
+  box-shadow: 0 4px 12px var(--accentSoft);
+}
+
+.captureControlBtnPrimary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px var(--accentSoft);
+}
+
+.captureControlBtnPrimary .captureControlHint {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Interim Transcript with Animated Dots */
+.captureInterimDots {
+  display: inline-flex;
+  gap: 3px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.captureInterimDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: interimDotPulse 1.4s ease-in-out infinite;
+}
+
+.captureInterimDot:nth-child(1) { animation-delay: 0s; }
+.captureInterimDot:nth-child(2) { animation-delay: 0.2s; }
+.captureInterimDot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes interimDotPulse {
+  0%, 80%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.captureInterimText {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Loading State with Shimmer */
+.captureLoadingState {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  overflow: hidden;
+}
+
+.captureLoadingShimmer {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(var(--accentRGB, 99, 102, 241), 0.1) 50%,
+    transparent 100%
+  );
+  animation: loadingShimmer 2s ease-in-out infinite;
+}
+
+@keyframes loadingShimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+.captureLoadingText {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 12px;
+  z-index: 1;
+}
+
+/* Error Bar - Enhanced */
+.captureErrorBar {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+  border-top: 1px solid rgba(239, 68, 68, 0.2);
+  overflow: hidden;
+}
+
+.captureErrorIcon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: rgba(239, 68, 68, 0.15);
+  border-radius: 8px;
+  color: #ef4444;
+}
+
+.captureErrorContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.captureErrorTitle {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ef4444;
+  margin-bottom: 2px;
+}
+
+.captureErrorDescription {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* Success Overlay */
+.captureSuccessOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--panel) 95%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.captureSuccessContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px;
+}
+
+.captureSuccessIcon {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 50%;
+  color: white;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+}
+
+.captureSuccessMessage {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  text-align: center;
+}
+
+/* Success checkmark animation */
+@keyframes checkmarkDraw {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.captureSuccessIcon svg {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: checkmarkDraw 0.5s ease-out 0.2s forwards;
+}
+
 .modalHeader {
   padding: 10px 12px 8px;
   display: flex;
