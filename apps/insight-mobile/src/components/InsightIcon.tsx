@@ -23,7 +23,21 @@ export type InsightIconName =
   | 'node'
   | 'settings'
   | 'chevronLeft'
-  | 'lock';
+  | 'chevronRight'
+  | 'lock'
+  | 'user'
+  | 'cloud'
+  | 'bell'
+  | 'palette'
+  | 'info'
+  | 'help'
+  | 'sync'
+  | 'mail'
+  | 'sparkles'
+  | 'export'
+  | 'trash'
+  | 'keyboard'
+  | 'signOut';
 
 type Props = {
   name: InsightIconName;
@@ -241,6 +255,100 @@ export function InsightIcon({ name, size = 20, color = '#1C1C1E' }: Props) {
         <Svg {...common} fill="none">
           <Path d="M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z" stroke={color} strokeWidth={1.6} />
           <Path d="M7 11V7a5 5 0 0 1 10 0v4" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+        </Svg>
+      );
+    case 'chevronRight':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M9 18l6-6-6-6" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'user':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+          <Path d="M12 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4z" stroke={color} strokeWidth={1.6} />
+        </Svg>
+      );
+    case 'cloud':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'bell':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M13.73 21a2 2 0 0 1-3.46 0" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+        </Svg>
+      );
+    case 'palette':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" stroke={color} strokeWidth={1.6} strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'info':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke={color} strokeWidth={1.6} />
+          <Path d="M12 16v-4M12 8h.01" stroke={color} strokeWidth={2} strokeLinecap="round" />
+        </Svg>
+      );
+    case 'help':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke={color} strokeWidth={1.6} />
+          <Path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+          <Path d="M12 17h.01" stroke={color} strokeWidth={2} strokeLinecap="round" />
+        </Svg>
+      );
+    case 'sync':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M23 4v6h-6M1 20v-6h6" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'mail':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke={color} strokeWidth={1.6} />
+          <Path d="M22 6l-10 7L2 6" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+        </Svg>
+      );
+    case 'sparkles':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6L12 2z" stroke={color} strokeWidth={1.6} strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'export':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+          <Path d="M17 8l-5-5-5 5M12 3v12" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'trash':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+        </Svg>
+      );
+    case 'keyboard':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M20 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z" stroke={color} strokeWidth={1.6} />
+          <Path d="M6 13h.01M12 13h.01M18 13h.01M7 9h.01M11 9h.01M17 9h.01M8 17h8" stroke={color} strokeWidth={2} strokeLinecap="round" />
+        </Svg>
+      );
+    case 'signOut':
+      return (
+        <Svg {...common} fill="none">
+          <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+          <Path d="M16 17l5-5-5-5M21 12H9" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
       );
     default:
