@@ -1,0 +1,56 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "info": {
+      "en-US": {
+        "title": "Insight - Life OS",
+        "subtitle": "Track habits, health & goals",
+        "description": "Insight is your personal life operating system that brings together habits, health tracking, goals, and daily planning into one beautiful, intuitive app.\n\nKEY FEATURES:\n\n- HABIT TRACKING: Build lasting habits with streaks, reminders, and progress visualization. Track daily routines and see your consistency grow over time.\n\n- HEALTH & FITNESS: Sync with Apple Health to track workouts, nutrition, sleep, and wellness metrics. Get a complete picture of your physical health.\n\n- GOALS & PROJECTS: Set meaningful goals and break them down into actionable projects. Track progress with visual milestones and celebrate achievements.\n\n- DAILY PLANNING: Plan your day with an intelligent timeline view. Capture tasks, events, and notes with voice or text input.\n\n- VOICE CAPTURE: Quickly capture thoughts, ideas, and reflections using voice notes. Insight transcribes and organizes them automatically.\n\n- GAMIFICATION: Earn XP and gold for completing habits and tasks. Level up your character stats and redeem rewards.\n\n- PEOPLE & PLACES: Track important relationships and locations. See when you last connected with someone or visited a place.\n\n- ANALYTICS & INSIGHTS: Understand your patterns with beautiful charts and reports. Get AI-powered reflections on your progress.\n\nInsight helps you live intentionally by making it easy to track what matters. Whether you're building new habits, improving your health, or pursuing ambitious goals, Insight gives you the tools to succeed.\n\nStart your journey to a more organized, healthier, and more intentional life today.",
+        "keywords": "habit tracker,health,fitness,goals,productivity,planner,wellness,journal,life os,daily tracker",
+        "privacyPolicyUrl": "https://qolity.io/privacy",
+        "supportUrl": "https://qolity.io/support",
+        "marketingUrl": "https://insight.qolity.io"
+      }
+    },
+    "categories": {
+      "primary": "HEALTH_AND_FITNESS",
+      "secondary": "PRODUCTIVITY"
+    },
+    "copyright": "2026 Qolity",
+    "advisory": {
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gamblingAndContests": "NONE",
+      "gambling": false,
+      "horrorOrFearThemes": "NONE",
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "unrestrictedWebAccess": false,
+      "kidsAgeBand": null
+    },
+    "review": {
+      "firstName": "Dan",
+      "lastName": "G",
+      "email": "dg@qolity.io",
+      "phone": "+1 555 000 0000"
+    }
+  },
+  "android": {
+    "info": {
+      "en-US": {
+        "title": "Insight - Life OS",
+        "shortDescription": "Track habits, health, goals & daily planning in one app",
+        "fullDescription": "Insight is your personal life operating system that brings together habits, health tracking, goals, and daily planning into one beautiful, intuitive app.\n\nKEY FEATURES:\n\n- HABIT TRACKING: Build lasting habits with streaks, reminders, and progress visualization. Track daily routines and see your consistency grow over time.\n\n- HEALTH & FITNESS: Sync with Google Fit to track workouts, nutrition, sleep, and wellness metrics. Get a complete picture of your physical health.\n\n- GOALS & PROJECTS: Set meaningful goals and break them down into actionable projects. Track progress with visual milestones and celebrate achievements.\n\n- DAILY PLANNING: Plan your day with an intelligent timeline view. Capture tasks, events, and notes with voice or text input.\n\n- VOICE CAPTURE: Quickly capture thoughts, ideas, and reflections using voice notes. Insight transcribes and organizes them automatically.\n\n- GAMIFICATION: Earn XP and gold for completing habits and tasks. Level up your character stats and redeem rewards.\n\n- PEOPLE & PLACES: Track important relationships and locations. See when you last connected with someone or visited a place.\n\n- ANALYTICS & INSIGHTS: Understand your patterns with beautiful charts and reports. Get AI-powered reflections on your progress.\n\nInsight helps you live intentionally by making it easy to track what matters. Whether you're building new habits, improving your health, or pursuing ambitious goals, Insight gives you the tools to succeed.\n\nStart your journey to a more organized, healthier, and more intentional life today."
+      }
+    },
+    "category": "HEALTH_AND_FITNESS",
+    "contentRating": "everyone",
+    "privacyPolicyUrl": "https://qolity.io/privacy"
+  }
+}
