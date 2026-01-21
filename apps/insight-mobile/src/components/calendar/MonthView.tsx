@@ -1,9 +1,20 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useCallback } from 'react';
+import { StyleSheet, View, Pressable } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  FadeIn,
+  FadeInDown,
+  Layout,
+} from 'react-native-reanimated';
 
 import { Text } from '@/components/Themed';
 import { useTheme } from '@/src/state/theme';
 import type { CalendarEvent } from '@/src/storage/events';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -35,15 +46,152 @@ function isSameDay(a: Date, b: Date) {
   return a.toDateString() === b.toDateString();
 }
 
+type DayCellProps = {
+  day: Date;
+  isToday: boolean;
+  isCurrentMonth: boolean;
+  isSelected?: boolean;
+  dayEvents: CalendarEvent[];
+  dayPoints: number;
+  hasActiveEvent: boolean;
+  onPress: () => void;
+  index: number;
+};
+
+function DayCell({
+  day,
+  isToday,
+  isCurrentMonth,
+  isSelected,
+  dayEvents,
+  dayPoints,
+  hasActiveEvent,
+  onPress,
+  index,
+}: DayCellProps) {
+  const { palette, isDark } = useTheme();
+  const scale = useSharedValue(1);
+  const hasEvents = dayEvents.length > 0;
+
+  const getPointsColor = (points: number) => {
+    const intensity = Math.min(1, Math.max(0.15, points / 100));
+    return `rgba(217, 93, 57, ${intensity})`;
+  };
+
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(0.92, { damping: 15, stiffness: 400 });
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+  }, [scale]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const backgroundColor = hasEvents
+    ? getPointsColor(dayPoints)
+    : isSelected
+    ? `${palette.tint}20`
+    : 'transparent';
+
+  const borderColor = hasActiveEvent
+    ? palette.tint
+    : isSelected
+    ? palette.tint
+    : palette.border;
+
+  const borderWidth = hasActiveEvent || isSelected ? 2 : 1;
+
+  return (
+    <AnimatedPressable
+      entering={FadeInDown.delay(index * 15).duration(200).springify()}
+      layout={Layout.springify()}
+      style={[
+        styles.dayCell,
+        {
+          backgroundColor,
+          borderColor,
+          borderWidth,
+        },
+        animatedStyle,
+      ]}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
+      <Animated.View
+        style={[
+          styles.dayNumber,
+          isToday && { backgroundColor: palette.tint },
+          isSelected && !isToday && { backgroundColor: `${palette.tint}30` },
+        ]}
+      >
+        <Text
+          style={[
+            styles.dayNumberText,
+            {
+              color: isToday
+                ? '#fff'
+                : isCurrentMonth
+                ? palette.text
+                : palette.textSecondary,
+              opacity: isCurrentMonth ? 1 : 0.4,
+              fontWeight: isToday || isSelected ? '800' : '700',
+            },
+          ]}
+        >
+          {day.getDate()}
+        </Text>
+      </Animated.View>
+      {hasEvents && (
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          style={styles.dayContent}
+        >
+          <Text
+            style={[
+              styles.eventCount,
+              { color: isDark ? '#fff' : palette.text },
+            ]}
+          >
+            {dayEvents.length}
+          </Text>
+          {dayPoints > 0 && (
+            <Text
+              style={[
+                styles.pointsText,
+                {
+                  color: isDark ? 'rgba(255,255,255,0.7)' : palette.textSecondary,
+                },
+              ]}
+            >
+              {dayPoints.toFixed(0)}p
+            </Text>
+          )}
+        </Animated.View>
+      )}
+    </AnimatedPressable>
+  );
+}
+
 type Props = {
   date: Date;
   events: CalendarEvent[];
+  selectedDate?: Date;
   onDayPress?: (date: Date) => void;
   onEventPress?: (event: CalendarEvent) => void;
 };
 
-export function MonthView({ date, events, onDayPress, onEventPress }: Props) {
-  const { palette, isDark } = useTheme();
+export function MonthView({
+  date,
+  events,
+  selectedDate,
+  onDayPress,
+  onEventPress,
+}: Props) {
+  const { palette } = useTheme();
   const today = new Date();
   const { days: monthDays, month: currentMonth } = getMonthDays(date);
 
@@ -66,87 +214,62 @@ export function MonthView({ date, events, onDayPress, onEventPress }: Props) {
     return points;
   }, [events]);
 
-  const getPointsColor = (points: number) => {
-    const intensity = Math.min(1, Math.max(0.15, points / 100));
-    return `rgba(217, 93, 57, ${intensity})`;
-  };
-
   return (
     <View style={styles.container}>
       <View style={[styles.header, { borderBottomColor: palette.border }]}>
-        {DAY_LABELS.map((label) => (
-          <View key={label} style={styles.dayLabelCell}>
-            <Text style={[styles.dayLabel, { color: palette.textSecondary }]}>{label}</Text>
-          </View>
+        {DAY_LABELS.map((label, idx) => (
+          <Animated.View
+            key={label}
+            style={styles.dayLabelCell}
+            entering={FadeIn.delay(idx * 30)}
+          >
+            <Text style={[styles.dayLabel, { color: palette.textSecondary }]}>
+              {label}
+            </Text>
+          </Animated.View>
         ))}
       </View>
 
       <View style={styles.grid}>
-        {Array.from({ length: Math.ceil(monthDays.length / 7) }).map((_, weekIdx) => (
-          <View key={weekIdx} style={styles.weekRow}>
-            {monthDays.slice(weekIdx * 7, weekIdx * 7 + 7).map((day, dayIdx) => {
-              const dateKey = day.toDateString();
-              const isToday = isSameDay(day, today);
-              const isCurrentMonth = day.getMonth() === currentMonth;
-              const dayEvents = eventsByDay[dateKey] ?? [];
-              const dayPoints = pointsByDay[dateKey] ?? 0;
-              const hasEvents = dayEvents.length > 0;
-              const hasActiveEvent = dayEvents.some((ev) => ev.active);
+        {Array.from({ length: Math.ceil(monthDays.length / 7) }).map(
+          (_, weekIdx) => (
+            <View key={weekIdx} style={styles.weekRow}>
+              {monthDays.slice(weekIdx * 7, weekIdx * 7 + 7).map((day, dayIdx) => {
+                const dateKey = day.toDateString();
+                const isToday = isSameDay(day, today);
+                const isCurrentMonth = day.getMonth() === currentMonth;
+                const isSelected = selectedDate
+                  ? isSameDay(day, selectedDate)
+                  : false;
+                const dayEvents = eventsByDay[dateKey] ?? [];
+                const dayPoints = pointsByDay[dateKey] ?? 0;
+                const hasActiveEvent = dayEvents.some((ev) => ev.active);
+                const index = weekIdx * 7 + dayIdx;
 
-              return (
-                <TouchableOpacity
-                  key={dayIdx}
-                  style={[
-                    styles.dayCell,
-                    {
-                      backgroundColor: hasEvents ? getPointsColor(dayPoints) : 'transparent',
-                      borderColor: hasActiveEvent ? palette.tint : palette.border,
-                      borderWidth: hasActiveEvent ? 2 : 1,
-                    },
-                  ]}
-                  onPress={() => {
-                    if (dayEvents.length === 1) {
-                      onEventPress?.(dayEvents[0]);
-                    } else {
-                      onDayPress?.(day);
-                    }
-                  }}
-                >
-                  <View
-                    style={[
-                      styles.dayNumber,
-                      isToday && { backgroundColor: palette.tint },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.dayNumberText,
-                        {
-                          color: isToday ? '#fff' : isCurrentMonth ? palette.text : palette.textSecondary,
-                          opacity: isCurrentMonth ? 1 : 0.4,
-                        },
-                      ]}
-                    >
-                      {day.getDate()}
-                    </Text>
-                  </View>
-                  {hasEvents && (
-                    <View style={styles.dayContent}>
-                      <Text style={[styles.eventCount, { color: isDark ? '#fff' : palette.text }]}>
-                        {dayEvents.length}
-                      </Text>
-                      {dayPoints > 0 && (
-                        <Text style={[styles.pointsText, { color: isDark ? 'rgba(255,255,255,0.7)' : palette.textSecondary }]}>
-                          {dayPoints.toFixed(0)}p
-                        </Text>
-                      )}
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ))}
+                return (
+                  <DayCell
+                    key={dayIdx}
+                    day={day}
+                    isToday={isToday}
+                    isCurrentMonth={isCurrentMonth}
+                    isSelected={isSelected}
+                    dayEvents={dayEvents}
+                    dayPoints={dayPoints}
+                    hasActiveEvent={hasActiveEvent}
+                    index={index}
+                    onPress={() => {
+                      if (dayEvents.length === 1) {
+                        onEventPress?.(dayEvents[0]);
+                      } else {
+                        onDayPress?.(day);
+                      }
+                    }}
+                  />
+                );
+              })}
+            </View>
+          )
+        )}
       </View>
     </View>
   );
@@ -168,21 +291,22 @@ const styles = StyleSheet.create({
     flex: 1,
     aspectRatio: 1,
     margin: 2,
-    borderRadius: 7,
+    borderRadius: 10,
     padding: 4,
     alignItems: 'center',
     justifyContent: 'flex-start',
+    overflow: 'hidden',
   },
   dayNumber: {
-    width: 15,
-    height: 15,
-    borderRadius: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
   },
-  dayNumberText: { fontSize: 8, fontWeight: '700' },
+  dayNumberText: { fontSize: 9, fontWeight: '700' },
   dayContent: { alignItems: 'center', gap: 1 },
-  eventCount: { fontSize: 9, fontWeight: '800' },
+  eventCount: { fontSize: 10, fontWeight: '800' },
   pointsText: { fontSize: 8, fontWeight: '600' },
 });
