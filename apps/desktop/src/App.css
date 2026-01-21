@@ -9507,11 +9507,22 @@ select:focus-visible {
   opacity: 0.5;
 }
 
-/* Cards Grid */
+/* Cards Grid - True Masonry with CSS Columns */
 .notesMasonry {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
+  column-count: 3;
+  column-gap: 16px;
+}
+
+@media (max-width: 1200px) {
+  .notesMasonry {
+    column-count: 2;
+  }
+}
+
+@media (max-width: 800px) {
+  .notesMasonry {
+    column-count: 1;
+  }
 }
 
 .notesCard {
@@ -9524,7 +9535,11 @@ select:focus-visible {
   border: 1px solid var(--border);
   border-radius: 16px;
   cursor: pointer;
-  transition: all 150ms ease;
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+  margin-bottom: 16px;
+  break-inside: avoid;
+  position: relative;
+  overflow: hidden;
 }
 
 .notesCardDark {
@@ -9556,32 +9571,33 @@ select:focus-visible {
 
 .notesCard:hover {
   border-color: var(--border2);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+  transform: translateY(-6px);
 }
 
 .notesCardDark:hover {
   border-color: rgba(216, 224, 0, 0.7);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5);
+  transform: translateY(-6px);
 }
 
 .notesCard.active {
   border-color: var(--accent);
   background: var(--accentSoft);
-  box-shadow: 0 4px 16px rgba(217, 93, 57, 0.15);
+  box-shadow: 0 8px 24px rgba(217, 93, 57, 0.2);
 }
 
 .notesCardDark.active {
   border-color: rgba(216, 224, 0, 0.9);
-  background: rgba(216, 224, 0, 0.08);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+  background: rgba(216, 224, 0, 0.1);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
 }
 
 .notesCardTitle {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: 0;
 }
 
 .notesCardTitle > span:first-child {
@@ -9659,6 +9675,196 @@ select:focus-visible {
   font-size: 11px;
   font-weight: 600;
   color: var(--muted);
+  border: 1px solid transparent;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.notesCardDark .notesCardTags span {
+  border: 1px solid currentColor;
+  border-opacity: 0.3;
+}
+
+/* Card Header with Status and Category */
+.notesCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.notesCardStatus {
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.notesCardCategory {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+/* Timestamp styling */
+.notesCardTimestamp {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(248, 250, 252, 0.5);
+  margin-top: 4px;
+}
+
+.notesCardTimestamp svg {
+  opacity: 0.6;
+}
+
+/* Card Actions (shown on hover) */
+.notesCardActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.notesCard:hover .notesCardActions {
+  opacity: 1;
+}
+
+.notesCardAction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(248, 250, 252, 0.7);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.notesCardAction:hover {
+  background: rgba(216, 224, 0, 0.15);
+  border-color: rgba(216, 224, 0, 0.3);
+  color: #d8e000;
+}
+
+/* Enhanced hover effect */
+.notesCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+}
+
+.notesCardDark:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Filter tab counts */
+.notesFilterTabCount {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  margin-left: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: var(--muted);
+}
+
+.notesFilterTab.active .notesFilterTabCount {
+  background: rgba(216, 224, 0, 0.2);
+  color: #d8e000;
+}
+
+/* Filter chips wrapper with clear all */
+.notesFilterChipsWrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.notesFilterClearAll {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.notesFilterClearAll:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* Enhanced Empty State */
+.notesEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+  min-height: 300px;
+}
+
+.notesEmptyIcon {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  color: var(--muted);
+}
+
+.notesEmptyTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 8px 0;
+}
+
+.notesEmptyDesc {
+  font-size: 14px;
+  color: var(--muted);
+  max-width: 320px;
+  line-height: 1.5;
+  margin: 0 0 20px 0;
+}
+
+.notesEmptyClear {
+  font-size: 13px;
+  font-weight: 600;
+  color: #d8e000;
+  background: rgba(216, 224, 0, 0.1);
+  border: 1px solid rgba(216, 224, 0, 0.3);
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.notesEmptyClear:hover {
+  background: rgba(216, 224, 0, 0.2);
+  border-color: rgba(216, 224, 0, 0.5);
 }
 
 .notesInspector {
@@ -9869,18 +10075,48 @@ select:focus-visible {
   color: var(--muted);
 }
 
+.notesInspectorEmptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .notesInspectorEmpty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 12px;
+  gap: 8px;
+  padding: 40px 24px;
+}
+
+.notesInspectorEmptyIcon {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-  min-height: 260px;
-  opacity: 0.6;
+}
+
+.notesInspectorEmpty h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.notesInspectorEmpty p {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 220px;
+  line-height: 1.5;
+  margin: 0;
 }
 
 /* Table View */

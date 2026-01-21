@@ -16,6 +16,48 @@ import {
   uniqueFilters,
 } from '@insight/shared'
 
+// Category color palette for visual distinction
+const CATEGORY_COLORS: Record<string, { border: string; bg: string; text: string }> = {
+  Work: { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)', text: '#60a5fa' },
+  Health: { border: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', text: '#34d399' },
+  Personal: { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)', text: '#fbbf24' },
+  Learning: { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.12)', text: '#a78bfa' },
+  Transport: { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.12)', text: '#22d3ee' },
+  Finance: { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.12)', text: '#f472b6' },
+}
+
+const DEFAULT_CATEGORY_COLOR = { border: '#64748b', bg: 'rgba(100, 116, 139, 0.12)', text: '#94a3b8' }
+
+// Status indicator colors and emojis
+const STATUS_INDICATORS: Record<string, { emoji: string; color: string }> = {
+  raw: { emoji: '📝', color: '#fbbf24' },
+  processed: { emoji: '✅', color: '#34d399' },
+  archived: { emoji: '📦', color: '#94a3b8' },
+}
+
+function getCategoryColor(category: string | undefined) {
+  if (!category) return DEFAULT_CATEGORY_COLOR
+  return CATEGORY_COLORS[category] ?? DEFAULT_CATEGORY_COLOR
+}
+
+// Generate consistent tag colors based on tag string
+function getTagColor(tag: string) {
+  const colors = [
+    { bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171', border: 'rgba(239, 68, 68, 0.3)' },
+    { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' },
+    { bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399', border: 'rgba(16, 185, 129, 0.3)' },
+    { bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa', border: 'rgba(59, 130, 246, 0.3)' },
+    { bg: 'rgba(139, 92, 246, 0.15)', text: '#a78bfa', border: 'rgba(139, 92, 246, 0.3)' },
+    { bg: 'rgba(236, 72, 153, 0.15)', text: '#f472b6', border: 'rgba(236, 72, 153, 0.3)' },
+    { bg: 'rgba(6, 182, 212, 0.15)', text: '#22d3ee', border: 'rgba(6, 182, 212, 0.3)' },
+  ]
+  let hash = 0
+  for (let i = 0; i < tag.length; i++) {
+    hash = tag.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return colors[Math.abs(hash) % colors.length]
+}
+
 export function NotesView(props: {
   captures: InboxCapture[]
   selectedCaptureId: string | null
@@ -196,46 +238,69 @@ export function NotesView(props: {
 
         <div className="notesFilterRow">
           <div className="notesFilterTabs">
-            {(['all', 'category', 'tag', 'person', 'place'] as const).map((ft) => (
-              <button
-                key={ft}
-                className={`notesFilterTab ${filterType === ft ? 'active' : ''}`}
-                onClick={() => {
-                  setFilterType(ft)
-                  setSelectedFilters([])
-                }}
-              >
-                {ft === 'all'
-                  ? 'All'
+            {(['all', 'category', 'tag', 'person', 'place'] as const).map((ft) => {
+              const count =
+                ft === 'all'
+                  ? props.captures.length
                   : ft === 'category'
-                    ? 'Categories'
+                    ? allCategories.length
                     : ft === 'tag'
-                      ? 'Tags'
+                      ? allTags.length
                       : ft === 'person'
-                        ? 'People'
-                        : 'Places'}
-              </button>
-            ))}
+                        ? allPeople.length
+                        : allPlaces.length
+              return (
+                <button
+                  key={ft}
+                  className={`notesFilterTab ${filterType === ft ? 'active' : ''}`}
+                  onClick={() => {
+                    setFilterType(ft)
+                    setSelectedFilters([])
+                  }}
+                >
+                  {ft === 'all'
+                    ? 'All'
+                    : ft === 'category'
+                      ? 'Categories'
+                      : ft === 'tag'
+                        ? 'Tags'
+                        : ft === 'person'
+                          ? 'People'
+                          : 'Places'}
+                  <span className="notesFilterTabCount">{count}</span>
+                </button>
+              )
+            })}
           </div>
           {filterType !== 'all' && currentFilterOptions.length > 0 && (
-            <div className="notesFilterChips">
-              {currentFilterOptions.map((opt) => {
-                const isSelected = selectedFilters.includes(opt)
-                return (
-                  <button
-                    key={opt}
-                    className={`notesFilterChip ${isSelected ? 'active' : ''}`}
-                    onClick={() => {
-                      setSelectedFilters(
-                        isSelected ? selectedFilters.filter((f) => f !== opt) : [...selectedFilters, opt],
-                      )
-                    }}
-                  >
-                    {opt}
-                    {isSelected ? <span className="notesFilterChipRemove">x</span> : null}
-                  </button>
-                )
-              })}
+            <div className="notesFilterChipsWrapper">
+              <div className="notesFilterChips">
+                {currentFilterOptions.map((opt) => {
+                  const isSelected = selectedFilters.includes(opt)
+                  return (
+                    <button
+                      key={opt}
+                      className={`notesFilterChip ${isSelected ? 'active' : ''}`}
+                      onClick={() => {
+                        setSelectedFilters(
+                          isSelected ? selectedFilters.filter((f) => f !== opt) : [...selectedFilters, opt],
+                        )
+                      }}
+                    >
+                      {opt}
+                      {isSelected ? <span className="notesFilterChipRemove">×</span> : null}
+                    </button>
+                  )
+                })}
+              </div>
+              {selectedFilters.length > 0 && (
+                <button
+                  className="notesFilterClearAll"
+                  onClick={() => setSelectedFilters([])}
+                >
+                  Clear all
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -245,8 +310,31 @@ export function NotesView(props: {
         <div className="notesContent">
           {filtered.length === 0 ? (
             <div className="notesEmpty">
-              <Icon name="file" size={32} />
-              <span>No notes found</span>
+              <div className="notesEmptyIcon">
+                <Icon name="file" size={48} />
+              </div>
+              <h3 className="notesEmptyTitle">
+                {q.trim() || selectedFilters.length > 0 ? 'No matching notes' : 'No notes yet'}
+              </h3>
+              <p className="notesEmptyDesc">
+                {q.trim()
+                  ? `No notes match "${q.trim()}". Try a different search.`
+                  : selectedFilters.length > 0
+                    ? 'No notes match your current filters. Try removing some filters.'
+                    : 'Start capturing your thoughts, ideas, and moments.'}
+              </p>
+              {(q.trim() || selectedFilters.length > 0) && (
+                <button
+                  className="notesEmptyClear"
+                  onClick={() => {
+                    setQ('')
+                    setSelectedFilters([])
+                    setFilterType('all')
+                  }}
+                >
+                  Clear filters
+                </button>
+              )}
             </div>
           ) : layout === 'list' ? (
             <div className="notesTable">
@@ -310,20 +398,53 @@ export function NotesView(props: {
                   const places = extractPlaces(c.rawText)
                   const preview = getPreview(c.rawText)
                   const words = wordCount(c.rawText)
+                  const cats = extractCategories(c.rawText, categories)
+                  const primaryCategory = cats[0]
+                  const categoryColor = getCategoryColor(primaryCategory)
+                  const statusInfo = STATUS_INDICATORS[c.status] ?? STATUS_INDICATORS.raw
+
                   return (
                     <motion.button
                       key={c.id}
                       layout
                       onClick={() => props.onSelectCapture(c.id)}
                       className={`notesCard notesCardDark ${props.selectedCaptureId === c.id ? 'active' : ''}`}
+                      style={{
+                        borderLeftWidth: '4px',
+                        borderLeftColor: categoryColor.border,
+                      }}
                       initial={{ opacity: 0, scale: 0.96 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.96 }}
                       transition={{ duration: 0.15 }}
                     >
+                      <div className="notesCardHeader">
+                        <span
+                          className="notesCardStatus"
+                          title={c.status}
+                          style={{ color: statusInfo.color }}
+                        >
+                          {statusInfo.emoji}
+                        </span>
+                        {primaryCategory && (
+                          <span
+                            className="notesCardCategory"
+                            style={{
+                              background: categoryColor.bg,
+                              color: categoryColor.text,
+                              borderColor: categoryColor.border,
+                            }}
+                          >
+                            {primaryCategory}
+                          </span>
+                        )}
+                      </div>
                       <div className="notesCardTitle">
                         <span>{firstLine(c.rawText)}</span>
-                        <span className="notesCardDate">{formatRelativeDate(c.createdAt)}</span>
+                      </div>
+                      <div className="notesCardTimestamp">
+                        <Icon name="clock" size={10} />
+                        <span>{formatRelativeDate(c.createdAt)}</span>
                       </div>
                       {preview && <p className="notesCardPreview">{preview}</p>}
                       <div className="notesCardMeta">
@@ -343,11 +464,41 @@ export function NotesView(props: {
                       </div>
                       {tags.length > 0 && (
                         <div className="notesCardTags">
-                          {tags.slice(0, 3).map((tag) => (
-                            <span key={`${c.id}_${tag}`}>{tag}</span>
-                          ))}
+                          {tags.slice(0, 4).map((tag) => {
+                            const tagColor = getTagColor(tag)
+                            return (
+                              <span
+                                key={`${c.id}_${tag}`}
+                                style={{
+                                  background: tagColor.bg,
+                                  color: tagColor.text,
+                                  borderColor: tagColor.border,
+                                }}
+                              >
+                                {tag}
+                              </span>
+                            )
+                          })}
                         </div>
                       )}
+                      <div className="notesCardActions">
+                        <button
+                          type="button"
+                          className="notesCardAction"
+                          onClick={(e) => { e.stopPropagation(); props.onSelectCapture(c.id) }}
+                          title="View details"
+                        >
+                          <Icon name="eye" size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="notesCardAction"
+                          onClick={(e) => { e.stopPropagation(); props.onSelectCapture(c.id) }}
+                          title="Edit note"
+                        >
+                          <Icon name="edit" size={14} />
+                        </button>
+                      </div>
                     </motion.button>
                   )
                 })}
@@ -356,9 +507,16 @@ export function NotesView(props: {
           )}
         </div>
 
-        <aside className="notesInspector">
+        <AnimatePresence mode="wait">
           {selectedCapture ? (
-            <>
+            <motion.aside
+              key="inspector"
+              className="notesInspector"
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 40 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+            >
               <div className="notesInspectorHeader">
                 <div>
                   <div className="notesInspectorEyebrow">Selected note</div>
@@ -512,14 +670,26 @@ export function NotesView(props: {
                   </>
                 )}
               </div>
-            </>
+            </motion.aside>
           ) : (
-            <div className="notesInspectorEmpty">
-              <Icon name="file" size={32} />
-              <div>Select a note to inspect details.</div>
-            </div>
+            <motion.aside
+              key="inspector-empty"
+              className="notesInspector notesInspectorEmptyState"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className="notesInspectorEmpty">
+                <div className="notesInspectorEmptyIcon">
+                  <Icon name="file" size={40} />
+                </div>
+                <h3>No note selected</h3>
+                <p>Select a note from the list to view and edit its details.</p>
+              </div>
+            </motion.aside>
           )}
-        </aside>
+        </AnimatePresence>
       </div>
     </div>
   )
