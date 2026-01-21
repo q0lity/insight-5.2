@@ -30,7 +30,7 @@ export const Hero = () => {
       transition: {
         duration: 1,
         delay: i * 0.1,
-        ease: [0.16, 1, 0.3, 1]
+        ease: [0.16, 1, 0.3, 1] as const
       }
     })
   };
@@ -39,7 +39,7 @@ export const Hero = () => {
     hidden: { scaleX: 0 },
     visible: {
       scaleX: 1,
-      transition: { duration: 1.2, delay: 0.8, ease: [0.16, 1, 0.3, 1] }
+      transition: { duration: 1.2, delay: 0.8, ease: [0.16, 1, 0.3, 1] as const }
     }
   };
 

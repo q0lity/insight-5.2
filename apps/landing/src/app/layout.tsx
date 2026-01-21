@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Figtree, Merriweather } from "next/font/google";
 import "./globals.css";
+import { Providers } from "@/components/Providers";
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -28,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${figtree.variable} ${merriweather.variable}`}>
       <body className="animated-bg min-h-screen">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
