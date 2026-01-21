@@ -185,10 +185,7 @@ export default function HabitDetailScreen() {
           <Text style={[styles.sectionTitle, { color: palette.text }]}>Activity</Text>
           <MobileHeatmap
             data={heatmapData}
-            range="quarter"
-            cellSize={12}
-            gap={2}
-            showMonthLabels
+            initialRange="quarter"
           />
         </LuxCard>
 
