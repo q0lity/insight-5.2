@@ -6,6 +6,9 @@
     "apps/*",
     "packages/*"
   ],
+  "overrides": {
+    "@babel/runtime": "7.24.0"
+  },
   "scripts": {
     "dev:mobile": "npm run --prefix \"apps/mobile\" start",
     "dev:mobile2": "npm run --prefix \"apps/mobile2\" start",
