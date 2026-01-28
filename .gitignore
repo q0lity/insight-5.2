@@ -45,3 +45,9 @@ supabase/.temp/
 test-results/
 playwright-report/
 playwright/.cache/
+
+# Gas Town (added by gt)
+.runtime/
+.claude/
+.beads/
+.logs/
